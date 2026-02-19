@@ -123,6 +123,8 @@ export default function SignupPage() {
 
       if (userError) {
         console.error('User creation error:', userError);
+        toast.error('Failed to create user profile. Please try again.');
+        return;
       }
 
       // Create role-specific record
@@ -136,6 +138,8 @@ export default function SignupPage() {
 
         if (brandError) {
           console.error('Brand creation error:', brandError);
+          toast.error('Failed to create brand profile. Please try again.');
+          return;
         }
 
         toast.success('Brand registration submitted. Awaiting approval.');
@@ -144,12 +148,15 @@ export default function SignupPage() {
         const { error: creatorError } = await supabase.from('creators').insert({
           user_id: authData.user.id,
           username: data.username.toLowerCase(),
+          display_name: data.name,
           country: data.country || 'JP',
           theme_color: '#1a1a1a',
         });
 
         if (creatorError) {
           console.error('Creator creation error:', creatorError);
+          toast.error('Failed to create creator profile. Please try again.');
+          return;
         }
 
         toast.success('Account created successfully!');

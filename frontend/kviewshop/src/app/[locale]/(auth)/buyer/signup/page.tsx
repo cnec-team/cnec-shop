@@ -87,6 +87,8 @@ export default function BuyerSignupPage() {
 
         if (userError) {
           console.error('User creation error:', userError);
+          setSignupError('Failed to create user profile. Please try again.');
+          return;
         }
 
         // Create buyer profile
@@ -99,6 +101,8 @@ export default function BuyerSignupPage() {
 
         if (buyerError) {
           console.error('Buyer creation error:', buyerError);
+          setSignupError('Failed to create buyer profile. Please try again.');
+          return;
         }
 
         toast.success('Account created successfully! Welcome to KviewShop!');
