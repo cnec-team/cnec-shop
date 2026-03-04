@@ -323,7 +323,6 @@ export async function GET() {
     accounts: testAccounts.map(a => ({
       role: a.role,
       email: a.email,
-      password: a.password,
     })),
   });
 }

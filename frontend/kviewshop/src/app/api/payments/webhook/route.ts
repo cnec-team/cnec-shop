@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import crypto from 'crypto';
 
 // Inline types
 type OrderStatus = 'PENDING' | 'PAID' | 'PREPARING' | 'SHIPPING' | 'DELIVERED' | 'CONFIRMED' | 'CANCELLED' | 'REFUNDED';
@@ -21,7 +22,7 @@ interface WebhookPayload {
 
 function getSupabaseClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !supabaseKey) {
     throw new Error('Missing Supabase configuration');
@@ -50,19 +51,35 @@ function mapWebhookEventToStatus(eventType: string): OrderStatus | null {
 
 export async function POST(request: NextRequest) {
   try {
-    // Verify webhook signature (mock for now)
-    // In production, verify the PortOne webhook signature:
-    //   const signature = request.headers.get('x-portone-signature');
-    //   const webhookSecret = process.env.PORTONE_WEBHOOK_SECRET;
-    //   Verify HMAC-SHA256 of request body matches signature
-    const signature = request.headers.get('x-portone-signature');
-    if (signature) {
-      // TODO: Implement actual signature verification
-      // const isValid = verifySignature(body, signature, webhookSecret);
-      // if (!isValid) return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+    // Read raw body for signature verification
+    const rawBody = await request.text();
+
+    // Verify webhook signature using HMAC-SHA256
+    const webhookSecret = process.env.PORTONE_WEBHOOK_SECRET;
+    if (!webhookSecret) {
+      console.error('PORTONE_WEBHOOK_SECRET is not configured');
+      return NextResponse.json({ error: 'Webhook configuration error' }, { status: 500 });
     }
 
-    const payload: WebhookPayload = await request.json();
+    const signature = request.headers.get('x-portone-signature');
+    if (!signature) {
+      return NextResponse.json({ error: 'Missing webhook signature' }, { status: 401 });
+    }
+
+    const expectedSignature = crypto
+      .createHmac('sha256', webhookSecret)
+      .update(rawBody)
+      .digest('hex');
+
+    const signatureBuffer = Buffer.from(signature, 'hex');
+    const expectedBuffer = Buffer.from(expectedSignature, 'hex');
+
+    if (signatureBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(signatureBuffer, expectedBuffer)) {
+      console.error('Webhook signature verification failed');
+      return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 401 });
+    }
+
+    const payload: WebhookPayload = JSON.parse(rawBody);
 
     if (!payload.type || !payload.data) {
       return NextResponse.json(

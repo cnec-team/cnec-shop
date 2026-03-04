@@ -37,7 +37,7 @@ export default function PaymentSuccessPage() {
         const supabase = getClient();
 
         // Call API to confirm payment with Toss
-        const response = await fetch('/api/payment/confirm', {
+        const response = await fetch('/api/payments/confirm', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

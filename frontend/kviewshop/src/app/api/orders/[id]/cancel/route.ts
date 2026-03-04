@@ -19,7 +19,7 @@ const CANCELLABLE_STATUSES: OrderStatus[] = ['PENDING', 'PAID', 'PREPARING'];
 
 function getSupabaseClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !supabaseKey) {
     throw new Error('Missing Supabase configuration');
@@ -116,26 +116,13 @@ export async function POST(
       console.error('Failed to fetch order items for stock restore:', itemsError);
     } else if (orderItems && orderItems.length > 0) {
       for (const item of orderItems as OrderItemRow[]) {
-        // Try RPC first, fall back to manual update
         const { error: stockError } = await supabase.rpc('increment_stock', {
           p_product_id: item.product_id,
           p_quantity: item.quantity,
         });
 
         if (stockError) {
-          // Fallback: manual stock increment
-          const { data: product } = await supabase
-            .from('products')
-            .select('stock')
-            .eq('id', item.product_id)
-            .single();
-
-          if (product) {
-            await supabase
-              .from('products')
-              .update({ stock: product.stock + item.quantity })
-              .eq('id', item.product_id);
-          }
+          console.error('Failed to restore stock for product:', item.product_id, stockError);
         }
       }
     }
