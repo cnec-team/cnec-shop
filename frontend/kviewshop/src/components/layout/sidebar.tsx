@@ -22,7 +22,6 @@ import {
   Sparkles,
   ImageIcon,
   Bell,
-  Video,
 } from 'lucide-react';
 import type { UserRole } from '@/types/database';
 import type { Locale } from '@/lib/i18n/config';
@@ -56,7 +55,6 @@ export function Sidebar({ role, locale }: SidebarProps) {
             { title: '대시보드', href: `${base}/admin/dashboard`, icon: LayoutDashboard },
             { title: '브랜드 관리', href: `${base}/admin/brands`, icon: Store },
             { title: '크리에이터 관리', href: `${base}/admin/creators`, icon: Users },
-            { title: 'SNS 업로드', href: `${base}/admin/sns-completed`, icon: Video },
             { title: '정산 관리', href: `${base}/admin/settlements`, icon: DollarSign },
             { title: '설정', href: `${base}/admin/settings`, icon: Settings },
           ],
