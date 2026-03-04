@@ -70,13 +70,50 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify payment with PortOne API (mock for now - just validate paymentId exists)
-    // In production, this would call PortOne's payment verification API:
-    //   GET https://api.portone.io/payments/{paymentId}
-    // For now, we simply check that a paymentId was provided
-    if (!paymentId || paymentId.trim() === '') {
+    // Verify payment with PortOne API
+    const portoneApiSecret = process.env.PORTONE_API_SECRET;
+    if (!portoneApiSecret) {
+      console.error('PORTONE_API_SECRET is not configured');
       return NextResponse.json(
-        { error: 'Invalid paymentId' },
+        { error: 'Payment verification service not configured' },
+        { status: 500 }
+      );
+    }
+
+    const verifyResponse = await fetch(
+      `https://api.portone.io/payments/${encodeURIComponent(paymentId)}`,
+      {
+        headers: {
+          'Authorization': `PortOne ${portoneApiSecret}`,
+        },
+      }
+    );
+
+    if (!verifyResponse.ok) {
+      console.error('PortOne payment verification failed:', verifyResponse.status);
+      return NextResponse.json(
+        { error: 'Payment verification failed' },
+        { status: 400 }
+      );
+    }
+
+    const paymentData = await verifyResponse.json();
+
+    // Verify the payment amount matches the order
+    if (paymentData.amount?.total !== order.total_amount) {
+      console.error(
+        `Payment amount mismatch: PortOne=${paymentData.amount?.total}, Order=${order.total_amount}`
+      );
+      return NextResponse.json(
+        { error: 'Payment amount does not match order total' },
+        { status: 400 }
+      );
+    }
+
+    // Verify payment status is actually paid
+    if (paymentData.status !== 'PAID') {
+      return NextResponse.json(
+        { error: `Payment is not in PAID status. Current: ${paymentData.status}` },
         { status: 400 }
       );
     }
@@ -88,7 +125,7 @@ export async function POST(request: NextRequest) {
       .update({
         status: 'PAID',
         paid_at: now,
-        payment_method: 'CARD', // Default; can be derived from PortOne response
+        payment_method: paymentData.method?.type || 'CARD',
         pg_transaction_id: paymentId,
         pg_provider: pgProvider || 'portone',
       })

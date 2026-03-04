@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { getClient } from '@/lib/supabase/client';
 import { useCartStore } from '@/lib/store/auth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -23,7 +22,6 @@ export default function PaymentSuccessPage() {
   const orderId = searchParams.get('orderId');
   const paymentKey = searchParams.get('paymentKey');
   const amount = searchParams.get('amount');
-  const creatorId = searchParams.get('creatorId');
 
   useEffect(() => {
     const confirmPayment = async () => {
@@ -34,9 +32,7 @@ export default function PaymentSuccessPage() {
       }
 
       try {
-        const supabase = getClient();
-
-        // Call API to confirm payment with Toss
+        // Call API to confirm payment with Toss (server-side updates order status)
         const response = await fetch('/api/payments/confirm', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -53,30 +49,13 @@ export default function PaymentSuccessPage() {
           throw new Error(result.message || 'Payment confirmation failed');
         }
 
-        // Update order status in database
-        const { data: order, error: orderError } = await supabase
-          .from('orders')
-          .update({
-            status: 'paid',
-            payment_key: paymentKey,
-            payment_status: 'completed',
-            paid_at: new Date().toISOString(),
-          })
-          .eq('order_number', orderId)
-          .select('order_number')
-          .single();
-
-        if (orderError) {
-          console.error('Order update error:', orderError);
-        }
-
-        setOrderNumber(order?.order_number || orderId);
+        setOrderNumber(result.orderNumber || orderId);
 
         // Clear the cart after successful payment
         clearCart();
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Payment confirmation error:', err);
-        setError(err.message || 'Payment confirmation failed');
+        setError(err instanceof Error ? err.message : 'Payment confirmation failed');
       } finally {
         setIsProcessing(false);
       }

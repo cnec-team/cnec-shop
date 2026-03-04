@@ -43,9 +43,11 @@ interface CartItemWithProduct {
   product?: CartProduct;
   creator?: {
     id: string;
-    username: string;
+    shop_id: string | null;
+    username: string | null;
     display_name: string;
-    theme_color: string;
+    theme_color: string | null;
+    background_color: string | null;
   };
 }
 
@@ -53,9 +55,11 @@ interface GroupedCart {
   creatorId: string;
   creator: {
     id: string;
-    username: string;
+    shop_id: string | null;
+    username: string | null;
     display_name: string;
-    theme_color: string;
+    theme_color: string | null;
+    background_color: string | null;
   };
   items: CartItemWithProduct[];
 }
@@ -101,7 +105,7 @@ export default function BuyerCartPage() {
         // Fetch creators
         const { data: creatorsData } = await supabase
           .from('creators')
-          .select('id, username, display_name, theme_color')
+          .select('id, shop_id, username, display_name, theme_color, background_color')
           .in('id', creatorIds);
 
         const creatorsMap: Record<string, any> = {};
@@ -215,15 +219,15 @@ export default function BuyerCartPage() {
             <Card key={group.creatorId}>
               <CardHeader className="pb-3">
                 <Link
-                  href={'/' + locale + '/@' + group.creator?.username}
+                  href={'/' + locale + '/@' + (group.creator?.shop_id || group.creator?.username)}
                   className="flex items-center gap-2 hover:text-primary transition-colors"
                 >
                   <div
                     className="w-4 h-4 rounded-full"
-                    style={{ backgroundColor: group.creator?.theme_color || '#000' }}
+                    style={{ backgroundColor: group.creator?.theme_color || group.creator?.background_color || '#000' }}
                   />
                   <CardTitle className="text-lg">
-                    {group.creator?.display_name || group.creator?.username || 'Shop'}
+                    {group.creator?.display_name || group.creator?.shop_id || group.creator?.username || 'Shop'}
                   </CardTitle>
                   <ArrowRight className="h-4 w-4" />
                 </Link>
@@ -365,7 +369,7 @@ export default function BuyerCartPage() {
             <CardFooter className="flex flex-col gap-3">
               {groupedItems.length === 1 ? (
                 <Link
-                  href={'/' + locale + '/@' + groupedItems[0].creator?.username + '/checkout'}
+                  href={'/' + locale + '/@' + (groupedItems[0].creator?.shop_id || groupedItems[0].creator?.username) + '/checkout'}
                   className="w-full"
                 >
                   <Button size="lg" className="w-full gap-2">
@@ -381,15 +385,15 @@ export default function BuyerCartPage() {
                   {groupedItems.map((group) => (
                     <Link
                       key={group.creatorId}
-                      href={'/' + locale + '/@' + group.creator?.username + '/checkout'}
+                      href={'/' + locale + '/@' + (group.creator?.shop_id || group.creator?.username) + '/checkout'}
                       className="block"
                     >
                       <Button variant="outline" size="sm" className="w-full gap-2">
                         <div
                           className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: group.creator?.theme_color || '#000' }}
+                          style={{ backgroundColor: group.creator?.theme_color || group.creator?.background_color || '#000' }}
                         />
-                        {group.creator?.display_name || group.creator?.username}
+                        {group.creator?.display_name || group.creator?.shop_id || group.creator?.username}
                         <ArrowRight className="h-3 w-3 ml-auto" />
                       </Button>
                     </Link>

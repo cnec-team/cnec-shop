@@ -1,4 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+
+function getSupabaseClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error('Missing Supabase configuration');
+  }
+
+  return createClient(supabaseUrl, supabaseKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -47,8 +61,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Payment confirmed by Toss — update order status server-side
+    const supabase = getSupabaseClient();
+    const now = new Date().toISOString();
+
+    const { data: order, error: updateError } = await supabase
+      .from('orders')
+      .update({
+        status: 'PAID',
+        payment_key: paymentKey,
+        pg_transaction_id: paymentKey,
+        pg_provider: 'toss',
+        payment_method: result.method || 'CARD',
+        paid_at: now,
+      })
+      .eq('order_number', orderId)
+      .select('order_number')
+      .single();
+
+    if (updateError) {
+      console.error('Failed to update order status after Toss confirmation:', updateError);
+    }
+
     return NextResponse.json({
       success: true,
+      orderNumber: order?.order_number || orderId,
       payment: {
         paymentKey: result.paymentKey,
         orderId: result.orderId,
@@ -57,15 +94,13 @@ export async function POST(request: NextRequest) {
         method: result.method,
         status: result.status,
         approvedAt: result.approvedAt,
-        receipt: result.receipt,
-        card: result.card,
-        easyPay: result.easyPay,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Payment confirmation error:', error);
+    const message = error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json(
-      { success: false, message: error.message || 'Internal server error' },
+      { success: false, message },
       { status: 500 }
     );
   }

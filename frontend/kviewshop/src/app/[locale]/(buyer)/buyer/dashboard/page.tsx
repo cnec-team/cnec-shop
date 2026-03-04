@@ -33,10 +33,13 @@ interface SubscribedMall {
   id: string;
   creator: {
     id: string;
-    username: string;
+    shop_id: string | null;
+    username: string | null;
     display_name: string;
-    profile_image: string;
-    theme_color: string;
+    profile_image: string | null;
+    profile_image_url: string | null;
+    theme_color: string | null;
+    background_color: string | null;
   };
 }
 
@@ -44,7 +47,6 @@ interface RecentOrder {
   id: string;
   order_number: string;
   total_amount: number;
-  currency: string;
   status: string;
   created_at: string;
 }
@@ -72,10 +74,13 @@ export default function BuyerDashboardPage() {
             id,
             creator:creators (
               id,
+              shop_id,
               username,
               display_name,
               profile_image,
-              theme_color
+              profile_image_url,
+              theme_color,
+              background_color
             )
           `)
           .eq('buyer_id', buyer.id)
@@ -89,7 +94,7 @@ export default function BuyerDashboardPage() {
         // Get recent orders
         const { data: ordersData } = await supabase
           .from('orders')
-          .select('id, order_number, total_amount, currency, status, created_at')
+          .select('id, order_number, total_amount, status, created_at')
           .eq('buyer_id', buyer.id)
           .order('created_at', { ascending: false })
           .limit(5);
@@ -157,14 +162,19 @@ export default function BuyerDashboardPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed':
+      case 'CONFIRMED':
+      case 'DELIVERED':
         return 'bg-green-500/10 text-green-500';
-      case 'shipped':
+      case 'SHIPPING':
         return 'bg-blue-500/10 text-blue-500';
-      case 'paid':
+      case 'PAID':
+      case 'PREPARING':
         return 'bg-purple-500/10 text-purple-500';
-      case 'pending':
+      case 'PENDING':
         return 'bg-yellow-500/10 text-yellow-500';
+      case 'CANCELLED':
+      case 'REFUNDED':
+        return 'bg-red-500/10 text-red-500';
       default:
         return 'bg-muted text-muted-foreground';
     }
@@ -238,25 +248,25 @@ export default function BuyerDashboardPage() {
                 {subscriptions.map((sub) => (
                   <Link
                     key={sub.id}
-                    href={`/${locale}/@${sub.creator.username}`}
+                    href={`/${locale}/@${sub.creator.shop_id || sub.creator.username}`}
                     className="group"
                   >
                     <div className="p-4 rounded-lg border border-border/50 hover:border-primary/50 transition-colors text-center">
                       <Avatar className="h-12 w-12 mx-auto mb-2 ring-2 ring-offset-2 ring-offset-background"
-                        style={{ ['--ring-color' as any]: sub.creator.theme_color }}
+                        style={{ ['--ring-color' as any]: sub.creator.theme_color || sub.creator.background_color }}
                       >
-                        <AvatarImage src={sub.creator.profile_image} />
+                        <AvatarImage src={sub.creator.profile_image_url || sub.creator.profile_image || ''} />
                         <AvatarFallback
-                          style={{ backgroundColor: sub.creator.theme_color }}
+                          style={{ backgroundColor: sub.creator.theme_color || sub.creator.background_color || '#666' }}
                           className="text-white"
                         >
-                          {sub.creator.display_name?.charAt(0) || sub.creator.username.charAt(0)}
+                          {sub.creator.display_name?.charAt(0) || (sub.creator.shop_id || sub.creator.username || 'C').charAt(0)}
                         </AvatarFallback>
                       </Avatar>
                       <p className="font-medium text-sm truncate group-hover:text-primary">
-                        {sub.creator.display_name || sub.creator.username}
+                        {sub.creator.display_name || sub.creator.shop_id || sub.creator.username}
                       </p>
-                      <p className="text-xs text-muted-foreground">@{sub.creator.username}</p>
+                      <p className="text-xs text-muted-foreground">@{sub.creator.shop_id || sub.creator.username}</p>
                     </div>
                   </Link>
                 ))}
@@ -304,8 +314,7 @@ export default function BuyerDashboardPage() {
                     </div>
                     <div className="text-right">
                       <p className="font-medium">
-                        {order.currency === 'JPY' ? '¥' : '$'}
-                        {order.total_amount.toLocaleString()}
+                        ₩{order.total_amount.toLocaleString()}
                       </p>
                       <Badge variant="secondary" className={getStatusColor(order.status)}>
                         {order.status}

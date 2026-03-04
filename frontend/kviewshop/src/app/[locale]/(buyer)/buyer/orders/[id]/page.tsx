@@ -31,11 +31,15 @@ import {
 interface OrderItem {
   id: string;
   product_id: string;
-  product_name: string;
-  product_image: string;
+  product_name: string | null;
+  product_image: string | null;
   quantity: number;
   unit_price: number;
-  subtotal: number;
+  total_price: number;
+  product?: {
+    name: string;
+    image_url: string | null;
+  } | null;
 }
 
 interface Order {
@@ -43,50 +47,44 @@ interface Order {
   order_number: string;
   status: string;
   total_amount: number;
-  subtotal: number;
   shipping_fee: number;
-  discount_amount: number;
-  points_used: number;
-  currency: string;
-  payment_method: string;
+  payment_method: string | null;
   payment_key: string | null;
-  shipping_status: string;
   tracking_number: string | null;
-  tracking_url: string | null;
-  shipping_name: string;
-  shipping_phone: string;
-  shipping_email: string;
+  buyer_name: string;
+  buyer_phone: string;
+  buyer_email: string;
   shipping_address: string;
-  shipping_city: string;
-  shipping_state: string;
-  shipping_postal_code: string;
-  shipping_country: string;
-  notes: string | null;
+  shipping_detail: string | null;
+  shipping_zipcode: string | null;
   created_at: string;
   paid_at: string | null;
   shipped_at: string | null;
   delivered_at: string | null;
   creator: {
     id: string;
-    username: string;
+    shop_id: string | null;
+    username: string | null;
     display_name: string;
-    theme_color: string;
-    profile_image: string;
-  };
+    theme_color: string | null;
+    background_color: string | null;
+    profile_image_url: string | null;
+  } | null;
   order_items: OrderItem[];
 }
 
-const statusConfig: Record<string, { icon: any; color: string; bgColor: string; label: string }> = {
-  pending: { icon: Clock, color: 'text-yellow-600', bgColor: 'bg-yellow-500/10', label: 'Pending Payment' },
-  paid: { icon: CheckCircle, color: 'text-green-600', bgColor: 'bg-green-500/10', label: 'Payment Confirmed' },
-  processing: { icon: Package, color: 'text-blue-600', bgColor: 'bg-blue-500/10', label: 'Processing' },
-  shipped: { icon: Truck, color: 'text-purple-600', bgColor: 'bg-purple-500/10', label: 'Shipped' },
-  delivered: { icon: CheckCircle, color: 'text-green-600', bgColor: 'bg-green-500/10', label: 'Delivered' },
-  cancelled: { icon: XCircle, color: 'text-red-600', bgColor: 'bg-red-500/10', label: 'Cancelled' },
-  refunded: { icon: XCircle, color: 'text-gray-600', bgColor: 'bg-gray-500/10', label: 'Refunded' },
+const statusConfig: Record<string, { icon: typeof Clock; color: string; bgColor: string; label: string }> = {
+  PENDING: { icon: Clock, color: 'text-yellow-600', bgColor: 'bg-yellow-500/10', label: 'Pending Payment' },
+  PAID: { icon: CheckCircle, color: 'text-green-600', bgColor: 'bg-green-500/10', label: 'Payment Confirmed' },
+  PREPARING: { icon: Package, color: 'text-blue-600', bgColor: 'bg-blue-500/10', label: 'Preparing' },
+  SHIPPING: { icon: Truck, color: 'text-purple-600', bgColor: 'bg-purple-500/10', label: 'Shipped' },
+  DELIVERED: { icon: CheckCircle, color: 'text-green-600', bgColor: 'bg-green-500/10', label: 'Delivered' },
+  CONFIRMED: { icon: CheckCircle, color: 'text-green-700', bgColor: 'bg-green-600/10', label: 'Confirmed' },
+  CANCELLED: { icon: XCircle, color: 'text-red-600', bgColor: 'bg-red-500/10', label: 'Cancelled' },
+  REFUNDED: { icon: XCircle, color: 'text-gray-600', bgColor: 'bg-gray-500/10', label: 'Refunded' },
 };
 
-const shippingStatusSteps = ['pending', 'paid', 'processing', 'shipped', 'delivered'];
+const shippingStatusSteps = ['PENDING', 'PAID', 'PREPARING', 'SHIPPING', 'DELIVERED'];
 
 export default function OrderDetailPage() {
   const params = useParams();
@@ -100,7 +98,10 @@ export default function OrderDetailPage() {
 
   useEffect(() => {
     const loadOrder = async () => {
-      if (!buyer || !orderId) return;
+      if (!buyer || !orderId) {
+        setIsLoading(false);
+        return;
+      }
 
       try {
         const supabase = getClient();
@@ -108,13 +109,32 @@ export default function OrderDetailPage() {
         const { data: orderData, error } = await supabase
           .from('orders')
           .select(`
-            *,
+            id,
+            order_number,
+            status,
+            total_amount,
+            shipping_fee,
+            payment_method,
+            payment_key,
+            tracking_number,
+            buyer_name,
+            buyer_phone,
+            buyer_email,
+            shipping_address,
+            shipping_detail,
+            shipping_zipcode,
+            created_at,
+            paid_at,
+            shipped_at,
+            delivered_at,
             creator:creators (
               id,
+              shop_id,
               username,
               display_name,
               theme_color,
-              profile_image
+              background_color,
+              profile_image_url
             ),
             order_items (
               id,
@@ -123,7 +143,11 @@ export default function OrderDetailPage() {
               product_image,
               quantity,
               unit_price,
-              subtotal
+              total_price,
+              product:products (
+                name,
+                image_url
+              )
             )
           `)
           .eq('id', orderId)
@@ -136,7 +160,7 @@ export default function OrderDetailPage() {
           return;
         }
 
-        setOrder(orderData as any);
+        setOrder(orderData as unknown as Order);
       } catch (error) {
         console.error('Failed to load order:', error);
       } finally {
@@ -159,18 +183,32 @@ export default function OrderDetailPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    if (!order) return '';
-    const symbol = order.currency === 'JPY' ? '¥' : order.currency === 'KRW' ? '₩' : '$';
-    return symbol + amount.toLocaleString();
+    return '₩' + amount.toLocaleString();
   };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
   };
 
+  const getItemName = (item: OrderItem): string => {
+    return item.product_name || item.product?.name || 'Unknown Product';
+  };
+
+  const getItemImage = (item: OrderItem): string | null => {
+    return item.product_image || item.product?.image_url || null;
+  };
+
+  const getCreatorSlug = () => {
+    return order?.creator?.shop_id || order?.creator?.username || '';
+  };
+
+  const getCreatorColor = () => {
+    return order?.creator?.theme_color || order?.creator?.background_color || '#000';
+  };
+
   const getCurrentStep = () => {
     if (!order) return 0;
-    if (order.status === 'cancelled' || order.status === 'refunded') return -1;
+    if (order.status === 'CANCELLED' || order.status === 'REFUNDED') return -1;
     return shippingStatusSteps.indexOf(order.status);
   };
 
@@ -194,9 +232,10 @@ export default function OrderDetailPage() {
     );
   }
 
-  const status = statusConfig[order.status] || statusConfig.pending;
+  const status = statusConfig[order.status] || statusConfig.PENDING;
   const StatusIcon = status.icon;
   const currentStep = getCurrentStep();
+  const subtotal = order.total_amount - (order.shipping_fee || 0);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -240,6 +279,7 @@ export default function OrderDetailPage() {
                 {shippingStatusSteps.map((step, index) => {
                   const isCompleted = index <= currentStep;
                   const isCurrent = index === currentStep;
+                  const stepLabel = statusConfig[step]?.label || step;
                   return (
                     <div key={step} className="flex flex-col items-center flex-1">
                       <div
@@ -258,11 +298,11 @@ export default function OrderDetailPage() {
                       </div>
                       <span
                         className={
-                          'text-xs mt-2 capitalize ' +
+                          'text-xs mt-2 ' +
                           (isCurrent ? 'font-semibold text-primary' : 'text-muted-foreground')
                         }
                       >
-                        {step}
+                        {stepLabel}
                       </span>
                     </div>
                   );
@@ -290,26 +330,28 @@ export default function OrderDetailPage() {
                   <Package className="h-5 w-5" />
                   Order Items
                 </CardTitle>
-                <Link
-                  href={'/' + locale + '/@' + order.creator?.username}
-                  className="flex items-center gap-2 text-sm hover:text-primary transition-colors"
-                >
-                  <div
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: order.creator?.theme_color || '#000' }}
-                  />
-                  {order.creator?.display_name || order.creator?.username}
-                </Link>
+                {getCreatorSlug() && (
+                  <Link
+                    href={'/' + locale + '/' + getCreatorSlug()}
+                    className="flex items-center gap-2 text-sm hover:text-primary transition-colors"
+                  >
+                    <div
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: getCreatorColor() }}
+                    />
+                    {order.creator?.display_name || getCreatorSlug()}
+                  </Link>
+                )}
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
               {order.order_items.map((item) => (
                 <div key={item.id} className="flex gap-4">
                   <div className="relative w-20 h-20 rounded-md overflow-hidden bg-muted flex-shrink-0">
-                    {item.product_image ? (
+                    {getItemImage(item) ? (
                       <Image
-                        src={item.product_image}
-                        alt={item.product_name}
+                        src={getItemImage(item)!}
+                        alt={getItemName(item)}
                         fill
                         className="object-cover"
                       />
@@ -320,13 +362,13 @@ export default function OrderDetailPage() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-medium">{item.product_name}</h3>
+                    <h3 className="font-medium">{getItemName(item)}</h3>
                     <p className="text-sm text-muted-foreground">
                       Qty: {item.quantity} × {formatCurrency(item.unit_price)}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold">{formatCurrency(item.subtotal)}</p>
+                    <p className="font-semibold">{formatCurrency(item.total_price)}</p>
                   </div>
                 </div>
               ))}
@@ -337,24 +379,12 @@ export default function OrderDetailPage() {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Subtotal</span>
-                  <span>{formatCurrency(order.subtotal)}</span>
+                  <span>{formatCurrency(subtotal)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Shipping</span>
-                  <span>{order.shipping_fee > 0 ? formatCurrency(order.shipping_fee) : 'Free'}</span>
+                  <span>{(order.shipping_fee || 0) > 0 ? formatCurrency(order.shipping_fee) : 'Free'}</span>
                 </div>
-                {order.discount_amount > 0 && (
-                  <div className="flex justify-between text-green-600">
-                    <span>Discount</span>
-                    <span>-{formatCurrency(order.discount_amount)}</span>
-                  </div>
-                )}
-                {order.points_used > 0 && (
-                  <div className="flex justify-between text-primary">
-                    <span>Points Used</span>
-                    <span>-{order.points_used.toLocaleString()}P</span>
-                  </div>
-                )}
                 <Separator />
                 <div className="flex justify-between font-semibold text-lg">
                   <span>Total</span>
@@ -389,14 +419,6 @@ export default function OrderDetailPage() {
                       </Button>
                     </p>
                   </div>
-                  {order.tracking_url && (
-                    <a href={order.tracking_url} target="_blank" rel="noopener noreferrer">
-                      <Button variant="outline" size="sm" className="gap-2">
-                        Track Package
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
-                    </a>
-                  )}
                 </div>
               </CardContent>
             </Card>
@@ -414,18 +436,18 @@ export default function OrderDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="text-sm space-y-1">
-              <p className="font-medium">{order.shipping_name}</p>
+              <p className="font-medium">{order.buyer_name}</p>
               <p>{order.shipping_address}</p>
-              <p>{order.shipping_city}, {order.shipping_state} {order.shipping_postal_code}</p>
-              <p>{order.shipping_country}</p>
+              {order.shipping_detail && <p>{order.shipping_detail}</p>}
+              {order.shipping_zipcode && <p>{order.shipping_zipcode}</p>}
               <Separator className="my-3" />
               <p className="flex items-center gap-2">
                 <Phone className="h-3 w-3 text-muted-foreground" />
-                {order.shipping_phone}
+                {order.buyer_phone}
               </p>
               <p className="flex items-center gap-2">
                 <Mail className="h-3 w-3 text-muted-foreground" />
-                {order.shipping_email}
+                {order.buyer_email}
               </p>
             </CardContent>
           </Card>
@@ -460,7 +482,7 @@ export default function OrderDetailPage() {
 
           {/* Actions */}
           <div className="space-y-2">
-            {order.status === 'delivered' && (
+            {order.status === 'DELIVERED' && (
               <Link href={'/' + locale + '/buyer/reviews?orderId=' + order.id} className="block">
                 <Button className="w-full gap-2">
                   <Star className="h-4 w-4" />
@@ -468,7 +490,7 @@ export default function OrderDetailPage() {
                 </Button>
               </Link>
             )}
-            {['pending', 'paid'].includes(order.status) && (
+            {['PENDING', 'PAID'].includes(order.status) && (
               <Button variant="outline" className="w-full text-destructive">
                 Cancel Order
               </Button>
