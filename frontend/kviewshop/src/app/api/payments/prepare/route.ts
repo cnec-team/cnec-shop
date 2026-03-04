@@ -42,7 +42,7 @@ function generateOrderNumber(): string {
 
 function getSupabaseClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !supabaseKey) {
     throw new Error('Missing Supabase configuration');
@@ -110,7 +110,31 @@ export async function POST(request: NextRequest) {
       (sum, item) => sum + item.unitPrice * item.quantity,
       0
     );
-    const shippingFee = 0; // Free shipping for now; can be computed later
+
+    // Calculate shipping fee based on product shipping_fee_type
+    const productIds = items.map((item) => item.productId);
+    const { data: productShippingData } = await supabase
+      .from('products')
+      .select('id, shipping_fee_type, shipping_fee, free_shipping_threshold')
+      .in('id', productIds);
+
+    let shippingFee = 0;
+    if (productShippingData) {
+      // Use the highest shipping fee among all products (single shipment assumption)
+      for (const product of productShippingData) {
+        const feeType = product.shipping_fee_type || 'FREE';
+        if (feeType === 'PAID') {
+          shippingFee = Math.max(shippingFee, product.shipping_fee || 0);
+        } else if (feeType === 'CONDITIONAL_FREE') {
+          const threshold = product.free_shipping_threshold || 0;
+          if (productAmount < threshold) {
+            shippingFee = Math.max(shippingFee, product.shipping_fee || 0);
+          }
+        }
+        // FREE: no fee
+      }
+    }
+
     const totalAmount = productAmount + shippingFee;
 
     // Look up the brand_id from the first product
@@ -187,27 +211,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Decrement product stock for each item
+    // Decrement product stock for each item using atomic RPC
     for (const item of items) {
-      const { error: stockError } = await supabase.rpc('decrement_stock', {
+      const { data: stockResult, error: stockError } = await supabase.rpc('decrement_stock', {
         p_product_id: item.productId,
         p_quantity: item.quantity,
       });
 
-      // If the RPC doesn't exist, fall back to manual update
       if (stockError) {
-        const { data: prod } = await supabase
-          .from('products')
-          .select('stock')
-          .eq('id', item.productId)
-          .single();
+        console.error('Stock decrement failed:', stockError);
+        // Clean up: delete order items and order
+        await supabase.from('order_items').delete().eq('order_id', order.id);
+        await supabase.from('orders').delete().eq('id', order.id);
+        return NextResponse.json(
+          { error: 'Failed to update stock', detail: stockError.message },
+          { status: 500 }
+        );
+      }
 
-        if (prod) {
-          await supabase
-            .from('products')
-            .update({ stock: Math.max(0, prod.stock - item.quantity) })
-            .eq('id', item.productId);
-        }
+      if (stockResult && !stockResult.success) {
+        // Insufficient stock - clean up and return error
+        await supabase.from('order_items').delete().eq('order_id', order.id);
+        await supabase.from('orders').delete().eq('id', order.id);
+        return NextResponse.json(
+          { error: 'Insufficient stock', productId: item.productId, available: stockResult.available },
+          { status: 409 }
+        );
       }
     }
 

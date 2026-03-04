@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const TOSS_SECRET_KEY = process.env.TOSS_SECRET_KEY || 'test_sk_zXLkKEypNArWmo50nX3lmeaxYG5R';
-
 export async function POST(request: NextRequest) {
   try {
+    const TOSS_SECRET_KEY = process.env.TOSS_SECRET_KEY;
+    if (!TOSS_SECRET_KEY) {
+      console.error('TOSS_SECRET_KEY environment variable is not set');
+      return NextResponse.json(
+        { success: false, message: 'Payment service configuration error' },
+        { status: 500 }
+      );
+    }
     const { orderId, paymentKey, amount } = await request.json();
 
     if (!orderId || !paymentKey || !amount) {

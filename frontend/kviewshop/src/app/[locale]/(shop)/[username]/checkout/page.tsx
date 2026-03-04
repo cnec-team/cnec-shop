@@ -149,9 +149,30 @@ export default function CheckoutPage() {
     loadData();
   }, [username, items, locale, router]);
 
-  const totalAmount = cartItems.reduce((total, item) => {
+  const productAmount = cartItems.reduce((total, item) => {
     return total + item.unitPrice * item.quantity;
   }, 0);
+
+  // Calculate shipping fee based on product shipping_fee_type
+  const shippingFee = (() => {
+    let maxFee = 0;
+    for (const item of cartItems) {
+      const product = item.product as any;
+      if (!product) continue;
+      const feeType = product.shipping_fee_type || 'FREE';
+      if (feeType === 'PAID') {
+        maxFee = Math.max(maxFee, product.shipping_fee || 0);
+      } else if (feeType === 'CONDITIONAL_FREE') {
+        const threshold = product.free_shipping_threshold || 0;
+        if (productAmount < threshold) {
+          maxFee = Math.max(maxFee, product.shipping_fee || 0);
+        }
+      }
+    }
+    return maxFee;
+  })();
+
+  const totalAmount = productAmount + shippingFee;
 
   const validateForm = (): boolean => {
     if (!form.name.trim()) {
@@ -209,7 +230,7 @@ export default function CheckoutPage() {
           shipping_detail: form.addressDetail,
           shipping_zipcode: form.zipcode,
           total_amount: totalAmount,
-          shipping_fee: 0,
+          shipping_fee: shippingFee,
           status: 'PAID' as const,
         })
         .select()
@@ -526,11 +547,13 @@ export default function CheckoutPage() {
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">상품금액</span>
-                <span className="text-foreground">{formatKRW(totalAmount)}</span>
+                <span className="text-foreground">{formatKRW(productAmount)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">배송비</span>
-                <span className="text-success">무료</span>
+                <span className={shippingFee === 0 ? 'text-success' : 'text-foreground'}>
+                  {shippingFee === 0 ? '무료' : formatKRW(shippingFee)}
+                </span>
               </div>
               <Separator className="my-3" />
               <div className="flex justify-between items-center">

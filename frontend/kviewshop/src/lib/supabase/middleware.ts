@@ -29,11 +29,11 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // Use getSession() instead of getUser() to avoid network calls that can hang
-  // getSession() reads from cookies (fast), getUser() calls Supabase API (can timeout)
+  // Use getUser() for server-side verification (validates JWT with Supabase Auth server)
+  // getSession() only reads from cookies and can be spoofed
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  return { supabaseResponse, user: session?.user ?? null };
+  return { supabaseResponse, user: user ?? null };
 }
