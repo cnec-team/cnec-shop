@@ -25,14 +25,17 @@ import {
 
 interface CartProduct {
   id: string;
-  name: string;
-  name_en: string;
-  name_jp: string;
-  price: number;
+  name: string | null;
+  name_ko: string | null;
+  name_en: string | null;
+  name_jp: string | null;
+  original_price: number | null;
   sale_price: number | null;
-  image_url: string;
+  image_url: string | null;
+  images: string[] | null;
   brand: {
-    company_name: string;
+    company_name: string | null;
+    brand_name: string | null;
   } | null;
 }
 
@@ -93,7 +96,7 @@ export default function BuyerCartPage() {
         // Fetch products
         const { data: productsData } = await supabase
           .from('products')
-          .select('id, name, name_en, name_jp, price, sale_price, image_url, brand:brands(company_name)')
+          .select('id, name, name_ko, name_en, name_jp, original_price, sale_price, image_url, images, brand:brands(company_name, brand_name)')
           .in('id', productIds);
 
         const productsMap: Record<string, CartProduct> = {};
@@ -146,12 +149,19 @@ export default function BuyerCartPage() {
     if (!product) return 'Unknown Product';
     if (locale === 'ja' && product.name_jp) return product.name_jp;
     if (locale === 'en' && product.name_en) return product.name_en;
-    return product.name;
+    return product.name || product.name_ko || 'Unknown Product';
   };
 
   const getPrice = (product?: CartProduct) => {
     if (!product) return 0;
-    return product.sale_price || product.price;
+    return product.sale_price || product.original_price || 0;
+  };
+
+  const getProductImage = (product?: CartProduct) => {
+    if (!product) return null;
+    if (product.image_url) return product.image_url;
+    if (product.images && product.images.length > 0) return product.images[0];
+    return null;
   };
 
   const calculateCreatorSubtotal = (items: CartItemWithProduct[]) => {
@@ -240,9 +250,9 @@ export default function BuyerCartPage() {
                   >
                     {/* Product Image */}
                     <div className="relative w-20 h-20 rounded-md overflow-hidden bg-muted flex-shrink-0">
-                      {item.product?.image_url ? (
+                      {getProductImage(item.product) ? (
                         <Image
-                          src={item.product.image_url}
+                          src={getProductImage(item.product)!}
                           alt={getProductName(item.product)}
                           fill
                           className="object-cover"
@@ -261,16 +271,16 @@ export default function BuyerCartPage() {
                       </h3>
                       {item.product?.brand && (
                         <p className="text-sm text-muted-foreground">
-                          {item.product.brand.company_name}
+                          {item.product.brand.company_name || item.product.brand.brand_name}
                         </p>
                       )}
                       <div className="flex items-center gap-2 mt-1">
                         <span className="font-semibold">
                           ${getPrice(item.product).toLocaleString()}
                         </span>
-                        {item.product?.sale_price && item.product.price > item.product.sale_price && (
+                        {item.product?.sale_price && item.product?.original_price && item.product.original_price > item.product.sale_price && (
                           <span className="text-sm text-muted-foreground line-through">
-                            ${item.product.price.toLocaleString()}
+                            ${item.product.original_price.toLocaleString()}
                           </span>
                         )}
                       </div>

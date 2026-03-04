@@ -57,6 +57,44 @@ ALTER TABLE order_items ADD COLUMN IF NOT EXISTS product_name VARCHAR(200);
 ALTER TABLE order_items ADD COLUMN IF NOT EXISTS product_image TEXT;
 
 -- ============================================================
+-- products table — ensure all columns from both schemas exist
+-- ============================================================
+-- From cnec_commerce (if initial_schema ran first)
+ALTER TABLE products ADD COLUMN IF NOT EXISTS name VARCHAR(200);
+ALTER TABLE products ADD COLUMN IF NOT EXISTS original_price DECIMAL(10,0);
+ALTER TABLE products ADD COLUMN IF NOT EXISTS sale_price DECIMAL(10,0);
+ALTER TABLE products ADD COLUMN IF NOT EXISTS category VARCHAR(20);
+ALTER TABLE products ADD COLUMN IF NOT EXISTS volume VARCHAR(100);
+ALTER TABLE products ADD COLUMN IF NOT EXISTS ingredients TEXT;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS how_to_use TEXT;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS allow_creator_pick BOOLEAN DEFAULT true;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS default_commission_rate DECIMAL(5,4) DEFAULT 0.10;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS status VARCHAR(10) DEFAULT 'ACTIVE';
+
+-- From initial_schema (if cnec_commerce ran first)
+ALTER TABLE products ADD COLUMN IF NOT EXISTS name_ko TEXT;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS name_en TEXT;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS name_jp TEXT;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS price_usd INTEGER;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS price_jpy INTEGER;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS original_price_usd INTEGER;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS original_price_jpy INTEGER;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS description_ko TEXT;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS description_en TEXT;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS description_jp TEXT;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS is_cosmetic BOOLEAN DEFAULT false;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url TEXT;
+
+-- ============================================================
+-- brands table — ensure all columns from both schemas exist
+-- ============================================================
+ALTER TABLE brands ADD COLUMN IF NOT EXISTS brand_name TEXT;
+ALTER TABLE brands ADD COLUMN IF NOT EXISTS company_name TEXT;
+ALTER TABLE brands ADD COLUMN IF NOT EXISTS company_name_en TEXT;
+ALTER TABLE brands ADD COLUMN IF NOT EXISTS logo_url TEXT;
+
+-- ============================================================
 -- Reconcile orders status constraint to UPPERCASE values
 -- ============================================================
 ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_status_check;

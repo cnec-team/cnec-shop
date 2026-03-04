@@ -56,21 +56,21 @@ ALTER TABLE brands DROP CONSTRAINT IF EXISTS brands_creator_commission_rate_chec
 ALTER TABLE brands ADD CONSTRAINT brands_creator_commission_rate_check
   CHECK (creator_commission_rate >= 15 AND creator_commission_rate <= 60);
 
-ALTER TABLE brands DROP CONSTRAINT IF EXISTS brands_tier1_commission_rate_check;
-ALTER TABLE brands ADD CONSTRAINT brands_tier1_commission_rate_check
-  CHECK (tier1_commission_rate IS NULL OR (tier1_commission_rate >= 15 AND tier1_commission_rate <= 60));
+ALTER TABLE brands DROP CONSTRAINT IF EXISTS brands_tier1_rate_check;
+ALTER TABLE brands ADD CONSTRAINT brands_tier1_rate_check
+  CHECK (tier1_rate IS NULL OR (tier1_rate >= 15 AND tier1_rate <= 60));
 
-ALTER TABLE brands DROP CONSTRAINT IF EXISTS brands_tier2_commission_rate_check;
-ALTER TABLE brands ADD CONSTRAINT brands_tier2_commission_rate_check
-  CHECK (tier2_commission_rate IS NULL OR (tier2_commission_rate >= 15 AND tier2_commission_rate <= 60));
+ALTER TABLE brands DROP CONSTRAINT IF EXISTS brands_tier2_rate_check;
+ALTER TABLE brands ADD CONSTRAINT brands_tier2_rate_check
+  CHECK (tier2_rate IS NULL OR (tier2_rate >= 15 AND tier2_rate <= 60));
 
-ALTER TABLE brands DROP CONSTRAINT IF EXISTS brands_tier3_commission_rate_check;
-ALTER TABLE brands ADD CONSTRAINT brands_tier3_commission_rate_check
-  CHECK (tier3_commission_rate IS NULL OR (tier3_commission_rate >= 15 AND tier3_commission_rate <= 60));
+ALTER TABLE brands DROP CONSTRAINT IF EXISTS brands_tier3_rate_check;
+ALTER TABLE brands ADD CONSTRAINT brands_tier3_rate_check
+  CHECK (tier3_rate IS NULL OR (tier3_rate >= 15 AND tier3_rate <= 60));
 
-ALTER TABLE brands DROP CONSTRAINT IF EXISTS brands_tier4_commission_rate_check;
-ALTER TABLE brands ADD CONSTRAINT brands_tier4_commission_rate_check
-  CHECK (tier4_commission_rate IS NULL OR (tier4_commission_rate >= 15 AND tier4_commission_rate <= 60));
+ALTER TABLE brands DROP CONSTRAINT IF EXISTS brands_tier4_rate_check;
+ALTER TABLE brands ADD CONSTRAINT brands_tier4_rate_check
+  CHECK (tier4_rate IS NULL OR (tier4_rate >= 15 AND tier4_rate <= 60));
 
 
 -- =============================================

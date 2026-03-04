@@ -32,7 +32,7 @@ ALTER TABLE products ADD COLUMN IF NOT EXISTS return_policy TEXT;
 -- =============================================
 -- ORDERS: Add payment/shipping fields
 -- =============================================
-ALTER TABLE orders ADD COLUMN IF NOT EXISTS buyer_id UUID REFERENCES users(id);
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS buyer_id UUID;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_memo TEXT;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS product_amount DECIMAL(10,0);
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50);
