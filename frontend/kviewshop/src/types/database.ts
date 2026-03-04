@@ -25,6 +25,13 @@ export type BannerType = 'HORIZONTAL' | 'VERTICAL';
 export type BannerLinkType = 'EXTERNAL' | 'COLLECTION' | 'PRODUCT';
 export type NotificationType = 'ORDER' | 'SHIPPING' | 'SETTLEMENT' | 'CAMPAIGN' | 'SYSTEM';
 
+// SNS Campaign types
+export type SnsCountry = 'KR' | 'JP' | 'US' | 'TW';
+export type SnsCampaignType = '기획' | '숏폼' | '리뷰' | '라이브';
+export type SnsCampaignStatus = 'ACTIVE' | 'ENDED' | 'DRAFT';
+export type SnsPlatform = 'youtube' | 'instagram' | 'tiktok';
+export type SnsUploadStatus = 'PENDING' | 'UPLOADED' | 'VERIFIED' | 'REJECTED';
+
 // =============================================
 // CORE TABLES
 // =============================================
@@ -376,6 +383,48 @@ export interface PromotionKit {
 }
 
 // =============================================
+// SNS CAMPAIGN & UPLOAD TABLES
+// =============================================
+
+export interface SnsCampaign {
+  id: string;
+  country: SnsCountry;
+  campaign_type: SnsCampaignType;
+  event_name: string;
+  period_weeks: number;
+  start_date?: string;
+  end_date?: string;
+  description?: string;
+  status: SnsCampaignStatus;
+  created_at: string;
+  updated_at?: string;
+  // Joined
+  uploads?: SnsUpload[];
+}
+
+export interface SnsUpload {
+  id: string;
+  sns_campaign_id: string;
+  creator_id: string;
+  creator_name: string;
+  platform: SnsPlatform;
+  sns_url?: string;
+  video_title?: string;
+  upload_status: SnsUploadStatus;
+  view_count: number;
+  like_count: number;
+  comment_count: number;
+  notes?: string;
+  uploaded_at?: string;
+  verified_at?: string;
+  created_at: string;
+  updated_at?: string;
+  // Joined
+  sns_campaign?: SnsCampaign;
+  creator?: Creator;
+}
+
+// =============================================
 // DASHBOARD STATS
 // =============================================
 
@@ -468,6 +517,33 @@ export const SHIPPING_FEE_TYPE_LABELS: Record<ShippingFeeType, string> = {
   FREE: '무료배송',
   PAID: '유료배송',
   CONDITIONAL_FREE: '조건부 무료',
+};
+
+export const SNS_COUNTRY_LABELS: Record<SnsCountry, string> = {
+  KR: '한국',
+  JP: '일본',
+  US: '미국',
+  TW: '대만',
+};
+
+export const SNS_COUNTRY_FLAGS: Record<SnsCountry, string> = {
+  KR: '🇰🇷',
+  JP: '🇯🇵',
+  US: '🇺🇸',
+  TW: '🇹🇼',
+};
+
+export const SNS_PLATFORM_LABELS: Record<SnsPlatform, string> = {
+  youtube: 'YouTube',
+  instagram: 'Instagram',
+  tiktok: 'TikTok',
+};
+
+export const SNS_UPLOAD_STATUS_LABELS: Record<SnsUploadStatus, string> = {
+  PENDING: '미등록',
+  UPLOADED: '등록완료',
+  VERIFIED: '확인완료',
+  REJECTED: '반려',
 };
 
 export const COURIER_LABELS: Record<string, string> = {
@@ -580,6 +656,16 @@ export interface Database {
         Row: Notification;
         Insert: Omit<Notification, 'id' | 'created_at'>;
         Update: Partial<Omit<Notification, 'id'>>;
+      };
+      sns_campaigns: {
+        Row: SnsCampaign;
+        Insert: Omit<SnsCampaign, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<SnsCampaign, 'id'>>;
+      };
+      sns_uploads: {
+        Row: SnsUpload;
+        Insert: Omit<SnsUpload, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<SnsUpload, 'id'>>;
       };
     };
   };
