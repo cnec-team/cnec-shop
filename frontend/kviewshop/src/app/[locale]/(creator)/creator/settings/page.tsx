@@ -52,7 +52,7 @@ export default function CreatorSettingsPage() {
         paymentMethod: c.payment_method || 'bank',
         paypalEmail: c.paypal_email || '',
         bankName: storeCreator.bank_name || '',
-        accountNumber: storeCreator.bank_account || '',
+        accountNumber: c.account_number || storeCreator.bank_account || '',
         swiftCode: c.swift_code || '',
         emailNotifications: notifSettings.email_notifications ?? true,
         orderNotifications: notifSettings.order_notifications ?? true,

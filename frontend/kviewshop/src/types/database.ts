@@ -106,7 +106,7 @@ export interface Product {
   thumbnail_url?: string;
   volume?: string;
   ingredients?: string;
-  usage_info?: string;
+  how_to_use?: string;
   shipping_fee_type: ShippingFeeType;
   shipping_fee?: number;
   free_shipping_threshold?: number;

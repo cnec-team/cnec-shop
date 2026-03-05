@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getClient } from '@/lib/supabase/client';
-import { useCartStore } from '@/lib/store/auth';
+import { useCartStore, useAuthStore } from '@/lib/store/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -73,6 +73,7 @@ export default function CheckoutPage() {
   const locale = params.locale as string;
 
   const { items, clearCart } = useCartStore();
+  const buyer = useAuthStore((s) => s.buyer);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -223,6 +224,7 @@ export default function CheckoutPage() {
           order_number: orderNumber,
           creator_id: creator.id,
           brand_id: brandId,
+          buyer_id: buyer?.id || null,
           buyer_name: form.name,
           buyer_phone: form.phone,
           buyer_email: form.email,

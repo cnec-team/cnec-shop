@@ -54,6 +54,7 @@ export function useUser() {
         setUser(null);
         setBrand(null);
         setCreator(null);
+        setBuyer(null);
         setLoading(false);
       }
     });

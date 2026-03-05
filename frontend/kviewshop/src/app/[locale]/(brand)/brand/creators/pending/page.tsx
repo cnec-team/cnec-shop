@@ -265,13 +265,13 @@ export default function PendingCreatorsPage() {
                   <div className="rounded-md bg-muted/50 p-2 text-center">
                     <p className="text-xs text-muted-foreground">총 매출</p>
                     <p className="font-medium">
-                      {item.creator.total_sales.toLocaleString('ko-KR')}원
+                      {(item.creator.total_sales ?? 0).toLocaleString('ko-KR')}원
                     </p>
                   </div>
                   <div className="rounded-md bg-muted/50 p-2 text-center">
                     <p className="text-xs text-muted-foreground">총 수익</p>
                     <p className="font-medium">
-                      {item.creator.total_earnings.toLocaleString('ko-KR')}원
+                      {(item.creator.total_earnings ?? 0).toLocaleString('ko-KR')}원
                     </p>
                   </div>
                 </div>

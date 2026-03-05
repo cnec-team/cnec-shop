@@ -46,12 +46,30 @@ export async function POST(
       );
     }
 
-    const supabase = getSupabaseClient();
+    // Authenticate the requesting user
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
 
-    // Fetch the order
+    const supabase = getSupabaseClient();
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(token);
+
+    if (authError || !authUser) {
+      return NextResponse.json(
+        { error: 'Invalid authentication' },
+        { status: 401 }
+      );
+    }
+
+    // Fetch the order with ownership info
     const { data: order, error: orderError } = await supabase
       .from('orders')
-      .select('id, status, order_number')
+      .select('id, status, order_number, buyer_id, creator_id')
       .eq('id', orderId)
       .single();
 
@@ -59,6 +77,37 @@ export async function POST(
       return NextResponse.json(
         { error: 'Order not found' },
         { status: 404 }
+      );
+    }
+
+    // Verify the user owns this order (buyer_id or creator_id match)
+    const { data: userData } = await supabase
+      .from('users')
+      .select('id, role')
+      .eq('id', authUser.id)
+      .single();
+
+    let authorized = false;
+    if (userData?.role === 'super_admin') {
+      authorized = true;
+    } else if (order.buyer_id === authUser.id) {
+      authorized = true;
+    } else {
+      // Check if user is the creator or brand admin for this order
+      const { data: creatorData } = await supabase
+        .from('creators')
+        .select('id')
+        .eq('user_id', authUser.id)
+        .maybeSingle();
+      if (creatorData && order.creator_id === creatorData.id) {
+        authorized = true;
+      }
+    }
+
+    if (!authorized) {
+      return NextResponse.json(
+        { error: 'You are not authorized to cancel this order' },
+        { status: 403 }
       );
     }
 
