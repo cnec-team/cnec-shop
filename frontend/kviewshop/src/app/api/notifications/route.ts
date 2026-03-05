@@ -14,6 +14,18 @@ function getSupabase() {
   });
 }
 
+// Verify the requesting user matches the target userId
+async function verifyUser(request: NextRequest, targetUserId: string) {
+  const authHeader = request.headers.get('authorization');
+  if (!authHeader) return false;
+
+  const supabase = getSupabase();
+  const token = authHeader.replace('Bearer ', '');
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) return false;
+  return user.id === targetUserId;
+}
+
 // GET /api/notifications?userId=xxx&unread=true
 export async function GET(request: NextRequest) {
   try {
@@ -25,6 +37,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         { error: 'userId is required' },
         { status: 400 }
+      );
+    }
+
+    const authorized = await verifyUser(request, userId);
+    if (!authorized) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
       );
     }
 
@@ -81,7 +101,21 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json();
     const supabase = getSupabase();
 
+    // Authenticate the request
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user: authUser }, error: authErr } = await supabase.auth.getUser(token);
+    if (authErr || !authUser) {
+      return NextResponse.json({ error: 'Invalid authentication' }, { status: 401 });
+    }
+
     if (body.markAllRead && body.userId) {
+      if (body.userId !== authUser.id) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      }
       const { error } = await supabase
         .from('notifications')
         .update({ is_read: true })
@@ -103,7 +137,8 @@ export async function PATCH(request: NextRequest) {
       const { error } = await supabase
         .from('notifications')
         .update({ is_read: true })
-        .eq('id', body.notificationId);
+        .eq('id', body.notificationId)
+        .eq('user_id', authUser.id);
 
       if (error) {
         console.error('Error marking notification as read:', error);

@@ -147,6 +147,7 @@ export default function SignupPage() {
       } else if (data.role === 'creator' && data.username) {
         const { error: creatorError } = await supabase.from('creators').insert({
           user_id: authData.user.id,
+          shop_id: data.username.toLowerCase(),
           username: data.username.toLowerCase(),
           display_name: data.name,
           country: data.country || 'JP',

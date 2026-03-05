@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getClient } from '@/lib/supabase/client';
-import { useCartStore } from '@/lib/store/auth';
+import { useCartStore, useAuthStore } from '@/lib/store/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -73,6 +73,7 @@ export default function CheckoutPage() {
   const locale = params.locale as string;
 
   const { items, clearCart } = useCartStore();
+  const buyer = useAuthStore((s) => s.buyer);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -223,6 +224,7 @@ export default function CheckoutPage() {
           order_number: orderNumber,
           creator_id: creator.id,
           brand_id: brandId,
+          buyer_id: buyer?.id || null,
           buyer_name: form.name,
           buyer_phone: form.phone,
           buyer_email: form.email,
@@ -231,7 +233,7 @@ export default function CheckoutPage() {
           shipping_zipcode: form.zipcode,
           total_amount: totalAmount,
           shipping_fee: shippingFee,
-          status: 'PAID' as const,
+          status: 'PENDING' as const,
         })
         .select()
         .single();
@@ -240,7 +242,7 @@ export default function CheckoutPage() {
         throw new Error(orderError.message);
       }
 
-      // Create order items
+      // Create order items with denormalized product info
       const orderItems = cartItems.map((item) => ({
         order_id: order.id,
         product_id: item.productId,
@@ -248,6 +250,8 @@ export default function CheckoutPage() {
         quantity: item.quantity,
         unit_price: item.unitPrice,
         total_price: item.unitPrice * item.quantity,
+        product_name: item.product?.name || (item.product as any)?.name_ko || null,
+        product_image: (item.product as any)?.image_url || (item.product?.images && item.product.images[0]) || null,
       }));
 
       const { error: itemsError } = await supabase

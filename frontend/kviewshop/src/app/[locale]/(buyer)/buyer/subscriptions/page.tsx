@@ -31,11 +31,14 @@ interface Subscription {
   subscribed_at: string;
   creator: {
     id: string;
-    username: string;
+    shop_id: string | null;
+    username: string | null;
     display_name: string;
-    profile_image: string;
-    theme_color: string;
-    bio: string;
+    profile_image: string | null;
+    profile_image_url: string | null;
+    theme_color: string | null;
+    background_color: string | null;
+    bio: string | null;
   };
 }
 
@@ -59,10 +62,13 @@ export default function BuyerSubscriptionsPage() {
             *,
             creator:creators (
               id,
+              shop_id,
               username,
               display_name,
               profile_image,
+              profile_image_url,
               theme_color,
+              background_color,
               bio
             )
           `)
@@ -157,37 +163,37 @@ export default function BuyerSubscriptionsPage() {
             <Card key={sub.id} className="overflow-hidden">
               <div
                 className="h-2"
-                style={{ backgroundColor: sub.creator.theme_color }}
+                style={{ backgroundColor: sub.creator.theme_color || sub.creator.background_color || '#666' }}
               />
               <CardHeader className="pb-2">
                 <div className="flex items-start gap-4">
-                  <Link href={`/${locale}/@${sub.creator.username}`}>
+                  <Link href={`/${locale}/@${sub.creator.shop_id || sub.creator.username}`}>
                     <Avatar className="h-14 w-14 ring-2 ring-offset-2"
-                      style={{ ['--tw-ring-color' as any]: sub.creator.theme_color }}
+                      style={{ ['--tw-ring-color' as any]: sub.creator.theme_color || sub.creator.background_color }}
                     >
-                      <AvatarImage src={sub.creator.profile_image} />
+                      <AvatarImage src={sub.creator.profile_image_url || sub.creator.profile_image || ''} />
                       <AvatarFallback
-                        style={{ backgroundColor: sub.creator.theme_color }}
+                        style={{ backgroundColor: sub.creator.theme_color || sub.creator.background_color || '#666' }}
                         className="text-white text-lg"
                       >
-                        {sub.creator.display_name?.charAt(0) || sub.creator.username.charAt(0)}
+                        {sub.creator.display_name?.charAt(0) || (sub.creator.shop_id || sub.creator.username || 'C').charAt(0)}
                       </AvatarFallback>
                     </Avatar>
                   </Link>
                   <div className="flex-1 min-w-0">
                     <Link
-                      href={`/${locale}/@${sub.creator.username}`}
+                      href={`/${locale}/@${sub.creator.shop_id || sub.creator.username}`}
                       className="font-semibold hover:text-primary transition-colors"
                     >
-                      {sub.creator.display_name || sub.creator.username}
+                      {sub.creator.display_name || sub.creator.shop_id || sub.creator.username}
                     </Link>
-                    <p className="text-sm text-muted-foreground">@{sub.creator.username}</p>
+                    <p className="text-sm text-muted-foreground">@{sub.creator.shop_id || sub.creator.username}</p>
                     <Badge variant="secondary" className="mt-1 text-xs">
                       Since {new Date(sub.subscribed_at).toLocaleDateString()}
                     </Badge>
                   </div>
                   <Button variant="ghost" size="icon" asChild>
-                    <Link href={`/${locale}/@${sub.creator.username}`}>
+                    <Link href={`/${locale}/@${sub.creator.shop_id || sub.creator.username}`}>
                       <ExternalLink className="h-4 w-4" />
                     </Link>
                   </Button>

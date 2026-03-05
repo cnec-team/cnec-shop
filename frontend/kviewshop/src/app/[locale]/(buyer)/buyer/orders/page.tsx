@@ -27,10 +27,14 @@ import { Input } from '@/components/ui/input';
 interface OrderItem {
   id: string;
   product_id: string;
-  product_name: string;
-  product_image: string;
+  product_name: string | null;
+  product_image: string | null;
   quantity: number;
   unit_price: number;
+  product?: {
+    name: string;
+    image_url: string | null;
+  } | null;
 }
 
 interface Order {
@@ -38,8 +42,6 @@ interface Order {
   order_number: string;
   status: string;
   total_amount: number;
-  currency: string;
-  shipping_status: string;
   tracking_number: string | null;
   created_at: string;
   paid_at: string | null;
@@ -47,51 +49,59 @@ interface Order {
   delivered_at: string | null;
   creator: {
     id: string;
-    username: string;
+    shop_id: string | null;
+    username: string | null;
     display_name: string;
-    theme_color: string;
-  };
+    theme_color: string | null;
+    background_color: string | null;
+  } | null;
   order_items: OrderItem[];
 }
 
-const statusConfig: Record<string, { icon: any; color: string; bgColor: string; label: string }> = {
-  pending: {
+const statusConfig: Record<string, { icon: typeof Clock; color: string; bgColor: string; label: string }> = {
+  PENDING: {
     icon: Clock,
     color: 'text-yellow-600',
     bgColor: 'bg-yellow-500/10',
     label: 'Pending',
   },
-  paid: {
+  PAID: {
     icon: CheckCircle,
     color: 'text-green-600',
     bgColor: 'bg-green-500/10',
     label: 'Paid',
   },
-  processing: {
+  PREPARING: {
     icon: Package,
     color: 'text-blue-600',
     bgColor: 'bg-blue-500/10',
-    label: 'Processing',
+    label: 'Preparing',
   },
-  shipped: {
+  SHIPPING: {
     icon: Truck,
     color: 'text-purple-600',
     bgColor: 'bg-purple-500/10',
     label: 'Shipped',
   },
-  delivered: {
+  DELIVERED: {
     icon: CheckCircle,
     color: 'text-green-600',
     bgColor: 'bg-green-500/10',
     label: 'Delivered',
   },
-  cancelled: {
+  CONFIRMED: {
+    icon: CheckCircle,
+    color: 'text-green-700',
+    bgColor: 'bg-green-600/10',
+    label: 'Confirmed',
+  },
+  CANCELLED: {
     icon: XCircle,
     color: 'text-red-600',
     bgColor: 'bg-red-500/10',
     label: 'Cancelled',
   },
-  refunded: {
+  REFUNDED: {
     icon: XCircle,
     color: 'text-gray-600',
     bgColor: 'bg-gray-500/10',
@@ -124,8 +134,6 @@ export default function BuyerOrdersPage() {
             order_number,
             status,
             total_amount,
-            currency,
-            shipping_status,
             tracking_number,
             created_at,
             paid_at,
@@ -133,9 +141,11 @@ export default function BuyerOrdersPage() {
             delivered_at,
             creator:creators (
               id,
+              shop_id,
               username,
               display_name,
-              theme_color
+              theme_color,
+              background_color
             ),
             order_items (
               id,
@@ -143,7 +153,11 @@ export default function BuyerOrdersPage() {
               product_name,
               product_image,
               quantity,
-              unit_price
+              unit_price,
+              product:products (
+                name,
+                image_url
+              )
             )
           `)
           .eq('buyer_id', buyer.id)
@@ -173,10 +187,10 @@ export default function BuyerOrdersPage() {
     if (activeTab !== 'all') {
       if (activeTab === 'active') {
         filtered = filtered.filter((o) =>
-          ['pending', 'paid', 'processing', 'shipped'].includes(o.status)
+          ['PENDING', 'PAID', 'PREPARING', 'SHIPPING'].includes(o.status)
         );
       } else {
-        filtered = filtered.filter((o) => o.status === activeTab);
+        filtered = filtered.filter((o) => o.status === activeTab.toUpperCase());
       }
     }
 
@@ -187,7 +201,7 @@ export default function BuyerOrdersPage() {
         (o) =>
           o.order_number.toLowerCase().includes(query) ||
           o.creator?.display_name?.toLowerCase().includes(query) ||
-          o.order_items.some((item) => item.product_name.toLowerCase().includes(query))
+          o.order_items.some((item) => (item.product_name || item.product?.name || '').toLowerCase().includes(query))
       );
     }
 
@@ -202,9 +216,8 @@ export default function BuyerOrdersPage() {
     });
   };
 
-  const formatCurrency = (amount: number, currency: string) => {
-    const symbol = currency === 'JPY' ? '¥' : currency === 'KRW' ? '₩' : '$';
-    return symbol + amount.toLocaleString();
+  const formatCurrency = (amount: number) => {
+    return '₩' + amount.toLocaleString();
   };
 
   if (isLoading) {
@@ -267,7 +280,7 @@ export default function BuyerOrdersPage() {
           ) : (
             <div className="space-y-4">
               {filteredOrders.map((order) => {
-                const status = statusConfig[order.status] || statusConfig.pending;
+                const status = statusConfig[order.status] || statusConfig.PENDING;
                 const StatusIcon = status.icon;
 
                 return (
@@ -293,26 +306,29 @@ export default function BuyerOrdersPage() {
                     <CardContent className="pt-4">
                       {/* Creator Info */}
                       <Link
-                        href={'/' + locale + '/@' + order.creator?.username}
+                        href={'/' + locale + '/@' + (order.creator?.shop_id || order.creator?.username)}
                         className="flex items-center gap-2 mb-4 text-sm hover:text-primary transition-colors"
                       >
                         <div
                           className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: order.creator?.theme_color || '#000' }}
+                          style={{ backgroundColor: order.creator?.theme_color || order.creator?.background_color || '#000' }}
                         />
-                        <span>{order.creator?.display_name || order.creator?.username}</span>
+                        <span>{order.creator?.display_name || order.creator?.shop_id || order.creator?.username}</span>
                         <ChevronRight className="h-3 w-3" />
                       </Link>
 
                       {/* Order Items */}
                       <div className="space-y-3">
-                        {order.order_items.slice(0, 3).map((item) => (
+                        {order.order_items.slice(0, 3).map((item) => {
+                          const itemName = item.product_name || item.product?.name || 'Product';
+                          const itemImage = item.product_image || item.product?.image_url;
+                          return (
                           <div key={item.id} className="flex gap-3">
                             <div className="relative w-16 h-16 rounded-md overflow-hidden bg-muted flex-shrink-0">
-                              {item.product_image ? (
+                              {itemImage ? (
                                 <Image
-                                  src={item.product_image}
-                                  alt={item.product_name}
+                                  src={itemImage}
+                                  alt={itemName}
                                   fill
                                   className="object-cover"
                                 />
@@ -323,13 +339,14 @@ export default function BuyerOrdersPage() {
                               )}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="font-medium truncate">{item.product_name}</p>
+                              <p className="font-medium truncate">{itemName}</p>
                               <p className="text-sm text-muted-foreground">
-                                Qty: {item.quantity} × {formatCurrency(item.unit_price, order.currency)}
+                                Qty: {item.quantity} × {formatCurrency(item.unit_price)}
                               </p>
                             </div>
                           </div>
-                        ))}
+                          );
+                        })}
                         {order.order_items.length > 3 && (
                           <p className="text-sm text-muted-foreground">
                             +{order.order_items.length - 3} more item(s)
@@ -350,11 +367,11 @@ export default function BuyerOrdersPage() {
                         <div>
                           <p className="text-sm text-muted-foreground">Total</p>
                           <p className="text-lg font-semibold">
-                            {formatCurrency(order.total_amount, order.currency)}
+                            {formatCurrency(order.total_amount)}
                           </p>
                         </div>
                         <div className="flex gap-2">
-                          {order.status === 'delivered' && (
+                          {order.status === 'DELIVERED' && (
                             <Link href={'/' + locale + '/buyer/reviews?orderId=' + order.id}>
                               <Button variant="outline" size="sm" className="gap-1">
                                 <Star className="h-4 w-4" />

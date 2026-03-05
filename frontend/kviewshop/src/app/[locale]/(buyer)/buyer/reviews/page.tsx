@@ -37,9 +37,11 @@ interface Review {
   helpful_count: number;
   created_at: string;
   product?: {
-    name_ko: string;
-    name_en: string;
-    images: string[];
+    name: string | null;
+    name_ko: string | null;
+    name_en: string | null;
+    images: string[] | null;
+    image_url: string | null;
   };
 }
 
@@ -51,9 +53,11 @@ interface PendingReviewOrder {
     product_id: string;
     product: {
       id: string;
-      name_ko: string;
-      name_en: string;
-      images: string[];
+      name: string | null;
+      name_ko: string | null;
+      name_en: string | null;
+      images: string[] | null;
+      image_url: string | null;
     };
   }>;
 }
@@ -91,9 +95,11 @@ export default function BuyerReviewsPage() {
           .select(`
             *,
             product:products (
+              name,
               name_ko,
               name_en,
-              images
+              images,
+              image_url
             )
           `)
           .eq('buyer_id', buyer.id)
@@ -114,14 +120,16 @@ export default function BuyerReviewsPage() {
               product_id,
               product:products (
                 id,
+                name,
                 name_ko,
                 name_en,
-                images
+                images,
+                image_url
               )
             )
           `)
           .eq('buyer_id', buyer.id)
-          .eq('status', 'completed')
+          .eq('status', 'DELIVERED')
           .order('created_at', { ascending: false });
 
         if (ordersData) {
@@ -296,8 +304,8 @@ export default function BuyerReviewsPage() {
                           <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
                             {item.product.images?.[0] ? (
                               <img
-                                src={item.product.images[0]}
-                                alt={item.product.name_en}
+                                src={item.product.image_url || (item.product.images && item.product.images[0]) || ''}
+                                alt={item.product.name_en || item.product.name || ''}
                                 className="w-full h-full object-cover"
                               />
                             ) : (
@@ -306,7 +314,7 @@ export default function BuyerReviewsPage() {
                           </div>
                           <div className="flex-1">
                             <p className="font-medium">
-                              {locale === 'ko' ? item.product.name_ko : item.product.name_en}
+                              {locale === 'ko' ? (item.product.name_ko || item.product.name || item.product.name_en) : (item.product.name_en || item.product.name || item.product.name_ko)}
                             </p>
                             <p className="text-sm text-muted-foreground">
                               Order: {order.order_number}
@@ -438,7 +446,7 @@ export default function BuyerReviewsPage() {
                       <div className="w-16 h-16 rounded-lg bg-muted overflow-hidden">
                         {review.product?.images?.[0] && (
                           <img
-                            src={review.product.images[0]}
+                            src={review.product.image_url || (review.product.images && review.product.images[0]) || ''}
                             alt=""
                             className="w-full h-full object-cover"
                           />
@@ -446,7 +454,7 @@ export default function BuyerReviewsPage() {
                       </div>
                       <div>
                         <p className="font-medium">
-                          {locale === 'ko' ? review.product?.name_ko : review.product?.name_en}
+                          {locale === 'ko' ? (review.product?.name_ko || review.product?.name || review.product?.name_en) : (review.product?.name_en || review.product?.name || review.product?.name_ko)}
                         </p>
                         <div className="flex items-center gap-1 mt-1">
                           {[1, 2, 3, 4, 5].map((star) => (

@@ -34,11 +34,15 @@ interface CreatorOrder {
 
 function getStatusColor(status: OrderStatus) {
   switch (status) {
+    case 'PENDING': return 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20';
     case 'PAID': return 'bg-blue-500/10 text-blue-600 border-blue-500/20';
+    case 'PREPARING': return 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20';
     case 'SHIPPING': return 'bg-purple-500/10 text-purple-600 border-purple-500/20';
     case 'DELIVERED': return 'bg-green-500/10 text-green-600 border-green-500/20';
     case 'CONFIRMED': return 'bg-green-500/10 text-green-600 border-green-500/20';
     case 'CANCELLED': return 'bg-gray-500/10 text-gray-500 border-gray-500/20';
+    case 'REFUNDED': return 'bg-red-500/10 text-red-500 border-red-500/20';
+    default: return 'bg-muted text-muted-foreground border-muted';
   }
 }
 
@@ -145,7 +149,7 @@ export default function CreatorOrdersPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-muted-foreground">{tCreator('totalEarnings')}</p>
-                <p className="text-2xl font-bold">{formatCurrency(totalRevenue, 'USD')}</p>
+                <p className="text-2xl font-bold">{formatCurrency(totalRevenue, 'KRW')}</p>
               </div>
               <DollarSign className="h-5 w-5 text-success" />
             </div>
@@ -156,7 +160,7 @@ export default function CreatorOrdersPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-muted-foreground">{tCreator('pendingEarnings')}</p>
-                <p className="text-2xl font-bold">{formatCurrency(pendingRevenue, 'USD')}</p>
+                <p className="text-2xl font-bold">{formatCurrency(pendingRevenue, 'KRW')}</p>
               </div>
               <Package className="h-5 w-5 text-warning" />
             </div>
@@ -204,10 +208,10 @@ export default function CreatorOrdersPage() {
                         <div className="flex items-center gap-2 shrink-0">
                           <div className="text-right">
                             <p className="font-bold text-sm text-success">
-                              +{formatCurrency(order.creator_revenue || 0, order.currency || 'USD')}
+                              +{formatCurrency(order.creator_revenue || 0, order.currency || 'KRW')}
                             </p>
                             <p className="text-[10px] text-muted-foreground">
-                              / {formatCurrency(order.total_amount, order.currency || 'USD')}
+                              / {formatCurrency(order.total_amount, order.currency || 'KRW')}
                             </p>
                           </div>
                           {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -220,11 +224,11 @@ export default function CreatorOrdersPage() {
                         <div className="grid grid-cols-2 gap-3 text-center">
                           <div className="bg-muted/50 p-3 rounded-lg">
                             <p className="text-[10px] text-muted-foreground">{t('myEarning')}</p>
-                            <p className="text-sm font-bold text-success">{formatCurrency(order.creator_revenue || 0, order.currency || 'USD')}</p>
+                            <p className="text-sm font-bold text-success">{formatCurrency(order.creator_revenue || 0, order.currency || 'KRW')}</p>
                           </div>
                           <div className="bg-muted/50 p-3 rounded-lg">
                             <p className="text-[10px] text-muted-foreground">{t('orderTotal')}</p>
-                            <p className="text-sm font-bold">{formatCurrency(order.total_amount, order.currency || 'USD')}</p>
+                            <p className="text-sm font-bold">{formatCurrency(order.total_amount, order.currency || 'KRW')}</p>
                           </div>
                         </div>
 
@@ -233,7 +237,7 @@ export default function CreatorOrdersPage() {
                             {order.items.map((item, idx) => (
                               <div key={idx} className="flex items-center justify-between text-sm">
                                 <span className="text-muted-foreground">{item.product?.name_en || item.product?.name_ko || 'Product'} x{item.quantity}</span>
-                                <span>{formatCurrency(item.unit_price * item.quantity, order.currency || 'USD')}</span>
+                                <span>{formatCurrency(item.unit_price * item.quantity, order.currency || 'KRW')}</span>
                               </div>
                             ))}
                           </div>

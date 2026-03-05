@@ -151,7 +151,13 @@ export default function CreatorLivePage() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === '42P01') {
+          toast.error('라이브 기능은 곧 출시 예정입니다.');
+          return;
+        }
+        throw error;
+      }
 
       setSessions([data, ...sessions]);
       setShowCreateForm(false);

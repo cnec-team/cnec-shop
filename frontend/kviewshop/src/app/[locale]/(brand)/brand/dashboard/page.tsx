@@ -68,14 +68,19 @@ function TableSkeleton({ rows = 5 }: { rows?: number }) {
 }
 
 export default function BrandDashboardPage() {
-  const { brand } = useAuthStore();
+  const { brand, isLoading: authLoading } = useAuthStore();
   const [stats, setStats] = useState<BrandDashboardStats | null>(null);
   const [activeGonggu, setActiveGonggu] = useState<Campaign | null>(null);
   const [creatorRankings, setCreatorRankings] = useState<CreatorRanking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!brand?.id) return;
+    if (!brand?.id) {
+      if (!authLoading) {
+        setIsLoading(false);
+      }
+      return;
+    }
 
     async function fetchDashboardData() {
       const supabase = getClient();
@@ -219,7 +224,21 @@ export default function BrandDashboardPage() {
     }
 
     fetchDashboardData();
-  }, [brand?.id]);
+  }, [brand?.id, authLoading]);
+
+  if (!isLoading && !brand?.id) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold">대시보드</h1>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <p className="text-muted-foreground">브랜드 정보를 불러올 수 없습니다.</p>
+            <p className="mt-2 text-sm text-muted-foreground">로그인 상태를 확인해주세요.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

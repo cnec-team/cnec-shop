@@ -188,7 +188,7 @@ export async function GET() {
 
   if (!supabaseUrl || !supabaseServiceKey) {
     return NextResponse.json(
-      { error: 'Missing Supabase credentials', hint: 'Set SUPABASE_SERVICE_ROLE_KEY in .env.local' },
+      { error: 'Missing server configuration' },
       { status: 500 }
     );
   }

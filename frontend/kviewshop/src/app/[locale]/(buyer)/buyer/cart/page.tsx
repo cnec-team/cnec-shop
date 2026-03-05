@@ -25,14 +25,17 @@ import {
 
 interface CartProduct {
   id: string;
-  name: string;
-  name_en: string;
-  name_jp: string;
-  price: number;
+  name: string | null;
+  name_ko: string | null;
+  name_en: string | null;
+  name_jp: string | null;
+  original_price: number | null;
   sale_price: number | null;
-  image_url: string;
+  image_url: string | null;
+  images: string[] | null;
   brand: {
-    company_name: string;
+    company_name: string | null;
+    brand_name: string | null;
   } | null;
 }
 
@@ -43,9 +46,11 @@ interface CartItemWithProduct {
   product?: CartProduct;
   creator?: {
     id: string;
-    username: string;
+    shop_id: string | null;
+    username: string | null;
     display_name: string;
-    theme_color: string;
+    theme_color: string | null;
+    background_color: string | null;
   };
 }
 
@@ -53,9 +58,11 @@ interface GroupedCart {
   creatorId: string;
   creator: {
     id: string;
-    username: string;
+    shop_id: string | null;
+    username: string | null;
     display_name: string;
-    theme_color: string;
+    theme_color: string | null;
+    background_color: string | null;
   };
   items: CartItemWithProduct[];
 }
@@ -89,7 +96,7 @@ export default function BuyerCartPage() {
         // Fetch products
         const { data: productsData } = await supabase
           .from('products')
-          .select('id, name, name_en, name_jp, price, sale_price, image_url, brand:brands(company_name)')
+          .select('id, name, name_ko, name_en, name_jp, original_price, sale_price, image_url, images, brand:brands(company_name, brand_name)')
           .in('id', productIds);
 
         const productsMap: Record<string, CartProduct> = {};
@@ -101,7 +108,7 @@ export default function BuyerCartPage() {
         // Fetch creators
         const { data: creatorsData } = await supabase
           .from('creators')
-          .select('id, username, display_name, theme_color')
+          .select('id, shop_id, username, display_name, theme_color, background_color')
           .in('id', creatorIds);
 
         const creatorsMap: Record<string, any> = {};
@@ -142,12 +149,19 @@ export default function BuyerCartPage() {
     if (!product) return 'Unknown Product';
     if (locale === 'ja' && product.name_jp) return product.name_jp;
     if (locale === 'en' && product.name_en) return product.name_en;
-    return product.name;
+    return product.name || product.name_ko || 'Unknown Product';
   };
 
   const getPrice = (product?: CartProduct) => {
     if (!product) return 0;
-    return product.sale_price || product.price;
+    return product.sale_price || product.original_price || 0;
+  };
+
+  const getProductImage = (product?: CartProduct) => {
+    if (!product) return null;
+    if (product.image_url) return product.image_url;
+    if (product.images && product.images.length > 0) return product.images[0];
+    return null;
   };
 
   const calculateCreatorSubtotal = (items: CartItemWithProduct[]) => {
@@ -215,15 +229,15 @@ export default function BuyerCartPage() {
             <Card key={group.creatorId}>
               <CardHeader className="pb-3">
                 <Link
-                  href={'/' + locale + '/@' + group.creator?.username}
+                  href={'/' + locale + '/@' + (group.creator?.shop_id || group.creator?.username)}
                   className="flex items-center gap-2 hover:text-primary transition-colors"
                 >
                   <div
                     className="w-4 h-4 rounded-full"
-                    style={{ backgroundColor: group.creator?.theme_color || '#000' }}
+                    style={{ backgroundColor: group.creator?.theme_color || group.creator?.background_color || '#000' }}
                   />
                   <CardTitle className="text-lg">
-                    {group.creator?.display_name || group.creator?.username || 'Shop'}
+                    {group.creator?.display_name || group.creator?.shop_id || group.creator?.username || 'Shop'}
                   </CardTitle>
                   <ArrowRight className="h-4 w-4" />
                 </Link>
@@ -236,9 +250,9 @@ export default function BuyerCartPage() {
                   >
                     {/* Product Image */}
                     <div className="relative w-20 h-20 rounded-md overflow-hidden bg-muted flex-shrink-0">
-                      {item.product?.image_url ? (
+                      {getProductImage(item.product) ? (
                         <Image
-                          src={item.product.image_url}
+                          src={getProductImage(item.product)!}
                           alt={getProductName(item.product)}
                           fill
                           className="object-cover"
@@ -257,16 +271,16 @@ export default function BuyerCartPage() {
                       </h3>
                       {item.product?.brand && (
                         <p className="text-sm text-muted-foreground">
-                          {item.product.brand.company_name}
+                          {item.product.brand.company_name || item.product.brand.brand_name}
                         </p>
                       )}
                       <div className="flex items-center gap-2 mt-1">
                         <span className="font-semibold">
                           ${getPrice(item.product).toLocaleString()}
                         </span>
-                        {item.product?.sale_price && item.product.price > item.product.sale_price && (
+                        {item.product?.sale_price && item.product?.original_price && item.product.original_price > item.product.sale_price && (
                           <span className="text-sm text-muted-foreground line-through">
-                            ${item.product.price.toLocaleString()}
+                            ${item.product.original_price.toLocaleString()}
                           </span>
                         )}
                       </div>
@@ -365,7 +379,7 @@ export default function BuyerCartPage() {
             <CardFooter className="flex flex-col gap-3">
               {groupedItems.length === 1 ? (
                 <Link
-                  href={'/' + locale + '/@' + groupedItems[0].creator?.username + '/checkout'}
+                  href={'/' + locale + '/@' + (groupedItems[0].creator?.shop_id || groupedItems[0].creator?.username) + '/checkout'}
                   className="w-full"
                 >
                   <Button size="lg" className="w-full gap-2">
@@ -381,15 +395,15 @@ export default function BuyerCartPage() {
                   {groupedItems.map((group) => (
                     <Link
                       key={group.creatorId}
-                      href={'/' + locale + '/@' + group.creator?.username + '/checkout'}
+                      href={'/' + locale + '/@' + (group.creator?.shop_id || group.creator?.username) + '/checkout'}
                       className="block"
                     >
                       <Button variant="outline" size="sm" className="w-full gap-2">
                         <div
                           className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: group.creator?.theme_color || '#000' }}
+                          style={{ backgroundColor: group.creator?.theme_color || group.creator?.background_color || '#000' }}
                         />
-                        {group.creator?.display_name || group.creator?.username}
+                        {group.creator?.display_name || group.creator?.shop_id || group.creator?.username}
                         <ArrowRight className="h-3 w-3 ml-auto" />
                       </Button>
                     </Link>
