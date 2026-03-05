@@ -233,7 +233,7 @@ export default function CheckoutPage() {
           shipping_zipcode: form.zipcode,
           total_amount: totalAmount,
           shipping_fee: shippingFee,
-          status: 'PAID' as const,
+          status: 'PENDING' as const,
         })
         .select()
         .single();
@@ -242,7 +242,7 @@ export default function CheckoutPage() {
         throw new Error(orderError.message);
       }
 
-      // Create order items
+      // Create order items with denormalized product info
       const orderItems = cartItems.map((item) => ({
         order_id: order.id,
         product_id: item.productId,
@@ -250,6 +250,8 @@ export default function CheckoutPage() {
         quantity: item.quantity,
         unit_price: item.unitPrice,
         total_price: item.unitPrice * item.quantity,
+        product_name: item.product?.name || (item.product as any)?.name_ko || null,
+        product_image: (item.product as any)?.image_url || (item.product?.images && item.product.images[0]) || null,
       }));
 
       const { error: itemsError } = await supabase

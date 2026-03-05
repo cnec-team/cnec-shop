@@ -61,8 +61,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Payment confirmed by Toss — update order status server-side
+    // Verify payment amount matches order total
     const supabase = getSupabaseClient();
+
+    const { data: existingOrder, error: fetchError } = await supabase
+      .from('orders')
+      .select('order_number, total_amount, status')
+      .eq('order_number', orderId)
+      .single();
+
+    if (fetchError || !existingOrder) {
+      console.error('Order not found for payment confirmation:', orderId);
+      return NextResponse.json(
+        { success: false, message: 'Order not found' },
+        { status: 404 }
+      );
+    }
+
+    if (Number(result.totalAmount) !== Number(existingOrder.total_amount)) {
+      console.error('Payment amount mismatch:', {
+        paid: result.totalAmount,
+        expected: existingOrder.total_amount,
+      });
+      return NextResponse.json(
+        { success: false, message: 'Payment amount mismatch' },
+        { status: 400 }
+      );
+    }
+
+    // Payment confirmed by Toss — update order status server-side
     const now = new Date().toISOString();
 
     const { data: order, error: updateError } = await supabase
@@ -81,6 +108,10 @@ export async function POST(request: NextRequest) {
 
     if (updateError) {
       console.error('Failed to update order status after Toss confirmation:', updateError);
+      return NextResponse.json(
+        { success: false, message: 'Payment confirmed but order update failed. Contact support.' },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({

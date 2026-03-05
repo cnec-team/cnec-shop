@@ -187,15 +187,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create order items
-    const orderItems = items.map((item) => ({
-      order_id: order.id,
-      product_id: item.productId,
-      campaign_id: item.campaignId || null,
-      quantity: item.quantity,
-      unit_price: item.unitPrice,
-      total_price: item.unitPrice * item.quantity,
-    }));
+    // Fetch product info for denormalization
+    const { data: productInfos } = await supabase
+      .from('products')
+      .select('id, name, name_ko, image_url, images')
+      .in('id', productIds);
+    const productMap = new Map((productInfos || []).map((p: any) => [p.id, p]));
+
+    // Create order items with denormalized product info
+    const orderItems = items.map((item) => {
+      const prod = productMap.get(item.productId) as any;
+      return {
+        order_id: order.id,
+        product_id: item.productId,
+        campaign_id: item.campaignId || null,
+        quantity: item.quantity,
+        unit_price: item.unitPrice,
+        total_price: item.unitPrice * item.quantity,
+        product_name: prod?.name || prod?.name_ko || null,
+        product_image: prod?.image_url || (prod?.images && prod.images[0]) || null,
+      };
+    });
 
     const { error: itemsError } = await supabase
       .from('order_items')
