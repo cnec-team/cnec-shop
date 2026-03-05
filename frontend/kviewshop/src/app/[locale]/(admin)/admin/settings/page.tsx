@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState({
-    siteName: 'KviewShop',
+    siteName: 'CNEC Shop',
     siteUrl: 'https://cnecshop.netlify.app',
     defaultCommission: 25,
     minCommission: 20,

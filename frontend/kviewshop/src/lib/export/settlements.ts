@@ -202,7 +202,7 @@ function generateInvoiceHTML(settlement: Settlement): string {
       <div class="invoice">
         <div class="header">
           <div>
-            <div class="logo">KviewShop</div>
+            <div class="logo">CNEC Shop</div>
             <div class="logo-sub">Data-Driven Global Beauty Incubator</div>
           </div>
           <div class="invoice-info">
@@ -264,7 +264,7 @@ function generateInvoiceHTML(settlement: Settlement): string {
         <div class="footer">
           <p>해외 크리에이터 정산 시 원천징수세가 적용되지 않습니다.</p>
           <p>본 문서는 정산 확인용으로 세금계산서를 대체하지 않습니다.</p>
-          <p style="margin-top: 10px;">KviewShop &copy; ${new Date().getFullYear()}</p>
+          <p style="margin-top: 10px;">CNEC Shop &copy; ${new Date().getFullYear()}</p>
         </div>
       </div>
     </body>

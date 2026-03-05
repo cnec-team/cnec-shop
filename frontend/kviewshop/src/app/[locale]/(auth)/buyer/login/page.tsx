@@ -93,7 +93,7 @@ export default function BuyerLoginPage() {
         <CardHeader className="text-center">
           <Link href={`/${locale}`} className="mb-4 inline-block">
             <span className="font-headline text-3xl font-bold text-gold-gradient">
-              KviewShop
+              CNEC Shop
             </span>
           </Link>
           <div className="flex items-center justify-center gap-2 mb-2">

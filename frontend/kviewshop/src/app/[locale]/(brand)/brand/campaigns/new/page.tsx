@@ -45,7 +45,7 @@ interface SelectedProduct {
 
 export default function NewCampaignPage() {
   const router = useRouter();
-  const { brand } = useAuthStore();
+  const { brand, isLoading: authLoading } = useAuthStore();
   const [currentStep, setCurrentStep] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -76,7 +76,10 @@ export default function NewCampaignPage() {
 
   // Load products for selection
   useEffect(() => {
-    if (!brand?.id) return;
+    if (!brand?.id) {
+      if (!authLoading) setProductsLoading(false);
+      return;
+    }
 
     async function fetchProducts() {
       const supabase = getClient();
@@ -96,7 +99,7 @@ export default function NewCampaignPage() {
     }
 
     fetchProducts();
-  }, [brand?.id]);
+  }, [brand?.id, authLoading]);
 
   function toggleProduct(product: Product) {
     const exists = selectedProducts.find(

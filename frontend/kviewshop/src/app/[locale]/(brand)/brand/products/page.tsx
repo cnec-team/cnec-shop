@@ -42,14 +42,17 @@ function TableSkeleton() {
 }
 
 export default function BrandProductsPage() {
-  const { brand } = useAuthStore();
+  const { brand, isLoading: authLoading } = useAuthStore();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
 
   useEffect(() => {
-    if (!brand?.id) return;
+    if (!brand?.id) {
+      if (!authLoading) setIsLoading(false);
+      return;
+    }
 
     async function fetchProducts() {
       const supabase = getClient();
@@ -77,7 +80,7 @@ export default function BrandProductsPage() {
 
     setIsLoading(true);
     fetchProducts();
-  }, [brand?.id, statusFilter, categoryFilter]);
+  }, [brand?.id, statusFilter, categoryFilter, authLoading]);
 
   return (
     <div className="space-y-6">

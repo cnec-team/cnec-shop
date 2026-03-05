@@ -57,13 +57,16 @@ function TableSkeleton() {
 }
 
 export default function BrandCreatorsPage() {
-  const { brand } = useAuthStore();
+  const { brand, isLoading: authLoading } = useAuthStore();
   const [creatorData, setCreatorData] = useState<CreatorParticipation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
-    if (!brand?.id) return;
+    if (!brand?.id) {
+      if (!authLoading) setIsLoading(false);
+      return;
+    }
 
     async function fetchCreatorData() {
       const supabase = getClient();
@@ -163,7 +166,7 @@ export default function BrandCreatorsPage() {
     }
 
     fetchCreatorData();
-  }, [brand?.id]);
+  }, [brand?.id, authLoading]);
 
   return (
     <div className="space-y-6">

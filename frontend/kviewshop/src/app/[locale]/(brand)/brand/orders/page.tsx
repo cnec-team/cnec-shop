@@ -126,7 +126,7 @@ function TableSkeleton() {
 }
 
 export default function BrandOrdersPage() {
-  const { brand } = useAuthStore();
+  const { brand, isLoading: authLoading } = useAuthStore();
   const [orders, setOrders] = useState<OrderWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
@@ -146,7 +146,10 @@ export default function BrandOrdersPage() {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!brand?.id) return;
+    if (!brand?.id) {
+      if (!authLoading) setIsLoading(false);
+      return;
+    }
 
     async function fetchOrders() {
       const supabase = getClient();
@@ -173,7 +176,7 @@ export default function BrandOrdersPage() {
 
     setIsLoading(true);
     fetchOrders();
-  }, [brand?.id, statusFilter]);
+  }, [brand?.id, statusFilter, authLoading]);
 
   async function handleStatusChange(orderId: string, newStatus: OrderStatus) {
     setUpdatingId(orderId);

@@ -64,7 +64,7 @@ export default function BuyerLayout({
       <header className="sticky top-0 z-50 border-b border-border/50 bg-background/95 backdrop-blur">
         <div className="container flex h-16 items-center justify-between px-4">
           <Link href={`/${locale}`} className="font-headline text-2xl font-bold text-gold-gradient">
-            KviewShop
+            CNEC Shop
           </Link>
 
           <div className="flex items-center gap-4">

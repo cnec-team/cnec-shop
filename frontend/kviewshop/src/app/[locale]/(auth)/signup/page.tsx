@@ -178,7 +178,7 @@ export default function SignupPage() {
         <CardHeader className="text-center">
           <Link href={`/${locale}`} className="mb-4 inline-block">
             <span className="font-headline text-3xl font-bold text-gold-gradient">
-              KviewShop
+              크넥샵
             </span>
           </Link>
           <CardTitle className="text-2xl font-headline">{t('signupTitle')}</CardTitle>
@@ -304,7 +304,7 @@ export default function SignupPage() {
                     </p>
                   )}
                   <p className="text-xs text-muted-foreground">
-                    Your shop will be at: kviewshop.com/@your_username
+                    Your shop will be at: cnec.shop/@your_username
                   </p>
                 </div>
                 <div className="space-y-2">
