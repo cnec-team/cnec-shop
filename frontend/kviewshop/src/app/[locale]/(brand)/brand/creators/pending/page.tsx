@@ -57,13 +57,16 @@ function CardSkeleton() {
 
 export default function PendingCreatorsPage() {
   const router = useRouter();
-  const { brand } = useAuthStore();
+  const { brand, isLoading: authLoading } = useAuthStore();
   const [pendingList, setPendingList] = useState<PendingParticipation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!brand?.id) return;
+    if (!brand?.id) {
+      if (!authLoading) setIsLoading(false);
+      return;
+    }
 
     async function fetchPending() {
       const supabase = getClient();
@@ -116,7 +119,7 @@ export default function PendingCreatorsPage() {
     }
 
     fetchPending();
-  }, [brand?.id]);
+  }, [brand?.id, authLoading]);
 
   async function handleAction(
     participationId: string,

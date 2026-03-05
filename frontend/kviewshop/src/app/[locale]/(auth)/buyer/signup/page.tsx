@@ -105,7 +105,7 @@ export default function BuyerSignupPage() {
           return;
         }
 
-        toast.success('Account created successfully! Welcome to KviewShop!');
+        toast.success('Account created successfully! Welcome to CNEC Shop!');
         router.push(`/${locale}/buyer/dashboard`);
       }
     } catch (error) {
@@ -128,7 +128,7 @@ export default function BuyerSignupPage() {
         <CardHeader className="text-center">
           <Link href={`/${locale}`} className="mb-4 inline-block">
             <span className="font-headline text-3xl font-bold text-gold-gradient">
-              KviewShop
+              CNEC Shop
             </span>
           </Link>
           <div className="flex items-center justify-center gap-2 mb-2">
@@ -136,7 +136,7 @@ export default function BuyerSignupPage() {
             <CardTitle className="text-2xl font-headline">Create Account</CardTitle>
           </div>
           <CardDescription>
-            Join KviewShop and discover amazing creator curated products
+            Join CNEC Shop and discover amazing creator curated products
           </CardDescription>
         </CardHeader>
         <CardContent>

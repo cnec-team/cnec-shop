@@ -26,7 +26,7 @@ const staticLegalContent = {
       content: `상호: (주)케이뷰샵 | 대표: 홍길동 | 사업자등록번호: 123-45-67890
 통신판매업신고: 제2024-서울강남-0000호
 주소: 서울특별시 강남구 테헤란로 123, 4층
-고객센터: 1588-0000 | 이메일: support@kviewshop.com`,
+고객센터: 1588-0000 | 이메일: support@cnec.shop`,
     },
     terms: { title: '이용약관', href: '/terms' },
     privacy: { title: '개인정보처리방침', href: '/privacy' },
@@ -35,9 +35,9 @@ const staticLegalContent = {
   US: {
     business_info: {
       title: 'Business Information',
-      content: `Company: KviewShop Inc.
+      content: `Company: CNEC Shop Inc.
 Address: 123 Commerce Street, Suite 400, Los Angeles, CA 90001
-Customer Service: 1-800-XXX-XXXX | Email: support@kviewshop.com`,
+Customer Service: 1-800-XXX-XXXX | Email: support@cnec.shop`,
     },
     terms: { title: 'Terms of Service', href: '/terms' },
     privacy: { title: 'Privacy Policy', href: '/privacy' },
@@ -46,9 +46,9 @@ Customer Service: 1-800-XXX-XXXX | Email: support@kviewshop.com`,
   JP: {
     business_info: {
       title: '特定商取引法に基づく表記',
-      content: `販売業者: KviewShop Japan株式会社
+      content: `販売業者: CNEC Shop Japan株式会社
 代表者: 山田太郎 | 所在地: 〒150-0001 東京都渋谷区神宮前1-2-3
-電話番号: 03-XXXX-XXXX | メール: support@kviewshop.jp
+電話番号: 03-XXXX-XXXX | メール: support@cnec.shop
 販売価格: 各商品ページに記載 | 送料: 全国一律550円（税込）`,
     },
     terms: { title: '利用規約', href: '/terms' },
@@ -117,7 +117,7 @@ export function LegalFooter({ locale, shopName, creatorCountry, variant = 'full'
           </div>
           <p className="text-center text-xs text-muted-foreground mt-4">
             {shopName ? `${shopName} powered by ` : ''}
-            <span className="font-medium">KviewShop</span> | All rights reserved
+            <span className="font-medium">CNEC Shop</span> | All rights reserved
           </p>
         </div>
       </footer>
@@ -180,7 +180,7 @@ export function LegalFooter({ locale, shopName, creatorCountry, variant = 'full'
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li className="flex items-center gap-2">
                 <Mail className="h-3 w-3" />
-                support@kviewshop.com
+                support@cnec.shop
               </li>
               <li className="flex items-center gap-2">
                 <Phone className="h-3 w-3" />
@@ -212,7 +212,7 @@ export function LegalFooter({ locale, shopName, creatorCountry, variant = 'full'
         <div className="mt-6 pt-6 border-t border-border/30 flex flex-col sm:flex-row justify-between items-center gap-4">
           <p className="text-xs text-muted-foreground">
             {shopName ? `${shopName} powered by ` : ''}
-            <span className="font-headline font-bold text-gold-gradient">KviewShop</span>
+            <span className="font-headline font-bold text-gold-gradient">CNEC Shop</span>
           </p>
           <p className="text-xs text-muted-foreground">
             {new Date().getFullYear()} All rights reserved.

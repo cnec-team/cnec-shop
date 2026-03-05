@@ -253,7 +253,7 @@ export default function HomePage() {
             </p>
           </motion.div>
 
-          {/* Flow: Brand → KviewShop → Creator */}
+          {/* Flow: Brand → CNEC Shop → Creator */}
           <motion.div
             className="mt-16 grid md:grid-cols-3 gap-4 md:gap-0 max-w-5xl mx-auto items-start"
             initial="hidden"
@@ -281,7 +281,7 @@ export default function HomePage() {
               </p>
             </motion.div>
 
-            {/* Center - KviewShop */}
+            {/* Center - CNEC Shop */}
             <motion.div
               className="relative flex flex-col items-center"
               variants={fadeInUp}

@@ -350,7 +350,7 @@ export default function BecomeCreatorPage() {
                     required
                   />
                   <p className="text-xs text-muted-foreground">
-                    Your shop URL: kviewshop.com/@{form.desired_username || 'username'}
+                    Your shop URL: cnec.shop/@{form.desired_username || 'username'}
                   </p>
                 </div>
                 <div className="space-y-2">

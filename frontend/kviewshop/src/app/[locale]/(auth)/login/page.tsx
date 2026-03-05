@@ -136,7 +136,7 @@ export default function LoginPage() {
         <CardHeader className="text-center">
           <Link href={`/${locale}`} className="mb-4 inline-block">
             <span className="font-headline text-3xl font-bold text-gold-gradient">
-              KviewShop
+              CNEC Shop
             </span>
           </Link>
           <CardTitle className="text-2xl font-headline">{t('loginTitle')}</CardTitle>

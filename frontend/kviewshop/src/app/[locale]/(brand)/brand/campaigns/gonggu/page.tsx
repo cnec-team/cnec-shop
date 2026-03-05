@@ -70,12 +70,15 @@ function CampaignCardSkeleton() {
 }
 
 export default function GongguCampaignsPage() {
-  const { brand } = useAuthStore();
+  const { brand, isLoading: authLoading } = useAuthStore();
   const [campaigns, setCampaigns] = useState<GongguCampaign[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!brand?.id) return;
+    if (!brand?.id) {
+      if (!authLoading) setIsLoading(false);
+      return;
+    }
 
     async function fetchCampaigns() {
       const supabase = getClient();
@@ -97,7 +100,7 @@ export default function GongguCampaignsPage() {
     }
 
     fetchCampaigns();
-  }, [brand?.id]);
+  }, [brand?.id, authLoading]);
 
   return (
     <div className="space-y-6">
