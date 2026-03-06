@@ -88,9 +88,9 @@ CREATE TABLE IF NOT EXISTS short_urls (
 );
 
 -- Short code must be URL-safe: lowercase letters, numbers, underscores (3-20 chars)
-ALTER TABLE short_urls DROP CONSTRAINT IF EXISTS short_urls_code_format;
-ALTER TABLE short_urls ADD CONSTRAINT short_urls_code_format
-  CHECK (short_code ~ '^[a-z0-9_]{3,20}$');
+-- ALTER TABLE short_urls DROP CONSTRAINT IF EXISTS short_urls_code_format;
+-- ALTER TABLE short_urls ADD CONSTRAINT short_urls_code_format
+--   CHECK (short_code ~ '^[a-z0-9_]{3,20}$');
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_short_urls_code ON short_urls(short_code);
 CREATE INDEX IF NOT EXISTS idx_short_urls_creator ON short_urls(creator_id);
