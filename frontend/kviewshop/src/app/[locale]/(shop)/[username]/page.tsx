@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { CreatorShopPage } from '@/components/shop/creator-shop';
+import { OrganizationJsonLd } from '@/components/seo/JsonLd';
 import type { Metadata } from 'next';
 import type {
   Creator,
@@ -10,6 +11,8 @@ import type {
   Campaign,
   CampaignProduct,
 } from '@/types/database';
+
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://shop.cnec.kr';
 
 interface ShopPageProps {
   params: Promise<{
@@ -101,12 +104,18 @@ export async function generateMetadata({ params }: ShopPageProps): Promise<Metad
   const shopDesc = creator.bio || `${displayName}이(가) 추천하는 뷰티 아이템을 만나보세요`;
   const ogImage = creator.cover_image_url || creator.profile_image_url;
 
+  const canonicalUrl = `${BASE_URL}/${username}`;
+
   return {
     title: `${displayName}의 셀렉트샵 — CNEC`,
     description: shopDesc,
+    alternates: {
+      canonical: canonicalUrl,
+    },
     openGraph: {
       title: `${displayName}의 셀렉트샵 — CNEC`,
       description: shopDesc,
+      url: canonicalUrl,
       images: ogImage ? [{ url: ogImage, width: 1200, height: 630 }] : [],
       type: 'website',
       siteName: 'CNEC Commerce',
@@ -137,12 +146,22 @@ export default async function ShopPage({ params }: ShopPageProps) {
     getCollections(creator.id),
   ]);
 
+  const shopUrl = `${BASE_URL}/${username}`;
+
   return (
-    <CreatorShopPage
-      creator={creator}
-      shopItems={shopItems}
-      collections={collections}
-      locale={locale}
-    />
+    <>
+      <OrganizationJsonLd
+        name={creator.display_name || creator.shop_id}
+        url={shopUrl}
+        imageUrl={creator.profile_image_url || undefined}
+        description={creator.bio || undefined}
+      />
+      <CreatorShopPage
+        creator={creator}
+        shopItems={shopItems}
+        collections={collections}
+        locale={locale}
+      />
+    </>
   );
 }

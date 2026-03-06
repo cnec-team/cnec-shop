@@ -10,11 +10,18 @@ function generateVisitorId(): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const { creator_id } = await request.json();
+    const { creator_id, utm_source, utm_medium, utm_campaign, referrer } = await request.json();
 
     if (!creator_id) {
       return NextResponse.json({ error: 'creator_id required' }, { status: 400 });
     }
+
+    // Build attribution data from UTM params
+    const attributionData: Record<string, string> = {};
+    if (utm_source) attributionData.utm_source = utm_source;
+    if (utm_medium) attributionData.utm_medium = utm_medium;
+    if (utm_campaign) attributionData.utm_campaign = utm_campaign;
+    if (referrer) attributionData.referrer = referrer;
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -42,7 +49,8 @@ export async function POST(request: NextRequest) {
         request.headers.get('x-real-ip') ||
         '',
       user_agent: request.headers.get('user-agent') || '',
-      referer: request.headers.get('referer') || '',
+      referer: referrer || request.headers.get('referer') || '',
+      attribution_data: Object.keys(attributionData).length > 0 ? attributionData : {},
       visited_at: now.toISOString(),
       expires_at: expiresAt.toISOString(),
     });

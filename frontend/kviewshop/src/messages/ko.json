@@ -1032,5 +1032,17 @@
     "FIVE_PRODUCTS": "상품 5개 추가",
     "FIRST_SALE": "첫 판매 달성",
     "expectedRevenue": "1개 팔면 ₩{amount} 수익"
+  },
+  "share": {
+    "title": "공유",
+    "copyLink": "링크 복사",
+    "linkCopied": "링크가 복사되었습니다!",
+    "kakaoShare": "카카오톡 공유",
+    "copyCaption": "캡션 + 링크 복사",
+    "captionCopied": "캡션이 복사되었습니다!",
+    "promotionKit": "프로모션킷",
+    "recommendedCaption": "추천 캡션",
+    "hashtags": "해시태그",
+    "copyAll": "전체 복사"
   }
 }

@@ -18,8 +18,8 @@ export const metadata: Metadata = {
     siteName: '크넥샵',
   },
   robots: {
-    index: false,
-    follow: false,
+    index: true,
+    follow: true,
   },
 };
 
@@ -36,6 +36,11 @@ export default function RootLayout({
         <link
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700&display=swap"
           rel="stylesheet"
+        />
+        <script
+          src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.4/kakao.min.js"
+          defer
+          crossOrigin="anonymous"
         />
       </head>
       <body className="font-body antialiased">
