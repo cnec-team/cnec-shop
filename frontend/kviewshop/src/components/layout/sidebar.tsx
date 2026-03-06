@@ -22,6 +22,11 @@ import {
   Sparkles,
   ImageIcon,
   Bell,
+  Coins,
+  UserPlus,
+  Trophy,
+  BookOpen,
+  HelpCircle,
 } from 'lucide-react';
 import type { UserRole } from '@/types/database';
 import type { Locale } from '@/lib/i18n/config';
@@ -56,6 +61,7 @@ export function Sidebar({ role, locale }: SidebarProps) {
             { title: '브랜드 관리', href: `${base}/admin/brands`, icon: Store },
             { title: '크리에이터 관리', href: `${base}/admin/creators`, icon: Users },
             { title: '정산 관리', href: `${base}/admin/settlements`, icon: DollarSign },
+            { title: '가이드 관리', href: `${base}/admin/guides`, icon: BookOpen },
             { title: '설정', href: `${base}/admin/settings`, icon: Settings },
           ],
         }];
@@ -88,6 +94,7 @@ export function Sidebar({ role, locale }: SidebarProps) {
           {
             items: [
               { title: '정산', href: `${base}/brand/settlements`, icon: DollarSign },
+              { title: '도움말', href: `${base}/brand/guides`, icon: HelpCircle },
               { title: '설정', href: `${base}/brand/settings`, icon: Settings },
             ],
           },
@@ -113,6 +120,15 @@ export function Sidebar({ role, locale }: SidebarProps) {
             ],
           },
           { items: [{ title: '주문 현황', href: `${base}/creator/orders`, icon: ShoppingCart }] },
+          {
+            label: '활동',
+            items: [
+              { title: '포인트', href: `${base}/creator/points`, icon: Coins },
+              { title: '추천', href: `${base}/creator/referral`, icon: UserPlus },
+              { title: '등급', href: `${base}/creator/grade`, icon: Trophy },
+              { title: '가이드', href: `${base}/creator/guides`, icon: BookOpen },
+            ],
+          },
           {
             items: [
               { title: '판매 현황', href: `${base}/creator/sales`, icon: TrendingUp },

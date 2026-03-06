@@ -24,6 +24,12 @@ export type ShippingFeeType = 'FREE' | 'PAID' | 'CONDITIONAL_FREE';
 export type BannerType = 'HORIZONTAL' | 'VERTICAL';
 export type BannerLinkType = 'EXTERNAL' | 'COLLECTION' | 'PRODUCT';
 export type NotificationType = 'ORDER' | 'SHIPPING' | 'SETTLEMENT' | 'CAMPAIGN' | 'SYSTEM';
+export type PointType = 'SIGNUP_BONUS' | 'PERSONA_COMPLETE' | 'FIRST_PRODUCT' | 'FIRST_SALE' | 'REFERRAL_INVITE' | 'REFERRAL_SALE' | 'WEEKLY_ACTIVE' | 'MONTHLY_TARGET' | 'WITHDRAW' | 'ADMIN_ADJUST';
+export type ReferralStatus = 'PENDING' | 'SIGNUP_COMPLETE' | 'FIRST_SALE_COMPLETE';
+export type CreatorGrade = 'ROOKIE' | 'SILVER' | 'GOLD' | 'PLATINUM';
+export type GuideCategory = 'CREATOR_BEGINNER' | 'CREATOR_SALES' | 'BRAND_START' | 'BRAND_OPTIMIZE';
+export type GuideContentType = 'CARD' | 'VIDEO' | 'ARTICLE';
+export type GuideTargetGrade = 'ALL' | 'SILVER' | 'GOLD' | 'PLATINUM';
 
 // =============================================
 // CORE TABLES
@@ -376,6 +382,63 @@ export interface PromotionKit {
 }
 
 // =============================================
+// POINTS / REFERRALS / GRADES / GUIDES
+// =============================================
+
+export interface CreatorPoint {
+  id: string;
+  creator_id: string;
+  point_type: PointType;
+  amount: number;
+  balance_after: number;
+  description?: string;
+  related_id?: string;
+  created_at: string;
+}
+
+export interface CreatorReferral {
+  id: string;
+  referrer_id: string;
+  referred_id?: string;
+  referral_code: string;
+  status: ReferralStatus;
+  referrer_reward_total: number;
+  referred_reward_total: number;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface CreatorGradeRecord {
+  id: string;
+  creator_id: string;
+  grade: CreatorGrade;
+  monthly_sales: number;
+  commission_bonus_rate: number;
+  grade_updated_at?: string;
+  created_at: string;
+}
+
+export interface GuideSection {
+  type: 'heading' | 'paragraph' | 'tip' | 'image';
+  text?: string;
+  url?: string;
+  alt?: string;
+}
+
+export interface Guide {
+  id: string;
+  title: string;
+  category: GuideCategory;
+  content_type: GuideContentType;
+  content: { sections: GuideSection[] };
+  target_grade: GuideTargetGrade;
+  display_order: number;
+  is_published: boolean;
+  created_at: string;
+  updated_at?: string;
+}
+
+// =============================================
 // DASHBOARD STATS
 // =============================================
 
@@ -418,6 +481,51 @@ export const INDIRECT_COMMISSION_RATE = 0.03; // 3%
 export const COOKIE_WINDOW_HOURS = 24;
 export const PLATFORM_FEE_RATE = 0.03; // 3-5%, default 3%
 export const WITHHOLDING_TAX_RATE = 0.033; // 3.3% for non-business individuals
+
+export const POINT_AMOUNTS = {
+  SIGNUP_BONUS: 3000,
+  PERSONA_COMPLETE: 2000,
+  FIRST_PRODUCT: 1000,
+  FIRST_SALE: 5000,
+  REFERRAL_INVITE: 5000,
+  REFERRAL_INVITED: 3000,
+  REFERRAL_SALE: 3000,
+  WEEKLY_ACTIVE: 1000,
+} as const;
+
+export const GRADE_THRESHOLDS: Record<CreatorGrade, number> = {
+  ROOKIE: 0,
+  SILVER: 100000,
+  GOLD: 500000,
+  PLATINUM: 2000000,
+};
+
+export const GRADE_LABELS: Record<CreatorGrade, string> = {
+  ROOKIE: '루키',
+  SILVER: '실버',
+  GOLD: '골드',
+  PLATINUM: '플래티넘',
+};
+
+export const POINT_TYPE_LABELS: Record<PointType, string> = {
+  SIGNUP_BONUS: '가입 축하',
+  PERSONA_COMPLETE: '페르소나 완료',
+  FIRST_PRODUCT: '첫 상품 추가',
+  FIRST_SALE: '첫 판매',
+  REFERRAL_INVITE: '친구 초대',
+  REFERRAL_SALE: '친구 첫 판매',
+  WEEKLY_ACTIVE: '주간 활동 보상',
+  MONTHLY_TARGET: '월간 목표 달성',
+  WITHDRAW: '출금',
+  ADMIN_ADJUST: '관리자 조정',
+};
+
+export const GUIDE_CATEGORY_LABELS: Record<GuideCategory, string> = {
+  CREATOR_BEGINNER: '크리에이터 시작',
+  CREATOR_SALES: '판매 노하우',
+  BRAND_START: '브랜드 시작',
+  BRAND_OPTIMIZE: '브랜드 최적화',
+};
 
 // =============================================
 // SKIN TYPE / PERSONAL COLOR LABELS
