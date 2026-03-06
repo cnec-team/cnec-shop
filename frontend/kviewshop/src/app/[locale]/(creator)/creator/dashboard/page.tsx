@@ -97,11 +97,12 @@ export default function CreatorDashboardPage() {
           active_picks: 0,
         });
         // Fetch points and grade in parallel
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session && !cancelled) {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (authUser && !cancelled) {
+          const { data: { session } } = await supabase.auth.getSession();
           const [pointsRes, gradeRes] = await Promise.all([
-            fetch('/api/creator/points?limit=1', { headers: { 'Authorization': `Bearer ${session.access_token}` } }),
-            fetch('/api/creator/grade', { headers: { 'Authorization': `Bearer ${session.access_token}` } }),
+            fetch('/api/creator/points?limit=1', { headers: { 'Authorization': `Bearer ${session?.access_token}` } }),
+            fetch('/api/creator/grade', { headers: { 'Authorization': `Bearer ${session?.access_token}` } }),
           ]);
           if (pointsRes.ok) {
             const pd = await pointsRes.json();

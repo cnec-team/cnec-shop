@@ -201,8 +201,8 @@ export default function CreatorSettlementsPage() {
                   <TableHead>정산 기간</TableHead>
                   <TableHead className="text-right">구매 수</TableHead>
                   <TableHead className="text-right">정산대상 금액</TableHead>
-                  <TableHead className="text-right">직접 커미션</TableHead>
-                  <TableHead className="text-right">간접 커미션</TableHead>
+                  <TableHead className="text-right">직접 수익</TableHead>
+                  <TableHead className="text-right">간접 수익</TableHead>
                   <TableHead className="text-right">원천징수</TableHead>
                   <TableHead className="text-right">정산금액</TableHead>
                   <TableHead>상태</TableHead>

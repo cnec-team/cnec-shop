@@ -22,7 +22,7 @@ const mockNotifications: NotificationItem[] = [
     id: 'mock-1',
     type: 'ORDER',
     title: '새 주문 발생',
-    message: '뷰티진 샵에서 하우파파 로션 1건이 판매되었습니다. 예상 커미션: ₩3,705',
+    message: '뷰티진 샵에서 하우파파 로션 1건이 판매되었습니다. 예상 수익: ₩3,705',
     is_read: false,
     created_at: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
   },

@@ -135,7 +135,7 @@ export default function BrandSettlementsPage() {
       '크리에이터명': s.creatorName,
       '판매건수': s.orderCount,
       '총매출': s.totalSales,
-      '커미션금액': s.commissionAmount,
+      '수수료금액': s.commissionAmount,
       '플랫폼수수료': s.platformFee,
       '정산금액': s.netAmount,
     }));
@@ -222,7 +222,7 @@ export default function BrandSettlementsPage() {
                   <TableHead>크리에이터명</TableHead>
                   <TableHead className="text-right">판매건수</TableHead>
                   <TableHead className="text-right">총매출</TableHead>
-                  <TableHead className="text-right">커미션</TableHead>
+                  <TableHead className="text-right">수수료</TableHead>
                   <TableHead className="text-right">플랫폼수수료</TableHead>
                   <TableHead className="text-right">정산금액</TableHead>
                 </TableRow>

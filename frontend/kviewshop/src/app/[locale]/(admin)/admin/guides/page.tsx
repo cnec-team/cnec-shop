@@ -30,11 +30,12 @@ export default function AdminGuidesPage() {
   const fetchGuides = useCallback(async () => {
     try {
       const supabase = getClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
 
       const res = await fetch('/api/admin/guides', {
-        headers: { 'Authorization': `Bearer ${session.access_token}` },
+        headers: { 'Authorization': `Bearer ${session?.access_token}` },
       });
       if (res.ok) {
         const data = await res.json();
@@ -83,8 +84,9 @@ export default function AdminGuidesPage() {
     setSaving(true);
     try {
       const supabase = getClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
 
       const body = {
         title: formTitle,
@@ -101,7 +103,7 @@ export default function AdminGuidesPage() {
       const res = await fetch(url, {
         method,
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${session?.access_token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(body),
@@ -127,12 +129,13 @@ export default function AdminGuidesPage() {
     if (!confirm('정말 삭제하시겠습니까?')) return;
     try {
       const supabase = getClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
 
       const res = await fetch(`/api/admin/guides/${id}`, {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${session.access_token}` },
+        headers: { 'Authorization': `Bearer ${session?.access_token}` },
       });
       if (res.ok) {
         toast.success('가이드가 삭제되었습니다');

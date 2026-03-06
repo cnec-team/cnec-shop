@@ -264,7 +264,7 @@ export default function CreatorMyCampaignsPage() {
                         {campaign && (
                           <span className="flex items-center gap-1">
                             <Percent className="h-3 w-3" />
-                            커미션 {(campaign.commission_rate * 100).toFixed(0)}%
+                            내 수익 {(campaign.commission_rate * 100).toFixed(0)}%
                           </span>
                         )}
                         <span>

@@ -482,9 +482,9 @@ export default function NewProductPage() {
           <Separator />
 
           <div className="space-y-2">
-            <Label htmlFor="commissionRate">기본 커미션율 (%)</Label>
+            <Label htmlFor="commissionRate">기본 수수료율 (%)</Label>
             <p className="text-sm text-muted-foreground">
-              크리에이터픽 시 적용되는 기본 커미션율입니다.
+              크리에이터픽 시 적용되는 기본 수수료율입니다.
             </p>
             <Input
               id="commissionRate"

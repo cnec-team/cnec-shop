@@ -134,7 +134,7 @@ export default function AlwaysCampaignsPage() {
                   <TableHead>캠페인명</TableHead>
                   <TableHead>상태</TableHead>
                   <TableHead>모집 방식</TableHead>
-                  <TableHead className="text-right">커미션율</TableHead>
+                  <TableHead className="text-right">수수료율</TableHead>
                   <TableHead className="text-right">판매수</TableHead>
                   <TableHead>포함 상품</TableHead>
                   <TableHead className="text-right">생성일</TableHead>

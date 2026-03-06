@@ -34,11 +34,12 @@ export default function CreatorPointsPage() {
     try {
       setLoading(true);
       const supabase = getClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
 
       const res = await fetch(`/api/creator/points?page=${p}&limit=${limit}`, {
-        headers: { 'Authorization': `Bearer ${session.access_token}` },
+        headers: { 'Authorization': `Bearer ${session?.access_token}` },
       });
       const data = await res.json();
       if (res.ok) {
@@ -75,13 +76,14 @@ export default function CreatorPointsPage() {
     setWithdrawing(true);
     try {
       const supabase = getClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
 
       const res = await fetch('/api/creator/points/withdraw', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${session?.access_token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ amount }),

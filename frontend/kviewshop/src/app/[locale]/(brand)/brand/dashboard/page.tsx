@@ -328,7 +328,7 @@ export default function BrandDashboardPage() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>커미션</CardDescription>
+            <CardDescription>수수료</CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">

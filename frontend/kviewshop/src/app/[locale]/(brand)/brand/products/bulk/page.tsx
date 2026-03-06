@@ -79,7 +79,7 @@ function validateRow(row: Record<string, unknown>, index: number): BulkProductRo
 
   const commissionRate = Number(row['commission_rate']);
   if (isNaN(commissionRate) || commissionRate < 0 || commissionRate > 100) {
-    errors.push('커미션율 0~100 범위');
+    errors.push('수수료율 0~100 범위');
   }
 
   const allowPickRaw = String(row['allow_creator_pick'] ?? 'Y').trim().toUpperCase();
@@ -343,7 +343,7 @@ export default function BulkUploadPage() {
                     <TableHead className="text-right">정가</TableHead>
                     <TableHead className="text-right">할인가</TableHead>
                     <TableHead className="text-right">재고</TableHead>
-                    <TableHead className="text-right">커미션(%)</TableHead>
+                    <TableHead className="text-right">수수료(%)</TableHead>
                     <TableHead>크리에이터픽</TableHead>
                     <TableHead>상태</TableHead>
                   </TableRow>

@@ -210,7 +210,7 @@ export default function GongguCampaignsPage() {
 
                   {/* Meta */}
                   <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                    <span>커미션 {campaign.commission_rate}%</span>
+                    <span>수수료 {campaign.commission_rate}%</span>
                     <span>
                       모집 방식:{' '}
                       {campaign.recruitment_type === 'OPEN'

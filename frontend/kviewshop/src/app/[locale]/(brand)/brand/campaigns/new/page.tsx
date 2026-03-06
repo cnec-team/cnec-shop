@@ -32,7 +32,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 const STEPS = [
   { label: '기본 정보', description: '캠페인의 기본 설정' },
   { label: '상품/가격', description: '상품 선택 및 캠페인 가격 설정' },
-  { label: '커미션', description: '크리에이터 커미션 설정' },
+  { label: '수수료', description: '크리에이터 수수료 설정' },
   { label: '모집 방식', description: '크리에이터 모집 조건 설정' },
 ];
 
@@ -177,7 +177,7 @@ export default function NewCampaignPage() {
           Number(commissionRate) < 0 ||
           Number(commissionRate) > 100
         ) {
-          setError('커미션율을 올바르게 입력해주세요 (0-100%).');
+          setError('수수료율을 올바르게 입력해주세요 (0-100%).');
           return false;
         }
         return true;
@@ -505,16 +505,16 @@ export default function NewCampaignPage() {
       {currentStep === 2 && (
         <Card>
           <CardHeader>
-            <CardTitle>커미션 설정</CardTitle>
+            <CardTitle>수수료 설정</CardTitle>
             <CardDescription>
-              크리에이터에게 지급할 커미션율을 설정하세요.
+              크리에이터에게 지급할 수수료율을 설정하세요.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="commissionRate">커미션율 (%) *</Label>
+              <Label htmlFor="commissionRate">수수료율 (%) *</Label>
               <p className="text-sm text-muted-foreground">
-                크리에이터가 판매를 성사시켰을 때 지급되는 커미션 비율입니다.
+                크리에이터가 판매를 성사시켰을 때 지급되는 수수료 비율입니다.
               </p>
               <Input
                 id="commissionRate"
@@ -640,7 +640,7 @@ export default function NewCampaignPage() {
                 </span>
                 <span className="text-muted-foreground">선택 상품:</span>
                 <span>{selectedProducts.length}개</span>
-                <span className="text-muted-foreground">커미션율:</span>
+                <span className="text-muted-foreground">수수료율:</span>
                 <span>{commissionRate}%</span>
                 <span className="text-muted-foreground">모집 방식:</span>
                 <span>
