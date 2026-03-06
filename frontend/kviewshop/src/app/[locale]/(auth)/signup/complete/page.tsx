@@ -21,17 +21,18 @@ export default function SignupCompletePage() {
     const completeOnboarding = async () => {
       try {
         const supabase = getClient();
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
           router.push(`/${locale}/login`);
           return;
         }
+        const { data: { session } } = await supabase.auth.getSession();
 
         const res = await fetch('/api/creator/onboarding-complete', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${session?.access_token}`,
           },
         });
 

@@ -167,7 +167,7 @@ export default function BrandProductsPage() {
                   <TableHead className="text-right">재고</TableHead>
                   <TableHead>상태</TableHead>
                   <TableHead>크리에이터픽</TableHead>
-                  <TableHead className="text-right">기본 커미션율</TableHead>
+                  <TableHead className="text-right">기본 수수료율</TableHead>
                   <TableHead className="text-right">관리</TableHead>
                 </TableRow>
               </TableHeader>

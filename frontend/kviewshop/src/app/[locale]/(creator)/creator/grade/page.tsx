@@ -57,11 +57,12 @@ export default function CreatorGradePage() {
     async function fetchGrade() {
       try {
         const supabase = getClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
         const { data: { session } } = await supabase.auth.getSession();
-        if (!session) return;
 
         const [gradeRes, rankRes] = await Promise.all([
-          fetch('/api/creator/grade', { headers: { 'Authorization': `Bearer ${session.access_token}` } }),
+          fetch('/api/creator/grade', { headers: { 'Authorization': `Bearer ${session?.access_token}` } }),
           fetch(`/api/creator/ranking?period=${rankPeriod}`),
         ]);
 

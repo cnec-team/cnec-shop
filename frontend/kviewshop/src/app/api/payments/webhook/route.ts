@@ -128,6 +128,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true, processed: false, reason: 'Order not found' });
     }
 
+    // Idempotency: Skip if already processed
+    if (order.status === newStatus) {
+      return NextResponse.json({ received: true, processed: true, reason: 'Already processed' });
+    }
+
     // Double verification: For payment events, verify with PortOne API directly
     if (newStatus === 'PAID') {
       const portoneApiSecret = process.env.PORTONE_API_SECRET;

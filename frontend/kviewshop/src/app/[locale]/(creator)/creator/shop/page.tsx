@@ -121,8 +121,8 @@ export default function CreatorShopPage() {
     async function fetchCreator() {
       try {
         const supabase = getClient();
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user || cancelled) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || cancelled) {
           setIsLoading(false);
           return;
         }
@@ -130,7 +130,7 @@ export default function CreatorShopPage() {
         const { data } = await supabase
           .from('creators')
           .select('*')
-          .eq('user_id', session.user.id)
+          .eq('user_id', user.id)
           .maybeSingle();
 
         if (data && !cancelled) {

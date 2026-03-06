@@ -205,6 +205,20 @@ export default function CreatorProductsPage() {
       } else {
         toast.success('내 샵에 추가되었습니다');
         setMyShopItemIds((prev) => new Set([...prev, product.id]));
+
+        // Trigger mission check for FIRST_PRODUCT point award (₩1,000)
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await fetch('/api/creator/missions', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ missionKey: 'FIRST_PRODUCT' }),
+            });
+          }
+        } catch {
+          // Non-critical: mission check failure shouldn't block the flow
+        }
       }
     } catch (error) {
       toast.error('추가에 실패했습니다');
@@ -358,8 +372,8 @@ export default function CreatorProductsPage() {
                 <SelectValue placeholder="정렬" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="commission_desc">커미션 높은 순</SelectItem>
-                <SelectItem value="commission_asc">커미션 낮은 순</SelectItem>
+                <SelectItem value="commission_desc">내 수익 높은 순</SelectItem>
+                <SelectItem value="commission_asc">내 수익 낮은 순</SelectItem>
                 <SelectItem value="price_asc">가격 낮은 순</SelectItem>
                 <SelectItem value="price_desc">가격 높은 순</SelectItem>
                 <SelectItem value="name">이름 순</SelectItem>

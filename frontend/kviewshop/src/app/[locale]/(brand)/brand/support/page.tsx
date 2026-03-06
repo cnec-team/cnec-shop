@@ -54,13 +54,13 @@ export default function BrandSupportPage() {
     async function loadTickets() {
       try {
         const supabase = getClient();
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user) { setLoading(false); return; }
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { setLoading(false); return; }
 
         const { data: brand } = await supabase
           .from('brands')
           .select('id')
-          .eq('user_id', session.user.id)
+          .eq('user_id', user.id)
           .maybeSingle();
 
         if (!brand) { setLoading(false); return; }

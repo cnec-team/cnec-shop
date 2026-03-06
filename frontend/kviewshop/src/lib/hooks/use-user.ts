@@ -19,14 +19,14 @@ export function useUser() {
     const initSession = async () => {
       try {
         const {
-          data: { session },
-        } = await supabase.auth.getSession();
+          data: { user: authUser },
+        } = await supabase.auth.getUser();
 
         if (cancelled) return;
 
-        if (session?.user) {
-          setSupabaseUser(session.user);
-          await fetchUserData(session.user.id);
+        if (authUser) {
+          setSupabaseUser(authUser);
+          await fetchUserData(authUser.id);
         } else {
           setLoading(false);
         }

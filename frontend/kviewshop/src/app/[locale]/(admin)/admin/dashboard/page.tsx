@@ -126,7 +126,7 @@ export default function AdminDashboardPage() {
           <div className="flex items-center gap-4 p-4 rounded-lg bg-muted/50">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-bold">4</div>
             <div>
-              <p className="font-medium">크넥 → 전환 추적 + 커미션 정산</p>
+              <p className="font-medium">크넥 → 전환 추적 + 수수료 정산</p>
               <p className="text-sm text-muted-foreground">직접 전환 + 간접 전환(3%) 추적, 매월 20일 크리에이터에게 정산합니다</p>
             </div>
           </div>

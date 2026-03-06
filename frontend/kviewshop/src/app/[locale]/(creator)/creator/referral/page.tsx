@@ -45,11 +45,12 @@ export default function CreatorReferralPage() {
     async function fetchReferral() {
       try {
         const supabase = getClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
         const { data: { session } } = await supabase.auth.getSession();
-        if (!session) return;
 
         const res = await fetch('/api/creator/referral', {
-          headers: { 'Authorization': `Bearer ${session.access_token}` },
+          headers: { 'Authorization': `Bearer ${session?.access_token}` },
         });
         const data = await res.json();
         if (res.ok) {
