@@ -16,7 +16,9 @@ import {
   Plus,
   Truck,
   RotateCcw,
+  Share2,
 } from 'lucide-react';
+import { ShareSheet } from '@/components/shop/ShareSheet';
 import type {
   Product,
   CampaignProduct,
@@ -78,6 +80,9 @@ export function ProductDetailPage({
   const discountPercent = calculateDiscountPercent(product.original_price, effectivePrice);
   const brandName = product.brand?.brand_name || '';
   const images = product.images && product.images.length > 0 ? product.images : [];
+  const productUrl = `https://shop.cnec.kr/${username}/product/${product.id}${campaignProduct?.campaign_id ? `?campaign=${campaignProduct.campaign_id}` : ''}`;
+  const ogTitle = `${product.name}${discountPercent > 0 ? ` ${discountPercent}% OFF` : ''}`;
+  const ogDesc = `${brandName} | ${formatKRW(effectivePrice)}`;
 
   // Countdown timer for gonggu
   const [countdown, setCountdown] = useState('');
@@ -134,7 +139,7 @@ export function ProductDetailPage({
     <div className="min-h-screen bg-background">
       {/* Top Navigation */}
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b border-border">
-        <div className="max-w-lg mx-auto flex items-center h-12 px-4">
+        <div className="max-w-lg mx-auto flex items-center justify-between h-12 px-4">
           <Link
             href={`/${locale}/${username}`}
             className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
@@ -142,6 +147,17 @@ export function ProductDetailPage({
             <ArrowLeft className="w-5 h-5" />
             <span className="text-sm">돌아가기</span>
           </Link>
+          <ShareSheet
+            url={productUrl}
+            title={ogTitle}
+            description={ogDesc}
+            imageUrl={product.thumbnail_url || images[0]}
+            trigger={
+              <button className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors">
+                <Share2 className="w-5 h-5" />
+              </button>
+            }
+          />
         </div>
       </header>
 

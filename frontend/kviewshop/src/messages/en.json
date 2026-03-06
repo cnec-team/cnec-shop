@@ -772,5 +772,17 @@
     "FIVE_PRODUCTS": "Add 5 Products",
     "FIRST_SALE": "First Sale",
     "expectedRevenue": "Earn ₩{amount} per sale"
+  },
+  "share": {
+    "title": "Share",
+    "copyLink": "Copy Link",
+    "linkCopied": "Link copied!",
+    "kakaoShare": "Share on KakaoTalk",
+    "copyCaption": "Copy Caption + Link",
+    "captionCopied": "Caption copied!",
+    "promotionKit": "Promotion Kit",
+    "recommendedCaption": "Recommended Caption",
+    "hashtags": "Hashtags",
+    "copyAll": "Copy All"
   }
 }

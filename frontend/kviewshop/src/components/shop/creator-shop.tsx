@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Instagram } from 'lucide-react';
+import { Instagram, Share2 } from 'lucide-react';
+import { ShareSheet } from '@/components/shop/ShareSheet';
+import { VisitTracker } from '@/components/shop/VisitTracker';
 import type {
   Creator,
   CreatorShopItem,
@@ -71,15 +73,7 @@ export function CreatorShopPage({
 }: CreatorShopPageProps) {
   const params = useParams();
   const username = params.username as string;
-
-  // Track visit on mount
-  useEffect(() => {
-    fetch('/api/track', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ creator_id: creator.id }),
-    }).catch(() => {});
-  }, [creator.id]);
+  const shopUrl = `https://shop.cnec.kr/${username}`;
 
   // Separate items by type
   const gongguItems = useMemo(
@@ -120,8 +114,10 @@ export function CreatorShopPage({
 
   return (
     <div className="min-h-screen bg-background">
+      <VisitTracker creatorId={creator.id} />
+
       {/* Header / Profile Section */}
-      <ShopHeader creator={creator} />
+      <ShopHeader creator={creator} shopUrl={shopUrl} />
 
       {/* Beauty Profile */}
       <BeautyProfile creator={creator} />
@@ -219,7 +215,9 @@ export { CreatorShopPage as CreatorShop };
 // Sub-components
 // =============================================
 
-function ShopHeader({ creator }: { creator: Creator }) {
+function ShopHeader({ creator, shopUrl }: { creator: Creator; shopUrl: string }) {
+  const shopDesc = creator.bio || 'K-뷰티 크리에이터 셀렉트샵';
+
   return (
     <div className="relative">
       {/* Cover Image */}
@@ -252,6 +250,21 @@ function ShopHeader({ creator }: { creator: Creator }) {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Share Button */}
+        <div className="absolute -top-12 right-4">
+          <ShareSheet
+            url={shopUrl}
+            title={`${creator.display_name}의 셀렉트샵`}
+            description={shopDesc}
+            imageUrl={creator.profile_image_url || undefined}
+            trigger={
+              <button className="flex h-9 w-9 items-center justify-center rounded-full bg-background/80 backdrop-blur-sm shadow-sm hover:bg-background transition-colors">
+                <Share2 className="h-4 w-4" />
+              </button>
+            }
+          />
         </div>
 
         {/* Name & Bio */}

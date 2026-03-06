@@ -30,10 +30,37 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       if (creators) {
         for (const creator of creators) {
           entries.push({
-            url: `${BASE_URL}/shop/${creator.shop_id}`,
+            url: `${BASE_URL}/ko/${creator.shop_id}`,
             lastModified: creator.updated_at ? new Date(creator.updated_at) : new Date(),
             changeFrequency: 'weekly',
             priority: 0.8,
+          });
+        }
+      }
+
+      // Fetch active products with their creator shop IDs
+      const { data: shopItems } = await supabase
+        .from('creator_shop_items')
+        .select('product_id, creator_id, campaign_id, products(updated_at), creators(shop_id)')
+        .eq('is_visible', true)
+        .limit(1000);
+
+      if (shopItems) {
+        const seen = new Set<string>();
+        for (const item of shopItems) {
+          const shopId = (item as any).creators?.shop_id;
+          const productUpdated = (item as any).products?.updated_at;
+          if (!shopId || !item.product_id) continue;
+
+          const key = `${shopId}/${item.product_id}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+
+          entries.push({
+            url: `${BASE_URL}/ko/${shopId}/product/${item.product_id}`,
+            lastModified: productUpdated ? new Date(productUpdated) : new Date(),
+            changeFrequency: 'daily',
+            priority: 0.7,
           });
         }
       }

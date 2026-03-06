@@ -382,6 +382,7 @@ export interface ShopVisit {
   ip_address?: string;
   user_agent?: string;
   referer?: string;
+  attribution_data?: Record<string, string>;
   visited_at: string;
   expires_at: string;
 }
