@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
     // Find the order by pg_transaction_id (paymentId) or by orderId from webhook
     let orderQuery = supabase
       .from('orders')
-      .select('id, status, order_number');
+      .select('id, status, order_number, total_amount');
 
     if (webhookOrderId) {
       orderQuery = orderQuery.eq('id', webhookOrderId);
@@ -126,6 +126,82 @@ export async function POST(request: NextRequest) {
       console.error('Webhook: Order not found for paymentId:', paymentId);
       // Return 200 to prevent PortOne from retrying
       return NextResponse.json({ received: true, processed: false, reason: 'Order not found' });
+    }
+
+    // Double verification: For payment events, verify with PortOne API directly
+    if (newStatus === 'PAID') {
+      const portoneApiSecret = process.env.PORTONE_API_SECRET;
+      if (!portoneApiSecret) {
+        console.error('Webhook: PORTONE_API_SECRET is not configured for double verification');
+        return NextResponse.json({ error: 'Payment verification not configured' }, { status: 500 });
+      }
+
+      const verifyResponse = await fetch(
+        `https://api.portone.io/payments/${encodeURIComponent(paymentId)}`,
+        { headers: { 'Authorization': `PortOne ${portoneApiSecret}` } }
+      );
+
+      if (!verifyResponse.ok) {
+        console.error('Webhook: PortOne payment verification failed:', verifyResponse.status);
+        return NextResponse.json({ received: true, processed: false, reason: 'Payment verification failed' });
+      }
+
+      const paymentData = await verifyResponse.json();
+
+      // Verify payment status is actually PAID
+      if (paymentData.status !== 'PAID') {
+        console.error('Webhook: PortOne reports payment not PAID:', paymentData.status);
+        return NextResponse.json({ received: true, processed: false, reason: 'Payment not confirmed by PortOne' });
+      }
+
+      // Verify amount matches order total
+      const paidAmount = paymentData.amount?.total;
+      const orderAmount = Number(order.total_amount);
+
+      if (paidAmount !== orderAmount) {
+        console.error('Webhook: Amount mismatch detected', {
+          paymentId,
+          orderNumber: order.order_number,
+          paidAmount,
+          orderAmount,
+        });
+
+        // Auto-cancel the payment due to amount mismatch
+        try {
+          const cancelResponse = await fetch(
+            `https://api.portone.io/payments/${encodeURIComponent(paymentId)}/cancel`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `PortOne ${portoneApiSecret}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ reason: 'Amount mismatch detected during webhook verification' }),
+            }
+          );
+          if (!cancelResponse.ok) {
+            console.error('Webhook: Auto-cancel API call failed:', cancelResponse.status);
+          }
+        } catch (cancelError) {
+          console.error('Webhook: Auto-cancel request error:', cancelError);
+        }
+
+        // Update order to CANCELLED
+        await supabase
+          .from('orders')
+          .update({
+            status: 'CANCELLED',
+            cancel_reason: 'Amount mismatch: auto-cancelled by webhook verification',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', order.id);
+
+        return NextResponse.json({
+          received: true,
+          processed: true,
+          reason: 'Amount mismatch - payment cancelled',
+        });
+      }
     }
 
     // Build update payload based on event type
