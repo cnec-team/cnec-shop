@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import * as XLSX from 'xlsx';
 import { getClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/lib/store/auth';
 import type { Order, OrderItem, OrderStatus, Creator } from '@/types/database';
@@ -34,6 +35,7 @@ import {
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
+import { Download } from 'lucide-react';
 
 const COURIERS = [
   { code: 'cj', name: 'CJ대한통운' },
@@ -351,9 +353,48 @@ export default function BrandOrdersPage() {
     {} as Record<string, number>
   );
 
+  function handleDownloadExcel() {
+    if (orders.length === 0) return;
+
+    const rows = orders.map((order) => {
+      const totalQuantity = (order.items ?? []).reduce((sum, item) => sum + item.quantity, 0);
+      const productNames = (order.items ?? [])
+        .map((item) => item.product?.name ?? '상품')
+        .join(', ');
+
+      return {
+        '주문번호': order.order_number,
+        '주문일시': new Date(order.created_at).toLocaleString('ko-KR'),
+        '상품명': productNames,
+        '수량': totalQuantity,
+        '결제금액': order.total_amount,
+        '주문자명': order.buyer_name,
+        '배송지': `${order.shipping_address} ${order.shipping_detail ?? ''}`.trim(),
+        '주문상태': ORDER_STATUS_LABELS[order.status],
+        '크리에이터명': order.creator?.display_name ?? '-',
+      };
+    });
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '주문목록');
+    XLSX.writeFile(wb, `cnec_orders_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  }
+
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">주문 관리</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">주문 관리</h1>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleDownloadExcel}
+          disabled={orders.length === 0}
+        >
+          <Download className="h-4 w-4 mr-2" />
+          엑셀 다운로드
+        </Button>
+      </div>
 
       {/* Status summary cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">

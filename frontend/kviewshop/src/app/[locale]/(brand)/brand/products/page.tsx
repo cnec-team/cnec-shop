@@ -86,9 +86,14 @@ export default function BrandProductsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">상품 관리</h1>
-        <Link href="products/new">
-          <Button>새 상품 등록</Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link href="products/bulk">
+            <Button variant="outline">일괄 등록</Button>
+          </Link>
+          <Link href="products/new">
+            <Button>새 상품 등록</Button>
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}

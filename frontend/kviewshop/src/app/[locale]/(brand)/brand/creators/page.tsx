@@ -177,16 +177,21 @@ export default function BrandCreatorsPage() {
             캠페인에 참여 중인 크리에이터를 관리합니다.
           </p>
         </div>
-        {pendingCount > 0 && (
-          <Link href="creators/pending">
-            <Button variant="outline">
-              승인 대기{' '}
-              <Badge variant="destructive" className="ml-2">
-                {pendingCount}
-              </Badge>
-            </Button>
+        <div className="flex gap-2">
+          <Link href="creators/performance">
+            <Button variant="outline">크리에이터 성과</Button>
           </Link>
-        )}
+          {pendingCount > 0 && (
+            <Link href="creators/pending">
+              <Button variant="outline">
+                승인 대기{' '}
+                <Badge variant="destructive" className="ml-2">
+                  {pendingCount}
+                </Badge>
+              </Button>
+            </Link>
+          )}
+        </div>
       </div>
 
       {/* Summary cards */}

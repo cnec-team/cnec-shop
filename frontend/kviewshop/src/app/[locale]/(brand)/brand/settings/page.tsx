@@ -10,7 +10,15 @@ import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Settings, Percent, Building2, CreditCard, Info, Globe, ShieldCheck, Upload, X, Check, FileText, Plus, Trash2, ImageIcon, Loader2, Tags } from 'lucide-react';
+import { Settings, Percent, Building2, CreditCard, Info, Globe, ShieldCheck, Upload, X, Check, FileText, Plus, Trash2, ImageIcon, Loader2, Tags, Package, Truck } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import Image from 'next/image';
 import { toast } from 'sonner';
 import { getClient } from '@/lib/supabase/client';
@@ -57,6 +65,13 @@ export default function BrandSettingsPage() {
     accountHolder: '',
     bankVerified: false,
     bankVerifiedAt: '',
+    defaultShippingFee: 3000,
+    freeShippingThreshold: 50000,
+    defaultCourier: 'cj',
+    returnAddress: '',
+    exchangePolicy: '',
+    defaultCommissionRate: 15,
+    allowCreatorPickGlobal: true,
   });
 
   // Shipping countries state
@@ -220,6 +235,21 @@ export default function BrandSettingsPage() {
           .eq('user_id', user.id);
       }
 
+      if (section === 'product_shipping' || !section) {
+        await supabase
+          .from('brands')
+          .update({
+            default_shipping_fee: settings.defaultShippingFee,
+            free_shipping_threshold: settings.freeShippingThreshold,
+            default_courier: settings.defaultCourier,
+            return_address: settings.returnAddress,
+            exchange_policy: settings.exchangePolicy,
+            default_commission_rate: settings.defaultCommissionRate,
+            allow_creator_pick_global: settings.allowCreatorPickGlobal,
+          })
+          .eq('user_id', user.id);
+      }
+
       if (section === 'general' || section === 'commission' || section === 'settlement' || !section) {
         await supabase
           .from('brands')
@@ -283,6 +313,13 @@ export default function BrandSettingsPage() {
             bankName: data.bank_name || '',
             accountNumber: data.account_number || '',
             accountHolder: data.account_holder || '',
+            defaultShippingFee: data.default_shipping_fee ?? 3000,
+            freeShippingThreshold: data.free_shipping_threshold ?? 50000,
+            defaultCourier: data.default_courier || 'cj',
+            returnAddress: data.return_address || '',
+            exchangePolicy: data.exchange_policy || '',
+            defaultCommissionRate: data.default_commission_rate ?? 15,
+            allowCreatorPickGlobal: data.allow_creator_pick_global ?? true,
           }));
           setShippingCountries(data.shipping_countries || []);
           setCertifications(data.certifications || []);
@@ -316,6 +353,7 @@ export default function BrandSettingsPage() {
       <Tabs defaultValue="general">
         <TabsList className="flex flex-wrap h-auto gap-1">
           <TabsTrigger value="general">{t('generalTab')}</TabsTrigger>
+          <TabsTrigger value="product_shipping">{t('productShippingTab')}</TabsTrigger>
           <TabsTrigger value="brand_lines">{t('brandLinesTab')}</TabsTrigger>
           <TabsTrigger value="shipping">{t('shippingTab')}</TabsTrigger>
           <TabsTrigger value="certifications">{t('certificationsTab')}</TabsTrigger>
@@ -370,6 +408,109 @@ export default function BrandSettingsPage() {
                 </div>
               </div>
               <Button onClick={() => handleSave('general')} disabled={loading} className="btn-gold">
+                {loading ? tc('loading') : tc('save')}
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Product & Shipping Defaults Tab */}
+        <TabsContent value="product_shipping" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Truck className="h-5 w-5" />
+                {t('productShippingTitle')}
+              </CardTitle>
+              <CardDescription>{t('productShippingDesc')}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>{t('defaultShippingFee')}</Label>
+                  <Input
+                    type="number"
+                    placeholder="3000"
+                    value={settings.defaultShippingFee}
+                    onChange={(e) => setSettings({ ...settings, defaultShippingFee: Number(e.target.value) })}
+                  />
+                  <p className="text-xs text-muted-foreground">{t('defaultShippingFeeDesc')}</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>{t('freeShippingThreshold')}</Label>
+                  <Input
+                    type="number"
+                    placeholder="50000"
+                    value={settings.freeShippingThreshold}
+                    onChange={(e) => setSettings({ ...settings, freeShippingThreshold: Number(e.target.value) })}
+                  />
+                  <p className="text-xs text-muted-foreground">{t('freeShippingThresholdDesc')}</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>{t('defaultCourier')}</Label>
+                  <Select
+                    value={settings.defaultCourier}
+                    onValueChange={(v) => setSettings({ ...settings, defaultCourier: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="epost">우체국택배</SelectItem>
+                      <SelectItem value="cj">CJ대한통운</SelectItem>
+                      <SelectItem value="hanjin">한진택배</SelectItem>
+                      <SelectItem value="lotte">롯데택배</SelectItem>
+                      <SelectItem value="logen">로젠택배</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>{t('defaultCommissionRateLabel')}</Label>
+                  <Input
+                    type="number"
+                    placeholder="15"
+                    min={0}
+                    max={100}
+                    value={settings.defaultCommissionRate}
+                    onChange={(e) => setSettings({ ...settings, defaultCommissionRate: Number(e.target.value) })}
+                  />
+                  <p className="text-xs text-muted-foreground">{t('defaultCommissionRateDesc')}</p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>{t('returnAddress')}</Label>
+                <Textarea
+                  placeholder={t('returnAddressPlaceholder')}
+                  value={settings.returnAddress}
+                  onChange={(e) => setSettings({ ...settings, returnAddress: e.target.value })}
+                  rows={2}
+                />
+                <p className="text-xs text-muted-foreground">{t('returnAddressDesc')}</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>{t('exchangePolicy')}</Label>
+                <Textarea
+                  placeholder={t('exchangePolicyPlaceholder')}
+                  value={settings.exchangePolicy}
+                  onChange={(e) => setSettings({ ...settings, exchangePolicy: e.target.value })}
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div>
+                  <p className="font-medium text-sm">{t('allowCreatorPickGlobal')}</p>
+                  <p className="text-xs text-muted-foreground">{t('allowCreatorPickGlobalDesc')}</p>
+                </div>
+                <Switch
+                  checked={settings.allowCreatorPickGlobal}
+                  onCheckedChange={(checked) => setSettings({ ...settings, allowCreatorPickGlobal: checked })}
+                />
+              </div>
+
+              <Button onClick={() => handleSave('product_shipping')} disabled={loading} className="btn-gold">
                 {loading ? tc('loading') : tc('save')}
               </Button>
             </CardContent>
