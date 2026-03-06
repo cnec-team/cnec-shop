@@ -1000,5 +1000,37 @@
     "guideCreated": "가이드가 생성되었습니다",
     "guideUpdated": "가이드가 수정되었습니다",
     "guideDeleted": "가이드가 삭제되었습니다"
+  },
+  "onboarding": {
+    "personaTitle": "뷰티 페르소나",
+    "personaSubtitle": "나에게 맞는 상품을 추천받기 위한 필수 단계예요",
+    "step1": "피부 타입",
+    "step2": "연령대",
+    "step3": "피부 고민",
+    "step4": "관심 카테고리",
+    "step5": "퍼스널 컬러",
+    "complete": "가입 완료!",
+    "welcomeMessage": "크넥샵 크리에이터가 되신 것을 환영합니다",
+    "welcomePoints": "축하 포인트 ₩5,000이 적립되었습니다!",
+    "goToShop": "내 샵 바로가기",
+    "selectMax3": "최대 3개 선택",
+    "signupBonus": "가입 축하 포인트",
+    "personaBonus": "페르소나 완료 보너스",
+    "totalEarned": "총 적립",
+    "nextStep1": "첫 상품을 추가하고 1,000P를 받으세요",
+    "nextStep2": "SNS에 샵을 공유하고 2,000P를 받으세요",
+    "nextStep3": "30일 이내 미션을 완료하고 최대 11,000P를 모으세요"
+  },
+  "missions": {
+    "title": "크리에이터 파일럿",
+    "daysLeft": "D-{days}",
+    "allComplete": "모든 미션 완료!",
+    "progress": "{completed}/{total} 미션",
+    "SHOP_OPEN": "샵 개설",
+    "FIRST_PRODUCT": "첫 상품 추가",
+    "SNS_SHARE": "SNS 공유",
+    "FIVE_PRODUCTS": "상품 5개 추가",
+    "FIRST_SALE": "첫 판매 달성",
+    "expectedRevenue": "1개 팔면 ₩{amount} 수익"
   }
 }

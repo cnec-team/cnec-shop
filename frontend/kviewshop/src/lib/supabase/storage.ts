@@ -48,6 +48,31 @@ export async function uploadMultipleImages(
   return urls;
 }
 
+export async function uploadCreatorProfileImage(
+  file: File,
+  creatorId: string,
+): Promise<string | null> {
+  const supabase = getClient();
+
+  const fileExt = file.name.split('.').pop();
+  const fileName = `creators/${creatorId}/profile_${Date.now()}.${fileExt}`;
+
+  const { data, error } = await supabase.storage
+    .from(BUCKET_NAME)
+    .upload(fileName, file, { cacheControl: '3600', upsert: true });
+
+  if (error) {
+    console.error('Creator profile upload error:', error);
+    return null;
+  }
+
+  const { data: urlData } = supabase.storage
+    .from(BUCKET_NAME)
+    .getPublicUrl(data.path);
+
+  return urlData.publicUrl;
+}
+
 export async function deleteProductImage(path: string): Promise<boolean> {
   const supabase = getClient();
 

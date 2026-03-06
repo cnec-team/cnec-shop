@@ -28,6 +28,7 @@ import { getClient } from '@/lib/supabase/client';
 import { formatCurrency } from '@/lib/i18n/config';
 import type { CreatorDashboardStats, CreatorGrade } from '@/types/database';
 import { GRADE_LABELS } from '@/types/database';
+import { MissionWidget } from '@/components/creator/MissionWidget';
 
 export default function CreatorDashboardPage() {
   const params = useParams();
@@ -210,6 +211,9 @@ export default function CreatorDashboardPage() {
           </Card>
         </Link>
       </div>
+
+      {/* Mission Widget */}
+      <MissionWidget />
 
       {/* Stats Grid */}
       <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-5">

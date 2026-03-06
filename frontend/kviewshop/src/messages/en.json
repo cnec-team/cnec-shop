@@ -740,5 +740,37 @@
     "guideCreated": "Guide created",
     "guideUpdated": "Guide updated",
     "guideDeleted": "Guide deleted"
+  },
+  "onboarding": {
+    "personaTitle": "Beauty Persona",
+    "personaSubtitle": "A required step to get personalized product recommendations",
+    "step1": "Skin Type",
+    "step2": "Age Range",
+    "step3": "Skin Concerns",
+    "step4": "Interests",
+    "step5": "Personal Color",
+    "complete": "Signup Complete!",
+    "welcomeMessage": "Welcome to CNEC Shop as a creator",
+    "welcomePoints": "You've earned 5,000P welcome bonus!",
+    "goToShop": "Go to My Shop",
+    "selectMax3": "Select up to 3",
+    "signupBonus": "Signup Bonus",
+    "personaBonus": "Persona Completion Bonus",
+    "totalEarned": "Total Earned",
+    "nextStep1": "Add your first product and earn 1,000P",
+    "nextStep2": "Share your shop on SNS and earn 2,000P",
+    "nextStep3": "Complete missions within 30 days and earn up to 11,000P"
+  },
+  "missions": {
+    "title": "Creator Pilot",
+    "daysLeft": "D-{days}",
+    "allComplete": "All missions complete!",
+    "progress": "{completed}/{total} missions",
+    "SHOP_OPEN": "Open Shop",
+    "FIRST_PRODUCT": "Add First Product",
+    "SNS_SHARE": "Share on SNS",
+    "FIVE_PRODUCTS": "Add 5 Products",
+    "FIRST_SALE": "First Sale",
+    "expectedRevenue": "Earn ₩{amount} per sale"
   }
 }

@@ -72,6 +72,10 @@ export interface Brand {
   updated_at?: string;
 }
 
+export type AgeRange = '10s' | '20s_early' | '20s_late' | '30s_early' | '30s_late' | '40s_plus';
+export type BeautyInterest = 'skincare' | 'makeup' | 'body' | 'hair' | 'inner_beauty' | 'clean_beauty';
+export type MissionKey = 'SHOP_OPEN' | 'FIRST_PRODUCT' | 'SNS_SHARE' | 'FIVE_PRODUCTS' | 'FIRST_SALE';
+
 export interface Creator {
   id: string;
   user_id: string;
@@ -89,6 +93,9 @@ export interface Creator {
   personal_color?: PersonalColor;
   skin_concerns?: string[];
   scalp_concerns?: string[];
+  age_range?: AgeRange;
+  interests?: BeautyInterest[];
+  onboarding_completed?: boolean;
   total_sales: number;
   total_earnings: number;
   bank_name?: string;
@@ -97,6 +104,17 @@ export interface Creator {
   business_number?: string;
   created_at: string;
   updated_at?: string;
+}
+
+export interface CreatorMission {
+  id: string;
+  creator_id: string;
+  mission_key: MissionKey;
+  is_completed: boolean;
+  completed_at?: string;
+  reward_amount: number;
+  reward_claimed: boolean;
+  created_at: string;
 }
 
 export interface Product {
@@ -518,6 +536,40 @@ export const POINT_TYPE_LABELS: Record<PointType, string> = {
   MONTHLY_TARGET: '월간 목표 달성',
   WITHDRAW: '출금',
   ADMIN_ADJUST: '관리자 조정',
+};
+
+export const MISSION_LABELS: Record<MissionKey, string> = {
+  SHOP_OPEN: '샵 개설',
+  FIRST_PRODUCT: '첫 상품 추가',
+  SNS_SHARE: 'SNS 공유',
+  FIVE_PRODUCTS: '상품 5개 추가',
+  FIRST_SALE: '첫 판매 달성',
+};
+
+export const MISSION_DAY: Record<MissionKey, number> = {
+  SHOP_OPEN: 1,
+  FIRST_PRODUCT: 3,
+  SNS_SHARE: 7,
+  FIVE_PRODUCTS: 14,
+  FIRST_SALE: 30,
+};
+
+export const AGE_RANGE_LABELS: Record<AgeRange, string> = {
+  '10s': '10대',
+  '20s_early': '20대 초반',
+  '20s_late': '20대 후반',
+  '30s_early': '30대 초반',
+  '30s_late': '30대 후반',
+  '40s_plus': '40대+',
+};
+
+export const BEAUTY_INTEREST_LABELS: Record<BeautyInterest, string> = {
+  skincare: '스킨케어',
+  makeup: '메이크업',
+  body: '바디',
+  hair: '헤어',
+  inner_beauty: '이너뷰티',
+  clean_beauty: '클린뷰티',
 };
 
 export const GUIDE_CATEGORY_LABELS: Record<GuideCategory, string> = {
