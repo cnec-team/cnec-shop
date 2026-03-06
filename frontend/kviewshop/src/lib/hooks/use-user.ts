@@ -18,15 +18,18 @@ export function useUser() {
 
     const initSession = async () => {
       try {
+        // Client-side bootstrap: getSession() reads from local storage (fast).
+        // onAuthStateChange below handles token refresh and real-time verification.
+        // Server-side auth (middleware, API routes) uses getUser() for JWT verification.
         const {
-          data: { user: authUser },
-        } = await supabase.auth.getUser();
+          data: { session },
+        } = await supabase.auth.getSession();
 
         if (cancelled) return;
 
-        if (authUser) {
-          setSupabaseUser(authUser);
-          await fetchUserData(authUser.id);
+        if (session?.user) {
+          setSupabaseUser(session.user);
+          await fetchUserData(session.user.id);
         } else {
           setLoading(false);
         }
