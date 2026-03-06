@@ -19,12 +19,16 @@ import {
   Package,
   Palette,
   BarChart3,
+  Coins,
+  Medal,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/lib/store/auth';
 import { getClient } from '@/lib/supabase/client';
 import { formatCurrency } from '@/lib/i18n/config';
-import type { CreatorDashboardStats } from '@/types/database';
+import type { CreatorDashboardStats, CreatorGrade } from '@/types/database';
+import { GRADE_LABELS } from '@/types/database';
+import { MissionWidget } from '@/components/creator/MissionWidget';
 
 export default function CreatorDashboardPage() {
   const params = useParams();
@@ -34,6 +38,8 @@ export default function CreatorDashboardPage() {
   const [copied, setCopied] = useState(false);
   const [stats, setStats] = useState<CreatorDashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [pointBalance, setPointBalance] = useState(0);
+  const [grade, setGrade] = useState<CreatorGrade>('ROOKIE');
 
   const shopUrl = creator?.shop_id ? `https://shop.cnec.kr/${creator.shop_id}` : '';
 
@@ -90,6 +96,22 @@ export default function CreatorDashboardPage() {
           active_gonggu: 0,
           active_picks: 0,
         });
+        // Fetch points and grade in parallel
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session && !cancelled) {
+          const [pointsRes, gradeRes] = await Promise.all([
+            fetch('/api/creator/points?limit=1', { headers: { 'Authorization': `Bearer ${session.access_token}` } }),
+            fetch('/api/creator/grade', { headers: { 'Authorization': `Bearer ${session.access_token}` } }),
+          ]);
+          if (pointsRes.ok) {
+            const pd = await pointsRes.json();
+            if (!cancelled) setPointBalance(pd.balance ?? 0);
+          }
+          if (gradeRes.ok) {
+            const gd = await gradeRes.json();
+            if (!cancelled) setGrade(gd.grade ?? 'ROOKIE');
+          }
+        }
       } catch (error) {
         console.error('Failed to fetch dashboard stats:', error);
       } finally {
@@ -163,6 +185,35 @@ export default function CreatorDashboardPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Points & Grade */}
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
+        <Link href={`/${locale}/creator/points`}>
+          <Card className="hover:shadow-md transition-shadow cursor-pointer">
+            <CardContent className="p-4 flex items-center gap-3">
+              <Coins className="h-6 w-6 text-primary shrink-0" />
+              <div>
+                <p className="text-xs text-muted-foreground">포인트 잔액</p>
+                <p className="text-lg font-bold">{formatCurrency(pointBalance, locale)}</p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href={`/${locale}/creator/grade`}>
+          <Card className="hover:shadow-md transition-shadow cursor-pointer">
+            <CardContent className="p-4 flex items-center gap-3">
+              <Medal className="h-6 w-6 text-amber-500 shrink-0" />
+              <div>
+                <p className="text-xs text-muted-foreground">내 등급</p>
+                <p className="text-lg font-bold">{GRADE_LABELS[grade]}</p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
+
+      {/* Mission Widget */}
+      <MissionWidget />
 
       {/* Stats Grid */}
       <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-5">
