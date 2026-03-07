@@ -1,130 +1,52 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import { getClient } from '@/lib/supabase/client';
+import { useEffect, useRef } from 'react';
+import { useSession, signOut as nextAuthSignOut } from 'next-auth/react';
 import { useAuthStore } from '@/lib/store/auth';
-import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 export function useUser() {
-  const { user, brand, creator, buyer, isLoading, setUser, setBrand, setCreator, setBuyer, setLoading } =
+  const { data: session, status } = useSession();
+  const { user, brand, creator, buyer, setUser, setBrand, setCreator, setBuyer, setLoading } =
     useAuthStore();
-  const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null);
   const fetchingRef = useRef(false);
-  const initializedRef = useRef(false);
 
   useEffect(() => {
-    const supabase = getClient();
-    let cancelled = false;
+    if (status === 'loading') {
+      setLoading(true);
+      return;
+    }
 
-    const initSession = async () => {
-      try {
-        // Client-side bootstrap: getSession() reads from local storage (fast).
-        // onAuthStateChange below handles token refresh and real-time verification.
-        // Server-side auth (middleware, API routes) uses getUser() for JWT verification.
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
+    if (status === 'unauthenticated') {
+      setUser(null);
+      setBrand(null);
+      setCreator(null);
+      setBuyer(null);
+      setLoading(false);
+      return;
+    }
 
-        if (cancelled) return;
-
-        if (session?.user) {
-          setSupabaseUser(session.user);
-          await fetchUserData(session.user.id);
-        } else {
-          setLoading(false);
-        }
-      } catch (error) {
-        console.error('Error getting session:', error);
-        if (!cancelled) setLoading(false);
-      }
-      initializedRef.current = true;
-    };
-
-    initSession();
-
-    // Listen for auth changes - skip initial event if we already handled it
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (cancelled) return;
-      if (!initializedRef.current) return;
-
-      if (session?.user) {
-        setSupabaseUser(session.user);
-        await fetchUserData(session.user.id);
-      } else {
-        setSupabaseUser(null);
-        setUser(null);
-        setBrand(null);
-        setCreator(null);
-        setBuyer(null);
-        setLoading(false);
-      }
-    });
-
-    // Safety timeout - ensure loading is false after 5 seconds no matter what
-    const safetyTimeout = setTimeout(() => {
-      if (!cancelled) {
-        setLoading(false);
-      }
-    }, 5000);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(safetyTimeout);
-      subscription.unsubscribe();
-    };
-  }, []);
+    if (status === 'authenticated' && session?.user?.id) {
+      fetchUserData(session.user.id);
+    }
+  }, [status, session?.user?.id]);
 
   const fetchUserData = async (userId: string) => {
-    // Prevent concurrent fetches
     if (fetchingRef.current) return;
     fetchingRef.current = true;
-
-    const supabase = getClient();
     setLoading(true);
 
     try {
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle();
-
-      if (userError) {
-        console.error('Error fetching user record:', userError);
+      const res = await fetch('/api/auth/me');
+      if (!res.ok) {
         setLoading(false);
         return;
       }
-      if (!userData) {
-        setLoading(false);
-        return;
-      }
-      setUser(userData);
 
-      // Fetch role-specific data
-      if (userData.role === 'brand_admin') {
-        const { data: brandData, error: brandError } = await supabase
-          .from('brands')
-          .select('*')
-          .eq('user_id', userId)
-          .maybeSingle();
-        if (!brandError && brandData) setBrand(brandData);
-      } else if (userData.role === 'creator') {
-        const { data: creatorData, error: creatorError } = await supabase
-          .from('creators')
-          .select('*')
-          .eq('user_id', userId)
-          .maybeSingle();
-        if (!creatorError && creatorData) setCreator(creatorData);
-      } else if (userData.role === 'buyer') {
-        const { data: buyerData, error: buyerError } = await supabase
-          .from('buyers')
-          .select('*')
-          .eq('user_id', userId)
-          .maybeSingle();
-        if (!buyerError && buyerData) setBuyer(buyerData);
-      }
+      const data = await res.json();
+      if (data.user) setUser(data.user);
+      if (data.brand) setBrand(data.brand);
+      if (data.creator) setCreator(data.creator);
+      if (data.buyer) setBuyer(data.buyer);
     } catch (error) {
       console.error('Error fetching user data:', error);
     } finally {
@@ -134,9 +56,7 @@ export function useUser() {
   };
 
   const signOut = async () => {
-    const supabase = getClient();
-    await supabase.auth.signOut();
-    setSupabaseUser(null);
+    await nextAuthSignOut({ redirect: false });
     setUser(null);
     setBrand(null);
     setCreator(null);
@@ -148,9 +68,9 @@ export function useUser() {
     brand,
     creator,
     buyer,
-    supabaseUser,
-    isLoading,
+    isLoading: status === 'loading' || useAuthStore.getState().isLoading,
+    isAuthenticated: status === 'authenticated',
     signOut,
-    refetch: supabaseUser ? () => fetchUserData(supabaseUser.id) : undefined,
+    refetch: session?.user?.id ? () => fetchUserData(session.user.id) : undefined,
   };
 }

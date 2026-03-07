@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { getAuthUser } from '@/lib/auth-helpers';
 
 function getSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -14,21 +15,17 @@ function getSupabase() {
   });
 }
 
-// Verify the requesting user matches the target userId
-async function verifyUser(request: NextRequest, targetUserId: string) {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader) return false;
-
-  const supabase = getSupabase();
-  const token = authHeader.replace('Bearer ', '');
-  const { data: { user }, error } = await supabase.auth.getUser(token);
-  if (error || !user) return false;
-  return user.id === targetUserId;
-}
-
 // GET /api/notifications?userId=xxx&unread=true
 export async function GET(request: NextRequest) {
   try {
+    const authUser = await getAuthUser();
+    if (!authUser) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
     const unreadOnly = searchParams.get('unread') === 'true';
@@ -40,8 +37,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const authorized = await verifyUser(request, userId);
-    if (!authorized) {
+    if (userId !== authUser.id) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -98,19 +94,13 @@ export async function GET(request: NextRequest) {
 // Body: { notificationId: string } or { markAllRead: true, userId: string }
 export async function PATCH(request: NextRequest) {
   try {
-    const body = await request.json();
-    const supabase = getSupabase();
-
-    // Authenticate the request
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader) {
+    const authUser = await getAuthUser();
+    if (!authUser) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user: authUser }, error: authErr } = await supabase.auth.getUser(token);
-    if (authErr || !authUser) {
-      return NextResponse.json({ error: 'Invalid authentication' }, { status: 401 });
-    }
+
+    const body = await request.json();
+    const supabase = getSupabase();
 
     if (body.markAllRead && body.userId) {
       if (body.userId !== authUser.id) {

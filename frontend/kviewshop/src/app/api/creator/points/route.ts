@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { getAuthUser } from '@/lib/auth-helpers';
 
 function getSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -8,25 +9,20 @@ function getSupabase() {
   return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
 }
 
-async function getCreatorId(supabase: ReturnType<typeof getSupabase>, request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader) return null;
-  const token = authHeader.replace('Bearer ', '');
-  const { data: { user }, error } = await supabase.auth.getUser(token);
-  if (error || !user) return null;
-
-  const { data: creator } = await supabase
-    .from('creators')
-    .select('id')
-    .eq('user_id', user.id)
-    .single();
-  return creator?.id ?? null;
-}
-
 export async function GET(request: NextRequest) {
   try {
+    const authUser = await getAuthUser();
+    if (!authUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     const supabase = getSupabase();
-    const creatorId = await getCreatorId(supabase, request);
+
+    const { data: creator } = await supabase
+      .from('creators')
+      .select('id')
+      .eq('user_id', authUser.id)
+      .single();
+    const creatorId = creator?.id ?? null;
     if (!creatorId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

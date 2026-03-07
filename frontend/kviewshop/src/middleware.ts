@@ -1,9 +1,9 @@
 import createMiddleware from 'next-intl/middleware';
-import { NextResponse, type NextRequest } from 'next/server';
-import { updateSession } from '@/lib/supabase/middleware';
+import { NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
 import { locales, defaultLocale, localePattern, type Locale } from '@/lib/i18n/config';
 
-// Country code → locale mapping for IP-based (geo) detection
+// Country code -> locale mapping for IP-based (geo) detection
 const countryToLocale: Record<string, Locale> = {
   KR: 'ko',
   JP: 'ja',
@@ -37,12 +37,7 @@ const countryToLocale: Record<string, Locale> = {
   CH: 'de',
 };
 
-/**
- * Detect locale from geo headers (IP-based).
- * Supports: Vercel (x-vercel-ip-country), Cloudflare (cf-ipcountry),
- * AWS CloudFront (cloudfront-viewer-country), and generic x-country-code.
- */
-function detectLocaleFromGeo(request: NextRequest): Locale | null {
+function detectLocaleFromGeo(request: any): Locale | null {
   const country =
     request.headers.get('x-vercel-ip-country') ||
     request.headers.get('cf-ipcountry') ||
@@ -63,15 +58,17 @@ const intlMiddleware = createMiddleware({
 });
 
 // Build regex patterns dynamically from config
-const LP = localePattern; // e.g. "en|ja|ko|es|it|ru|ar|zh|fr|pt|de"
+const LP = localePattern;
 const loginPageRegex = new RegExp(`^/(${LP})/(brand|creator|buyer)/login`);
 const signupPageRegex = new RegExp(`^/(${LP})/(buyer)/signup`);
+const generalLoginRegex = new RegExp(`^/(${LP})/login`);
+const generalSignupRegex = new RegExp(`^/(${LP})/signup`);
 const adminRouteRegex = new RegExp(`^/(${LP})/admin`);
 const brandRouteRegex = new RegExp(`^/(${LP})/brand`);
 const creatorRouteRegex = new RegExp(`^/(${LP})/creator`);
 const buyerRouteRegex = new RegExp(`^/(${LP})/buyer`);
 
-export async function middleware(request: NextRequest) {
+export default auth(async function middleware(request) {
   const pathname = request.nextUrl.pathname;
 
   // Handle shop routes (/@username) - rewrite to /username (strip @)
@@ -93,7 +90,7 @@ export async function middleware(request: NextRequest) {
     );
   }
 
-  // Geo-based locale detection: redirect root or unlocalized paths to detected locale
+  // Geo-based locale detection
   const hasLocalePrefix = locales.some(
     (l) => pathname === `/${l}` || pathname.startsWith(`/${l}/`)
   );
@@ -104,27 +101,27 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Update Supabase session
-  const { supabaseResponse, user } = await updateSession(request);
+  // Get auth session from NextAuth
+  const user = request.auth?.user;
 
-  // Login/signup pages should be accessible without authentication
-  const isLoginPage = loginPageRegex.test(pathname);
-  const isSignupPage = signupPageRegex.test(pathname);
-  const isPublicAuthPage = isLoginPage || isSignupPage;
+  // Auth pages should be accessible without authentication
+  const isAuthPage =
+    loginPageRegex.test(pathname) ||
+    signupPageRegex.test(pathname) ||
+    generalLoginRegex.test(pathname) ||
+    generalSignupRegex.test(pathname);
 
-  // Protected routes - require authentication (exclude login/signup pages)
+  // Protected routes - require authentication (exclude auth pages)
   const protectedPaths = ['/admin', '/brand', '/creator', '/buyer'];
-  const isProtectedRoute = !isPublicAuthPage && protectedPaths.some((path) => {
+  const isProtectedRoute = !isAuthPage && protectedPaths.some((path) => {
     const pattern = new RegExp(`^/(${LP})${path}`);
     return pattern.test(pathname);
   });
 
   if (isProtectedRoute && !user) {
-    // Redirect to appropriate login with return URL
     const locale = pathname.split('/')[1] || defaultLocale;
     const returnUrl = encodeURIComponent(pathname);
 
-    // Redirect buyer routes to buyer login, others to general login
     if (buyerRouteRegex.test(pathname)) {
       return NextResponse.redirect(
         new URL(`/${locale}/buyer/login?returnUrl=${returnUrl}`, request.url)
@@ -135,30 +132,25 @@ export async function middleware(request: NextRequest) {
     );
   }
 
-  // Role-based access control (exclude login/signup pages)
-  if (user && !isPublicAuthPage) {
-    const userMetadata = user.user_metadata;
-    const userRole = userMetadata?.role;
+  // Role-based access control (exclude auth pages)
+  if (user && !isAuthPage) {
+    const userRole = user.role;
 
-    // Admin routes - only super_admin
     if (adminRouteRegex.test(pathname) && userRole !== 'super_admin') {
       const locale = pathname.split('/')[1] || defaultLocale;
       return NextResponse.redirect(new URL(`/${locale}`, request.url));
     }
 
-    // Brand routes - only brand_admin
     if (brandRouteRegex.test(pathname) && userRole !== 'brand_admin') {
       const locale = pathname.split('/')[1] || defaultLocale;
       return NextResponse.redirect(new URL(`/${locale}`, request.url));
     }
 
-    // Creator routes - only creator
     if (creatorRouteRegex.test(pathname) && userRole !== 'creator') {
       const locale = pathname.split('/')[1] || defaultLocale;
       return NextResponse.redirect(new URL(`/${locale}`, request.url));
     }
 
-    // Buyer routes - only buyer
     if (buyerRouteRegex.test(pathname) && userRole !== 'buyer') {
       const locale = pathname.split('/')[1] || defaultLocale;
       return NextResponse.redirect(new URL(`/${locale}`, request.url));
@@ -166,22 +158,11 @@ export async function middleware(request: NextRequest) {
   }
 
   // Apply i18n middleware
-  const response = intlMiddleware(request);
-
-  // Copy cookies from supabase response
-  supabaseResponse.cookies.getAll().forEach((cookie) => {
-    response.cookies.set(cookie.name, cookie.value, cookie);
-  });
-
-  return response;
-}
+  return intlMiddleware(request);
+});
 
 export const config = {
   matcher: [
-    // Match all pathnames except for
-    // - API routes
-    // - Static files
-    // - _next
     '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

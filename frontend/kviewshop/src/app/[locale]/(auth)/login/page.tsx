@@ -7,7 +7,7 @@ import { useTranslations } from 'next-intl';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { getClient } from '@/lib/supabase/client';
+import { signIn } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -45,72 +45,25 @@ export default function LoginPage() {
     setIsLoading(true);
     setLoginError(null);
     try {
-      const supabase = getClient();
-      const { data: authData, error } = await supabase.auth.signInWithPassword({
+      const result = await signIn('credentials', {
         email: data.email,
         password: data.password,
+        redirect: false,
       });
 
-      if (error) {
-        if (error.message.includes('Invalid login credentials')) {
-          setLoginError(t('invalidCredentials'));
-        } else if (error.message.includes('Email not confirmed')) {
-          setLoginError(t('emailNotConfirmed'));
-        } else {
-          setLoginError(error.message);
-        }
+      if (result?.error) {
+        setLoginError(t('invalidCredentials'));
         return;
       }
 
-      // Get role from auth user metadata first
-      let role = authData.user?.user_metadata?.role;
-
-      // If no role in metadata, check DB for user role
-      if (!role && authData.user) {
-        const { data: userData } = await supabase
-          .from('users')
-          .select('role')
-          .eq('id', authData.user.id)
-          .maybeSingle();
-
-        if (userData?.role) {
-          role = userData.role;
-          // Update user metadata with role for future logins
-          await supabase.auth.updateUser({
-            data: { role: userData.role }
-          });
-        }
-      }
-
-      // If still no role, check if user is a creator or brand
-      if (!role && authData.user) {
-        const { data: creatorData } = await supabase
-          .from('creators')
-          .select('id')
-          .eq('user_id', authData.user.id)
-          .maybeSingle();
-
-        if (creatorData) {
-          role = 'creator';
-          await supabase.auth.updateUser({ data: { role: 'creator' } });
-        } else {
-          const { data: brandData } = await supabase
-            .from('brands')
-            .select('id')
-            .eq('user_id', authData.user.id)
-            .maybeSingle();
-
-          if (brandData) {
-            role = 'brand_admin';
-            await supabase.auth.updateUser({ data: { role: 'brand_admin' } });
-          }
-        }
-      }
+      // Fetch session to get role for routing
+      const sessionRes = await fetch('/api/auth/session');
+      const session = await sessionRes.json();
+      const role = session?.user?.role;
 
       if (returnUrl) {
         router.push(returnUrl);
       } else {
-        // Route based on role
         const dashboardPath =
           role === 'super_admin'
             ? '/admin/dashboard'
@@ -120,7 +73,7 @@ export default function LoginPage() {
             ? '/creator/dashboard'
             : role === 'buyer'
             ? '/buyer/dashboard'
-            : '/buyer/login';
+            : '/';
         router.push(`/${locale}${dashboardPath}`);
       }
     } catch (error) {
