@@ -1,0 +1,1598 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum UserRole {
+  super_admin
+  brand_admin
+  creator
+  buyer
+}
+
+enum UserStatus {
+  pending
+  active
+  suspended
+}
+
+enum ProductStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum ProductCategory {
+  skincare
+  makeup
+  hair
+  body
+  etc
+}
+
+enum CampaignType {
+  GONGGU
+  ALWAYS
+}
+
+enum CampaignStatus {
+  DRAFT
+  RECRUITING
+  ACTIVE
+  ENDED
+}
+
+enum CampaignRecruitmentType {
+  OPEN
+  APPROVAL
+}
+
+enum CampaignParticipationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ShopItemType {
+  GONGGU
+  PICK
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  PREPARING
+  SHIPPING
+  DELIVERED
+  CONFIRMED
+  CANCELLED
+  REFUNDED
+}
+
+enum ConversionType {
+  DIRECT
+  INDIRECT
+}
+
+enum ConversionStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+enum SettlementStatus {
+  PENDING
+  COMPLETED
+  CARRIED_OVER
+}
+
+enum ShippingFeeType {
+  FREE
+  PAID
+  CONDITIONAL_FREE
+}
+
+enum BannerType {
+  HORIZONTAL
+  VERTICAL
+}
+
+enum BannerLinkType {
+  EXTERNAL
+  COLLECTION
+  PRODUCT
+}
+
+enum NotificationType {
+  ORDER
+  SHIPPING
+  SETTLEMENT
+  CAMPAIGN
+  SYSTEM
+}
+
+enum MocraStatus {
+  green
+  yellow
+  red
+}
+
+enum SkinType {
+  combination
+  dry
+  oily
+  normal
+  oily_sensitive
+}
+
+enum PersonalColor {
+  spring_warm
+  summer_cool
+  autumn_warm
+  winter_cool
+}
+
+enum SampleRequestStatus {
+  pending
+  approved
+  shipped
+  received
+  rejected
+}
+
+enum SupportTicketCategory {
+  product
+  cs
+}
+
+enum SupportTicketStatus {
+  open
+  resolved
+}
+
+enum MallSubscriptionStatus {
+  active
+  paused
+  cancelled
+}
+
+enum CommunityPostType {
+  general
+  review
+  question
+  announcement
+}
+
+enum PointsHistoryType {
+  review_text
+  review_instagram
+  purchase
+  referral
+  event
+  expiry
+  use_order
+  admin_adjustment
+}
+
+enum CreatorPointType {
+  SIGNUP_BONUS
+  PERSONA_COMPLETE
+  FIRST_PRODUCT
+  FIRST_SALE
+  REFERRAL_INVITE
+  REFERRAL_SALE
+  WEEKLY_ACTIVE
+  MONTHLY_TARGET
+  WITHDRAW
+  ADMIN_ADJUST
+}
+
+enum CreatorReferralStatus {
+  PENDING
+  SIGNUP_COMPLETE
+  FIRST_SALE_COMPLETE
+}
+
+enum CreatorGradeLevel {
+  ROOKIE
+  SILVER
+  GOLD
+  PLATINUM
+}
+
+enum GuideCategory {
+  CREATOR_BEGINNER
+  CREATOR_SALES
+  BRAND_START
+  BRAND_OPTIMIZE
+}
+
+enum GuideContentType {
+  CARD
+  VIDEO
+  ARTICLE
+}
+
+enum GuideTargetGrade {
+  ALL
+  SILVER
+  GOLD
+  PLATINUM
+}
+
+enum CreatorMissionKey {
+  SHOP_OPEN
+  FIRST_PRODUCT
+  SNS_SHARE
+  FIVE_PRODUCTS
+  FIRST_SALE
+}
+
+enum LivePlatform {
+  instagram
+  youtube
+  tiktok
+  internal
+}
+
+enum LiveSessionStatus {
+  scheduled
+  live
+  ended
+  cancelled
+}
+
+enum CreatorApplicationStatus {
+  pending
+  approved
+  rejected
+}
+
+enum LegalContentType {
+  terms_of_service
+  privacy_policy
+  refund_policy
+  shipping_policy
+  business_info
+  contact_info
+}
+
+// ============================================================
+// USERS
+// ============================================================
+
+model User {
+  id        String     @id @default(uuid())
+  email     String     @unique @db.VarChar(255)
+  name      String     @db.VarChar(100)
+  passwordHash String? @map("password_hash") @db.VarChar(255)
+  role      UserRole
+  status    UserStatus @default(active)
+  phone     String?    @db.VarChar(20)
+  avatarUrl String?    @map("avatar_url")
+  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  brand         Brand?
+  creator       Creator?
+  buyer         Buyer?
+  settlements   Settlement[]
+  notifications Notification[]
+  answeredQuestions ProductQuestion[] @relation("QuestionAnswerer")
+
+  @@map("users")
+}
+
+// ============================================================
+// BRANDS
+// ============================================================
+
+model Brand {
+  id                    String    @id @default(uuid())
+  userId                String    @unique @map("user_id")
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Names
+  brandName             String?   @map("brand_name")
+  companyName           String?   @map("company_name")
+  companyNameEn         String?   @map("company_name_en")
+  companyNameJp         String?   @map("company_name_jp")
+  representativeName    String?   @map("representative_name") @db.VarChar(100)
+  // Info
+  businessNumber        String?   @map("business_number") @db.VarChar(50)
+  businessRegistrationUrl String? @map("business_registration_url")
+  logoUrl               String?   @map("logo_url")
+  description           String?
+  descriptionEn         String?   @map("description_en")
+  descriptionJp         String?   @map("description_jp")
+  contactEmail          String?   @map("contact_email") @db.VarChar(255)
+  contactPhone          String?   @map("contact_phone") @db.VarChar(20)
+  // Commission
+  platformFeeRate       Decimal   @default(0.03) @map("platform_fee_rate") @db.Decimal(5, 4)
+  creatorCommissionRate Int?      @default(25) @map("creator_commission_rate")
+  enableTieredCommission Boolean  @default(false) @map("enable_tiered_commission")
+  tier1Rate             Int?      @map("tier1_rate")
+  tier2Rate             Int?      @map("tier2_rate")
+  tier3Rate             Int?      @map("tier3_rate")
+  tier4Rate             Int?      @map("tier4_rate")
+  // Shipping
+  shippingCountries     String[]  @default([]) @map("shipping_countries")
+  defaultShippingFee    Decimal   @default(0) @map("default_shipping_fee") @db.Decimal(10, 0)
+  freeShippingThreshold Decimal?  @map("free_shipping_threshold") @db.Decimal(10, 0)
+  defaultCourier        String?   @map("default_courier") @db.VarChar(20)
+  returnAddress         String?   @map("return_address")
+  exchangePolicy        String?   @map("exchange_policy")
+  // Certifications
+  certifications        Json      @default("[]") @db.JsonB
+  // MoCRA
+  mocraStatus           MocraStatus @default(green) @map("mocra_status")
+  usSalesYtd            Decimal   @default(0) @map("us_sales_ytd")
+  jpSalesYtd            Decimal   @default(0) @map("jp_sales_ytd")
+  monthlyFee            Int       @default(55000) @map("monthly_fee")
+  // Bank
+  bankName              String?   @map("bank_name")
+  bankAccount           String?   @map("bank_account")
+  accountNumber         String?   @map("account_number")
+  accountHolder         String?   @map("account_holder")
+  bankHolder            String?   @map("bank_holder") @db.VarChar(50)
+  bankCode              String?   @map("bank_code")
+  bankVerified          Boolean   @default(false) @map("bank_verified")
+  bankVerifiedAt        DateTime? @map("bank_verified_at") @db.Timestamptz
+  // Settlement
+  settlementCycle       String    @default("monthly") @map("settlement_cycle")
+  minimumPayout         Int       @default(50) @map("minimum_payout")
+  // Approval
+  approved              Boolean   @default(false)
+  approvedAt            DateTime? @map("approved_at") @db.Timestamptz
+  // Brand lines
+  brandLines            Json      @default("[]") @map("brand_lines") @db.JsonB
+  // Timestamps
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  products       Product[]
+  campaigns      Campaign[]
+  orders         Order[]
+  supportTickets SupportTicket[]
+  sampleRequests SampleRequest[]
+
+  @@index([approved])
+  @@index([mocraStatus])
+  @@map("brands")
+}
+
+// ============================================================
+// CREATORS
+// ============================================================
+
+model Creator {
+  id                   String    @id @default(uuid())
+  userId               String    @unique @map("user_id")
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Identity (from both migration 001 and 002)
+  username             String?   @unique
+  shopId               String?   @unique @map("shop_id") @db.VarChar(50)
+  displayName          String?   @map("display_name") @db.VarChar(50)
+  bio                  String?
+  bioEn                String?   @map("bio_en")
+  bioJp                String?   @map("bio_jp")
+  // Images
+  profileImage         String?   @map("profile_image")
+  profileImageUrl      String?   @map("profile_image_url")
+  coverImageUrl        String?   @map("cover_image_url")
+  bannerImageUrl       String?   @map("banner_image_url")
+  bannerLink           String?   @map("banner_link")
+  // Social handles
+  instagramHandle      String?   @map("instagram_handle") @db.VarChar(100)
+  youtubeHandle        String?   @map("youtube_handle") @db.VarChar(100)
+  tiktokHandle         String?   @map("tiktok_handle") @db.VarChar(100)
+  instagram            String?
+  youtube              String?
+  tiktok               String?
+  socialLinks          Json      @default("{}") @map("social_links") @db.JsonB
+  // Beauty persona
+  skinType             String?   @map("skin_type") @db.VarChar(20)
+  personalColor        String?   @map("personal_color") @db.VarChar(20)
+  skinConcerns         String[]  @default([]) @map("skin_concerns")
+  scalpConcerns        String[]  @default([]) @map("scalp_concerns")
+  ageRange             String?   @map("age_range") @db.VarChar(20)
+  interests            String[]  @default([])
+  // Onboarding
+  onboardingCompleted  Boolean   @default(false) @map("onboarding_completed")
+  // Stats
+  totalSales           Decimal   @default(0) @map("total_sales") @db.Decimal(12, 0)
+  totalEarnings        Decimal   @default(0) @map("total_earnings") @db.Decimal(12, 0)
+  totalRevenue         Decimal   @default(0) @map("total_revenue")
+  totalOrders          Int       @default(0) @map("total_orders")
+  // Business
+  isBusiness           Boolean   @default(false) @map("is_business")
+  businessNumber       String?   @map("business_number") @db.VarChar(50)
+  // Bank/Payment
+  bankName             String?   @map("bank_name")
+  bankAccount          String?   @map("bank_account")
+  paymentMethod        String?   @default("paypal") @map("payment_method")
+  paypalEmail          String?   @map("paypal_email")
+  accountNumber        String?   @map("account_number")
+  swiftCode            String?   @map("swift_code")
+  // Contact
+  email                String?
+  phone                String?
+  // Shop design
+  themeColor           String    @default("#1a1a1a") @map("theme_color")
+  backgroundColor      String    @default("#1a1a1a") @map("background_color")
+  backgroundImage      String?   @map("background_image")
+  textColor            String    @default("#ffffff") @map("text_color")
+  shopSettings         Json      @default("{}") @map("shop_settings") @db.JsonB
+  // Level system
+  level                String?   @default("bronze")
+  levelPoints          Int       @default(0) @map("level_points")
+  levelUpdatedAt       DateTime? @map("level_updated_at") @db.Timestamptz
+  // Community
+  communityEnabled     Boolean   @default(false) @map("community_enabled")
+  communityType        String    @default("board") @map("community_type")
+  // Status
+  status               String    @default("ACTIVE") @map("status") @db.VarChar(10)
+  country              String?
+  // Picked products
+  pickedProducts       String[]  @default([]) @map("picked_products")
+  // Notification settings
+  notificationSettings Json?     @map("notification_settings") @db.JsonB
+  // Timestamps
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  shopItems            CreatorShopItem[]
+  collections          Collection[]
+  routines             BeautyRoutine[]
+  orders               Order[]
+  conversions          Conversion[]
+  settlements          Settlement[]
+  shopVisits           ShopVisit[]
+  points               CreatorPoint[]
+  referralsGiven       CreatorReferral[] @relation("Referrer")
+  referralsReceived    CreatorReferral[] @relation("Referred")
+  grade                CreatorGrade?
+  missions             CreatorMission[]
+  banners              Banner[]
+  creatorProducts      CreatorProduct[]
+  shortUrls            ShortUrl[]
+  liveSessions         LiveSession[]
+  liveBotSetting       LiveBotSetting?
+  levelHistory         CreatorLevelHistory[]
+  mallSubscriptions    MallSubscription[]
+  communityPosts       CommunityPost[]
+  sampleRequests       SampleRequest[]
+  buyerWishlists       BuyerWishlist[]
+  buyerCarts           BuyerCart[]
+
+  @@index([country])
+  @@map("creators")
+}
+
+// ============================================================
+// PRODUCTS
+// ============================================================
+
+model Product {
+  id                    String         @id @default(uuid())
+  brandId               String         @map("brand_id")
+  brand                 Brand          @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  // Names (multi-lang)
+  name                  String?        @db.VarChar(200)
+  nameKo                String?        @map("name_ko")
+  nameEn                String?        @map("name_en")
+  nameJp                String?        @map("name_jp")
+  sku                   String?
+  // Prices
+  price                 Decimal?
+  originalPrice         Decimal?       @map("original_price") @db.Decimal(10, 0)
+  salePrice             Decimal?       @map("sale_price") @db.Decimal(10, 0)
+  priceUsd              Int?           @map("price_usd")
+  priceJpy              Int?           @map("price_jpy")
+  originalPriceUsd      Int?           @map("original_price_usd")
+  originalPriceJpy      Int?           @map("original_price_jpy")
+  // Stock
+  stock                 Int            @default(0)
+  // Description (multi-lang)
+  description           String?
+  descriptionKo         String?        @map("description_ko")
+  descriptionEn         String?        @map("description_en")
+  descriptionJp         String?        @map("description_jp")
+  // Media
+  images                String[]       @default([])
+  imageUrl              String?        @map("image_url")
+  thumbnailUrl          String?        @map("thumbnail_url")
+  // Details
+  category              String?        @db.VarChar(20)
+  volume                String?        @db.VarChar(100)
+  ingredients           String?
+  howToUse              String?        @map("how_to_use")
+  usageInfo             String?        @map("usage_info")
+  // Flags
+  isCosmetic            Boolean        @default(false) @map("is_cosmetic")
+  isActive              Boolean        @default(true) @map("is_active")
+  status                String         @default("ACTIVE") @db.VarChar(10)
+  allowCreatorPick      Boolean        @default(true) @map("allow_creator_pick")
+  defaultCommissionRate Decimal        @default(0.10) @map("default_commission_rate") @db.Decimal(5, 4)
+  // Shipping
+  shippingFeeType       ShippingFeeType @default(FREE) @map("shipping_fee_type")
+  shippingFee           Decimal        @default(0) @map("shipping_fee") @db.Decimal(10, 0)
+  freeShippingThreshold Decimal?       @map("free_shipping_threshold") @db.Decimal(10, 0)
+  courier               String?        @db.VarChar(20)
+  shippingInfo          String?        @map("shipping_info")
+  returnPolicy          String?        @map("return_policy")
+  // Timestamps
+  createdAt             DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  shopItems          CreatorShopItem[]
+  campaignProducts   CampaignProduct[]
+  orderItems         OrderItem[]
+  creatorProducts    CreatorProduct[]
+  liveProducts       LiveProduct[]
+  productQuestions   ProductQuestion[]
+  productReviews     ProductReview[]
+  buyerWishlists     BuyerWishlist[]
+  buyerCarts         BuyerCart[]
+  liveChatMessages   LiveChatMessage[]
+
+  @@index([isActive])
+  @@index([status])
+  @@map("products")
+}
+
+// ============================================================
+// CREATOR PRODUCTS (legacy pick table from migration 001)
+// ============================================================
+
+model CreatorProduct {
+  id           String   @id @default(uuid())
+  creatorId    String   @map("creator_id")
+  creator      Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  productId    String   @map("product_id")
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  displayOrder Int      @default(0) @map("display_order")
+  isFeatured   Boolean  @default(false) @map("is_featured")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([creatorId, productId])
+  @@map("creator_products")
+}
+
+// ============================================================
+// CAMPAIGNS
+// ============================================================
+
+model Campaign {
+  id               String         @id @default(uuid())
+  brandId          String         @map("brand_id")
+  brand            Brand          @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  type             CampaignType
+  title            String         @db.VarChar(200)
+  description      String?
+  status           CampaignStatus @default(DRAFT)
+  startAt          DateTime?      @map("start_at") @db.Timestamptz
+  endAt            DateTime?      @map("end_at") @db.Timestamptz
+  recruitmentType  String         @default("OPEN") @map("recruitment_type") @db.VarChar(10)
+  commissionRate   Decimal        @default(0.10) @map("commission_rate") @db.Decimal(5, 4)
+  totalStock       Int?           @map("total_stock")
+  soldCount        Int            @default(0) @map("sold_count")
+  targetParticipants Int?         @map("target_participants")
+  conditions       String?
+  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  products       CampaignProduct[]
+  participations CampaignParticipation[]
+  shopItems      CreatorShopItem[]
+  promotionKit   PromotionKit?
+
+  @@index([status])
+  @@index([type])
+  @@map("campaigns")
+}
+
+// ============================================================
+// CAMPAIGN PRODUCTS
+// ============================================================
+
+model CampaignProduct {
+  id              String   @id @default(uuid())
+  campaignId      String   @map("campaign_id")
+  campaign        Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  productId       String   @map("product_id")
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  campaignPrice   Decimal  @map("campaign_price") @db.Decimal(10, 0)
+  perCreatorLimit Int?     @map("per_creator_limit")
+
+  @@map("campaign_products")
+}
+
+// ============================================================
+// CAMPAIGN PARTICIPATIONS
+// ============================================================
+
+model CampaignParticipation {
+  id         String    @id @default(uuid())
+  campaignId String    @map("campaign_id")
+  campaign   Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  creatorId  String    @map("creator_id")
+  status     String    @default("PENDING") @db.VarChar(10)
+  message    String?
+  appliedAt  DateTime  @default(now()) @map("applied_at") @db.Timestamptz
+  approvedAt DateTime? @map("approved_at") @db.Timestamptz
+
+  @@unique([campaignId, creatorId])
+  @@map("campaign_participations")
+}
+
+// ============================================================
+// COLLECTIONS
+// ============================================================
+
+model Collection {
+  id           String   @id @default(uuid())
+  creatorId    String   @map("creator_id")
+  creator      Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  name         String   @db.VarChar(50)
+  description  String?
+  isVisible    Boolean  @default(true) @map("is_visible")
+  displayOrder Int      @default(0) @map("display_order")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  items CreatorShopItem[]
+
+  @@map("collections")
+}
+
+// ============================================================
+// CREATOR SHOP ITEMS
+// ============================================================
+
+model CreatorShopItem {
+  id           String      @id @default(uuid())
+  creatorId    String      @map("creator_id")
+  creator      Creator     @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  productId    String      @map("product_id")
+  product      Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  campaignId   String?     @map("campaign_id")
+  campaign     Campaign?   @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  type         String      @db.VarChar(10) // 'GONGGU' | 'PICK'
+  collectionId String?     @map("collection_id")
+  collection   Collection? @relation(fields: [collectionId], references: [id], onDelete: SetNull)
+  displayOrder Int         @default(0) @map("display_order")
+  isVisible    Boolean     @default(true) @map("is_visible")
+  addedAt      DateTime    @default(now()) @map("added_at") @db.Timestamptz
+
+  @@index([type])
+  @@map("creator_shop_items")
+}
+
+// ============================================================
+// BEAUTY ROUTINES
+// ============================================================
+
+model BeautyRoutine {
+  id           String   @id @default(uuid())
+  creatorId    String   @map("creator_id")
+  creator      Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  name         String   @db.VarChar(50)
+  steps        Json     @default("[]") @db.JsonB
+  isVisible    Boolean  @default(true) @map("is_visible")
+  displayOrder Int      @default(0) @map("display_order")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  routineSteps RoutineStep[]
+
+  @@map("beauty_routines")
+}
+
+// ============================================================
+// ROUTINE STEPS (normalized from v1.1)
+// ============================================================
+
+model RoutineStep {
+  id              String @id @default(uuid())
+  routineId       String @map("routine_id")
+  routine         BeautyRoutine @relation(fields: [routineId], references: [id], onDelete: Cascade)
+  stepName        String @map("step_name") @db.VarChar(50)
+  stepDescription String @map("step_description")
+  imageUrl        String? @map("image_url")
+  linkUrl         String? @map("link_url")
+  productTags     Json    @default("[]") @map("product_tags") @db.JsonB
+  displayOrder    Int     @default(0) @map("display_order")
+
+  @@map("routine_steps")
+}
+
+// ============================================================
+// ORDERS
+// ============================================================
+
+model Order {
+  id              String      @id @default(uuid())
+  orderNumber     String?     @unique @map("order_number") @db.VarChar(20)
+  // Parties
+  creatorId       String?     @map("creator_id")
+  creator         Creator?    @relation(fields: [creatorId], references: [id])
+  brandId         String?     @map("brand_id")
+  brand           Brand?      @relation(fields: [brandId], references: [id])
+  buyerId         String?     @map("buyer_id")
+  buyer           Buyer?      @relation(fields: [buyerId], references: [id], onDelete: SetNull)
+  // Customer info (from migration 001)
+  customerEmail   String?     @map("customer_email")
+  customerName    String?     @map("customer_name")
+  customerPhone   String?     @map("customer_phone")
+  // Buyer info (from migration 002)
+  buyerName       String?     @map("buyer_name") @db.VarChar(100)
+  buyerPhone      String?     @map("buyer_phone") @db.VarChar(30)
+  buyerEmail      String?     @map("buyer_email") @db.VarChar(200)
+  // Shipping
+  shippingAddress String?     @map("shipping_address")
+  shippingDetail  String?     @map("shipping_detail")
+  shippingZipcode String?     @map("shipping_zipcode") @db.VarChar(20)
+  shippingMemo    String?     @map("shipping_memo")
+  shippingFee     Decimal     @default(0) @map("shipping_fee") @db.Decimal(12, 0)
+  // Amounts
+  subtotal        Decimal?
+  productAmount   Decimal?    @map("product_amount") @db.Decimal(10, 0)
+  totalAmount     Decimal     @map("total_amount")
+  // Revenue split (from migration 001)
+  creatorRevenue  Decimal?    @map("creator_revenue")
+  platformRevenue Decimal?    @map("platform_revenue")
+  brandRevenue    Decimal?    @map("brand_revenue")
+  // Location
+  country         String?
+  currency        String?
+  // Status
+  status          String      @default("PAID")
+  // Payment
+  paymentMethod   String?     @map("payment_method") @db.VarChar(50)
+  paymentKey      String?     @map("payment_key") @db.VarChar(100)
+  paymentIntentId String?     @map("payment_intent_id")
+  pgTransactionId String?     @map("pg_transaction_id") @db.VarChar(200)
+  pgProvider      String?     @map("pg_provider") @db.VarChar(50)
+  // Tracking
+  trackingNumber  String?     @map("tracking_number") @db.VarChar(100)
+  courierCode     String?     @map("courier_code") @db.VarChar(20)
+  notes           String?
+  // Timestamps
+  paidAt          DateTime?   @map("paid_at") @db.Timestamptz
+  shippedAt       DateTime?   @map("shipped_at") @db.Timestamptz
+  deliveredAt     DateTime?   @map("delivered_at") @db.Timestamptz
+  confirmedAt     DateTime?   @map("confirmed_at") @db.Timestamptz
+  completedAt     DateTime?   @map("completed_at") @db.Timestamptz
+  cancelledAt     DateTime?   @map("cancelled_at") @db.Timestamptz
+  cancelReason    String?     @map("cancel_reason")
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  items       OrderItem[]
+  conversions Conversion[]
+  reviews     ProductReview[]
+
+  @@index([status])
+  @@index([country])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+// ============================================================
+// ORDER ITEMS
+// ============================================================
+
+model OrderItem {
+  id           String   @id @default(uuid())
+  orderId      String   @map("order_id")
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId    String   @map("product_id")
+  product      Product  @relation(fields: [productId], references: [id])
+  campaignId   String?  @map("campaign_id")
+  productName  String?  @map("product_name") @db.VarChar(200)
+  productImage String?  @map("product_image")
+  quantity     Int      @default(1)
+  unitPrice    Decimal  @map("unit_price")
+  totalPrice   Decimal  @map("total_price")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  conversions Conversion[]
+
+  @@map("order_items")
+}
+
+// ============================================================
+// CONVERSIONS
+// ============================================================
+
+model Conversion {
+  id               String   @id @default(uuid())
+  orderId          String   @map("order_id")
+  order            Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItemId      String   @map("order_item_id")
+  orderItem        OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  creatorId        String   @map("creator_id")
+  creator          Creator  @relation(fields: [creatorId], references: [id])
+  conversionType   String   @map("conversion_type") @db.VarChar(10)
+  orderAmount      Decimal  @map("order_amount") @db.Decimal(10, 0)
+  commissionRate   Decimal  @map("commission_rate") @db.Decimal(5, 4)
+  commissionAmount Decimal  @map("commission_amount") @db.Decimal(10, 0)
+  status           String   @default("PENDING") @db.VarChar(10)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+  confirmedAt      DateTime? @map("confirmed_at") @db.Timestamptz
+
+  @@map("conversions")
+}
+
+// ============================================================
+// SETTLEMENTS
+// ============================================================
+
+model Settlement {
+  id                 String    @id @default(uuid())
+  userId             String?   @map("user_id")
+  user               User?     @relation(fields: [userId], references: [id])
+  userRole           String?   @map("user_role")
+  creatorId          String?   @map("creator_id")
+  creator            Creator?  @relation(fields: [creatorId], references: [id])
+  period             String?
+  periodStart        DateTime? @map("period_start") @db.Date
+  periodEnd          DateTime? @map("period_end") @db.Date
+  // Amounts (from migration 002 format)
+  totalConversions   Int       @default(0) @map("total_conversions")
+  totalSales         Decimal   @default(0) @map("total_sales") @db.Decimal(12, 0)
+  directCommission   Decimal   @default(0) @map("direct_commission") @db.Decimal(10, 0)
+  indirectCommission Decimal   @default(0) @map("indirect_commission") @db.Decimal(10, 0)
+  grossCommission    Decimal   @default(0) @map("gross_commission") @db.Decimal(10, 0)
+  withholdingTax     Decimal   @default(0) @map("withholding_tax") @db.Decimal(10, 0)
+  netAmount          Decimal   @default(0) @map("net_amount") @db.Decimal(10, 0)
+  // From migration 001 format
+  totalRevenue       Decimal?  @map("total_revenue")
+  currency           String?
+  details            Json?     @default("{}") @db.JsonB
+  // Status
+  status             String    @default("PENDING") @db.VarChar(15)
+  paidAt             DateTime? @map("paid_at") @db.Timestamptz
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([status])
+  @@map("settlements")
+}
+
+// ============================================================
+// SHOP VISITS
+// ============================================================
+
+model ShopVisit {
+  id              String   @id @default(uuid())
+  creatorId       String   @map("creator_id")
+  creator         Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  visitorId       String   @map("visitor_id") @db.VarChar(100)
+  ipAddress       String?  @map("ip_address") @db.VarChar(45)
+  userAgent       String?  @map("user_agent")
+  referer         String?
+  attributionData Json     @default("{}") @map("attribution_data") @db.JsonB
+  visitedAt       DateTime @default(now()) @map("visited_at") @db.Timestamptz
+  expiresAt       DateTime @map("expires_at") @db.Timestamptz
+
+  @@map("shop_visits")
+}
+
+// ============================================================
+// BANNERS
+// ============================================================
+
+model Banner {
+  id           String   @id @default(uuid())
+  creatorId    String   @map("creator_id")
+  creator      Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  imageUrl     String   @map("image_url")
+  bannerType   String   @default("HORIZONTAL") @map("banner_type") @db.VarChar(15)
+  linkUrl      String?  @map("link_url")
+  linkType     String   @default("EXTERNAL") @map("link_type") @db.VarChar(15)
+  isVisible    Boolean  @default(true) @map("is_visible")
+  displayOrder Int      @default(0) @map("display_order")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("banners")
+}
+
+// ============================================================
+// NOTIFICATIONS
+// ============================================================
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   @db.VarChar(15)
+  title     String   @db.VarChar(200)
+  message   String
+  linkUrl   String?  @map("link_url")
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+// ============================================================
+// PROMOTION KITS
+// ============================================================
+
+model PromotionKit {
+  id                String   @id @default(uuid())
+  campaignId        String   @unique @map("campaign_id")
+  campaign          Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  productImages     String[] @default([]) @map("product_images")
+  storyTemplates    String[] @default([]) @map("story_templates")
+  recommendedCaption String? @map("recommended_caption")
+  hashtags          String[] @default([])
+
+  @@map("promotion_kits")
+}
+
+// ============================================================
+// BUYERS
+// ============================================================
+
+model Buyer {
+  id                     String    @id @default(uuid())
+  userId                 String    @unique @map("user_id")
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nickname               String
+  profileImage           String?   @map("profile_image")
+  phone                  String?
+  defaultShippingAddress Json?     @map("default_shipping_address") @db.JsonB
+  // Points
+  pointsBalance          Int       @default(0) @map("points_balance")
+  totalPointsEarned      Int       @default(0) @map("total_points_earned")
+  totalPointsUsed        Int       @default(0) @map("total_points_used")
+  // Stats
+  totalOrders            Int       @default(0) @map("total_orders")
+  totalSpent             Decimal   @default(0) @map("total_spent")
+  totalReviews           Int       @default(0) @map("total_reviews")
+  // Preferences
+  preferredLanguage      String    @default("ko") @map("preferred_language")
+  preferredCurrency      String    @default("KRW") @map("preferred_currency")
+  marketingConsent       Boolean   @default(false) @map("marketing_consent")
+  // Creator conversion
+  eligibleForCreator     Boolean   @default(false) @map("eligible_for_creator")
+  creatorConversionDate  DateTime? @map("creator_conversion_date") @db.Timestamptz
+  // Instagram
+  instagramUsername      String?   @map("instagram_username")
+  instagramVerified      Boolean   @default(false) @map("instagram_verified")
+  // Timestamps
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt              DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  orders              Order[]
+  mallSubscriptions   MallSubscription[]
+  communityPosts      CommunityPost[]
+  communityComments   CommunityComment[]
+  communityLikes      CommunityLike[]
+  productQuestions    ProductQuestion[]
+  productReviews      ProductReview[]
+  reviewHelpfulVotes  ReviewHelpfulVote[]
+  pointsHistory       PointsHistory[]
+  creatorApplications CreatorApplication[]
+  wishlist            BuyerWishlist[]
+  cart                BuyerCart[]
+  liveChatMessages    LiveChatMessage[]
+
+  @@index([pointsBalance])
+  @@index([eligibleForCreator])
+  @@map("buyers")
+}
+
+// ============================================================
+// SAMPLE REQUESTS
+// ============================================================
+
+model SampleRequest {
+  id              String   @id @default(uuid())
+  creatorId       String   @map("creator_id")
+  creator         Creator  @relation(fields: [creatorId], references: [id])
+  brandId         String   @map("brand_id")
+  brand           Brand    @relation(fields: [brandId], references: [id])
+  productIds      String[] @default([]) @map("product_ids")
+  status          String   @default("pending")
+  shippingAddress Json?    @map("shipping_address") @db.JsonB
+  message         String?
+  adminNote       String?  @map("admin_note")
+  trackingNumber  String?  @map("tracking_number")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([status])
+  @@map("sample_requests")
+}
+
+// ============================================================
+// SUPPORT TICKETS
+// ============================================================
+
+model SupportTicket {
+  id          String   @id @default(uuid())
+  brandId     String   @map("brand_id")
+  brand       Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  category    String
+  subject     String
+  description String
+  status      String   @default("open")
+  fromName    String   @default("") @map("from_name")
+  fromEmail   String?  @map("from_email")
+  orderId     String?  @map("order_id")
+  response    String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("support_tickets")
+}
+
+// ============================================================
+// SHORT URLS
+// ============================================================
+
+model ShortUrl {
+  id            String    @id @default(uuid())
+  creatorId     String    @map("creator_id")
+  creator       Creator   @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  shortCode     String    @unique @map("short_code")
+  customDomain  String?   @map("custom_domain")
+  isPrimary     Boolean   @default(false) @map("is_primary")
+  totalClicks   Int       @default(0) @map("total_clicks")
+  lastClickedAt DateTime? @map("last_clicked_at") @db.Timestamptz
+  isActive      Boolean   @default(true) @map("is_active")
+  expiresAt     DateTime? @map("expires_at") @db.Timestamptz
+  sourceTag     String?   @map("source_tag")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  analytics ShortUrlAnalytic[]
+
+  @@map("short_urls")
+}
+
+// ============================================================
+// SHORT URL ANALYTICS
+// ============================================================
+
+model ShortUrlAnalytic {
+  id          String   @id @default(uuid())
+  shortUrlId  String   @map("short_url_id")
+  shortUrl    ShortUrl @relation(fields: [shortUrlId], references: [id], onDelete: Cascade)
+  clickedAt   DateTime @default(now()) @map("clicked_at") @db.Timestamptz
+  referrer    String?
+  userAgent   String?  @map("user_agent")
+  ipCountry   String?  @map("ip_country")
+  deviceType  String?  @map("device_type")
+
+  @@index([clickedAt])
+  @@map("short_url_analytics")
+}
+
+// ============================================================
+// MALL SUBSCRIPTIONS
+// ============================================================
+
+model MallSubscription {
+  id                String    @id @default(uuid())
+  buyerId           String    @map("buyer_id")
+  buyer             Buyer     @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  creatorId         String    @map("creator_id")
+  creator           Creator   @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  status            String    @default("active")
+  notifyNewProducts Boolean   @default(true) @map("notify_new_products")
+  notifySales       Boolean   @default(true) @map("notify_sales")
+  notifyLiveStreams  Boolean   @default(true) @map("notify_live_streams")
+  subscribedAt      DateTime  @default(now()) @map("subscribed_at") @db.Timestamptz
+  unsubscribedAt    DateTime? @map("unsubscribed_at") @db.Timestamptz
+
+  @@unique([buyerId, creatorId])
+  @@index([status])
+  @@map("mall_subscriptions")
+}
+
+// ============================================================
+// COMMUNITY POSTS
+// ============================================================
+
+model CommunityPost {
+  id            String   @id @default(uuid())
+  creatorId     String   @map("creator_id")
+  creator       Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  buyerId       String?  @map("buyer_id")
+  buyer         Buyer?   @relation(fields: [buyerId], references: [id], onDelete: SetNull)
+  title         String?
+  content       String
+  images        String[] @default([])
+  likesCount    Int      @default(0) @map("likes_count")
+  commentsCount Int      @default(0) @map("comments_count")
+  viewsCount    Int      @default(0) @map("views_count")
+  isPinned      Boolean  @default(false) @map("is_pinned")
+  isHidden      Boolean  @default(false) @map("is_hidden")
+  hiddenReason  String?  @map("hidden_reason")
+  postType      String   @default("general") @map("post_type")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  comments CommunityComment[]
+  likes    CommunityLike[]
+
+  @@index([postType])
+  @@index([createdAt(sort: Desc)])
+  @@map("community_posts")
+}
+
+// ============================================================
+// COMMUNITY COMMENTS
+// ============================================================
+
+model CommunityComment {
+  id              String   @id @default(uuid())
+  postId          String   @map("post_id")
+  post            CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  buyerId         String?  @map("buyer_id")
+  buyer           Buyer?   @relation(fields: [buyerId], references: [id], onDelete: SetNull)
+  parentCommentId String?  @map("parent_comment_id")
+  parentComment   CommunityComment?  @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies         CommunityComment[] @relation("CommentReplies")
+  content         String
+  likesCount      Int      @default(0) @map("likes_count")
+  isHidden        Boolean  @default(false) @map("is_hidden")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("community_comments")
+}
+
+// ============================================================
+// COMMUNITY LIKES
+// ============================================================
+
+model CommunityLike {
+  id        String   @id @default(uuid())
+  postId    String   @map("post_id")
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  buyerId   String   @map("buyer_id")
+  buyer     Buyer    @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([postId, buyerId])
+  @@map("community_likes")
+}
+
+// ============================================================
+// PRODUCT QUESTIONS
+// ============================================================
+
+model ProductQuestion {
+  id          String    @id @default(uuid())
+  productId   String    @map("product_id")
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  buyerId     String?   @map("buyer_id")
+  buyer       Buyer?    @relation(fields: [buyerId], references: [id], onDelete: SetNull)
+  question    String
+  answer      String?
+  answeredBy  String?   @map("answered_by")
+  answerer    User?     @relation("QuestionAnswerer", fields: [answeredBy], references: [id])
+  answeredAt  DateTime? @map("answered_at") @db.Timestamptz
+  isPublic    Boolean   @default(true) @map("is_public")
+  isAnswered  Boolean   @default(false) @map("is_answered")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([isAnswered])
+  @@map("product_questions")
+}
+
+// ============================================================
+// PRODUCT REVIEWS
+// ============================================================
+
+model ProductReview {
+  id                String    @id @default(uuid())
+  productId         String    @map("product_id")
+  product           Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  buyerId           String?   @map("buyer_id")
+  buyer             Buyer?    @relation(fields: [buyerId], references: [id], onDelete: SetNull)
+  orderId           String?   @map("order_id")
+  order             Order?    @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  rating            Int
+  title             String?
+  content           String
+  images            String[]  @default([])
+  instagramPostUrl  String?   @map("instagram_post_url")
+  instagramVerified Boolean   @default(false) @map("instagram_verified")
+  pointsAwarded     Int       @default(0) @map("points_awarded")
+  pointsAwardedAt   DateTime? @map("points_awarded_at") @db.Timestamptz
+  helpfulCount      Int       @default(0) @map("helpful_count")
+  isVerifiedPurchase Boolean  @default(false) @map("is_verified_purchase")
+  isApproved        Boolean   @default(true) @map("is_approved")
+  isFeatured        Boolean   @default(false) @map("is_featured")
+  rejectionReason   String?   @map("rejection_reason")
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  helpfulVotes ReviewHelpfulVote[]
+
+  @@index([rating])
+  @@index([isFeatured])
+  @@map("product_reviews")
+}
+
+// ============================================================
+// REVIEW HELPFUL VOTES
+// ============================================================
+
+model ReviewHelpfulVote {
+  id        String   @id @default(uuid())
+  reviewId  String   @map("review_id")
+  review    ProductReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  buyerId   String   @map("buyer_id")
+  buyer     Buyer    @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([reviewId, buyerId])
+  @@map("review_helpful_votes")
+}
+
+// ============================================================
+// POINTS HISTORY (Buyer points)
+// ============================================================
+
+model PointsHistory {
+  id           String    @id @default(uuid())
+  buyerId      String    @map("buyer_id")
+  buyer        Buyer     @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  amount       Int
+  balanceAfter Int       @map("balance_after")
+  type         String
+  referenceId  String?   @map("reference_id")
+  description  String?
+  expiresAt    DateTime? @map("expires_at") @db.Timestamptz
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([type])
+  @@index([createdAt(sort: Desc)])
+  @@map("points_history")
+}
+
+// ============================================================
+// CREATOR POINTS (Creator reward points)
+// ============================================================
+
+model CreatorPoint {
+  id          String   @id @default(uuid())
+  creatorId   String   @map("creator_id")
+  creator     Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  pointType   String   @map("point_type") @db.VarChar(20)
+  amount      Int
+  balanceAfter Int     @map("balance_after")
+  description String?
+  relatedId   String?  @map("related_id")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([creatorId, createdAt(sort: Desc)])
+  @@map("creator_points")
+}
+
+// ============================================================
+// CREATOR REFERRALS
+// ============================================================
+
+model CreatorReferral {
+  id                 String   @id @default(uuid())
+  referrerId         String   @map("referrer_id")
+  referrer           Creator  @relation("Referrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  referredId         String?  @map("referred_id")
+  referred           Creator? @relation("Referred", fields: [referredId], references: [id], onDelete: SetNull)
+  referralCode       String   @unique @map("referral_code") @db.VarChar(20)
+  status             String   @default("PENDING") @db.VarChar(20)
+  referrerRewardTotal Int     @default(0) @map("referrer_reward_total")
+  referredRewardTotal Int     @default(0) @map("referred_reward_total")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("creator_referrals")
+}
+
+// ============================================================
+// CREATOR GRADES
+// ============================================================
+
+model CreatorGrade {
+  id                  String    @id @default(uuid())
+  creatorId           String    @unique @map("creator_id")
+  creator             Creator   @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  grade               String    @default("ROOKIE") @db.VarChar(10)
+  monthlySales        Int       @default(0) @map("monthly_sales")
+  commissionBonusRate Decimal   @default(0) @map("commission_bonus_rate") @db.Decimal(5, 4)
+  gradeUpdatedAt      DateTime? @map("grade_updated_at") @db.Timestamptz
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("creator_grades")
+}
+
+// ============================================================
+// CREATOR MISSIONS
+// ============================================================
+
+model CreatorMission {
+  id           String    @id @default(uuid())
+  creatorId    String    @map("creator_id")
+  creator      Creator   @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  missionKey   String    @map("mission_key") @db.VarChar(30)
+  isCompleted  Boolean   @default(false) @map("is_completed")
+  completedAt  DateTime? @map("completed_at") @db.Timestamptz
+  rewardAmount Int       @default(0) @map("reward_amount")
+  rewardClaimed Boolean  @default(false) @map("reward_claimed")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([creatorId, missionKey])
+  @@map("creator_missions")
+}
+
+// ============================================================
+// GUIDES
+// ============================================================
+
+model Guide {
+  id           String   @id @default(uuid())
+  title        String   @db.VarChar(200)
+  category     String   @db.VarChar(20)
+  contentType  String   @default("CARD") @map("content_type") @db.VarChar(10)
+  content      Json     @default("{\"sections\":[]}") @db.JsonB
+  targetGrade  String   @default("ALL") @map("target_grade") @db.VarChar(10)
+  displayOrder Int      @default(0) @map("display_order")
+  isPublished  Boolean  @default(false) @map("is_published")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([isPublished, displayOrder])
+  @@map("guides")
+}
+
+// ============================================================
+// CREATOR LEVELS (level threshold config)
+// ============================================================
+
+model CreatorLevel {
+  id              String   @id @default(uuid())
+  levelName       String   @unique @map("level_name")
+  minPoints       Int      @map("min_points")
+  commissionBonus Decimal  @default(0) @map("commission_bonus")
+  badgeColor      String?  @map("badge_color")
+  badgeIcon       String?  @map("badge_icon")
+  benefits        Json     @default("[]") @db.JsonB
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("creator_levels")
+}
+
+// ============================================================
+// CREATOR LEVEL HISTORY
+// ============================================================
+
+model CreatorLevelHistory {
+  id             String   @id @default(uuid())
+  creatorId      String   @map("creator_id")
+  creator        Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  fromLevel      String?  @map("from_level")
+  toLevel        String   @map("to_level")
+  pointsAtChange Int      @map("points_at_change")
+  reason         String?
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("creator_level_history")
+}
+
+// ============================================================
+// LIVE SESSIONS
+// ============================================================
+
+model LiveSession {
+  id                  String    @id @default(uuid())
+  creatorId           String    @map("creator_id")
+  creator             Creator   @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  title               String
+  description         String?
+  platform            String
+  externalUrl         String?   @map("external_url")
+  streamKey           String?   @map("stream_key")
+  scheduledAt         DateTime? @map("scheduled_at") @db.Timestamptz
+  startedAt           DateTime? @map("started_at") @db.Timestamptz
+  endedAt             DateTime? @map("ended_at") @db.Timestamptz
+  status              String    @default("scheduled")
+  featuredProductIds  String[]  @default([]) @map("featured_product_ids")
+  peakViewers         Int       @default(0) @map("peak_viewers")
+  totalViewers        Int       @default(0) @map("total_viewers")
+  totalOrders         Int       @default(0) @map("total_orders")
+  totalRevenue        Decimal   @default(0) @map("total_revenue")
+  chatEnabled         Boolean   @default(true) @map("chat_enabled")
+  botEnabled          Boolean   @default(false) @map("bot_enabled")
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  liveProducts    LiveProduct[]
+  chatMessages    LiveChatMessage[]
+
+  @@index([status])
+  @@index([scheduledAt])
+  @@map("live_sessions")
+}
+
+// ============================================================
+// LIVE PRODUCTS
+// ============================================================
+
+model LiveProduct {
+  id            String   @id @default(uuid())
+  liveSessionId String   @map("live_session_id")
+  liveSession   LiveSession @relation(fields: [liveSessionId], references: [id], onDelete: Cascade)
+  productId     String   @map("product_id")
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  displayOrder  Int      @default(0) @map("display_order")
+  livePriceUsd  Decimal? @map("live_price_usd")
+  livePriceJpy  Decimal? @map("live_price_jpy")
+  clicks        Int      @default(0)
+  orders        Int      @default(0)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("live_products")
+}
+
+// ============================================================
+// LIVE BOT SETTINGS
+// ============================================================
+
+model LiveBotSetting {
+  id                  String   @id @default(uuid())
+  creatorId           String   @unique @map("creator_id")
+  creator             Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  isEnabled           Boolean  @default(false) @map("is_enabled")
+  welcomeMessage      String?  @map("welcome_message")
+  productLinkInterval Int      @default(300) @map("product_link_interval")
+  scheduledMessages   Json     @default("[]") @map("scheduled_messages") @db.JsonB
+  autoResponses       Json     @default("{}") @map("auto_responses") @db.JsonB
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("live_bot_settings")
+}
+
+// ============================================================
+// LIVE CHAT MESSAGES
+// ============================================================
+
+model LiveChatMessage {
+  id            String      @id @default(uuid())
+  liveSessionId String      @map("live_session_id")
+  liveSession   LiveSession @relation(fields: [liveSessionId], references: [id], onDelete: Cascade)
+  buyerId       String?     @map("buyer_id")
+  buyer         Buyer?      @relation(fields: [buyerId], references: [id], onDelete: SetNull)
+  isBotMessage  Boolean     @default(false) @map("is_bot_message")
+  message       String
+  productId     String?     @map("product_id")
+  product       Product?    @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productLink   String?     @map("product_link")
+  isPinned      Boolean     @default(false) @map("is_pinned")
+  isHidden      Boolean     @default(false) @map("is_hidden")
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([createdAt])
+  @@map("live_chat_messages")
+}
+
+// ============================================================
+// CREATOR APPLICATIONS (buyer → creator conversion)
+// ============================================================
+
+model CreatorApplication {
+  id               String    @id @default(uuid())
+  buyerId          String    @map("buyer_id")
+  buyer            Buyer     @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  desiredUsername   String    @map("desired_username")
+  displayName      String    @map("display_name")
+  bio              String?
+  instagramUrl     String?   @map("instagram_url")
+  youtubeUrl       String?   @map("youtube_url")
+  tiktokUrl        String?   @map("tiktok_url")
+  followerCount    Int?      @map("follower_count")
+  motivation       String?
+  contentPlan      String?   @map("content_plan")
+  status           String    @default("pending")
+  reviewedBy       String?   @map("reviewed_by")
+  reviewedAt       DateTime? @map("reviewed_at") @db.Timestamptz
+  rejectionReason  String?   @map("rejection_reason")
+  createdCreatorId String?   @map("created_creator_id")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([status])
+  @@map("creator_applications")
+}
+
+// ============================================================
+// CONVERSION CRITERIA
+// ============================================================
+
+model ConversionCriteria {
+  id               String   @id @default(uuid())
+  minOrders        Int      @default(5) @map("min_orders")
+  minReviews       Int      @default(3) @map("min_reviews")
+  minSpent         Decimal  @default(100) @map("min_spent")
+  minAccountAgeDays Int     @default(30) @map("min_account_age_days")
+  isActive         Boolean  @default(true) @map("is_active")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("conversion_criteria")
+}
+
+// ============================================================
+// BUYER WISHLIST
+// ============================================================
+
+model BuyerWishlist {
+  id        String   @id @default(uuid())
+  buyerId   String   @map("buyer_id")
+  buyer     Buyer    @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  productId String   @map("product_id")
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  creatorId String   @map("creator_id")
+  creator   Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([buyerId, productId, creatorId])
+  @@map("buyer_wishlist")
+}
+
+// ============================================================
+// BUYER CART
+// ============================================================
+
+model BuyerCart {
+  id        String   @id @default(uuid())
+  buyerId   String   @map("buyer_id")
+  buyer     Buyer    @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  productId String   @map("product_id")
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  creatorId String   @map("creator_id")
+  creator   Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([buyerId, productId, creatorId])
+  @@map("buyer_cart")
+}
+
+// ============================================================
+// LEGAL CONTENT
+// ============================================================
+
+model LegalContent {
+  id            String    @id @default(uuid())
+  contentType   String    @map("content_type")
+  country       String
+  language      String
+  title         String
+  content       String
+  isActive      Boolean   @default(true) @map("is_active")
+  version       Int       @default(1)
+  effectiveDate DateTime? @map("effective_date") @db.Date
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([contentType, country, language])
+  @@index([contentType])
+  @@index([country])
+  @@map("legal_content")
+}
