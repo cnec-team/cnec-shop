@@ -1,7 +1,6 @@
-import { createClient } from '@/lib/supabase/server';
+import { prisma } from '@/lib/db';
 import { ProductsPageClient } from './products-client';
 import type { Metadata } from 'next';
-import type { Product, Brand } from '@/types/database';
 
 export const revalidate = 120;
 
@@ -28,31 +27,46 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-async function getProducts(): Promise<Product[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from('products')
-    .select('*, brand:brands(id, brand_name, logo_url)')
-    .eq('status', 'ACTIVE')
-    .order('created_at', { ascending: false })
-    .limit(200);
+async function getProducts() {
+  const products = await prisma.product.findMany({
+    where: {
+      status: 'ACTIVE',
+    },
+    include: {
+      brand: {
+        select: {
+          id: true,
+          brandName: true,
+          logoUrl: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+    take: 200,
+  });
 
-  return (data || []) as Product[];
+  return products;
 }
 
-async function getBrands(): Promise<{ id: string; brand_name: string }[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from('brands')
-    .select('id, brand_name')
-    .order('brand_name', { ascending: true });
+async function getBrands() {
+  const brands = await prisma.brand.findMany({
+    select: {
+      id: true,
+      brandName: true,
+    },
+    orderBy: {
+      brandName: 'asc',
+    },
+  });
 
-  return (data || []) as { id: string; brand_name: string }[];
+  return brands;
 }
 
 export default async function ProductsPage({ params }: PageProps) {
   const { locale } = await params;
   const [products, brands] = await Promise.all([getProducts(), getBrands()]);
 
-  return <ProductsPageClient products={products} brands={brands} locale={locale} />;
+  return <ProductsPageClient products={products as any} brands={brands as any} locale={locale} />;
 }

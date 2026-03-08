@@ -1,82 +1,110 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
-import type { PointType } from '@/types/database';
-import { POINT_AMOUNTS } from '@/types/database';
+import { prisma } from './db'
+
+const POINT_AMOUNTS: Record<string, number> = {
+  SIGNUP_BONUS: 3000,
+  PERSONA_COMPLETE: 2000,
+  FIRST_PRODUCT: 1000,
+  FIRST_SALE: 5000,
+  REFERRAL_INVITE: 5000,
+  REFERRAL_SALE: 3000,
+  WEEKLY_ACTIVE: 1000,
+}
+
+function getPointAmount(type: string): number {
+  return POINT_AMOUNTS[type] ?? 0
+}
 
 /**
- * Award points to a creator. Server-side only (uses service_role client).
- * Skips if the same (creator, type, related_id) already exists (dedup).
+ * Award points to a creator (Prisma transaction version).
+ * Deduplicates by (creatorId, pointType, relatedId).
  */
 export async function awardPoints(
-  supabase: SupabaseClient,
   creatorId: string,
-  pointType: PointType,
+  pointType: string,
   description?: string,
   relatedId?: string,
 ): Promise<{ success: boolean; balance?: number; error?: string }> {
-  // Dedup: check if this exact award already exists
+  // Dedup check
   if (relatedId) {
-    const { data: existing } = await supabase
-      .from('creator_points')
-      .select('id')
-      .eq('creator_id', creatorId)
-      .eq('point_type', pointType)
-      .eq('related_id', relatedId)
-      .limit(1);
-
-    if (existing && existing.length > 0) {
-      return { success: true, balance: undefined }; // Already awarded
-    }
+    const existing = await prisma.creatorPoint.findFirst({
+      where: { creatorId, pointType, relatedId },
+    })
+    if (existing) return { success: true }
   } else {
-    // For one-time events (SIGNUP_BONUS, PERSONA_COMPLETE, FIRST_PRODUCT, FIRST_SALE)
-    const oneTimeTypes: PointType[] = ['SIGNUP_BONUS', 'PERSONA_COMPLETE', 'FIRST_PRODUCT', 'FIRST_SALE'];
+    const oneTimeTypes = ['SIGNUP_BONUS', 'PERSONA_COMPLETE', 'FIRST_PRODUCT', 'FIRST_SALE']
     if (oneTimeTypes.includes(pointType)) {
-      const { data: existing } = await supabase
-        .from('creator_points')
-        .select('id')
-        .eq('creator_id', creatorId)
-        .eq('point_type', pointType)
-        .limit(1);
-
-      if (existing && existing.length > 0) {
-        return { success: true, balance: undefined }; // Already awarded
-      }
+      const existing = await prisma.creatorPoint.findFirst({
+        where: { creatorId, pointType },
+      })
+      if (existing) return { success: true }
     }
   }
 
-  const amount = getPointAmount(pointType);
+  const amount = getPointAmount(pointType)
   if (amount === 0) {
-    return { success: false, error: 'Unknown point type' };
+    return { success: false, error: 'Unknown point type' }
   }
 
-  const { data, error } = await supabase.rpc('award_points', {
-    p_creator_id: creatorId,
-    p_type: pointType,
-    p_amount: amount,
-    p_description: description || null,
-    p_related_id: relatedId || null,
-  });
+  return prisma.$transaction(async (tx) => {
+    const lastPoint = await tx.creatorPoint.findFirst({
+      where: { creatorId },
+      orderBy: { createdAt: 'desc' },
+      select: { balanceAfter: true },
+    })
 
-  if (error) {
-    console.error('Failed to award points:', error);
-    return { success: false, error: error.message };
-  }
+    const currentBalance = Number(lastPoint?.balanceAfter ?? 0)
+    const newBalance = currentBalance + amount
 
-  return {
-    success: data?.success ?? false,
-    balance: data?.balance,
-    error: data?.error,
-  };
+    await tx.creatorPoint.create({
+      data: {
+        creatorId,
+        pointType,
+        amount,
+        balanceAfter: newBalance,
+        description: description ?? null,
+        relatedId: relatedId ?? null,
+      },
+    })
+
+    return { success: true, balance: newBalance }
+  })
 }
 
-function getPointAmount(type: PointType): number {
-  switch (type) {
-    case 'SIGNUP_BONUS': return POINT_AMOUNTS.SIGNUP_BONUS;
-    case 'PERSONA_COMPLETE': return POINT_AMOUNTS.PERSONA_COMPLETE;
-    case 'FIRST_PRODUCT': return POINT_AMOUNTS.FIRST_PRODUCT;
-    case 'FIRST_SALE': return POINT_AMOUNTS.FIRST_SALE;
-    case 'REFERRAL_INVITE': return POINT_AMOUNTS.REFERRAL_INVITE;
-    case 'REFERRAL_SALE': return POINT_AMOUNTS.REFERRAL_SALE;
-    case 'WEEKLY_ACTIVE': return POINT_AMOUNTS.WEEKLY_ACTIVE;
-    default: return 0;
-  }
+/**
+ * Award arbitrary amount (e.g. withdrawals with negative amount).
+ */
+export async function awardPointsRaw(
+  creatorId: string,
+  pointType: string,
+  amount: number,
+  description?: string,
+  relatedId?: string,
+): Promise<{ success: boolean; balance?: number; error?: string }> {
+  return prisma.$transaction(async (tx) => {
+    const lastPoint = await tx.creatorPoint.findFirst({
+      where: { creatorId },
+      orderBy: { createdAt: 'desc' },
+      select: { balanceAfter: true },
+    })
+
+    const currentBalance = Number(lastPoint?.balanceAfter ?? 0)
+    const newBalance = currentBalance + amount
+
+    if (amount < 0 && newBalance < 0) {
+      return { success: false, error: 'Insufficient balance' }
+    }
+
+    await tx.creatorPoint.create({
+      data: {
+        creatorId,
+        pointType,
+        amount,
+        balanceAfter: newBalance,
+        description: description ?? null,
+        relatedId: relatedId ?? null,
+      },
+    })
+
+    return { success: true, balance: newBalance }
+  })
 }

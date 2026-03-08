@@ -1,13 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth-helpers';
-
-function getSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error('Missing Supabase credentials');
-  return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
-}
+import { prisma } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,13 +8,11 @@ export async function GET(request: NextRequest) {
     if (!authUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const supabase = getSupabase();
 
-    const { data: creator } = await supabase
-      .from('creators')
-      .select('id')
-      .eq('user_id', authUser.id)
-      .single();
+    const creator = await prisma.creator.findUnique({
+      where: { userId: authUser.id },
+      select: { id: true },
+    });
     const creatorId = creator?.id ?? null;
     if (!creatorId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -33,28 +24,31 @@ export async function GET(request: NextRequest) {
     const offset = (page - 1) * limit;
 
     // Get current balance (latest record)
-    const { data: latestPoint } = await supabase
-      .from('creator_points')
-      .select('balance_after')
-      .eq('creator_id', creatorId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+    const latestPoint = await prisma.creatorPoint.findFirst({
+      where: { creatorId },
+      orderBy: { createdAt: 'desc' },
+      select: { balanceAfter: true },
+    });
 
-    const balance = latestPoint?.balance_after ?? 0;
+    const balance = latestPoint?.balanceAfter ?? 0;
 
     // Get paginated history
-    const { data: history, count } = await supabase
-      .from('creator_points')
-      .select('*', { count: 'exact' })
-      .eq('creator_id', creatorId)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+    const [history, count] = await Promise.all([
+      prisma.creatorPoint.findMany({
+        where: { creatorId },
+        orderBy: { createdAt: 'desc' },
+        skip: offset,
+        take: limit,
+      }),
+      prisma.creatorPoint.count({
+        where: { creatorId },
+      }),
+    ]);
 
     return NextResponse.json({
       balance,
-      history: history ?? [],
-      total: count ?? 0,
+      history,
+      total: count,
       page,
       limit,
     });

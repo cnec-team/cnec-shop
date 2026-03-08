@@ -3,14 +3,13 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { getClient } from '@/lib/supabase/client';
 import { useCartStore, useAuthStore } from '@/lib/store/auth';
+import { getCreatorByShopId, getCheckoutProducts, createOrder } from '@/lib/actions/shop';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
 import {
   Loader2,
   ArrowLeft,
@@ -21,8 +20,8 @@ import {
   Copy,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import type { Creator, Product, Brand } from '@/types/database';
-import { INDIRECT_COMMISSION_RATE } from '@/types/database';
+
+const INDIRECT_COMMISSION_RATE = 0.03;
 
 // =============================================
 // Helpers
@@ -54,7 +53,7 @@ interface CartItemWithProduct {
   quantity: number;
   creatorId: string;
   unitPrice: number;
-  product?: Product & { brand?: Brand };
+  product?: any;
 }
 
 interface OrderResult {
@@ -77,7 +76,7 @@ export default function CheckoutPage() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [creator, setCreator] = useState<Creator | null>(null);
+  const [creator, setCreator] = useState<any>(null);
   const [cartItems, setCartItems] = useState<CartItemWithProduct[]>([]);
   const [orderResult, setOrderResult] = useState<OrderResult | null>(null);
 
@@ -96,21 +95,15 @@ export default function CheckoutPage() {
       if (!username) return;
 
       try {
-        const supabase = getClient();
-
-        // Fetch creator
-        const { data: creatorData } = await supabase
-          .from('creators')
-          .select('*')
-          .ilike('shop_id', username)
-          .maybeSingle();
+        // Fetch creator via server action
+        const creatorData = await getCreatorByShopId(username);
 
         if (!creatorData) {
           router.push(`/${locale}`);
           return;
         }
 
-        setCreator(creatorData as Creator);
+        setCreator(creatorData);
 
         // Filter cart items for this creator
         const creatorItems = items.filter((item) => item.creatorId === creatorData.id);
@@ -120,22 +113,13 @@ export default function CheckoutPage() {
           return;
         }
 
-        // Fetch products
+        // Fetch products via server action
         const productIds = creatorItems.map((item) => item.productId);
-        const { data: products } = await supabase
-          .from('products')
-          .select(`
-            *,
-            brand:brands (
-              id,
-              brand_name
-            )
-          `)
-          .in('id', productIds);
+        const products = await getCheckoutProducts(productIds);
 
         const itemsWithProducts: CartItemWithProduct[] = creatorItems.map((item) => ({
           ...item,
-          product: products?.find((p: any) => p.id === item.productId) as (Product & { brand?: Brand }) | undefined,
+          product: products?.find((p: any) => p.id === item.productId),
         }));
 
         setCartItems(itemsWithProducts);
@@ -160,13 +144,13 @@ export default function CheckoutPage() {
     for (const item of cartItems) {
       const product = item.product as any;
       if (!product) continue;
-      const feeType = product.shipping_fee_type || 'FREE';
+      const feeType = product.shippingFeeType || 'FREE';
       if (feeType === 'PAID') {
-        maxFee = Math.max(maxFee, product.shipping_fee || 0);
+        maxFee = Math.max(maxFee, Number(product.shippingFee || 0));
       } else if (feeType === 'CONDITIONAL_FREE') {
-        const threshold = product.free_shipping_threshold || 0;
+        const threshold = Number(product.freeShippingThreshold || 0);
         if (productAmount < threshold) {
-          maxFee = Math.max(maxFee, product.shipping_fee || 0);
+          maxFee = Math.max(maxFee, Number(product.shippingFee || 0));
         }
       }
     }
@@ -210,99 +194,59 @@ export default function CheckoutPage() {
     setIsProcessing(true);
 
     try {
-      const supabase = getClient();
       const orderNumber = generateOrderNumber();
 
       // Determine brand_id from first product
       const firstProduct = cartItems[0]?.product;
-      const brandId = firstProduct?.brand_id || firstProduct?.brand?.id || '';
+      const brandId = firstProduct?.brandId || firstProduct?.brand?.id || '';
 
-      // Create order
-      const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .insert({
-          order_number: orderNumber,
-          creator_id: creator.id,
-          brand_id: brandId,
-          buyer_id: buyer?.id || null,
-          buyer_name: form.name,
-          buyer_phone: form.phone,
-          buyer_email: form.email,
-          shipping_address: form.address,
-          shipping_detail: form.addressDetail,
-          shipping_zipcode: form.zipcode,
-          total_amount: totalAmount,
-          shipping_fee: shippingFee,
-          status: 'PENDING' as const,
-        })
-        .select()
-        .single();
+      // Read visitor cookie for attribution
+      const visitorCookie = document.cookie
+        .split('; ')
+        .find((c) => c.startsWith('cnec_visitor='));
+      const conversionType = visitorCookie ? 'DIRECT' : 'INDIRECT';
 
-      if (orderError) {
-        throw new Error(orderError.message);
-      }
+      // Build commission rates
+      const commissionRates: Record<string, number> = {};
+      cartItems.forEach((ci) => {
+        commissionRates[ci.productId] = ci.campaignId
+          ? 0.1
+          : INDIRECT_COMMISSION_RATE;
+      });
 
-      // Create order items with denormalized product info
-      const orderItems = cartItems.map((item) => ({
-        order_id: order.id,
-        product_id: item.productId,
-        campaign_id: item.campaignId || null,
-        quantity: item.quantity,
-        unit_price: item.unitPrice,
-        total_price: item.unitPrice * item.quantity,
-        product_name: item.product?.name || (item.product as any)?.name_ko || null,
-        product_image: (item.product as any)?.image_url || (item.product?.images && item.product.images[0]) || null,
-      }));
-
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItems);
-
-      if (itemsError) {
-        console.error('Failed to create order items:', itemsError);
-      }
-
-      // Create conversions for each order item
-      const { data: insertedItems } = await supabase
-        .from('order_items')
-        .select('*')
-        .eq('order_id', order.id);
-
-      if (insertedItems) {
-        // Read visitor cookie for attribution
-        const visitorCookie = document.cookie
-          .split('; ')
-          .find((c) => c.startsWith('cnec_visitor='));
-        const conversionType = visitorCookie ? 'DIRECT' : 'INDIRECT';
-
-        const conversions = insertedItems.map((item: any) => {
-          // Get commission rate from campaign or product default
-          const cartItem = cartItems.find((ci) => ci.productId === item.product_id);
-          const commissionRate = cartItem?.campaignId
-            ? 0.1 // Default campaign commission, will be overridden by actual rate
-            : INDIRECT_COMMISSION_RATE;
-
-          return {
-            order_id: order.id,
-            order_item_id: item.id,
-            creator_id: creator.id,
-            conversion_type: conversionType as 'DIRECT' | 'INDIRECT',
-            order_amount: item.total_price,
-            commission_rate: commissionRate,
-            commission_amount: Math.round(item.total_price * commissionRate),
-            status: 'PENDING' as const,
-          };
-        });
-
-        await supabase.from('conversions').insert(conversions);
-      }
+      // Create order via server action
+      const result = await createOrder({
+        orderNumber,
+        creatorId: creator.id,
+        brandId,
+        buyerId: buyer?.id || null,
+        buyerName: form.name,
+        buyerPhone: form.phone,
+        buyerEmail: form.email,
+        shippingAddress: form.address,
+        shippingDetail: form.addressDetail,
+        shippingZipcode: form.zipcode,
+        totalAmount,
+        shippingFee,
+        items: cartItems.map((item) => ({
+          productId: item.productId,
+          campaignId: item.campaignId || null,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          totalPrice: item.unitPrice * item.quantity,
+          productName: item.product?.name || item.product?.nameKo || null,
+          productImage: item.product?.imageUrl || (item.product?.images && item.product.images[0]) || null,
+        })),
+        conversionType: conversionType as 'DIRECT' | 'INDIRECT',
+        commissionRates,
+      });
 
       // Clear cart for this creator
       clearCart();
 
       // Show order completion
       setOrderResult({
-        orderNumber,
+        orderNumber: result.orderNumber ?? '',
         totalAmount,
       });
     } catch (error: any) {
@@ -443,9 +387,9 @@ export default function CheckoutPage() {
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  {item.product?.brand?.brand_name && (
+                  {item.product?.brand?.brandName && (
                     <p className="text-[11px] text-muted-foreground">
-                      {(item.product.brand as any).brand_name}
+                      {item.product.brand.brandName}
                     </p>
                   )}
                   <p className="text-sm font-medium text-foreground truncate">

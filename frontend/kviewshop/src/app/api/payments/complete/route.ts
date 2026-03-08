@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { prisma } from '@/lib/db';
 
 // Inline types
 type ConversionType = 'DIRECT' | 'INDIRECT';
@@ -9,29 +9,6 @@ interface CompleteRequestBody {
   orderId: string;
   paymentId: string;
   pgProvider: string;
-}
-
-interface OrderItemRow {
-  id: string;
-  order_id: string;
-  product_id: string;
-  campaign_id: string | null;
-  quantity: number;
-  unit_price: number;
-  total_price: number;
-}
-
-function getSupabaseClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Missing Supabase configuration');
-  }
-
-  return createClient(supabaseUrl, supabaseKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
 }
 
 export async function POST(request: NextRequest) {
@@ -47,16 +24,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = getSupabaseClient();
-
     // Fetch the order to verify it exists and is in PENDING state
-    const { data: order, error: orderError } = await supabase
-      .from('orders')
-      .select('id, order_number, status, total_amount, creator_id')
-      .eq('id', orderId)
-      .single();
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: { id: true, orderNumber: true, status: true, totalAmount: true, creatorId: true },
+    });
 
-    if (orderError || !order) {
+    if (!order) {
       return NextResponse.json(
         { error: 'Order not found' },
         { status: 404 }
@@ -100,9 +74,9 @@ export async function POST(request: NextRequest) {
     const paymentData = await verifyResponse.json();
 
     // Verify the payment amount matches the order
-    if (paymentData.amount?.total !== order.total_amount) {
+    if (paymentData.amount?.total !== Number(order.totalAmount)) {
       console.error(
-        `Payment amount mismatch: PortOne=${paymentData.amount?.total}, Order=${order.total_amount}`
+        `Payment amount mismatch: PortOne=${paymentData.amount?.total}, Order=${order.totalAmount}`
       );
       return NextResponse.json(
         { error: 'Payment amount does not match order total' },
@@ -119,60 +93,48 @@ export async function POST(request: NextRequest) {
     }
 
     // Update order status to PAID
-    const now = new Date().toISOString();
-    const { error: updateError } = await supabase
-      .from('orders')
-      .update({
+    const now = new Date();
+    await prisma.order.update({
+      where: { id: orderId },
+      data: {
         status: 'PAID',
-        paid_at: now,
-        payment_method: paymentData.method?.type || 'CARD',
-        pg_transaction_id: paymentId,
-        pg_provider: pgProvider || 'portone',
-      })
-      .eq('id', orderId);
-
-    if (updateError) {
-      console.error('Failed to update order status:', updateError);
-      return NextResponse.json(
-        { error: 'Failed to update order status', detail: updateError.message },
-        { status: 500 }
-      );
-    }
+        paidAt: now,
+        paymentMethod: paymentData.method?.type || 'CARD',
+        pgTransactionId: paymentId,
+        pgProvider: pgProvider || 'portone',
+      },
+    });
 
     // Fetch order items for creating conversion records
-    const { data: orderItems, error: itemsError } = await supabase
-      .from('order_items')
-      .select('*')
-      .eq('order_id', orderId);
-
-    if (itemsError) {
+    let orderItems: { id: string; orderId: string; productId: string; campaignId: string | null; quantity: number; unitPrice: number; totalPrice: number }[] = [];
+    try {
+      orderItems = await prisma.orderItem.findMany({
+        where: { orderId },
+      }) as unknown as typeof orderItems;
+    } catch (itemsError) {
       console.error('Failed to fetch order items:', itemsError);
       // Order is already paid, so we don't fail - just log the error
     }
 
     // Create conversion records (DIRECT type) based on cookie tracking
-    // In a real implementation, we'd read visitor/creator cookies to determine
-    // direct vs indirect conversion. For now, we create DIRECT conversions.
-    if (orderItems && orderItems.length > 0) {
-      const creatorId = order.creator_id;
+    if (orderItems.length > 0) {
+      const creatorId = order.creatorId;
 
-      // Determine commission rate - check if there's a campaign-based rate
       const conversionRecords = [];
 
-      for (const item of orderItems as OrderItemRow[]) {
+      for (const item of orderItems) {
         // Default commission rate for direct sales
         let commissionRate = 0.10; // 10% default
 
         // If the item is from a campaign, try to get the campaign commission rate
-        if (item.campaign_id) {
-          const { data: campaign } = await supabase
-            .from('campaigns')
-            .select('commission_rate')
-            .eq('id', item.campaign_id)
-            .single();
+        if (item.campaignId) {
+          const campaign = await prisma.campaign.findUnique({
+            where: { id: item.campaignId },
+            select: { commissionRate: true },
+          });
 
           if (campaign) {
-            commissionRate = campaign.commission_rate;
+            commissionRate = Number(campaign.commissionRate);
           }
         }
 
@@ -180,23 +142,23 @@ export async function POST(request: NextRequest) {
         const conversionStatus: ConversionStatus = 'PENDING';
 
         conversionRecords.push({
-          order_id: orderId,
-          order_item_id: item.id,
-          creator_id: creatorId,
-          conversion_type: conversionType,
-          order_amount: item.total_price,
-          commission_rate: commissionRate,
-          commission_amount: Math.round(item.total_price * commissionRate),
+          orderId,
+          orderItemId: item.id,
+          creatorId,
+          conversionType,
+          orderAmount: item.totalPrice,
+          commissionRate,
+          commissionAmount: Math.round(Number(item.totalPrice) * commissionRate),
           status: conversionStatus,
         });
       }
 
       if (conversionRecords.length > 0) {
-        const { error: conversionError } = await supabase
-          .from('conversions')
-          .insert(conversionRecords);
-
-        if (conversionError) {
+        try {
+          await prisma.conversion.createMany({
+            data: conversionRecords as any,
+          });
+        } catch (conversionError) {
           console.error('Failed to create conversion records:', conversionError);
           // Non-fatal: order is already paid
         }
@@ -205,7 +167,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      orderNumber: order.order_number,
+      orderNumber: order.orderNumber,
     });
   } catch (error: unknown) {
     console.error('Payment complete error:', error);

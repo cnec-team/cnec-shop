@@ -2,9 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getClient } from '@/lib/supabase/client';
-import { useAuthStore } from '@/lib/store/auth';
-import type { Campaign, CampaignProduct, Product } from '@/types/database';
+import { getBrandCampaigns, getBrandSession } from '@/lib/actions/brand';
 import { CAMPAIGN_STATUS_LABELS } from '@/types/database';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -47,8 +45,23 @@ function getStatusVariant(
   }
 }
 
-interface GongguCampaign extends Campaign {
-  campaign_products?: (CampaignProduct & { product?: Product })[];
+interface GongguCampaign {
+  id: string;
+  title: string;
+  description: string | null;
+  status: string;
+  recruitmentType: string;
+  commissionRate: number | string;
+  soldCount: number;
+  totalStock: number | null;
+  startAt: string | null;
+  endAt: string | null;
+  createdAt: string;
+  products: Array<{
+    id: string;
+    campaignPrice: number | string;
+    product: { name: string | null } | null;
+  }>;
 }
 
 function CampaignCardSkeleton() {
@@ -70,37 +83,31 @@ function CampaignCardSkeleton() {
 }
 
 export default function GongguCampaignsPage() {
-  const { brand, isLoading: authLoading } = useAuthStore();
+  const [brand, setBrand] = useState<{ id: string } | null>(null);
   const [campaigns, setCampaigns] = useState<GongguCampaign[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!brand?.id) {
-      if (!authLoading) setIsLoading(false);
-      return;
-    }
+    async function load() {
+      try {
+        const brandData = await getBrandSession();
+        if (!brandData) {
+          setIsLoading(false);
+          return;
+        }
+        setBrand(brandData);
 
-    async function fetchCampaigns() {
-      const supabase = getClient();
-      const { data, error } = await supabase
-        .from('campaigns')
-        .select(
-          '*, campaign_products:campaign_products(*, product:products(*))'
-        )
-        .eq('brand_id', brand!.id)
-        .eq('type', 'GONGGU')
-        .order('created_at', { ascending: false });
-
-      if (error) {
+        const data = await getBrandCampaigns(brandData.id, 'GONGGU');
+        setCampaigns(data as any);
+      } catch (error) {
         console.error('Failed to fetch gonggu campaigns:', error);
-      } else {
-        setCampaigns((data ?? []) as GongguCampaign[]);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     }
 
-    fetchCampaigns();
-  }, [brand?.id, authLoading]);
+    load();
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -137,8 +144,8 @@ export default function GongguCampaignsPage() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {campaigns.map((campaign) => {
             const progressPercent =
-              campaign.total_stock && campaign.total_stock > 0
-                ? (campaign.sold_count / campaign.total_stock) * 100
+              campaign.totalStock && campaign.totalStock > 0
+                ? (campaign.soldCount / campaign.totalStock) * 100
                 : 0;
 
             return (
@@ -157,7 +164,7 @@ export default function GongguCampaignsPage() {
                       </CardDescription>
                     </div>
                     <Badge variant={getStatusVariant(campaign.status)}>
-                      {CAMPAIGN_STATUS_LABELS[campaign.status]}
+                      {CAMPAIGN_STATUS_LABELS[campaign.status as keyof typeof CAMPAIGN_STATUS_LABELS]}
                     </Badge>
                   </div>
                 </CardHeader>
@@ -167,8 +174,8 @@ export default function GongguCampaignsPage() {
                     <div className="flex justify-between text-sm">
                       <span>판매 진행률</span>
                       <span>
-                        {campaign.sold_count.toLocaleString('ko-KR')} /{' '}
-                        {(campaign.total_stock ?? 0).toLocaleString('ko-KR')}
+                        {campaign.soldCount.toLocaleString('ko-KR')} /{' '}
+                        {(campaign.totalStock ?? 0).toLocaleString('ko-KR')}
                       </span>
                     </div>
                     <Progress value={progressPercent} />
@@ -176,23 +183,23 @@ export default function GongguCampaignsPage() {
 
                   {/* Date range */}
                   <div className="text-sm text-muted-foreground">
-                    {campaign.start_at && (
-                      <span>시작: {formatDate(campaign.start_at)}</span>
+                    {campaign.startAt && (
+                      <span>시작: {formatDate(campaign.startAt)}</span>
                     )}
-                    {campaign.start_at && campaign.end_at && (
+                    {campaign.startAt && campaign.endAt && (
                       <span> ~ </span>
                     )}
-                    {campaign.end_at && (
-                      <span>종료: {formatDate(campaign.end_at)}</span>
+                    {campaign.endAt && (
+                      <span>종료: {formatDate(campaign.endAt)}</span>
                     )}
                   </div>
 
                   {/* Products */}
-                  {campaign.campaign_products &&
-                    campaign.campaign_products.length > 0 && (
+                  {campaign.products &&
+                    campaign.products.length > 0 && (
                       <div className="space-y-1">
                         <p className="text-sm font-medium">포함 상품</p>
-                        {campaign.campaign_products.map((cp) => (
+                        {campaign.products.map((cp) => (
                           <div
                             key={cp.id}
                             className="flex items-center justify-between text-sm"
@@ -201,7 +208,7 @@ export default function GongguCampaignsPage() {
                               {cp.product?.name ?? '상품'}
                             </span>
                             <span className="text-muted-foreground">
-                              {formatCurrency(cp.campaign_price)}
+                              {formatCurrency(Number(cp.campaignPrice))}
                             </span>
                           </div>
                         ))}
@@ -210,10 +217,10 @@ export default function GongguCampaignsPage() {
 
                   {/* Meta */}
                   <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                    <span>수수료 {campaign.commission_rate}%</span>
+                    <span>수수료 {campaign.commissionRate}%</span>
                     <span>
                       모집 방식:{' '}
-                      {campaign.recruitment_type === 'OPEN'
+                      {campaign.recruitmentType === 'OPEN'
                         ? '자동 승인'
                         : '승인제'}
                     </span>

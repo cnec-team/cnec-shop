@@ -1,14 +1,9 @@
 import { notFound } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { prisma } from '@/lib/db';
 import { ProductDetailPage } from '@/components/shop/product-detail';
 import { ProductJsonLd } from '@/components/seo/JsonLd';
 import type { Metadata } from 'next';
-import type {
-  Product,
-  Campaign,
-  CampaignProduct,
-  Creator,
-} from '@/types/database';
+import type { Product, CampaignProduct, Creator } from '@/types/database';
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://shop.cnec.kr';
 
@@ -24,53 +19,50 @@ interface ProductPageProps {
 }
 
 async function getCreatorByShopId(shopId: string) {
-  const supabase = await createClient();
+  const creator = await prisma.creator.findFirst({
+    where: {
+      shopId: {
+        equals: shopId,
+        mode: 'insensitive',
+      },
+    },
+  });
 
-  const { data: creator, error } = await supabase
-    .from('creators')
-    .select('*')
-    .ilike('shop_id', shopId)
-    .maybeSingle();
-
-  if (error || !creator) return null;
-  return creator as Creator;
+  if (!creator) return null;
+  return creator;
 }
 
 async function getProduct(productId: string) {
-  const supabase = await createClient();
+  const product = await prisma.product.findUnique({
+    where: { id: productId },
+    include: {
+      brand: {
+        select: {
+          id: true,
+          brandName: true,
+          logoUrl: true,
+        },
+      },
+    },
+  });
 
-  const { data: product, error } = await supabase
-    .from('products')
-    .select(`
-      *,
-      brand:brands (
-        id,
-        brand_name,
-        logo_url
-      )
-    `)
-    .eq('id', productId)
-    .maybeSingle();
-
-  if (error || !product) return null;
-  return product as Product;
+  if (!product) return null;
+  return product;
 }
 
 async function getCampaignProduct(productId: string, campaignId: string) {
-  const supabase = await createClient();
+  const campaignProduct = await prisma.campaignProduct.findFirst({
+    where: {
+      productId,
+      campaignId,
+    },
+    include: {
+      campaign: true,
+    },
+  });
 
-  const { data: campaignProduct, error } = await supabase
-    .from('campaign_products')
-    .select(`
-      *,
-      campaign:campaigns (*)
-    `)
-    .eq('product_id', productId)
-    .eq('campaign_id', campaignId)
-    .maybeSingle();
-
-  if (error || !campaignProduct) return null;
-  return campaignProduct as CampaignProduct;
+  if (!campaignProduct) return null;
+  return campaignProduct;
 }
 
 export async function generateMetadata({ params, searchParams }: ProductPageProps): Promise<Metadata> {
@@ -85,29 +77,31 @@ export async function generateMetadata({ params, searchParams }: ProductPageProp
     return { title: 'Product Not Found' };
   }
 
-  const brandName = product.brand?.brand_name || '';
-  const shopName = creator?.display_name || username;
-  const discountPercent = product.original_price > product.sale_price
-    ? Math.round(((product.original_price - product.sale_price) / product.original_price) * 100)
+  const brandName = product.brand?.brandName || '';
+  const shopName = creator?.displayName || username;
+  const originalPrice = Number(product.originalPrice || 0);
+  const salePrice = Number(product.salePrice || 0);
+  const discountPercent = originalPrice > salePrice
+    ? Math.round(((originalPrice - salePrice) / originalPrice) * 100)
     : 0;
-  const priceText = new Intl.NumberFormat('ko-KR').format(product.sale_price);
-  const ogImage = (product as any).thumbnail_url || product.images?.[0];
+  const priceText = new Intl.NumberFormat('ko-KR').format(salePrice);
+  const ogImage = product.thumbnailUrl || product.images?.[0];
   const canonicalUrl = `${BASE_URL}/${username}/product/${productId}`;
 
   // Check if this is a gonggu campaign product
-  let campaignProduct: CampaignProduct | null = null;
+  let campaignProduct: any = null;
   if (campaignId) {
     campaignProduct = await getCampaignProduct(productId, campaignId);
   }
-  const campaign = campaignProduct?.campaign as Campaign | undefined;
+  const campaign = campaignProduct?.campaign;
   const isGonggu = !!campaign && campaign.type === 'GONGGU';
 
   // Build gonggu-aware title
   let ogTitle: string;
-  if (isGonggu && campaign?.end_at) {
-    const daysLeft = Math.max(0, Math.ceil((new Date(campaign.end_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
-    const campaignPrice = campaignProduct?.campaign_price ?? product.sale_price;
-    const gongguDiscount = Math.round(((product.original_price - campaignPrice) / product.original_price) * 100);
+  if (isGonggu && campaign?.endAt) {
+    const daysLeft = Math.max(0, Math.ceil((new Date(campaign.endAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+    const campaignPrice = Number(campaignProduct?.campaignPrice ?? salePrice);
+    const gongguDiscount = Math.round(((originalPrice - campaignPrice) / originalPrice) * 100);
     ogTitle = `D-${daysLeft} ${product.name} ${gongguDiscount}% 공구`;
   } else {
     const titleSuffix = discountPercent > 0 ? ` - ${discountPercent}% OFF` : '';
@@ -158,7 +152,7 @@ export default async function ProductPage({ params, searchParams }: ProductPageP
     notFound();
   }
 
-  let campaignProduct: CampaignProduct | null = null;
+  let campaignProduct: any = null;
   if (campaignId) {
     campaignProduct = await getCampaignProduct(productId, campaignId);
   }
@@ -167,11 +161,11 @@ export default async function ProductPage({ params, searchParams }: ProductPageP
 
   return (
     <>
-      <ProductJsonLd product={product} shopUrl={productUrl} />
+      <ProductJsonLd product={product as unknown as Product} shopUrl={productUrl} />
       <ProductDetailPage
-        product={product}
-        campaignProduct={campaignProduct}
-        creator={creator}
+        product={product as unknown as Product}
+        campaignProduct={campaignProduct as unknown as CampaignProduct | null}
+        creator={creator as unknown as Creator}
         locale={locale}
         username={username}
       />

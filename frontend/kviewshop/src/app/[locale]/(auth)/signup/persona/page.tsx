@@ -2,20 +2,52 @@
 
 import { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { getClient } from '@/lib/supabase/client';
+import { useSession } from 'next-auth/react';
+import { updateCreatorPersona } from '@/lib/actions/auth-actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { Loader2, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
-import type { SkinType, PersonalColor, AgeRange, BeautyInterest } from '@/types/database';
-import {
-  SKIN_TYPE_LABELS,
-  PERSONAL_COLOR_LABELS,
-  AGE_RANGE_LABELS,
-  BEAUTY_INTEREST_LABELS,
-} from '@/types/database';
 import { useAuthStore } from '@/lib/store/auth';
+
+type SkinType = 'combination' | 'dry' | 'oily' | 'normal' | 'oily_sensitive';
+type PersonalColor = 'spring_warm' | 'summer_cool' | 'autumn_warm' | 'winter_cool';
+type AgeRange = '10s' | '20s_early' | '20s_late' | '30s_early' | '30s_late' | '40s_plus';
+type BeautyInterest = 'skincare' | 'makeup' | 'body' | 'hair' | 'inner_beauty' | 'clean_beauty';
+
+const SKIN_TYPE_LABELS: Record<SkinType, string> = {
+  combination: '복합성',
+  dry: '건성',
+  oily: '지성',
+  normal: '중성',
+  oily_sensitive: '수부지',
+};
+
+const PERSONAL_COLOR_LABELS: Record<PersonalColor, string> = {
+  spring_warm: '봄웜',
+  summer_cool: '여름쿨',
+  autumn_warm: '가을웜',
+  winter_cool: '겨울쿨',
+};
+
+const AGE_RANGE_LABELS: Record<AgeRange, string> = {
+  '10s': '10대',
+  '20s_early': '20대 초반',
+  '20s_late': '20대 후반',
+  '30s_early': '30대 초반',
+  '30s_late': '30대 후반',
+  '40s_plus': '40대+',
+};
+
+const BEAUTY_INTEREST_LABELS: Record<BeautyInterest, string> = {
+  skincare: '스킨케어',
+  makeup: '메이크업',
+  body: '바디',
+  hair: '헤어',
+  inner_beauty: '이너뷰티',
+  clean_beauty: '클린뷰티',
+};
 
 const SKIN_CONCERN_OPTIONS = [
   { value: '모공', label: '모공', emoji: '🔍' },
@@ -63,6 +95,7 @@ export default function PersonaQuizPage() {
   const params = useParams();
   const locale = params.locale as string;
   const { creator, setCreator } = useAuthStore();
+  const { data: session } = useSession();
 
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -124,45 +157,21 @@ export default function PersonaQuizPage() {
   const handleSubmit = async () => {
     if (!skinType || !ageRange || !personalColor) return;
 
+    if (!session?.user) {
+      toast.error('로그인이 필요합니다');
+      router.push(`/${locale}/login`);
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const supabase = getClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast.error('로그인이 필요합니다');
-        router.push(`/${locale}/login`);
-        return;
-      }
-
-      // Get creator record
-      const { data: creatorData } = await supabase
-        .from('creators')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (!creatorData) {
-        toast.error('크리에이터 정보를 찾을 수 없습니다');
-        return;
-      }
-
-      // Update persona data
-      const { error } = await supabase
-        .from('creators')
-        .update({
-          skin_type: skinType,
-          age_range: ageRange,
-          skin_concerns: skinConcerns,
-          interests: interests,
-          personal_color: personalColor,
-        })
-        .eq('id', creatorData.id);
-
-      if (error) {
-        console.error('Persona update error:', error);
-        toast.error('저장에 실패했습니다. 다시 시도해주세요.');
-        return;
-      }
+      await updateCreatorPersona({
+        skinType,
+        ageRange,
+        skinConcerns,
+        interests,
+        personalColor,
+      });
 
       // Update local store
       if (creator) {

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useUser } from '@/lib/hooks/use-user';
-import { getClient } from '@/lib/supabase/client';
+import { getBecomeCreatorData, checkUsernameAvailability, submitCreatorApplication } from '@/lib/actions/buyer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,17 +29,17 @@ import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface EligibilityCriteria {
-  min_orders: number;
-  min_reviews: number;
-  min_spent: number;
-  min_account_age_days: number;
+  minOrders: number;
+  minReviews: number;
+  minSpent: number;
+  minAccountAgeDays: number;
 }
 
 interface UserProgress {
-  total_orders: number;
-  total_reviews: number;
-  total_spent: number;
-  account_age_days: number;
+  totalOrders: number;
+  totalReviews: number;
+  totalSpent: number;
+  accountAgeDays: number;
 }
 
 export default function BecomeCreatorPage() {
@@ -71,42 +71,21 @@ export default function BecomeCreatorPage() {
       if (!buyer) return;
 
       try {
-        const supabase = getClient();
+        const data = await getBecomeCreatorData(buyer.id);
 
-        // Load criteria
-        const { data: criteriaData } = await supabase
-          .from('conversion_criteria')
-          .select('*')
-          .eq('is_active', true)
-          .maybeSingle();
-
-        if (criteriaData) {
-          setCriteria(criteriaData);
-        }
-
-        // Check for existing application
-        const { data: appData } = await supabase
-          .from('creator_applications')
-          .select('*')
-          .eq('buyer_id', buyer.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (appData) {
-          setExistingApplication(appData);
-        }
+        setCriteria(data.criteria);
+        setExistingApplication(data.existingApplication);
 
         // Calculate user progress
-        const accountAge = Math.floor(
-          (Date.now() - new Date(buyer.created_at).getTime()) / (1000 * 60 * 60 * 24)
-        );
+        const accountAge = buyer.created_at
+          ? Math.floor((Date.now() - new Date(buyer.created_at).getTime()) / (1000 * 60 * 60 * 24))
+          : 0;
 
         setProgress({
-          total_orders: buyer.total_orders || 0,
-          total_reviews: buyer.total_reviews || 0,
-          total_spent: buyer.total_spent || 0,
-          account_age_days: accountAge,
+          totalOrders: buyer.total_orders || buyer.totalOrders || 0,
+          totalReviews: buyer.total_reviews || buyer.totalReviews || 0,
+          totalSpent: buyer.total_spent || buyer.totalSpent || 0,
+          accountAgeDays: accountAge,
         });
       } catch (error) {
         console.error('Failed to load data:', error);
@@ -121,10 +100,10 @@ export default function BecomeCreatorPage() {
   const checkEligibility = () => {
     if (!criteria || !progress) return false;
     return (
-      progress.total_orders >= criteria.min_orders &&
-      progress.total_reviews >= criteria.min_reviews &&
-      progress.total_spent >= criteria.min_spent &&
-      progress.account_age_days >= criteria.min_account_age_days
+      progress.totalOrders >= criteria.minOrders &&
+      progress.totalReviews >= criteria.minReviews &&
+      progress.totalSpent >= criteria.minSpent &&
+      progress.accountAgeDays >= criteria.minAccountAgeDays
     );
   };
 
@@ -139,36 +118,28 @@ export default function BecomeCreatorPage() {
 
     setIsSubmitting(true);
     try {
-      const supabase = getClient();
-
       // Check if username is available
-      const { data: existingCreator } = await supabase
-        .from('creators')
-        .select('id')
-        .eq('username', form.desired_username.toLowerCase())
-        .maybeSingle();
+      const isAvailable = await checkUsernameAvailability(form.desired_username.toLowerCase());
 
-      if (existingCreator) {
+      if (!isAvailable) {
         toast.error('This username is already taken');
         setIsSubmitting(false);
         return;
       }
 
       // Submit application
-      const { error } = await supabase.from('creator_applications').insert({
-        buyer_id: buyer.id,
-        desired_username: form.desired_username.toLowerCase(),
-        display_name: form.display_name,
-        bio: form.bio || null,
-        instagram_url: form.instagram_url || null,
-        youtube_url: form.youtube_url || null,
-        tiktok_url: form.tiktok_url || null,
-        follower_count: form.follower_count ? parseInt(form.follower_count) : null,
-        motivation: form.motivation || null,
-        content_plan: form.content_plan || null,
+      await submitCreatorApplication({
+        buyerId: buyer.id,
+        desiredUsername: form.desired_username.toLowerCase(),
+        displayName: form.display_name,
+        bio: form.bio || undefined,
+        instagramUrl: form.instagram_url || undefined,
+        youtubeUrl: form.youtube_url || undefined,
+        tiktokUrl: form.tiktok_url || undefined,
+        followerCount: form.follower_count ? parseInt(form.follower_count) : undefined,
+        motivation: form.motivation || undefined,
+        contentPlan: form.content_plan || undefined,
       });
-
-      if (error) throw error;
 
       toast.success('Application submitted successfully!');
       router.push(`/${locale}/buyer/dashboard`);
@@ -249,26 +220,26 @@ export default function BecomeCreatorPage() {
   const criteriaItems = criteria ? [
     {
       label: 'Orders Placed',
-      current: progress?.total_orders || 0,
-      required: criteria.min_orders,
+      current: progress?.totalOrders || 0,
+      required: criteria.minOrders,
       icon: ShoppingBag,
     },
     {
       label: 'Reviews Written',
-      current: progress?.total_reviews || 0,
-      required: criteria.min_reviews,
+      current: progress?.totalReviews || 0,
+      required: criteria.minReviews,
       icon: Star,
     },
     {
       label: 'Total Spent ($)',
-      current: progress?.total_spent || 0,
-      required: criteria.min_spent,
+      current: progress?.totalSpent || 0,
+      required: criteria.minSpent,
       icon: DollarSign,
     },
     {
       label: 'Account Age (days)',
-      current: progress?.account_age_days || 0,
-      required: criteria.min_account_age_days,
+      current: progress?.accountAgeDays || 0,
+      required: criteria.minAccountAgeDays,
       icon: Clock,
     },
   ] : [];

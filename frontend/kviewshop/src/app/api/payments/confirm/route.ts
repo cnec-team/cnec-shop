@@ -1,18 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-function getSupabaseClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Missing Supabase configuration');
-  }
-
-  return createClient(supabaseUrl, supabaseKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-}
+import { prisma } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
@@ -62,15 +49,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify payment amount matches order total
-    const supabase = getSupabaseClient();
+    const existingOrder = await prisma.order.findFirst({
+      where: { orderNumber: orderId },
+      select: { orderNumber: true, totalAmount: true, status: true },
+    });
 
-    const { data: existingOrder, error: fetchError } = await supabase
-      .from('orders')
-      .select('order_number, total_amount, status')
-      .eq('order_number', orderId)
-      .single();
-
-    if (fetchError || !existingOrder) {
+    if (!existingOrder) {
       console.error('Order not found for payment confirmation:', orderId);
       return NextResponse.json(
         { success: false, message: 'Order not found' },
@@ -78,10 +62,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (Number(result.totalAmount) !== Number(existingOrder.total_amount)) {
+    if (Number(result.totalAmount) !== Number(existingOrder.totalAmount)) {
       console.error('Payment amount mismatch:', {
         paid: result.totalAmount,
-        expected: existingOrder.total_amount,
+        expected: existingOrder.totalAmount,
       });
       return NextResponse.json(
         { success: false, message: 'Payment amount mismatch' },
@@ -90,33 +74,24 @@ export async function POST(request: NextRequest) {
     }
 
     // Payment confirmed by Toss — update order status server-side
-    const now = new Date().toISOString();
+    const now = new Date();
 
-    const { data: order, error: updateError } = await supabase
-      .from('orders')
-      .update({
+    const order = await prisma.order.update({
+      where: { orderNumber: orderId },
+      data: {
         status: 'PAID',
-        payment_key: paymentKey,
-        pg_transaction_id: paymentKey,
-        pg_provider: 'toss',
-        payment_method: result.method || 'CARD',
-        paid_at: now,
-      })
-      .eq('order_number', orderId)
-      .select('order_number')
-      .single();
-
-    if (updateError) {
-      console.error('Failed to update order status after Toss confirmation:', updateError);
-      return NextResponse.json(
-        { success: false, message: 'Payment confirmed but order update failed. Contact support.' },
-        { status: 500 }
-      );
-    }
+        paymentKey,
+        pgTransactionId: paymentKey,
+        pgProvider: 'toss',
+        paymentMethod: result.method || 'CARD',
+        paidAt: now,
+      },
+      select: { orderNumber: true },
+    });
 
     return NextResponse.json({
       success: true,
-      orderNumber: order?.order_number || orderId,
+      orderNumber: order?.orderNumber || orderId,
       payment: {
         paymentKey: result.paymentKey,
         orderId: result.orderId,

@@ -1,14 +1,8 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { awardPoints } from '@/lib/points';
 import { getAuthUser } from '@/lib/auth-helpers';
-
-function getSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error('Missing Supabase credentials');
-  return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
-}
+import { prisma } from '@/lib/db';
+import { initCreatorMissions, checkAndCompleteMission } from '@/lib/missions';
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,39 +10,34 @@ export async function POST(request: NextRequest) {
     if (!authUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const supabase = getSupabase();
 
-    const { data: creator } = await supabase
-      .from('creators')
-      .select('id, onboarding_completed')
-      .eq('user_id', authUser.id)
-      .single();
+    const creator = await prisma.creator.findUnique({
+      where: { userId: authUser.id },
+      select: { id: true, onboardingCompleted: true },
+    });
 
     if (!creator) {
       return NextResponse.json({ error: 'Creator not found' }, { status: 404 });
     }
 
     // Skip if already completed
-    if (creator.onboarding_completed) {
+    if (creator.onboardingCompleted) {
       return NextResponse.json({ success: true, totalPoints: 5000, alreadyCompleted: true });
     }
 
     // Award points
-    const signupResult = await awardPoints(supabase, creator.id, 'SIGNUP_BONUS', '가입 축하 포인트');
-    const personaResult = await awardPoints(supabase, creator.id, 'PERSONA_COMPLETE', '페르소나 완료 보너스');
+    await awardPoints(creator.id, 'SIGNUP_BONUS', '가입 축하 포인트');
+    await awardPoints(creator.id, 'PERSONA_COMPLETE', '페르소나 완료 보너스');
 
     // Complete SHOP_OPEN mission
-    await supabase.rpc('init_creator_missions', { p_creator_id: creator.id });
-    await supabase.rpc('check_and_complete_mission', {
-      p_creator_id: creator.id,
-      p_mission_key: 'SHOP_OPEN',
-    });
+    await initCreatorMissions(creator.id);
+    await checkAndCompleteMission(creator.id, 'SHOP_OPEN');
 
     // Mark onboarding as completed
-    await supabase
-      .from('creators')
-      .update({ onboarding_completed: true })
-      .eq('id', creator.id);
+    await prisma.creator.update({
+      where: { id: creator.id },
+      data: { onboardingCompleted: true },
+    });
 
     const totalPoints = 5000; // 3000 + 2000
 

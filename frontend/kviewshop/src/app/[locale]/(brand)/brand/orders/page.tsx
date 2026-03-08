@@ -2,10 +2,17 @@
 
 import { useEffect, useState } from 'react';
 import * as XLSX from 'xlsx';
-import { getClient } from '@/lib/supabase/client';
-import { useAuthStore } from '@/lib/store/auth';
-import type { Order, OrderItem, OrderStatus, Creator } from '@/types/database';
+import {
+  getBrandSession,
+  getBrandOrders,
+  updateOrderStatus,
+  cancelOrder as cancelOrderAction,
+  handleShippingStart as shippingStartAction,
+  updateTrackingInfo,
+} from '@/lib/actions/brand';
 import { ORDER_STATUS_LABELS } from '@/types/database';
+
+type OrderStatus = 'PAID' | 'PREPARING' | 'SHIPPING' | 'DELIVERED' | 'CONFIRMED' | 'CANCELLED' | 'REFUNDED';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -49,9 +56,26 @@ const COURIER_MAP: Record<string, string> = Object.fromEntries(
   COURIERS.map((c) => [c.code, c.name])
 );
 
-interface OrderWithDetails extends Order {
-  items?: (OrderItem & { product?: { name: string } })[];
-  creator?: Creator;
+interface OrderWithDetails {
+  id: string;
+  orderNumber: string;
+  buyerName: string;
+  buyerPhone: string;
+  buyerEmail: string;
+  totalAmount: number;
+  shippingFee: number;
+  status: OrderStatus;
+  trackingNumber: string | null;
+  courierCode: string | null;
+  shippedAt: string | null;
+  deliveredAt: string | null;
+  cancelReason?: string | null;
+  shippingAddress?: string;
+  shippingDetail?: string | null;
+  shippingZipcode?: string | null;
+  createdAt: string;
+  items?: { id: string; quantity: number; totalPrice: number; product?: { name: string } | null }[];
+  creator?: { displayName: string | null } | null;
 }
 
 function formatCurrency(num: number): string {
@@ -128,7 +152,7 @@ function TableSkeleton() {
 }
 
 export default function BrandOrdersPage() {
-  const { brand, isLoading: authLoading } = useAuthStore();
+  const [brand, setBrand] = useState<{ id: string } | null>(null);
   const [orders, setOrders] = useState<OrderWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
@@ -148,121 +172,84 @@ export default function BrandOrdersPage() {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!brand?.id) {
-      if (!authLoading) setIsLoading(false);
-      return;
+    async function init() {
+      const brandData = await getBrandSession();
+      if (brandData) setBrand(brandData);
+      else setIsLoading(false);
     }
+    init();
+  }, []);
+
+  useEffect(() => {
+    if (!brand?.id) return;
 
     async function fetchOrders() {
-      const supabase = getClient();
-      let query = supabase
-        .from('orders')
-        .select(
-          '*, items:order_items(*, product:products(name)), creator:creators(*)'
-        )
-        .eq('brand_id', brand!.id)
-        .order('created_at', { ascending: false });
-
-      if (statusFilter !== 'ALL') {
-        query = query.eq('status', statusFilter);
-      }
-
-      const { data, error } = await query;
-      if (error) {
+      try {
+        const data = await getBrandOrders(brand!.id, statusFilter);
+        setOrders(
+          (data ?? []).map((o: any) => ({
+            ...o,
+            createdAt: o.createdAt?.toISOString?.() ?? o.createdAt,
+            shippedAt: o.shippedAt?.toISOString?.() ?? o.shippedAt,
+            deliveredAt: o.deliveredAt?.toISOString?.() ?? o.deliveredAt,
+          })) as OrderWithDetails[]
+        );
+      } catch (error) {
         console.error('Failed to fetch orders:', error);
-      } else {
-        setOrders((data ?? []) as OrderWithDetails[]);
       }
       setIsLoading(false);
     }
 
     setIsLoading(true);
     fetchOrders();
-  }, [brand?.id, statusFilter, authLoading]);
+  }, [brand?.id, statusFilter]);
 
   async function handleStatusChange(orderId: string, newStatus: OrderStatus) {
     setUpdatingId(orderId);
-    const supabase = getClient();
-
-    const updateData: Record<string, unknown> = { status: newStatus };
-
-    if (newStatus === 'PREPARING') {
-      // Transition from PAID to PREPARING
-    }
-    if (newStatus === 'SHIPPING') {
-      updateData.shipped_at = new Date().toISOString();
-      const trackingNumber = trackingInputs[orderId];
-      if (trackingNumber) {
-        updateData.tracking_number = trackingNumber;
-      }
-      const courierCode = courierInputs[orderId];
-      if (courierCode) {
-        updateData.courier_code = courierCode;
-      }
-    }
-    if (newStatus === 'DELIVERED') {
-      updateData.delivered_at = new Date().toISOString();
-    }
-    if (newStatus === 'CONFIRMED') {
-      updateData.confirmed_at = new Date().toISOString();
-    }
-
-    const { error } = await supabase
-      .from('orders')
-      .update(updateData)
-      .eq('id', orderId);
-
-    if (!error) {
+    try {
+      const trackingNumber = newStatus === 'SHIPPING' ? trackingInputs[orderId] : undefined;
+      const courierCode = newStatus === 'SHIPPING' ? courierInputs[orderId] : undefined;
+      await updateOrderStatus(orderId, newStatus, trackingNumber, courierCode);
       setOrders(
         orders.map((o) =>
           o.id === orderId
             ? {
                 ...o,
                 status: newStatus,
-                ...(updateData.tracking_number
-                  ? { tracking_number: updateData.tracking_number as string }
-                  : {}),
-                ...(updateData.courier_code
-                  ? { courier_code: updateData.courier_code as string }
-                  : {}),
+                ...(trackingNumber ? { trackingNumber } : {}),
+                ...(courierCode ? { courierCode } : {}),
               }
             : o
         )
       );
+    } catch (error) {
+      console.error('Failed to update order status:', error);
     }
     setUpdatingId(null);
   }
 
   async function handleCancelOrder(orderId: string) {
-    const cancelReason = cancelReasonInputs[orderId]?.trim();
-    if (!cancelReason) return;
+    const reason = cancelReasonInputs[orderId]?.trim();
+    if (!reason) return;
 
     setUpdatingId(orderId);
-    const supabase = getClient();
-
-    const { error } = await supabase
-      .from('orders')
-      .update({
-        status: 'CANCELLED',
-        cancelled_at: new Date().toISOString(),
-        cancel_reason: cancelReason,
-      })
-      .eq('id', orderId);
-
-    if (!error) {
+    try {
+      await cancelOrderAction(orderId, reason);
       setOrders(
         orders.map((o) =>
           o.id === orderId
             ? {
                 ...o,
                 status: 'CANCELLED' as OrderStatus,
-                cancel_reason: cancelReason,
+                cancelReason: reason,
               }
             : o
         )
       );
       setShowCancelForm({ ...showCancelForm, [orderId]: false });
       setCancelReasonInputs({ ...cancelReasonInputs, [orderId]: '' });
+    } catch (error) {
+      console.error('Failed to cancel order:', error);
     }
     setUpdatingId(null);
   }
@@ -274,35 +261,22 @@ export default function BrandOrdersPage() {
     if (!trackingNumber?.trim()) return;
 
     setUpdatingId(orderId);
-    const supabase = getClient();
-
-    const updateData: Record<string, unknown> = {
-      status: 'SHIPPING',
-      shipped_at: new Date().toISOString(),
-      tracking_number: trackingNumber.trim(),
-    };
-    if (courierCode) {
-      updateData.courier_code = courierCode;
-    }
-
-    const { error } = await supabase
-      .from('orders')
-      .update(updateData)
-      .eq('id', orderId);
-
-    if (!error) {
+    try {
+      await shippingStartAction(orderId, trackingNumber, courierCode);
       setOrders(
         orders.map((o) =>
           o.id === orderId
             ? {
                 ...o,
                 status: 'SHIPPING' as OrderStatus,
-                tracking_number: trackingNumber.trim(),
-                ...(courierCode ? { courier_code: courierCode } : {}),
+                trackingNumber: trackingNumber.trim(),
+                ...(courierCode ? { courierCode } : {}),
               }
             : o
         )
       );
+    } catch (error) {
+      console.error('Failed to start shipping:', error);
     }
     setUpdatingId(null);
   }
@@ -312,31 +286,21 @@ export default function BrandOrdersPage() {
     const courierCode = courierInputs[orderId];
     if (!trackingNumber) return;
 
-    const supabase = getClient();
-    const updateData: Record<string, unknown> = {
-      tracking_number: trackingNumber,
-    };
-    if (courierCode) {
-      updateData.courier_code = courierCode;
-    }
-
-    const { error } = await supabase
-      .from('orders')
-      .update(updateData)
-      .eq('id', orderId);
-
-    if (!error) {
+    try {
+      await updateTrackingInfo(orderId, trackingNumber, courierCode);
       setOrders(
         orders.map((o) =>
           o.id === orderId
             ? {
                 ...o,
-                tracking_number: trackingNumber,
-                ...(courierCode ? { courier_code: courierCode } : {}),
+                trackingNumber,
+                ...(courierCode ? { courierCode } : {}),
               }
             : o
         )
       );
+    } catch (error) {
+      console.error('Failed to save tracking info:', error);
     }
   }
 
@@ -363,15 +327,15 @@ export default function BrandOrdersPage() {
         .join(', ');
 
       return {
-        '주문번호': order.order_number,
-        '주문일시': new Date(order.created_at).toLocaleString('ko-KR'),
+        '주문번호': order.orderNumber,
+        '주문일시': new Date(order.createdAt).toLocaleString('ko-KR'),
         '상품명': productNames,
         '수량': totalQuantity,
-        '결제금액': order.total_amount,
-        '주문자명': order.buyer_name,
-        '배송지': `${order.shipping_address} ${order.shipping_detail ?? ''}`.trim(),
-        '주문상태': ORDER_STATUS_LABELS[order.status],
-        '크리에이터명': order.creator?.display_name ?? '-',
+        '결제금액': order.totalAmount,
+        '주문자명': order.buyerName,
+        '배송지': `${order.shippingAddress ?? ''} ${order.shippingDetail ?? ''}`.trim(),
+        '주문상태': ORDER_STATUS_LABELS[order.status as keyof typeof ORDER_STATUS_LABELS],
+        '크리에이터명': order.creator?.displayName ?? '-',
       };
     });
 
@@ -480,10 +444,10 @@ export default function BrandOrdersPage() {
                           onClick={() => toggleExpand(order.id)}
                         >
                           <TableCell className="font-mono text-sm">
-                            {order.order_number}
+                            {order.orderNumber}
                           </TableCell>
                           <TableCell className="text-sm">
-                            {formatDate(order.created_at)}
+                            {formatDate(order.createdAt)}
                           </TableCell>
                           <TableCell>
                             {order.items && order.items.length > 0 ? (
@@ -505,14 +469,14 @@ export default function BrandOrdersPage() {
                             )}
                           </TableCell>
                           <TableCell>
-                            <div className="text-sm">{order.buyer_name}</div>
+                            <div className="text-sm">{order.buyerName}</div>
                             <div className="text-xs text-muted-foreground">
-                              {order.buyer_phone}
+                              {order.buyerPhone}
                             </div>
                           </TableCell>
                           <TableCell>
                             <div className="text-sm">
-                              {order.creator?.display_name ?? '-'}
+                              {order.creator?.displayName ?? '-'}
                             </div>
                             {order.creator && (
                               <div className="text-xs text-muted-foreground">
@@ -521,7 +485,7 @@ export default function BrandOrdersPage() {
                             )}
                           </TableCell>
                           <TableCell className="text-right font-medium">
-                            {formatCurrency(order.total_amount)}
+                            {formatCurrency(order.totalAmount)}
                           </TableCell>
                           <TableCell>
                             <Badge
@@ -587,16 +551,16 @@ export default function BrandOrdersPage() {
                                     </p>
                                     <div className="mt-1 text-sm text-muted-foreground space-y-0.5">
                                       <p>
-                                        {order.buyer_name} ({order.buyer_phone})
+                                        {order.buyerName} ({order.buyerPhone})
                                       </p>
-                                      <p>{order.shipping_address}</p>
-                                      {order.shipping_detail && (
-                                        <p>{order.shipping_detail}</p>
+                                      <p>{order.shippingAddress}</p>
+                                      {order.shippingDetail && (
+                                        <p>{order.shippingDetail}</p>
                                       )}
-                                      {order.shipping_zipcode && (
-                                        <p>우편번호: {order.shipping_zipcode}</p>
+                                      {order.shippingZipcode && (
+                                        <p>우편번호: {order.shippingZipcode}</p>
                                       )}
-                                      <p>이메일: {order.buyer_email}</p>
+                                      <p>이메일: {order.buyerEmail}</p>
                                     </div>
                                   </div>
 
@@ -615,7 +579,7 @@ export default function BrandOrdersPage() {
                                             {item.quantity}
                                           </span>
                                           <span className="text-muted-foreground">
-                                            {formatCurrency(item.total_price)}
+                                            {formatCurrency(item.totalPrice)}
                                           </span>
                                         </div>
                                       ))}
@@ -623,13 +587,13 @@ export default function BrandOrdersPage() {
                                       <div className="flex justify-between text-sm">
                                         <span>배송비</span>
                                         <span>
-                                          {formatCurrency(order.shipping_fee)}
+                                          {formatCurrency(order.shippingFee)}
                                         </span>
                                       </div>
                                       <div className="flex justify-between text-sm font-medium">
                                         <span>총 결제금액</span>
                                         <span>
-                                          {formatCurrency(order.total_amount)}
+                                          {formatCurrency(order.totalAmount)}
                                         </span>
                                       </div>
                                     </div>
@@ -637,7 +601,7 @@ export default function BrandOrdersPage() {
                                 </div>
 
                                 {/* Tracking info display (when tracking_number exists) */}
-                                {order.tracking_number && (
+                                {order.trackingNumber && (
                                   <>
                                     <Separator />
                                     <div>
@@ -645,18 +609,18 @@ export default function BrandOrdersPage() {
                                         배송 추적 정보
                                       </p>
                                       <div className="text-sm text-muted-foreground space-y-0.5">
-                                        {order.courier_code && (
+                                        {order.courierCode && (
                                           <p>
                                             택배사:{' '}
-                                            {COURIER_MAP[order.courier_code] ?? order.courier_code}
+                                            {COURIER_MAP[order.courierCode] ?? order.courierCode}
                                           </p>
                                         )}
-                                        <p>송장번호: {order.tracking_number}</p>
-                                        {order.shipped_at && (
-                                          <p>발송일시: {formatDate(order.shipped_at)}</p>
+                                        <p>송장번호: {order.trackingNumber}</p>
+                                        {order.shippedAt && (
+                                          <p>발송일시: {formatDate(order.shippedAt)}</p>
                                         )}
-                                        {order.delivered_at && (
-                                          <p>배송완료: {formatDate(order.delivered_at)}</p>
+                                        {order.deliveredAt && (
+                                          <p>배송완료: {formatDate(order.deliveredAt)}</p>
                                         )}
                                       </div>
                                     </div>
@@ -664,7 +628,7 @@ export default function BrandOrdersPage() {
                                 )}
 
                                 {/* Cancel reason display */}
-                                {order.status === 'CANCELLED' && order.cancel_reason && (
+                                {order.status === 'CANCELLED' && order.cancelReason && (
                                   <>
                                     <Separator />
                                     <div>
@@ -672,7 +636,7 @@ export default function BrandOrdersPage() {
                                         취소 사유
                                       </p>
                                       <p className="text-sm text-muted-foreground">
-                                        {order.cancel_reason}
+                                        {order.cancelReason}
                                       </p>
                                     </div>
                                   </>
@@ -692,7 +656,7 @@ export default function BrandOrdersPage() {
                                           <Select
                                             value={
                                               courierInputs[order.id] ??
-                                              order.courier_code ??
+                                              order.courierCode ??
                                               ''
                                             }
                                             onValueChange={(value) =>
@@ -722,7 +686,7 @@ export default function BrandOrdersPage() {
                                           <Input
                                             value={
                                               trackingInputs[order.id] ??
-                                              order.tracking_number ??
+                                              order.trackingNumber ??
                                               ''
                                             }
                                             onChange={(e) =>

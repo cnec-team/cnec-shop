@@ -1,5 +1,5 @@
 import { MetadataRoute } from 'next';
-import { createClient } from '@supabase/supabase-js';
+import { prisma } from '@/lib/db';
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://shop.cnec.kr';
 
@@ -15,54 +15,69 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Fetch active creators for dynamic shop pages
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const creators = await prisma.creator.findMany({
+      where: {
+        status: 'ACTIVE',
+        shopId: { not: null },
+      },
+      select: { shopId: true, updatedAt: true },
+    });
 
-    if (supabaseUrl && supabaseKey) {
-      const supabase = createClient(supabaseUrl, supabaseKey);
+    for (const creator of creators) {
+      entries.push({
+        url: `${BASE_URL}/ko/${creator.shopId}`,
+        lastModified: creator.updatedAt ? new Date(creator.updatedAt) : new Date(),
+        changeFrequency: 'weekly',
+        priority: 0.8,
+      });
+    }
 
-      const { data: creators } = await supabase
-        .from('creators')
-        .select('shop_id, updated_at')
-        .eq('status', 'ACTIVE')
-        .not('shop_id', 'is', null);
+    // Fetch active products with their creator shop IDs
+    const shopItems = await prisma.creatorShopItem.findMany({
+      where: { isVisible: true },
+      select: {
+        productId: true,
+        creatorId: true,
+        campaignId: true,
+      },
+      take: 1000,
+    });
 
-      if (creators) {
-        for (const creator of creators) {
-          entries.push({
-            url: `${BASE_URL}/ko/${creator.shop_id}`,
-            lastModified: creator.updated_at ? new Date(creator.updated_at) : new Date(),
-            changeFrequency: 'weekly',
-            priority: 0.8,
-          });
-        }
-      }
+    if (shopItems.length > 0) {
+      // Get unique creator IDs and product IDs
+      const creatorIds = [...new Set(shopItems.map(item => item.creatorId))];
+      const productIds = [...new Set(shopItems.map(item => item.productId))];
 
-      // Fetch active products with their creator shop IDs
-      const { data: shopItems } = await supabase
-        .from('creator_shop_items')
-        .select('product_id, creator_id, campaign_id, products(updated_at), creators(shop_id)')
-        .eq('is_visible', true)
-        .limit(1000);
+      const [creatorsData, productsData] = await Promise.all([
+        prisma.creator.findMany({
+          where: { id: { in: creatorIds } },
+          select: { id: true, shopId: true },
+        }),
+        prisma.product.findMany({
+          where: { id: { in: productIds } },
+          select: { id: true, updatedAt: true },
+        }),
+      ]);
 
-      if (shopItems) {
-        const seen = new Set<string>();
-        for (const item of shopItems) {
-          const shopId = (item as any).creators?.shop_id;
-          const productUpdated = (item as any).products?.updated_at;
-          if (!shopId || !item.product_id) continue;
+      const creatorMap = new Map(creatorsData.map(c => [c.id, c.shopId]));
+      const productMap = new Map(productsData.map(p => [p.id, p.updatedAt]));
 
-          const key = `${shopId}/${item.product_id}`;
-          if (seen.has(key)) continue;
-          seen.add(key);
+      const seen = new Set<string>();
+      for (const item of shopItems) {
+        const shopId = creatorMap.get(item.creatorId);
+        const productUpdated = productMap.get(item.productId);
+        if (!shopId || !item.productId) continue;
 
-          entries.push({
-            url: `${BASE_URL}/ko/${shopId}/product/${item.product_id}`,
-            lastModified: productUpdated ? new Date(productUpdated) : new Date(),
-            changeFrequency: 'daily',
-            priority: 0.7,
-          });
-        }
+        const key = `${shopId}/${item.productId}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        entries.push({
+          url: `${BASE_URL}/ko/${shopId}/product/${item.productId}`,
+          lastModified: productUpdated ? new Date(productUpdated) : new Date(),
+          changeFrequency: 'daily',
+          priority: 0.7,
+        });
       }
     }
   } catch (error) {

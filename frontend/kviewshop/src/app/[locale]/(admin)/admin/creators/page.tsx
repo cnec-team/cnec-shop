@@ -14,14 +14,14 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Search, Users } from 'lucide-react';
-import { getClient } from '@/lib/supabase/client';
+import { getAdminCreators } from '@/lib/actions/admin';
 
 interface Creator {
   id: string;
-  username: string;
-  display_name: string;
-  country: string;
-  created_at: string;
+  username: string | null;
+  displayName: string | null;
+  country: string | null;
+  createdAt: Date;
 }
 
 export default function AdminCreatorsPage() {
@@ -37,14 +37,8 @@ export default function AdminCreatorsPage() {
 
   async function fetchCreators() {
     try {
-      const supabase = getClient();
-      const { data, error } = await supabase
-        .from('creators')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setCreators(data || []);
+      const data = await getAdminCreators();
+      setCreators(data as Creator[]);
     } catch (err) {
       console.error('Error:', err);
       setError('데이터를 불러올 수 없습니다');
@@ -55,7 +49,7 @@ export default function AdminCreatorsPage() {
 
   const filteredCreators = creators.filter(c =>
     c.username?.toLowerCase().includes(search.toLowerCase()) ||
-    c.display_name?.toLowerCase().includes(search.toLowerCase())
+    c.displayName?.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -110,14 +104,14 @@ export default function AdminCreatorsPage() {
                   <TableRow key={creator.id}>
                     <TableCell>
                       <div>
-                        <p className="font-medium">{creator.display_name || creator.username}</p>
+                        <p className="font-medium">{creator.displayName || creator.username}</p>
                         <p className="text-sm text-muted-foreground">@{creator.username}</p>
                       </div>
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline">{creator.country}</Badge>
                     </TableCell>
-                    <TableCell>{new Date(creator.created_at).toLocaleDateString('ko-KR')}</TableCell>
+                    <TableCell>{new Date(creator.createdAt).toLocaleDateString('ko-KR')}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

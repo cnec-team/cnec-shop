@@ -1,11 +1,9 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import * as XLSX from 'xlsx';
-import { getClient } from '@/lib/supabase/client';
-import { useAuthStore } from '@/lib/store/auth';
-import type { ProductCategory } from '@/types/database';
+import { getBrandSession, bulkCreateProducts } from '@/lib/actions/brand';
 import { PRODUCT_CATEGORY_LABELS } from '@/types/database';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +25,8 @@ import {
 import { toast } from 'sonner';
 import { Upload, Download, FileSpreadsheet, AlertCircle, CheckCircle2, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+
+type ProductCategory = string;
 
 const VALID_CATEGORIES = ['SKINCARE', 'MAKEUP', 'BODY', 'HAIR', 'ETC'] as const;
 const CATEGORY_MAP: Record<string, ProductCategory> = {
@@ -133,7 +133,7 @@ function downloadTemplate() {
 
 export default function BulkUploadPage() {
   const router = useRouter();
-  const { brand } = useAuthStore();
+  const [brand, setBrand] = useState<{ id: string; defaultShippingFee?: number | string | null } | null>(null);
   const [parsedRows, setParsedRows] = useState<BulkProductRow[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
@@ -141,6 +141,14 @@ export default function BulkUploadPage() {
 
   const hasErrors = parsedRows.some((r) => r.errors.length > 0);
   const validCount = parsedRows.filter((r) => r.errors.length === 0).length;
+
+  useEffect(() => {
+    async function load() {
+      const brandData = await getBrandSession();
+      if (brandData) setBrand(brandData as any);
+    }
+    load();
+  }, []);
 
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -209,32 +217,23 @@ export default function BulkUploadPage() {
 
     setIsRegistering(true);
     try {
-      const supabase = getClient();
-
       const products = parsedRows.map((row) => ({
-        brand_id: brand.id,
         name: row.product_name,
         category: CATEGORY_MAP[row.category] || 'etc',
-        original_price: row.price,
-        sale_price: row.sale_price ?? row.price,
+        originalPrice: row.price,
+        salePrice: row.sale_price ?? row.price,
         stock: row.stock,
-        default_commission_rate: row.commission_rate,
-        description: row.description ?? null,
+        defaultCommissionRate: row.commission_rate,
+        description: row.description,
         images: row.image_url ? [row.image_url] : [],
-        thumbnail_url: row.image_url ?? null,
-        allow_creator_pick: row.allow_creator_pick,
+        thumbnailUrl: row.image_url,
+        allowCreatorPick: row.allow_creator_pick,
         status: 'ACTIVE' as const,
-        shipping_fee_type: 'PAID' as const,
-        shipping_fee: brand.default_shipping_fee ?? 3000,
+        shippingFeeType: 'PAID' as const,
+        shippingFee: Number(brand.defaultShippingFee ?? 3000),
       }));
 
-      const { error } = await supabase.from('products').insert(products);
-
-      if (error) {
-        console.error('Bulk insert error:', error);
-        toast.error('상품 등록에 실패했습니다: ' + error.message);
-        return;
-      }
+      await bulkCreateProducts(brand.id, products);
 
       toast.success(`${products.length}개 상품이 등록되었습니다!`);
       router.push('../products');
@@ -366,7 +365,7 @@ export default function BulkUploadPage() {
                         </TableCell>
                         <TableCell>
                           {CATEGORY_MAP[row.category]
-                            ? PRODUCT_CATEGORY_LABELS[CATEGORY_MAP[row.category]]
+                            ? PRODUCT_CATEGORY_LABELS[CATEGORY_MAP[row.category] as keyof typeof PRODUCT_CATEGORY_LABELS]
                             : row.category || '-'}
                         </TableCell>
                         <TableCell className="text-right">

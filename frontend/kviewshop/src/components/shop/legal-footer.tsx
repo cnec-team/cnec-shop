@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
-import { getClient } from '@/lib/supabase/client';
 import { ChevronDown, ChevronUp, Building2, Shield, RefreshCw, Truck, Mail, Phone } from 'lucide-react';
 
 interface LegalFooterProps {
@@ -59,7 +58,6 @@ Customer Service: 1-800-XXX-XXXX | Email: support@cnec.shop`,
 
 export function LegalFooter({ locale, shopName, creatorCountry, variant = 'full' }: LegalFooterProps) {
   const [expanded, setExpanded] = useState(false);
-  const [legalContent, setLegalContent] = useState<LegalContent[]>([]);
 
   // Determine country based on locale or creator setting
   const getCountry = () => {
@@ -72,32 +70,9 @@ export function LegalFooter({ locale, shopName, creatorCountry, variant = 'full'
   const country = getCountry();
   const staticContent = staticLegalContent[country as keyof typeof staticLegalContent] || staticLegalContent.US;
 
-  useEffect(() => {
-    const loadLegalContent = async () => {
-      try {
-        const supabase = getClient();
-        const { data } = await supabase
-          .from('legal_content')
-          .select('content_type, title, content')
-          .eq('country', country)
-          .eq('language', locale)
-          .eq('is_active', true);
-
-        if (data) {
-          setLegalContent(data);
-        }
-      } catch (error) {
-        console.error('Failed to load legal content:', error);
-      }
-    };
-
-    loadLegalContent();
-  }, [country, locale]);
-
-  // Get content from database or fallback to static
-  const getContent = (type: string) => {
-    const dbContent = legalContent.find(c => c.content_type === type);
-    return dbContent?.content;
+  // Use static content as fallback
+  const getContent = (_type: string) => {
+    return undefined; // falls back to static content below
   };
 
   if (variant === 'minimal') {

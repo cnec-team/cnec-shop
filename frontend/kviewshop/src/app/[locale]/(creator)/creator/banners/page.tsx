@@ -28,23 +28,28 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getClient } from '@/lib/supabase/client';
-import { useAuthStore } from '@/lib/store/auth';
+import {
+  getCreatorSession,
+  getCreatorBanners,
+  createBanner,
+  updateBanner,
+  deleteBanner,
+} from '@/lib/actions/creator';
 
-// ── Local types (no DB types imported yet) ──────────────────────────────
+// ── Local types ──────────────────────────────────────────────────────
 type BannerType = 'HORIZONTAL' | 'VERTICAL';
 type LinkType = 'EXTERNAL' | 'COLLECTION' | 'PRODUCT';
 
 interface Banner {
   id: string;
-  creator_id: string;
-  image_url: string;
-  banner_type: BannerType;
-  link_url: string;
-  link_type: LinkType;
-  is_visible: boolean;
-  display_order: number;
-  created_at: string;
+  creatorId: string;
+  imageUrl: string;
+  bannerType: string;
+  linkUrl: string;
+  linkType: string;
+  isVisible: boolean;
+  displayOrder: number;
+  createdAt?: string;
 }
 
 const BANNER_TYPE_LABELS: Record<BannerType, string> = {
@@ -58,41 +63,9 @@ const LINK_TYPE_LABELS: Record<LinkType, string> = {
   PRODUCT: '상품',
 };
 
-// ── Mock data ───────────────────────────────────────────────────────────
-const MOCK_BANNERS: Banner[] = [
-  {
-    id: 'mock-banner-1',
-    creator_id: 'mock-creator',
-    image_url: '',
-    banner_type: 'HORIZONTAL',
-    link_url: '/collections/summer-skincare',
-    link_type: 'COLLECTION',
-    is_visible: true,
-    display_order: 0,
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: 'mock-banner-2',
-    creator_id: 'mock-creator',
-    image_url: '',
-    banner_type: 'VERTICAL',
-    link_url: 'https://instagram.com/mychannel',
-    link_type: 'EXTERNAL',
-    is_visible: true,
-    display_order: 1,
-    created_at: new Date().toISOString(),
-  },
-];
-
-// ── Helpers ──────────────────────────────────────────────────────────────
-function generateId() {
-  return `local-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-}
-
 // ── Page component ──────────────────────────────────────────────────────
 export default function CreatorBannersPage() {
-  const { creator, isLoading: authLoading } = useAuthStore();
-
+  const [creator, setCreator] = useState<{ id: string } | null>(null);
   const [banners, setBanners] = useState<Banner[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -101,132 +74,149 @@ export default function CreatorBannersPage() {
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<{
-    image_url: string;
-    banner_type: BannerType;
-    link_url: string;
-    link_type: LinkType;
+    imageUrl: string;
+    bannerType: BannerType;
+    linkUrl: string;
+    linkType: LinkType;
   }>({
-    image_url: '',
-    banner_type: 'HORIZONTAL',
-    link_url: '',
-    link_type: 'EXTERNAL',
+    imageUrl: '',
+    bannerType: 'HORIZONTAL',
+    linkUrl: '',
+    linkType: 'EXTERNAL',
   });
 
-  // ── Data fetching (mock for MVP) ────────────────────────────────────
+  // ── Data fetching ────────────────────────────────────────────────────
   useEffect(() => {
-    if (authLoading) return;
+    let cancelled = false;
 
-    // TODO: Replace with real Supabase fetch once banners table exists
-    // const supabase = getClient();
-    // const { data } = await supabase
-    //   .from('banners')
-    //   .select('*')
-    //   .eq('creator_id', creator!.id)
-    //   .order('display_order', { ascending: true });
+    async function fetchData() {
+      const creatorData = await getCreatorSession();
+      if (!creatorData || cancelled) {
+        if (!cancelled) setLoading(false);
+        return;
+      }
+      setCreator(creatorData as any);
 
-    const timer = setTimeout(() => {
-      setBanners(MOCK_BANNERS);
-      setLoading(false);
-    }, 300);
+      try {
+        const data = await getCreatorBanners(creatorData.id);
+        if (!cancelled) {
+          setBanners(data as unknown as Banner[]);
+        }
+      } catch (error) {
+        console.error('Failed to fetch banners:', error);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
 
-    return () => clearTimeout(timer);
-  }, [authLoading, creator]);
+    fetchData();
+    return () => { cancelled = true; };
+  }, []);
 
   // ── Reset form ──────────────────────────────────────────────────────
   const resetForm = () => {
     setForm({
-      image_url: '',
-      banner_type: 'HORIZONTAL',
-      link_url: '',
-      link_type: 'EXTERNAL',
+      imageUrl: '',
+      bannerType: 'HORIZONTAL',
+      linkUrl: '',
+      linkType: 'EXTERNAL',
     });
     setShowForm(false);
     setEditingId(null);
   };
 
   // ── Create / Edit ───────────────────────────────────────────────────
-  const handleSave = () => {
-    if (!form.image_url.trim() && !form.link_url.trim()) {
+  const handleSave = async () => {
+    if (!form.imageUrl.trim() && !form.linkUrl.trim()) {
       toast.error('이미지 URL 또는 링크 URL을 입력해주세요');
       return;
     }
 
     setCreating(true);
 
-    if (editingId) {
-      // Edit existing
-      // TODO: Replace with Supabase update
-      setBanners((prev) =>
-        prev.map((b) =>
-          b.id === editingId
-            ? {
-                ...b,
-                image_url: form.image_url.trim(),
-                banner_type: form.banner_type,
-                link_url: form.link_url.trim(),
-                link_type: form.link_type,
-              }
-            : b
-        )
-      );
-      toast.success('배너가 수정되었습니다');
-    } else {
-      // Create new
-      // TODO: Replace with Supabase insert
-      const banner: Banner = {
-        id: generateId(),
-        creator_id: creator?.id ?? 'mock',
-        image_url: form.image_url.trim(),
-        banner_type: form.banner_type,
-        link_url: form.link_url.trim(),
-        link_type: form.link_type,
-        is_visible: true,
-        display_order: banners.length,
-        created_at: new Date().toISOString(),
-      };
-      setBanners((prev) => [...prev, banner]);
-      toast.success('배너가 생성되었습니다');
-    }
+    try {
+      if (editingId) {
+        const updated = await updateBanner(editingId, {
+          imageUrl: form.imageUrl.trim(),
+          bannerType: form.bannerType,
+          linkUrl: form.linkUrl.trim(),
+          linkType: form.linkType,
+        });
+        setBanners((prev) =>
+          prev.map((b) => (b.id === editingId ? { ...b, ...updated } as unknown as Banner : b))
+        );
+        toast.success('배너가 수정되었습니다');
+      } else {
+        const banner = await createBanner({
+          creatorId: creator?.id ?? '',
+          imageUrl: form.imageUrl.trim(),
+          bannerType: form.bannerType,
+          linkUrl: form.linkUrl.trim(),
+          linkType: form.linkType,
+          displayOrder: banners.length,
+        });
+        setBanners((prev) => [...prev, banner as unknown as Banner]);
+        toast.success('배너가 생성되었습니다');
+      }
 
-    resetForm();
-    setCreating(false);
+      resetForm();
+    } catch (error) {
+      toast.error('저장에 실패했습니다');
+    } finally {
+      setCreating(false);
+    }
   };
 
   const handleEdit = (banner: Banner) => {
     setForm({
-      image_url: banner.image_url,
-      banner_type: banner.banner_type,
-      link_url: banner.link_url,
-      link_type: banner.link_type,
+      imageUrl: banner.imageUrl,
+      bannerType: banner.bannerType as BannerType,
+      linkUrl: banner.linkUrl,
+      linkType: banner.linkType as LinkType,
     });
     setEditingId(banner.id);
     setShowForm(true);
   };
 
   // ── Delete ──────────────────────────────────────────────────────────
-  const handleDelete = (bannerId: string) => {
+  const handleDelete = async (bannerId: string) => {
     if (!confirm('이 배너를 삭제하시겠습니까?')) return;
 
-    // TODO: Replace with Supabase delete
-    setBanners((prev) =>
-      prev
-        .filter((b) => b.id !== bannerId)
-        .map((b, i) => ({ ...b, display_order: i }))
-    );
-    if (editingId === bannerId) resetForm();
-    toast.success('배너가 삭제되었습니다');
+    try {
+      await deleteBanner(bannerId);
+      setBanners((prev) =>
+        prev
+          .filter((b) => b.id !== bannerId)
+          .map((b, i) => ({ ...b, displayOrder: i }))
+      );
+      if (editingId === bannerId) resetForm();
+      toast.success('배너가 삭제되었습니다');
+    } catch (error) {
+      toast.error('삭제에 실패했습니다');
+    }
   };
 
   // ── Toggle visibility ───────────────────────────────────────────────
-  const handleToggleVisibility = (bannerId: string) => {
-    // TODO: Replace with Supabase update
+  const handleToggleVisibility = async (bannerId: string) => {
+    const banner = banners.find((b) => b.id === bannerId);
+    if (!banner) return;
+
+    const newVisible = !banner.isVisible;
     setBanners((prev) =>
-      prev.map((b) => (b.id === bannerId ? { ...b, is_visible: !b.is_visible } : b))
+      prev.map((b) => (b.id === bannerId ? { ...b, isVisible: newVisible } : b))
     );
+
+    try {
+      await updateBanner(bannerId, { isVisible: newVisible });
+    } catch (error) {
+      setBanners((prev) =>
+        prev.map((b) => (b.id === bannerId ? { ...b, isVisible: !newVisible } : b))
+      );
+    }
   };
 
   // ── Reorder ─────────────────────────────────────────────────────────
-  const handleMove = (index: number, direction: 'up' | 'down') => {
+  const handleMove = async (index: number, direction: 'up' | 'down') => {
     const newIndex = direction === 'up' ? index - 1 : index + 1;
     if (newIndex < 0 || newIndex >= banners.length) return;
 
@@ -235,11 +225,20 @@ export default function CreatorBannersPage() {
     updated[index] = updated[newIndex];
     updated[newIndex] = temp;
 
-    setBanners(updated.map((b, i) => ({ ...b, display_order: i })));
+    const reordered = updated.map((b, i) => ({ ...b, displayOrder: i }));
+    setBanners(reordered);
+
+    try {
+      for (const b of reordered) {
+        await updateBanner(b.id, { displayOrder: b.displayOrder });
+      }
+    } catch (error) {
+      console.error('Failed to update order:', error);
+    }
   };
 
   // ── Loading state ───────────────────────────────────────────────────
-  if (authLoading || loading) {
+  if (loading) {
     return (
       <div className="space-y-6">
         <div>
@@ -286,16 +285,16 @@ export default function CreatorBannersPage() {
               <Label>이미지 URL</Label>
               <Input
                 placeholder="https://example.com/banner.jpg"
-                value={form.image_url}
-                onChange={(e) => setForm((prev) => ({ ...prev, image_url: e.target.value }))}
+                value={form.imageUrl}
+                onChange={(e) => setForm((prev) => ({ ...prev, imageUrl: e.target.value }))}
               />
-              {form.image_url && (
+              {form.imageUrl && (
                 <div className="rounded-lg overflow-hidden border">
                   <img
-                    src={form.image_url}
+                    src={form.imageUrl}
                     alt="배너 미리보기"
                     className={
-                      form.banner_type === 'HORIZONTAL'
+                      form.bannerType === 'HORIZONTAL'
                         ? 'w-full h-32 object-cover'
                         : 'w-32 h-48 object-cover'
                     }
@@ -311,9 +310,9 @@ export default function CreatorBannersPage() {
               <div className="space-y-2">
                 <Label>배너 유형</Label>
                 <Select
-                  value={form.banner_type}
+                  value={form.bannerType}
                   onValueChange={(v) =>
-                    setForm((prev) => ({ ...prev, banner_type: v as BannerType }))
+                    setForm((prev) => ({ ...prev, bannerType: v as BannerType }))
                   }
                 >
                   <SelectTrigger className="w-full">
@@ -329,9 +328,9 @@ export default function CreatorBannersPage() {
               <div className="space-y-2">
                 <Label>링크 유형</Label>
                 <Select
-                  value={form.link_type}
+                  value={form.linkType}
                   onValueChange={(v) =>
-                    setForm((prev) => ({ ...prev, link_type: v as LinkType }))
+                    setForm((prev) => ({ ...prev, linkType: v as LinkType }))
                   }
                 >
                   <SelectTrigger className="w-full">
@@ -350,14 +349,14 @@ export default function CreatorBannersPage() {
               <Label>링크 URL</Label>
               <Input
                 placeholder={
-                  form.link_type === 'EXTERNAL'
+                  form.linkType === 'EXTERNAL'
                     ? 'https://example.com'
-                    : form.link_type === 'COLLECTION'
+                    : form.linkType === 'COLLECTION'
                       ? '/collections/collection-id'
                       : '/products/product-id'
                 }
-                value={form.link_url}
-                onChange={(e) => setForm((prev) => ({ ...prev, link_url: e.target.value }))}
+                value={form.linkUrl}
+                onChange={(e) => setForm((prev) => ({ ...prev, linkUrl: e.target.value }))}
               />
             </div>
 
@@ -422,10 +421,10 @@ export default function CreatorBannersPage() {
                     <CardTitle className="flex items-center gap-2">
                       배너 {index + 1}
                       <Badge variant="secondary">
-                        {BANNER_TYPE_LABELS[banner.banner_type]}
+                        {BANNER_TYPE_LABELS[banner.bannerType as BannerType] ?? banner.bannerType}
                       </Badge>
                       <Badge variant="outline">
-                        {LINK_TYPE_LABELS[banner.link_type]}
+                        {LINK_TYPE_LABELS[banner.linkType as LinkType] ?? banner.linkType}
                       </Badge>
                     </CardTitle>
                   </div>
@@ -434,13 +433,13 @@ export default function CreatorBannersPage() {
                 {/* Actions */}
                 <div className="flex items-center gap-2">
                   <div className="flex items-center gap-2">
-                    {banner.is_visible ? (
+                    {banner.isVisible ? (
                       <Eye className="h-4 w-4 text-muted-foreground" />
                     ) : (
                       <EyeOff className="h-4 w-4 text-muted-foreground" />
                     )}
                     <Switch
-                      checked={banner.is_visible}
+                      checked={banner.isVisible}
                       onCheckedChange={() => handleToggleVisibility(banner.id)}
                     />
                   </div>
@@ -459,14 +458,14 @@ export default function CreatorBannersPage() {
               {/* Banner preview */}
               <div
                 className={`rounded-lg overflow-hidden border bg-muted ${
-                  banner.banner_type === 'HORIZONTAL'
+                  banner.bannerType === 'HORIZONTAL'
                     ? 'w-full h-32'
                     : 'w-32 h-48'
                 }`}
               >
-                {banner.image_url ? (
+                {banner.imageUrl ? (
                   <img
-                    src={banner.image_url}
+                    src={banner.imageUrl}
                     alt={`배너 ${index + 1}`}
                     className="w-full h-full object-cover"
                     onError={(e) => {
@@ -481,14 +480,14 @@ export default function CreatorBannersPage() {
               </div>
 
               {/* Link info */}
-              {banner.link_url && (
+              {banner.linkUrl && (
                 <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
-                  {banner.link_type === 'EXTERNAL' ? (
+                  {banner.linkType === 'EXTERNAL' ? (
                     <ExternalLink className="h-4 w-4 shrink-0" />
                   ) : (
                     <Link2 className="h-4 w-4 shrink-0" />
                   )}
-                  <span className="truncate">{banner.link_url}</span>
+                  <span className="truncate">{banner.linkUrl}</span>
                 </div>
               )}
 

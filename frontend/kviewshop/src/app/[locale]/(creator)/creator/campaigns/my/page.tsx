@@ -17,71 +17,59 @@ import {
   XCircle,
   Hourglass,
 } from 'lucide-react';
-import { getClient } from '@/lib/supabase/client';
-import { useAuthStore } from '@/lib/store/auth';
-import type {
-  CampaignParticipation,
-  Campaign,
-  Brand,
-  ParticipationStatus,
-  CampaignStatus,
-} from '@/types/database';
+import { getCreatorSession, getMyParticipations } from '@/lib/actions/creator';
 import { CAMPAIGN_STATUS_LABELS } from '@/types/database';
 
-interface ParticipationWithDetails extends CampaignParticipation {
-  campaign?: Campaign & { brand?: Brand };
+type CampaignStatus = 'RECRUITING' | 'ACTIVE' | 'ENDED' | 'PAUSED' | 'DRAFT';
+
+type ParticipationStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+interface ParticipationWithDetails {
+  id: string;
+  campaignId: string;
+  creatorId: string;
+  status: ParticipationStatus;
+  message: string | null;
+  appliedAt: string;
+  approvedAt: string | null;
+  campaign: {
+    id: string;
+    brandId: string;
+    type: string;
+    title: string;
+    description: string | null;
+    status: CampaignStatus;
+    startAt: string | null;
+    endAt: string | null;
+    commissionRate: number;
+    createdAt: string;
+    brand?: { id: string; brandName: string; companyName: string } | null;
+  } | null;
 }
 
 export default function CreatorMyCampaignsPage() {
   const params = useParams();
   const locale = params.locale as string;
-  const { creator, isLoading: authLoading } = useAuthStore();
-
+  const [creator, setCreator] = useState<{ id: string } | null>(null);
   const [participations, setParticipations] = useState<ParticipationWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (authLoading || !creator) {
-      if (!authLoading) setLoading(false);
-      return;
-    }
-
     let cancelled = false;
 
     async function fetchData() {
+      const creatorData = await getCreatorSession();
+      if (!creatorData || cancelled) {
+        if (!cancelled) setLoading(false);
+        return;
+      }
+      setCreator(creatorData as any);
+
       try {
-        const supabase = getClient();
-
-        const [participationsRes, campaignsRes, brandsRes] = await Promise.all([
-          supabase
-            .from('campaign_participations')
-            .select('*')
-            .eq('creator_id', creator!.id)
-            .order('applied_at', { ascending: false }),
-          supabase.from('campaigns').select('*'),
-          supabase.from('brands').select('*'),
-        ]);
-
-        if (cancelled) return;
-
-        // Build brand map
-        const brandMap: Record<string, Brand> = {};
-        for (const b of brandsRes.data ?? []) {
-          brandMap[b.id] = b;
+        const data = await getMyParticipations(creatorData.id);
+        if (!cancelled) {
+          setParticipations(data as ParticipationWithDetails[]);
         }
-
-        // Build campaign map
-        const campaignMap: Record<string, Campaign & { brand?: Brand }> = {};
-        for (const c of campaignsRes.data ?? []) {
-          campaignMap[c.id] = { ...c, brand: brandMap[c.brand_id] };
-        }
-
-        const combined: ParticipationWithDetails[] = (participationsRes.data ?? []).map((p) => ({
-          ...p,
-          campaign: campaignMap[p.campaign_id],
-        }));
-
-        setParticipations(combined);
       } catch (error) {
         console.error('Failed to fetch participations:', error);
       } finally {
@@ -91,7 +79,7 @@ export default function CreatorMyCampaignsPage() {
 
     fetchData();
     return () => { cancelled = true; };
-  }, [authLoading, creator]);
+  }, []);
 
   const getParticipationStatusBadge = (status: ParticipationStatus) => {
     switch (status) {
@@ -129,7 +117,7 @@ export default function CreatorMyCampaignsPage() {
     }
   };
 
-  const getDDay = (endAt?: string) => {
+  const getDDay = (endAt?: string | null) => {
     if (!endAt) return null;
     const end = new Date(endAt);
     const now = new Date();
@@ -139,7 +127,7 @@ export default function CreatorMyCampaignsPage() {
     return `D-${diff}`;
   };
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
       <div className="space-y-6">
         <div>
@@ -215,7 +203,7 @@ export default function CreatorMyCampaignsPage() {
           {participations.map((participation) => {
             const campaign = participation.campaign;
             const statusInfo = getParticipationStatusBadge(participation.status);
-            const dDay = campaign?.end_at ? getDDay(campaign.end_at) : null;
+            const dDay = campaign?.endAt ? getDDay(campaign.endAt) : null;
 
             return (
               <Card key={participation.id}>
@@ -231,7 +219,7 @@ export default function CreatorMyCampaignsPage() {
                         {campaign && (
                           <>
                             <Badge className={getCampaignStatusBadge(campaign.status)}>
-                              {CAMPAIGN_STATUS_LABELS[campaign.status]}
+                              {CAMPAIGN_STATUS_LABELS[campaign.status as keyof typeof CAMPAIGN_STATUS_LABELS]}
                             </Badge>
                             <Badge variant="outline">
                               {campaign.type === 'GONGGU' ? '공구' : '상시'}
@@ -248,27 +236,27 @@ export default function CreatorMyCampaignsPage() {
                       {/* Brand name */}
                       {campaign?.brand && (
                         <p className="text-sm text-muted-foreground mt-0.5">
-                          {campaign.brand.brand_name}
+                          {campaign.brand.brandName}
                         </p>
                       )}
 
                       {/* Details row */}
                       <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                        {campaign?.start_at && campaign?.end_at && (
+                        {campaign?.startAt && campaign?.endAt && (
                           <span className="flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
-                            {new Date(campaign.start_at).toLocaleDateString('ko-KR')} ~{' '}
-                            {new Date(campaign.end_at).toLocaleDateString('ko-KR')}
+                            {new Date(campaign.startAt).toLocaleDateString('ko-KR')} ~{' '}
+                            {new Date(campaign.endAt).toLocaleDateString('ko-KR')}
                           </span>
                         )}
                         {campaign && (
                           <span className="flex items-center gap-1">
                             <Percent className="h-3 w-3" />
-                            내 수익 {(campaign.commission_rate * 100).toFixed(0)}%
+                            내 수익 {(campaign.commissionRate * 100).toFixed(0)}%
                           </span>
                         )}
                         <span>
-                          신청일: {new Date(participation.applied_at).toLocaleDateString('ko-KR')}
+                          신청일: {new Date(participation.appliedAt).toLocaleDateString('ko-KR')}
                         </span>
                       </div>
 

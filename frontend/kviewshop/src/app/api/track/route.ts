@@ -1,5 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
 import { COOKIE_WINDOW_HOURS } from '@/types/database';
 
 function generateVisitorId(): string {
@@ -23,36 +23,29 @@ export async function POST(request: NextRequest) {
     if (utm_campaign) attributionData.utm_campaign = utm_campaign;
     if (referrer) attributionData.referrer = referrer;
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseKey) {
-      return NextResponse.json({ error: 'Missing server config' }, { status: 500 });
-    }
-
     // Check existing visitor cookie
     const existingVisitorId = request.cookies.get('cnec_visitor')?.value;
     const visitorId = existingVisitorId || generateVisitorId();
-
-    const supabase = createClient(supabaseUrl, supabaseKey);
 
     const now = new Date();
     const cookieWindowMs = COOKIE_WINDOW_HOURS * 60 * 60 * 1000;
     const expiresAt = new Date(now.getTime() + cookieWindowMs);
 
     // Record shop visit
-    await supabase.from('shop_visits').insert({
-      creator_id,
-      visitor_id: visitorId,
-      ip_address:
-        request.headers.get('x-forwarded-for') ||
-        request.headers.get('x-real-ip') ||
-        '',
-      user_agent: request.headers.get('user-agent') || '',
-      referer: referrer || request.headers.get('referer') || '',
-      attribution_data: Object.keys(attributionData).length > 0 ? attributionData : {},
-      visited_at: now.toISOString(),
-      expires_at: expiresAt.toISOString(),
+    await prisma.shopVisit.create({
+      data: {
+        creatorId: creator_id,
+        visitorId,
+        ipAddress:
+          request.headers.get('x-forwarded-for') ||
+          request.headers.get('x-real-ip') ||
+          '',
+        userAgent: request.headers.get('user-agent') || '',
+        referer: referrer || request.headers.get('referer') || '',
+        attributionData: Object.keys(attributionData).length > 0 ? attributionData : {},
+        visitedAt: now,
+        expiresAt,
+      },
     });
 
     // Set cookies with response

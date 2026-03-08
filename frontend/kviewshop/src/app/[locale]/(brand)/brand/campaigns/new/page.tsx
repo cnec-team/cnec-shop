@@ -2,9 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { getClient } from '@/lib/supabase/client';
-import { useAuthStore } from '@/lib/store/auth';
-import type { CampaignType, RecruitmentType, Product } from '@/types/database';
+import { getBrandSession, getActiveProducts, createCampaign } from '@/lib/actions/brand';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -29,6 +27,9 @@ import {
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 
+type CampaignType = 'GONGGU' | 'ALWAYS';
+type RecruitmentType = 'OPEN' | 'APPROVAL';
+
 const STEPS = [
   { label: '기본 정보', description: '캠페인의 기본 설정' },
   { label: '상품/가격', description: '상품 선택 및 캠페인 가격 설정' },
@@ -36,16 +37,24 @@ const STEPS = [
   { label: '모집 방식', description: '크리에이터 모집 조건 설정' },
 ];
 
+interface ProductData {
+  id: string;
+  name: string | null;
+  originalPrice: number | string | null;
+  salePrice: number | string | null;
+  stock: number;
+}
+
 interface SelectedProduct {
-  product_id: string;
-  product_name: string;
-  campaign_price: string;
-  per_creator_limit: string;
+  productId: string;
+  productName: string;
+  campaignPrice: string;
+  perCreatorLimit: string;
 }
 
 export default function NewCampaignPage() {
   const router = useRouter();
-  const { brand, isLoading: authLoading } = useAuthStore();
+  const [brand, setBrand] = useState<{ id: string } | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +67,7 @@ export default function NewCampaignPage() {
   const [endAt, setEndAt] = useState('');
 
   // Step 2: Products
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<ProductData[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
   const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>(
     []
@@ -76,47 +85,43 @@ export default function NewCampaignPage() {
 
   // Load products for selection
   useEffect(() => {
-    if (!brand?.id) {
-      if (!authLoading) setProductsLoading(false);
-      return;
-    }
+    async function load() {
+      try {
+        const brandData = await getBrandSession();
+        if (!brandData) {
+          setProductsLoading(false);
+          return;
+        }
+        setBrand(brandData);
 
-    async function fetchProducts() {
-      const supabase = getClient();
-      const { data, error: fetchError } = await supabase
-        .from('products')
-        .select('*')
-        .eq('brand_id', brand!.id)
-        .eq('status', 'ACTIVE')
-        .order('name');
-
-      if (fetchError) {
-        console.error('Failed to fetch products:', fetchError);
-      } else {
-        setProducts((data ?? []) as Product[]);
+        const data = await getActiveProducts(brandData.id);
+        setProducts(data as any);
+      } catch (err) {
+        console.error('Failed to fetch products:', err);
+      } finally {
+        setProductsLoading(false);
       }
-      setProductsLoading(false);
     }
 
-    fetchProducts();
-  }, [brand?.id, authLoading]);
+    load();
+  }, []);
 
-  function toggleProduct(product: Product) {
+  function toggleProduct(product: ProductData) {
     const exists = selectedProducts.find(
-      (sp) => sp.product_id === product.id
+      (sp) => sp.productId === product.id
     );
     if (exists) {
       setSelectedProducts(
-        selectedProducts.filter((sp) => sp.product_id !== product.id)
+        selectedProducts.filter((sp) => sp.productId !== product.id)
       );
     } else {
       setSelectedProducts([
         ...selectedProducts,
         {
-          product_id: product.id,
-          product_name: product.name,
-          campaign_price: String(product.sale_price),
-          per_creator_limit: '',
+          productId: product.id,
+          productName: product.name || '',
+          campaignPrice: String(product.salePrice ?? 0),
+          perCreatorLimit: '',
         },
       ]);
     }
@@ -124,12 +129,12 @@ export default function NewCampaignPage() {
 
   function updateSelectedProduct(
     productId: string,
-    field: 'campaign_price' | 'per_creator_limit',
+    field: 'campaignPrice' | 'perCreatorLimit',
     value: string
   ) {
     setSelectedProducts(
       selectedProducts.map((sp) =>
-        sp.product_id === productId ? { ...sp, [field]: value } : sp
+        sp.productId === productId ? { ...sp, [field]: value } : sp
       )
     );
   }
@@ -163,9 +168,9 @@ export default function NewCampaignPage() {
           return false;
         }
         for (const sp of selectedProducts) {
-          if (!sp.campaign_price || Number(sp.campaign_price) <= 0) {
+          if (!sp.campaignPrice || Number(sp.campaignPrice) <= 0) {
             setError(
-              `${sp.product_name}의 캠페인 가격을 올바르게 입력해주세요.`
+              `${sp.productName}의 캠페인 가격을 올바르게 입력해주세요.`
             );
             return false;
           }
@@ -205,69 +210,41 @@ export default function NewCampaignPage() {
     setIsSaving(true);
     setError(null);
 
-    const supabase = getClient();
+    try {
+      await createCampaign({
+        brandId: brand.id,
+        type: campaignType,
+        title: title.trim(),
+        description: description.trim() || undefined,
+        recruitmentType,
+        commissionRate: Number(commissionRate),
+        totalStock: totalStock ? Number(totalStock) : undefined,
+        targetParticipants: targetParticipants
+          ? Number(targetParticipants)
+          : undefined,
+        conditions: conditions.trim() || undefined,
+        startAt: campaignType === 'GONGGU' ? new Date(startAt).toISOString() : undefined,
+        endAt: campaignType === 'GONGGU' ? new Date(endAt).toISOString() : undefined,
+        products: selectedProducts.map((sp) => ({
+          productId: sp.productId,
+          campaignPrice: Number(sp.campaignPrice),
+          perCreatorLimit: sp.perCreatorLimit
+            ? Number(sp.perCreatorLimit)
+            : undefined,
+        })),
+      });
 
-    // 1. Create campaign
-    const campaignData: Record<string, unknown> = {
-      brand_id: brand.id,
-      type: campaignType,
-      title: title.trim(),
-      description: description.trim() || null,
-      status: 'DRAFT',
-      recruitment_type: recruitmentType,
-      commission_rate: Number(commissionRate),
-      sold_count: 0,
-      total_stock: totalStock ? Number(totalStock) : null,
-      target_participants: targetParticipants
-        ? Number(targetParticipants)
-        : null,
-      conditions: conditions.trim() || null,
-    };
-
-    if (campaignType === 'GONGGU') {
-      campaignData.start_at = new Date(startAt).toISOString();
-      campaignData.end_at = new Date(endAt).toISOString();
-    }
-
-    const { data: campaign, error: campaignError } = await supabase
-      .from('campaigns')
-      .insert(campaignData)
-      .select('id')
-      .single();
-
-    if (campaignError || !campaign) {
-      console.error('Failed to create campaign:', campaignError);
+      // Navigate based on type
+      if (campaignType === 'GONGGU') {
+        router.push('../campaigns/gonggu');
+      } else {
+        router.push('../campaigns/always');
+      }
+    } catch (err) {
+      console.error('Failed to create campaign:', err);
       setError('캠페인 생성에 실패했습니다. 다시 시도해주세요.');
+    } finally {
       setIsSaving(false);
-      return;
-    }
-
-    // 2. Create campaign_products
-    const campaignProducts = selectedProducts.map((sp) => ({
-      campaign_id: campaign.id,
-      product_id: sp.product_id,
-      campaign_price: Number(sp.campaign_price),
-      per_creator_limit: sp.per_creator_limit
-        ? Number(sp.per_creator_limit)
-        : null,
-    }));
-
-    const { error: productsError } = await supabase
-      .from('campaign_products')
-      .insert(campaignProducts);
-
-    if (productsError) {
-      console.error('Failed to create campaign products:', productsError);
-      setError('캠페인 상품 등록에 실패했습니다.');
-      setIsSaving(false);
-      return;
-    }
-
-    // Navigate based on type
-    if (campaignType === 'GONGGU') {
-      router.push('../campaigns/gonggu');
-    } else {
-      router.push('../campaigns/always');
     }
   }
 
@@ -417,10 +394,10 @@ export default function NewCampaignPage() {
               <div className="space-y-3">
                 {products.map((product) => {
                   const isSelected = selectedProducts.some(
-                    (sp) => sp.product_id === product.id
+                    (sp) => sp.productId === product.id
                   );
                   const selectedData = selectedProducts.find(
-                    (sp) => sp.product_id === product.id
+                    (sp) => sp.productId === product.id
                   );
 
                   return (
@@ -438,9 +415,9 @@ export default function NewCampaignPage() {
                         <div className="flex-1">
                           <p className="font-medium">{product.name}</p>
                           <p className="text-sm text-muted-foreground">
-                            정가: {product.original_price.toLocaleString('ko-KR')}
+                            정가: {Number(product.originalPrice ?? 0).toLocaleString('ko-KR')}
                             원 / 판매가:{' '}
-                            {product.sale_price.toLocaleString('ko-KR')}원 /
+                            {Number(product.salePrice ?? 0).toLocaleString('ko-KR')}원 /
                             재고: {product.stock}
                           </p>
                         </div>
@@ -453,11 +430,11 @@ export default function NewCampaignPage() {
                             <Input
                               type="number"
                               min="0"
-                              value={selectedData.campaign_price}
+                              value={selectedData.campaignPrice}
                               onChange={(e) =>
                                 updateSelectedProduct(
                                   product.id,
-                                  'campaign_price',
+                                  'campaignPrice',
                                   e.target.value
                                 )
                               }
@@ -471,11 +448,11 @@ export default function NewCampaignPage() {
                             <Input
                               type="number"
                               min="0"
-                              value={selectedData.per_creator_limit}
+                              value={selectedData.perCreatorLimit}
                               onChange={(e) =>
                                 updateSelectedProduct(
                                   product.id,
-                                  'per_creator_limit',
+                                  'perCreatorLimit',
                                   e.target.value
                                 )
                               }

@@ -1,10 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getClient } from '@/lib/supabase/client';
-import { useAuthStore } from '@/lib/store/auth';
-import type { ProductCategory, ShippingFeeType } from '@/types/database';
+import { getBrandSession, createProduct } from '@/lib/actions/brand';
 import { PRODUCT_CATEGORY_LABELS, SHIPPING_FEE_TYPE_LABELS } from '@/types/database';
 import { Button } from '@/components/ui/button';
 import {
@@ -28,6 +26,9 @@ import {
 } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
+type ProductCategory = string;
+type ShippingFeeType = string;
+
 const COURIERS = [
   { code: 'cj', name: 'CJ대한통운' },
   { code: 'hanjin', name: '한진택배' },
@@ -39,7 +40,7 @@ const COURIERS = [
 
 export default function NewProductPage() {
   const router = useRouter();
-  const { brand } = useAuthStore();
+  const [brand, setBrand] = useState<{ id: string } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -74,6 +75,14 @@ export default function NewProductPage() {
   const [allowCreatorPick, setAllowCreatorPick] = useState(true);
   const [commissionRate, setCommissionRate] = useState('10');
 
+  useEffect(() => {
+    async function load() {
+      const brandData = await getBrandSession();
+      if (brandData) setBrand(brandData);
+    }
+    load();
+  }, []);
+
   async function handleSave() {
     if (!brand?.id) return;
 
@@ -98,56 +107,54 @@ export default function NewProductPage() {
     setIsSaving(true);
     setError(null);
 
-    const supabase = getClient();
+    try {
+      // Build images array
+      const images: string[] = [];
+      if (mainImage.trim()) {
+        images.push(mainImage.trim());
+      }
+      if (additionalImages.trim()) {
+        const extras = additionalImages
+          .split('\n')
+          .map((url) => url.trim())
+          .filter(Boolean);
+        images.push(...extras);
+      }
 
-    // Build images array
-    const images: string[] = [];
-    if (mainImage.trim()) {
-      images.push(mainImage.trim());
-    }
-    if (additionalImages.trim()) {
-      const extras = additionalImages
-        .split('\n')
-        .map((url) => url.trim())
-        .filter(Boolean);
-      images.push(...extras);
-    }
+      await createProduct({
+        brandId: brand.id,
+        name: name.trim(),
+        category,
+        description: description.trim() || undefined,
+        originalPrice: Number(originalPrice),
+        salePrice: Number(salePrice),
+        stock: Number(stock),
+        images,
+        thumbnailUrl: thumbnailUrl.trim() || undefined,
+        volume: volume.trim() || undefined,
+        ingredients: ingredients.trim() || undefined,
+        howToUse: howToUse.trim() || undefined,
+        shippingFeeType,
+        shippingFee: shippingFeeType !== 'FREE' ? Number(shippingFee) || 0 : 0,
+        freeShippingThreshold:
+          shippingFeeType === 'CONDITIONAL_FREE'
+            ? Number(freeShippingThreshold) || 0
+            : undefined,
+        courier: courier || undefined,
+        shippingInfo: shippingInfo.trim() || undefined,
+        returnPolicy: returnPolicy.trim() || undefined,
+        status: isActive ? 'ACTIVE' : 'INACTIVE',
+        allowCreatorPick,
+        defaultCommissionRate: Number(commissionRate),
+      });
 
-    const { error: insertError } = await supabase.from('products').insert({
-      brand_id: brand.id,
-      name: name.trim(),
-      category,
-      description: description.trim() || null,
-      original_price: Number(originalPrice),
-      sale_price: Number(salePrice),
-      stock: Number(stock),
-      images,
-      thumbnail_url: thumbnailUrl.trim() || null,
-      volume: volume.trim() || null,
-      ingredients: ingredients.trim() || null,
-      how_to_use: howToUse.trim() || null,
-      shipping_fee_type: shippingFeeType,
-      shipping_fee: shippingFeeType !== 'FREE' ? Number(shippingFee) || 0 : 0,
-      free_shipping_threshold:
-        shippingFeeType === 'CONDITIONAL_FREE'
-          ? Number(freeShippingThreshold) || 0
-          : null,
-      courier: courier || null,
-      shipping_info: shippingInfo.trim() || null,
-      return_policy: returnPolicy.trim() || null,
-      status: isActive ? 'ACTIVE' : 'INACTIVE',
-      allow_creator_pick: allowCreatorPick,
-      default_commission_rate: Number(commissionRate),
-    });
-
-    if (insertError) {
-      console.error('Failed to create product:', insertError);
+      router.push('../products');
+    } catch (err) {
+      console.error('Failed to create product:', err);
       setError('상품 등록에 실패했습니다. 다시 시도해주세요.');
+    } finally {
       setIsSaving(false);
-      return;
     }
-
-    router.push('../products');
   }
 
   return (

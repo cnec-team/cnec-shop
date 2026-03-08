@@ -1,16 +1,9 @@
 import { notFound } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { prisma } from '@/lib/db';
 import { CreatorShopPage } from '@/components/shop/creator-shop';
 import { OrganizationJsonLd } from '@/components/seo/JsonLd';
 import type { Metadata } from 'next';
-import type {
-  Creator,
-  CreatorShopItem,
-  Collection,
-  Product,
-  Campaign,
-  CampaignProduct,
-} from '@/types/database';
+import type { Creator, CreatorShopItem, Collection } from '@/types/database';
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://shop.cnec.kr';
 
@@ -22,71 +15,68 @@ interface ShopPageProps {
 }
 
 async function getCreatorByShopId(shopId: string) {
-  const supabase = await createClient();
+  const creator = await prisma.creator.findFirst({
+    where: {
+      shopId: {
+        equals: shopId,
+        mode: 'insensitive',
+      },
+    },
+  });
 
-  const { data: creator, error } = await supabase
-    .from('creators')
-    .select('*')
-    .ilike('shop_id', shopId)
-    .maybeSingle();
-
-  if (error || !creator) {
-    return null;
-  }
-
-  return creator as Creator;
+  return creator;
 }
 
 async function getShopItems(creatorId: string) {
-  const supabase = await createClient();
+  try {
+    const items = await prisma.creatorShopItem.findMany({
+      where: {
+        creatorId,
+        isVisible: true,
+      },
+      include: {
+        product: {
+          include: {
+            brand: {
+              select: {
+                id: true,
+                brandName: true,
+                logoUrl: true,
+              },
+            },
+          },
+        },
+        campaign: true,
+      },
+      orderBy: {
+        displayOrder: 'asc',
+      },
+    });
 
-  const { data: items, error } = await supabase
-    .from('creator_shop_items')
-    .select(`
-      *,
-      product:products (
-        *,
-        brand:brands (
-          id,
-          brand_name,
-          logo_url
-        )
-      ),
-      campaign:campaigns (
-        *
-      ),
-      campaign_product:campaign_products (
-        *
-      )
-    `)
-    .eq('creator_id', creatorId)
-    .eq('is_visible', true)
-    .order('display_order', { ascending: true });
-
-  if (error) {
+    return items;
+  } catch (error) {
     console.error('Error fetching shop items:', error);
     return [];
   }
-
-  return (items || []) as CreatorShopItem[];
 }
 
 async function getCollections(creatorId: string) {
-  const supabase = await createClient();
+  try {
+    const collections = await prisma.collection.findMany({
+      where: {
+        creatorId,
+        isVisible: true,
+      },
+      orderBy: {
+        displayOrder: 'asc',
+      },
+    });
 
-  const { data: collections, error } = await supabase
-    .from('collections')
-    .select('*')
-    .eq('creator_id', creatorId)
-    .eq('is_visible', true)
-    .order('display_order', { ascending: true });
-
-  if (error) {
+    return collections;
+  } catch (error) {
     console.error('Error fetching collections:', error);
     return [];
   }
-
-  return (collections || []) as Collection[];
 }
 
 export async function generateMetadata({ params }: ShopPageProps): Promise<Metadata> {
@@ -99,10 +89,10 @@ export async function generateMetadata({ params }: ShopPageProps): Promise<Metad
     };
   }
 
-  const displayName = creator.display_name || creator.shop_id;
+  const displayName = creator.displayName || creator.shopId;
 
   const shopDesc = creator.bio || `${displayName}이(가) 추천하는 뷰티 아이템을 만나보세요`;
-  const ogImage = creator.cover_image_url || creator.profile_image_url;
+  const ogImage = creator.coverImageUrl || creator.profileImageUrl;
 
   const canonicalUrl = `${BASE_URL}/${username}`;
 
@@ -151,15 +141,15 @@ export default async function ShopPage({ params }: ShopPageProps) {
   return (
     <>
       <OrganizationJsonLd
-        name={creator.display_name || creator.shop_id}
+        name={creator.displayName || creator.shopId || ''}
         url={shopUrl}
-        imageUrl={creator.profile_image_url || undefined}
+        imageUrl={creator.profileImageUrl || undefined}
         description={creator.bio || undefined}
       />
       <CreatorShopPage
-        creator={creator}
-        shopItems={shopItems}
-        collections={collections}
+        creator={creator as unknown as Creator}
+        shopItems={shopItems as unknown as CreatorShopItem[]}
+        collections={collections as unknown as Collection[]}
         locale={locale}
       />
     </>

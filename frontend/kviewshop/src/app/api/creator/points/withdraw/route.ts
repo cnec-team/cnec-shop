@@ -1,13 +1,7 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth-helpers';
-
-function getSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error('Missing Supabase credentials');
-  return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
-}
+import { prisma } from '@/lib/db';
+import { awardPointsRaw } from '@/lib/points';
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,13 +9,11 @@ export async function POST(request: NextRequest) {
     if (!authUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const supabase = getSupabase();
 
-    const { data: creator } = await supabase
-      .from('creators')
-      .select('id')
-      .eq('user_id', authUser.id)
-      .single();
+    const creator = await prisma.creator.findUnique({
+      where: { userId: authUser.id },
+      select: { id: true },
+    });
     if (!creator) {
       return NextResponse.json({ error: 'Creator not found' }, { status: 404 });
     }
@@ -32,26 +24,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
     }
 
-    const { data, error } = await supabase.rpc('award_points', {
-      p_creator_id: creator.id,
-      p_type: 'WITHDRAW',
-      p_amount: -amount,
-      p_description: '포인트 출금 신청',
-      p_related_id: null,
+    // Get current balance
+    const latestPoint = await prisma.creatorPoint.findFirst({
+      where: { creatorId: creator.id },
+      orderBy: { createdAt: 'desc' },
+      select: { balanceAfter: true },
     });
 
-    if (error) {
-      console.error('Withdraw error:', error);
-      return NextResponse.json({ error: 'Failed to process withdrawal' }, { status: 500 });
+    const currentBalance = latestPoint?.balanceAfter ?? 0;
+
+    if (currentBalance < amount) {
+      return NextResponse.json({ error: 'Insufficient balance' }, { status: 400 });
     }
 
-    if (!data?.success) {
-      return NextResponse.json({ error: data?.error || 'Insufficient balance' }, { status: 400 });
-    }
+    const newBalance = currentBalance - amount;
+
+    await prisma.creatorPoint.create({
+      data: {
+        creatorId: creator.id,
+        pointType: 'WITHDRAW',
+        amount: -amount,
+        balanceAfter: newBalance,
+        description: '포인트 출금 신청',
+      },
+    });
 
     return NextResponse.json({
       success: true,
-      newBalance: data.balance,
+      newBalance,
     });
   } catch (error) {
     console.error('Withdraw API error:', error);

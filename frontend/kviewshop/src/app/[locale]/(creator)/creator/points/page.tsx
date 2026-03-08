@@ -7,19 +7,29 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Coins, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAuthStore } from '@/lib/store/auth';
-import { getClient } from '@/lib/supabase/client';
 import { formatCurrency } from '@/lib/i18n/config';
 import { POINT_TYPE_LABELS } from '@/types/database';
-import type { CreatorPoint, PointType } from '@/types/database';
+import { getCreatorSession, getCreatorPoints, withdrawPoints } from '@/lib/actions/creator';
+
+type PointType = 'COMMISSION' | 'REFERRAL' | 'MISSION' | 'BONUS' | 'WITHDRAWAL' | 'ADJUSTMENT';
+
+interface PointEntry {
+  id: string;
+  creatorId: string;
+  pointType: string;
+  amount: number;
+  balanceAfter: number;
+  description: string | null;
+  relatedId: string | null;
+  createdAt: string;
+}
 
 export default function CreatorPointsPage() {
   const params = useParams();
   const locale = params.locale as string;
-  const { creator, isLoading: authLoading } = useAuthStore();
-
+  const [creator, setCreator] = useState<{ id: string } | null>(null);
   const [balance, setBalance] = useState(0);
-  const [history, setHistory] = useState<CreatorPoint[]>([]);
+  const [history, setHistory] = useState<PointEntry[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -33,20 +43,10 @@ export default function CreatorPointsPage() {
     if (!creator) return;
     try {
       setLoading(true);
-      const supabase = getClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: { session } } = await supabase.auth.getSession();
-
-      const res = await fetch(`/api/creator/points?page=${p}&limit=${limit}`, {
-        headers: { 'Authorization': `Bearer ${session?.access_token}` },
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setBalance(data.balance);
-        setHistory(data.history);
-        setTotal(data.total);
-      }
+      const data = await getCreatorPoints(p, limit);
+      setBalance(data.balance);
+      setHistory(data.history as PointEntry[]);
+      setTotal(data.total);
     } catch (error) {
       console.error('Failed to fetch points:', error);
     } finally {
@@ -55,12 +55,22 @@ export default function CreatorPointsPage() {
   }, [creator]);
 
   useEffect(() => {
-    if (!authLoading && creator) {
-      fetchPoints(page);
-    } else if (!authLoading) {
-      setLoading(false);
+    async function init() {
+      const creatorData = await getCreatorSession();
+      if (creatorData) {
+        setCreator(creatorData as any);
+      } else {
+        setLoading(false);
+      }
     }
-  }, [authLoading, creator, page, fetchPoints]);
+    init();
+  }, []);
+
+  useEffect(() => {
+    if (creator) {
+      fetchPoints(page);
+    }
+  }, [creator, page, fetchPoints]);
 
   const handleWithdraw = async () => {
     const amount = parseInt(withdrawAmount, 10);
@@ -75,31 +85,16 @@ export default function CreatorPointsPage() {
 
     setWithdrawing(true);
     try {
-      const supabase = getClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: { session } } = await supabase.auth.getSession();
-
-      const res = await fetch('/api/creator/points/withdraw', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session?.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ amount }),
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
+      const result = await withdrawPoints(amount);
+      if (result.success) {
         toast.success('출금 신청이 완료되었습니다');
         setShowWithdraw(false);
         setWithdrawAmount('');
         fetchPoints(1);
         setPage(1);
-      } else {
-        toast.error(data.error || '출금에 실패했습니다');
       }
-    } catch {
-      toast.error('오류가 발생했습니다');
+    } catch (error: any) {
+      toast.error(error?.message || '오류가 발생했습니다');
     } finally {
       setWithdrawing(false);
     }
@@ -107,7 +102,7 @@ export default function CreatorPointsPage() {
 
   const totalPages = Math.ceil(total / limit);
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-8 w-48" />
@@ -188,13 +183,13 @@ export default function CreatorPointsPage() {
                     )}
                     <div>
                       <p className="text-sm font-medium">
-                        {POINT_TYPE_LABELS[point.point_type as PointType] || point.point_type}
+                        {POINT_TYPE_LABELS[point.pointType as keyof typeof POINT_TYPE_LABELS] || point.pointType}
                       </p>
                       {point.description && (
                         <p className="text-xs text-muted-foreground">{point.description}</p>
                       )}
                       <p className="text-xs text-muted-foreground">
-                        {new Date(point.created_at).toLocaleDateString('ko-KR')}
+                        {new Date(point.createdAt).toLocaleDateString('ko-KR')}
                       </p>
                     </div>
                   </div>
@@ -202,7 +197,7 @@ export default function CreatorPointsPage() {
                     <p className={`text-sm font-semibold ${point.amount > 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {point.amount > 0 ? '+' : ''}{formatCurrency(point.amount, locale)}
                     </p>
-                    <p className="text-xs text-muted-foreground">잔액 {formatCurrency(point.balance_after, locale)}</p>
+                    <p className="text-xs text-muted-foreground">잔액 {formatCurrency(point.balanceAfter, locale)}</p>
                   </div>
                 </div>
               ))}

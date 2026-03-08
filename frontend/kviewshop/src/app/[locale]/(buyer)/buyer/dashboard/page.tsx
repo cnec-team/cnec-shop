@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useUser } from '@/lib/hooks/use-user';
-import { getClient } from '@/lib/supabase/client';
+import { getBuyerDashboardData } from '@/lib/actions/buyer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,96 +21,22 @@ import {
   Sparkles,
 } from 'lucide-react';
 
-interface DashboardStats {
-  total_orders: number;
-  total_spent: number;
-  points_balance: number;
-  active_subscriptions: number;
-  pending_reviews: number;
-}
-
-interface SubscribedMall {
-  id: string;
-  creator: {
-    id: string;
-    shop_id: string | null;
-    username: string | null;
-    display_name: string;
-    profile_image: string | null;
-    profile_image_url: string | null;
-    theme_color: string | null;
-    background_color: string | null;
-  };
-}
-
-interface RecentOrder {
-  id: string;
-  order_number: string;
-  total_amount: number;
-  status: string;
-  created_at: string;
-}
-
 export default function BuyerDashboardPage() {
   const { user, buyer } = useUser();
   const params = useParams();
   const locale = params.locale as string;
   const [isLoading, setIsLoading] = useState(true);
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [subscriptions, setSubscriptions] = useState<SubscribedMall[]>([]);
-  const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
+  const [subscriptions, setSubscriptions] = useState<any[]>([]);
+  const [recentOrders, setRecentOrders] = useState<any[]>([]);
 
   useEffect(() => {
     const loadDashboardData = async () => {
       if (!buyer) return;
 
       try {
-        const supabase = getClient();
-
-        // Get subscriptions with creator data
-        const { data: subsData } = await supabase
-          .from('mall_subscriptions')
-          .select(`
-            id,
-            creator:creators (
-              id,
-              shop_id,
-              username,
-              display_name,
-              profile_image,
-              profile_image_url,
-              theme_color,
-              background_color
-            )
-          `)
-          .eq('buyer_id', buyer.id)
-          .eq('status', 'active')
-          .limit(6);
-
-        if (subsData) {
-          setSubscriptions(subsData as any);
-        }
-
-        // Get recent orders
-        const { data: ordersData } = await supabase
-          .from('orders')
-          .select('id, order_number, total_amount, status, created_at')
-          .eq('buyer_id', buyer.id)
-          .order('created_at', { ascending: false })
-          .limit(5);
-
-        if (ordersData) {
-          setRecentOrders(ordersData);
-        }
-
-        // Calculate stats
-        setStats({
-          total_orders: buyer.total_orders || 0,
-          total_spent: buyer.total_spent || 0,
-          points_balance: buyer.points_balance || 0,
-          active_subscriptions: subsData?.length || 0,
-          pending_reviews: 0, // Would need to calculate this
-        });
+        const data = await getBuyerDashboardData(buyer.id);
+        setSubscriptions(data.subscriptions || []);
+        setRecentOrders(data.recentOrders || []);
       } catch (error) {
         console.error('Failed to load dashboard data:', error);
       } finally {
@@ -132,28 +58,28 @@ export default function BuyerDashboardPage() {
   const statCards = [
     {
       label: 'Total Orders',
-      value: stats?.total_orders || 0,
+      value: buyer?.total_orders || buyer?.totalOrders || 0,
       icon: ShoppingBag,
       color: 'text-blue-500',
       bgColor: 'bg-blue-500/10',
     },
     {
       label: 'Points Balance',
-      value: `${(stats?.points_balance || 0).toLocaleString()} P`,
+      value: `${((buyer?.points_balance || buyer?.pointsBalance || 0) as number).toLocaleString()} P`,
       icon: Gift,
       color: 'text-primary',
       bgColor: 'bg-primary/10',
     },
     {
       label: 'Subscriptions',
-      value: stats?.active_subscriptions || 0,
+      value: subscriptions.length,
       icon: Heart,
       color: 'text-pink-500',
       bgColor: 'bg-pink-500/10',
     },
     {
       label: 'Reviews Written',
-      value: buyer?.total_reviews || 0,
+      value: buyer?.total_reviews || buyer?.totalReviews || 0,
       icon: Star,
       color: 'text-yellow-500',
       bgColor: 'bg-yellow-500/10',
@@ -192,7 +118,7 @@ export default function BuyerDashboardPage() {
             Discover new products from your favorite creators
           </p>
         </div>
-        {buyer?.eligible_for_creator && (
+        {(buyer?.eligible_for_creator || buyer?.eligibleForCreator) && (
           <Link href={`/${locale}/buyer/become-creator`}>
             <Button className="btn-gold gap-2">
               <Sparkles className="h-4 w-4" />
@@ -245,28 +171,28 @@ export default function BuyerDashboardPage() {
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                {subscriptions.map((sub) => (
+                {subscriptions.map((sub: any) => (
                   <Link
                     key={sub.id}
-                    href={`/${locale}/@${sub.creator.shop_id || sub.creator.username}`}
+                    href={`/${locale}/@${sub.creator.shopId || sub.creator.username}`}
                     className="group"
                   >
                     <div className="p-4 rounded-lg border border-border/50 hover:border-primary/50 transition-colors text-center">
                       <Avatar className="h-12 w-12 mx-auto mb-2 ring-2 ring-offset-2 ring-offset-background"
-                        style={{ ['--ring-color' as any]: sub.creator.theme_color || sub.creator.background_color }}
+                        style={{ ['--ring-color' as any]: sub.creator.themeColor || sub.creator.backgroundColor }}
                       >
-                        <AvatarImage src={sub.creator.profile_image_url || sub.creator.profile_image || ''} />
+                        <AvatarImage src={sub.creator.profileImageUrl || ''} />
                         <AvatarFallback
-                          style={{ backgroundColor: sub.creator.theme_color || sub.creator.background_color || '#666' }}
+                          style={{ backgroundColor: sub.creator.themeColor || sub.creator.backgroundColor || '#666' }}
                           className="text-white"
                         >
-                          {sub.creator.display_name?.charAt(0) || (sub.creator.shop_id || sub.creator.username || 'C').charAt(0)}
+                          {sub.creator.displayName?.charAt(0) || (sub.creator.shopId || sub.creator.username || 'C').charAt(0)}
                         </AvatarFallback>
                       </Avatar>
                       <p className="font-medium text-sm truncate group-hover:text-primary">
-                        {sub.creator.display_name || sub.creator.shop_id || sub.creator.username}
+                        {sub.creator.displayName || sub.creator.shopId || sub.creator.username}
                       </p>
-                      <p className="text-xs text-muted-foreground">@{sub.creator.shop_id || sub.creator.username}</p>
+                      <p className="text-xs text-muted-foreground">@{sub.creator.shopId || sub.creator.username}</p>
                     </div>
                   </Link>
                 ))}
@@ -300,21 +226,21 @@ export default function BuyerDashboardPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {recentOrders.map((order) => (
+                {recentOrders.map((order: any) => (
                   <Link
                     key={order.id}
                     href={`/${locale}/buyer/orders/${order.id}`}
                     className="flex items-center justify-between p-3 rounded-lg border border-border/50 hover:border-primary/50 transition-colors"
                   >
                     <div>
-                      <p className="font-medium text-sm">{order.order_number}</p>
+                      <p className="font-medium text-sm">{order.orderNumber}</p>
                       <p className="text-xs text-muted-foreground">
-                        {new Date(order.created_at).toLocaleDateString()}
+                        {new Date(order.createdAt).toLocaleDateString()}
                       </p>
                     </div>
                     <div className="text-right">
                       <p className="font-medium">
-                        ₩{order.total_amount.toLocaleString()}
+                        {Number(order.totalAmount).toLocaleString()}
                       </p>
                       <Badge variant="secondary" className={getStatusColor(order.status)}>
                         {order.status}

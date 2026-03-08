@@ -2,9 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import * as XLSX from 'xlsx';
-import { getClient } from '@/lib/supabase/client';
-import { useAuthStore } from '@/lib/store/auth';
-import type { Conversion, Creator } from '@/types/database';
+import { getBrandSettlements, getBrandSession } from '@/lib/actions/brand';
 import { PLATFORM_FEE_RATE } from '@/types/database';
 import { Button } from '@/components/ui/button';
 import {
@@ -39,7 +37,7 @@ function formatKRW(num: number): string {
 }
 
 export default function BrandSettlementsPage() {
-  const { brand, isLoading: authLoading } = useAuthStore();
+  const [brand, setBrand] = useState<{ id: string } | null>(null);
   const [settlements, setSettlements] = useState<SettlementRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [totalPending, setTotalPending] = useState(0);
@@ -47,76 +45,20 @@ export default function BrandSettlementsPage() {
   const [totalPaid, setTotalPaid] = useState(0);
 
   useEffect(() => {
-    if (!brand?.id) {
-      if (!authLoading) setIsLoading(false);
-      return;
-    }
-
-    async function fetchSettlements() {
-      const supabase = getClient();
-      const brandId = brand!.id;
-
+    async function load() {
       try {
-        // Get orders for this brand
-        const { data: orders } = await supabase
-          .from('orders')
-          .select('id, creator_id, total_amount, status')
-          .eq('brand_id', brandId)
-          .in('status', ['CONFIRMED', 'DELIVERED']);
-
-        const orderIds = (orders ?? []).map((o) => o.id);
-
-        // Get conversions
-        const { data: conversions } = await supabase
-          .from('conversions')
-          .select('*, order:orders(creator_id)')
-          .in('order_id', orderIds.length > 0 ? orderIds : ['__none__']);
-
-        // Group by creator
-        const creatorMap = new Map<string, { count: number; sales: number; commission: number }>();
-        for (const conv of conversions ?? []) {
-          const creatorId = conv.creator_id;
-          if (!creatorId) continue;
-          const existing = creatorMap.get(creatorId) ?? { count: 0, sales: 0, commission: 0 };
-          existing.count += 1;
-          existing.sales += conv.order_amount || 0;
-          existing.commission += conv.commission_amount || 0;
-          creatorMap.set(creatorId, existing);
+        const brandData = await getBrandSession();
+        if (!brandData) {
+          setIsLoading(false);
+          return;
         }
+        setBrand(brandData);
 
-        const creatorIds = Array.from(creatorMap.keys());
-        let creatorsData: Creator[] = [];
-        if (creatorIds.length > 0) {
-          const { data } = await supabase
-            .from('creators')
-            .select('id, display_name')
-            .in('id', creatorIds);
-          creatorsData = (data ?? []) as Creator[];
-        }
-
-        const creatorNameMap = new Map(creatorsData.map((c) => [c.id, c.display_name]));
-
-        const rows: SettlementRow[] = Array.from(creatorMap.entries()).map(([id, data]) => {
-          const platformFee = Math.round(data.sales * PLATFORM_FEE_RATE);
-          return {
-            creatorName: creatorNameMap.get(id) ?? '알 수 없음',
-            orderCount: data.count,
-            totalSales: data.sales,
-            commissionAmount: data.commission,
-            platformFee,
-            netAmount: data.sales - data.commission - platformFee,
-          };
-        });
-
-        rows.sort((a, b) => b.totalSales - a.totalSales);
-        setSettlements(rows);
-
-        // Summary calculations
-        const totalRev = rows.reduce((sum, r) => sum + r.totalSales, 0);
-        const totalComm = rows.reduce((sum, r) => sum + r.commissionAmount, 0);
-        setTotalRevenue(totalRev);
-        setTotalPending(totalComm);
-        setTotalPaid(0); // Would come from actual settlement records
+        const data = await getBrandSettlements(brandData.id);
+        setSettlements(data.settlements);
+        setTotalRevenue(data.totalRevenue);
+        setTotalPending(data.totalPending);
+        setTotalPaid(data.totalPaid);
       } catch (error) {
         console.error('Failed to fetch settlements:', error);
       } finally {
@@ -124,8 +66,8 @@ export default function BrandSettlementsPage() {
       }
     }
 
-    fetchSettlements();
-  }, [brand?.id, authLoading]);
+    load();
+  }, []);
 
   function handleDownloadExcel() {
     if (settlements.length === 0) return;

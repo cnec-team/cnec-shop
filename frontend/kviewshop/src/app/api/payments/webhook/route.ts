@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { prisma } from '@/lib/db';
 import crypto from 'crypto';
 
 // Inline types
@@ -18,19 +18,6 @@ interface WebhookPayload {
     cancelledAt?: string;
     cancelReason?: string;
   };
-}
-
-function getSupabaseClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Missing Supabase configuration');
-  }
-
-  return createClient(supabaseUrl, supabaseKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
 }
 
 // Map PortOne webhook event types to our order statuses
@@ -107,22 +94,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true, processed: false });
     }
 
-    const supabase = getSupabaseClient();
-
-    // Find the order by pg_transaction_id (paymentId) or by orderId from webhook
-    let orderQuery = supabase
-      .from('orders')
-      .select('id, status, order_number, total_amount');
-
+    // Find the order by id or pgTransactionId (paymentId)
+    let order;
     if (webhookOrderId) {
-      orderQuery = orderQuery.eq('id', webhookOrderId);
+      order = await prisma.order.findUnique({
+        where: { id: webhookOrderId },
+        select: { id: true, status: true, orderNumber: true, totalAmount: true },
+      });
     } else {
-      orderQuery = orderQuery.eq('pg_transaction_id', paymentId);
+      order = await prisma.order.findFirst({
+        where: { pgTransactionId: paymentId },
+        select: { id: true, status: true, orderNumber: true, totalAmount: true },
+      });
     }
 
-    const { data: order, error: orderError } = await orderQuery.single();
-
-    if (orderError || !order) {
+    if (!order) {
       console.error('Webhook: Order not found for paymentId:', paymentId);
       // Return 200 to prevent PortOne from retrying
       return NextResponse.json({ received: true, processed: false, reason: 'Order not found' });
@@ -161,12 +147,12 @@ export async function POST(request: NextRequest) {
 
       // Verify amount matches order total
       const paidAmount = paymentData.amount?.total;
-      const orderAmount = Number(order.total_amount);
+      const orderAmount = Number(order.totalAmount);
 
       if (paidAmount !== orderAmount) {
         console.error('Webhook: Amount mismatch detected', {
           paymentId,
-          orderNumber: order.order_number,
+          orderNumber: order.orderNumber,
           paidAmount,
           orderAmount,
         });
@@ -192,14 +178,13 @@ export async function POST(request: NextRequest) {
         }
 
         // Update order to CANCELLED
-        await supabase
-          .from('orders')
-          .update({
+        await prisma.order.update({
+          where: { id: order.id },
+          data: {
             status: 'CANCELLED',
-            cancel_reason: 'Amount mismatch: auto-cancelled by webhook verification',
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', order.id);
+            cancelReason: 'Amount mismatch: auto-cancelled by webhook verification',
+          },
+        });
 
         return NextResponse.json({
           received: true,
@@ -210,33 +195,32 @@ export async function POST(request: NextRequest) {
     }
 
     // Build update payload based on event type
-    const now = new Date().toISOString();
+    const now = new Date();
     const updateData: Record<string, unknown> = {
       status: newStatus,
-      updated_at: now,
     };
 
     switch (newStatus) {
       case 'PAID':
-        updateData.paid_at = now;
-        updateData.pg_transaction_id = paymentId;
+        updateData.paidAt = now;
+        updateData.pgTransactionId = paymentId;
         break;
       case 'CANCELLED':
-        updateData.cancelled_at = data.cancelledAt || now;
-        updateData.cancel_reason = data.cancelReason || 'Cancelled via payment gateway';
+        updateData.cancelledAt = data.cancelledAt ? new Date(data.cancelledAt) : now;
+        updateData.cancelReason = data.cancelReason || 'Cancelled via payment gateway';
         break;
       case 'REFUNDED':
-        updateData.cancelled_at = now;
-        updateData.cancel_reason = data.cancelReason || 'Refunded via payment gateway';
+        updateData.cancelledAt = now;
+        updateData.cancelReason = data.cancelReason || 'Refunded via payment gateway';
         break;
     }
 
-    const { error: updateError } = await supabase
-      .from('orders')
-      .update(updateData)
-      .eq('id', order.id);
-
-    if (updateError) {
+    try {
+      await prisma.order.update({
+        where: { id: order.id },
+        data: updateData,
+      });
+    } catch (updateError) {
       console.error('Webhook: Failed to update order:', updateError);
       // Still return 200 so PortOne doesn't retry indefinitely
       return NextResponse.json({
@@ -248,24 +232,24 @@ export async function POST(request: NextRequest) {
 
     // If cancelled or refunded, also update conversion records
     if (newStatus === 'CANCELLED' || newStatus === 'REFUNDED') {
-      const { error: conversionError } = await supabase
-        .from('conversions')
-        .update({ status: 'CANCELLED' })
-        .eq('order_id', order.id);
-
-      if (conversionError) {
+      try {
+        await prisma.conversion.updateMany({
+          where: { orderId: order.id },
+          data: { status: 'CANCELLED' },
+        });
+      } catch (conversionError) {
         console.error('Webhook: Failed to cancel conversions:', conversionError);
       }
     }
 
     console.log(
-      `Webhook processed: order=${order.order_number}, event=${eventType}, newStatus=${newStatus}`
+      `Webhook processed: order=${order.orderNumber}, event=${eventType}, newStatus=${newStatus}`
     );
 
     return NextResponse.json({
       received: true,
       processed: true,
-      orderNumber: order.order_number,
+      orderNumber: order.orderNumber,
       newStatus,
     });
   } catch (error: unknown) {

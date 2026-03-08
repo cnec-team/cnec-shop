@@ -23,96 +23,65 @@ import {
   Medal,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAuthStore } from '@/lib/store/auth';
-import { getClient } from '@/lib/supabase/client';
 import { formatCurrency } from '@/lib/i18n/config';
-import type { CreatorDashboardStats, CreatorGrade } from '@/types/database';
 import { GRADE_LABELS } from '@/types/database';
 import { MissionWidget } from '@/components/creator/MissionWidget';
+import {
+  getCreatorSession,
+  getCreatorDashboardStats,
+  getCreatorPointBalance,
+  getCreatorGradeData,
+} from '@/lib/actions/creator';
+
+type CreatorGrade = 'ROOKIE' | 'SILVER' | 'GOLD' | 'PLATINUM';
+
+interface DashboardStats {
+  totalVisits: number;
+  totalOrders: number;
+  totalRevenue: number;
+  totalEarnings: number;
+  conversionRate: number;
+  pendingSettlement: number;
+  activeGonggu: number;
+  activePicks: number;
+}
 
 export default function CreatorDashboardPage() {
   const params = useParams();
   const locale = params.locale as string;
-  const { creator, isLoading: authLoading } = useAuthStore();
 
+  const [creator, setCreator] = useState<{ id: string; shopId?: string | null } | null>(null);
   const [copied, setCopied] = useState(false);
-  const [stats, setStats] = useState<CreatorDashboardStats | null>(null);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [pointBalance, setPointBalance] = useState(0);
   const [grade, setGrade] = useState<CreatorGrade>('ROOKIE');
 
-  const shopUrl = creator?.shop_id ? `https://shop.cnec.kr/${creator.shop_id}` : '';
+  const shopUrl = creator?.shopId ? `https://shop.cnec.kr/${creator.shopId}` : '';
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!creator) {
-      setLoading(false);
-      return;
-    }
-
     let cancelled = false;
 
-    async function fetchStats() {
-      try {
-        const supabase = getClient();
+    async function init() {
+      const creatorData = await getCreatorSession();
+      if (!creatorData || cancelled) {
+        if (!cancelled) setLoading(false);
+        return;
+      }
+      setCreator(creatorData as any);
 
-        // Fetch aggregated stats for the creator
-        const [visitsRes, conversionsRes, settlementsRes] = await Promise.all([
-          supabase
-            .from('shop_visits')
-            .select('id', { count: 'exact', head: true })
-            .eq('creator_id', creator!.id),
-          supabase
-            .from('conversions')
-            .select('*')
-            .eq('creator_id', creator!.id)
-            .eq('status', 'CONFIRMED'),
-          supabase
-            .from('settlements')
-            .select('*')
-            .eq('creator_id', creator!.id)
-            .eq('status', 'PENDING'),
+      try {
+        const [dashboardStats, balance, gradeData] = await Promise.all([
+          getCreatorDashboardStats(creatorData.id),
+          getCreatorPointBalance(),
+          getCreatorGradeData(),
         ]);
 
         if (cancelled) return;
 
-        const totalVisits = visitsRes.count ?? 0;
-        const conversions = conversionsRes.data ?? [];
-        const pendingSettlements = settlementsRes.data ?? [];
-
-        const totalOrders = conversions.length;
-        const totalRevenue = conversions.reduce((sum, c) => sum + c.order_amount, 0);
-        const totalEarnings = conversions.reduce((sum, c) => sum + c.commission_amount, 0);
-        const conversionRate = totalVisits > 0 ? (totalOrders / totalVisits) * 100 : 0;
-        const pendingSettlement = pendingSettlements.reduce((sum, s) => sum + s.net_amount, 0);
-
-        setStats({
-          total_visits: totalVisits,
-          total_orders: totalOrders,
-          total_revenue: totalRevenue,
-          total_earnings: totalEarnings,
-          conversion_rate: conversionRate,
-          pending_settlement: pendingSettlement,
-          active_gonggu: 0,
-          active_picks: 0,
-        });
-        // Fetch points and grade in parallel
-        const { data: { user: authUser } } = await supabase.auth.getUser();
-        if (authUser && !cancelled) {
-          const { data: { session } } = await supabase.auth.getSession();
-          const [pointsRes, gradeRes] = await Promise.all([
-            fetch('/api/creator/points?limit=1', { headers: { 'Authorization': `Bearer ${session?.access_token}` } }),
-            fetch('/api/creator/grade', { headers: { 'Authorization': `Bearer ${session?.access_token}` } }),
-          ]);
-          if (pointsRes.ok) {
-            const pd = await pointsRes.json();
-            if (!cancelled) setPointBalance(pd.balance ?? 0);
-          }
-          if (gradeRes.ok) {
-            const gd = await gradeRes.json();
-            if (!cancelled) setGrade(gd.grade ?? 'ROOKIE');
-          }
-        }
+        setStats(dashboardStats);
+        setPointBalance(balance);
+        setGrade((gradeData.grade as CreatorGrade) ?? 'ROOKIE');
       } catch (error) {
         console.error('Failed to fetch dashboard stats:', error);
       } finally {
@@ -120,9 +89,9 @@ export default function CreatorDashboardPage() {
       }
     }
 
-    fetchStats();
+    init();
     return () => { cancelled = true; };
-  }, [authLoading, creator]);
+  }, []);
 
   const copyShopUrl = () => {
     if (!shopUrl) return;
@@ -132,7 +101,7 @@ export default function CreatorDashboardPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
       <div className="space-y-6">
         <div>
@@ -159,7 +128,7 @@ export default function CreatorDashboardPage() {
       </div>
 
       {/* Shop URL Banner */}
-      {creator?.shop_id && (
+      {creator?.shopId && (
         <Card className="border-primary/50 bg-primary/5">
           <CardContent className="p-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -225,7 +194,7 @@ export default function CreatorDashboardPage() {
           </CardHeader>
           <CardContent className="p-3 sm:p-6 pt-0">
             <div className="text-lg sm:text-2xl font-bold">
-              {(stats?.total_visits ?? 0).toLocaleString()}
+              {(stats?.totalVisits ?? 0).toLocaleString()}
             </div>
           </CardContent>
         </Card>
@@ -237,7 +206,7 @@ export default function CreatorDashboardPage() {
           </CardHeader>
           <CardContent className="p-3 sm:p-6 pt-0">
             <div className="text-lg sm:text-2xl font-bold">
-              {(stats?.total_orders ?? 0).toLocaleString()}
+              {(stats?.totalOrders ?? 0).toLocaleString()}
             </div>
           </CardContent>
         </Card>
@@ -249,7 +218,7 @@ export default function CreatorDashboardPage() {
           </CardHeader>
           <CardContent className="p-3 sm:p-6 pt-0">
             <div className="text-lg sm:text-2xl font-bold">
-              {(stats?.conversion_rate ?? 0).toFixed(1)}%
+              {(stats?.conversionRate ?? 0).toFixed(1)}%
             </div>
           </CardContent>
         </Card>
@@ -261,7 +230,7 @@ export default function CreatorDashboardPage() {
           </CardHeader>
           <CardContent className="p-3 sm:p-6 pt-0">
             <div className="text-lg sm:text-2xl font-bold text-primary">
-              {formatCurrency(stats?.total_revenue ?? 0, 'KRW')}
+              {formatCurrency(stats?.totalRevenue ?? 0, 'KRW')}
             </div>
           </CardContent>
         </Card>
@@ -273,7 +242,7 @@ export default function CreatorDashboardPage() {
           </CardHeader>
           <CardContent className="p-3 sm:p-6 pt-0">
             <div className="text-lg sm:text-2xl font-bold text-warning">
-              {formatCurrency(stats?.pending_settlement ?? 0, 'KRW')}
+              {formatCurrency(stats?.pendingSettlement ?? 0, 'KRW')}
             </div>
           </CardContent>
         </Card>

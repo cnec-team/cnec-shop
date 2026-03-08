@@ -2,13 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getClient } from '@/lib/supabase/client';
-import { useAuthStore } from '@/lib/store/auth';
-import type {
-  BrandDashboardStats,
-  Campaign,
-  Creator,
-} from '@/types/database';
+import { getBrandDashboardData, getBrandSession } from '@/lib/actions/brand';
 import { CAMPAIGN_STATUS_LABELS } from '@/types/database';
 import {
   Card,
@@ -30,10 +24,30 @@ import {
   TableRow,
 } from '@/components/ui/table';
 
-interface CreatorRanking {
-  creator: Creator;
-  totalSales: number;
-  orderCount: number;
+interface DashboardData {
+  stats: {
+    totalVisits: number;
+    totalOrders: number;
+    totalRevenue: number;
+    totalCommission: number;
+    conversionRate: number;
+    activeCampaigns: number;
+    activeCreators: number;
+    productCount: number;
+  };
+  activeGonggu: {
+    title: string;
+    status: string;
+    soldCount: number;
+    totalStock: number | null;
+    endAt: string | null;
+    targetParticipants: number | null;
+  } | null;
+  creatorRankings: Array<{
+    creator: { id: string; displayName: string | null };
+    totalSales: number;
+    orderCount: number;
+  }>;
 }
 
 function formatNumber(num: number): string {
@@ -68,154 +82,22 @@ function TableSkeleton({ rows = 5 }: { rows?: number }) {
 }
 
 export default function BrandDashboardPage() {
-  const { brand, isLoading: authLoading } = useAuthStore();
-  const [stats, setStats] = useState<BrandDashboardStats | null>(null);
-  const [activeGonggu, setActiveGonggu] = useState<Campaign | null>(null);
-  const [creatorRankings, setCreatorRankings] = useState<CreatorRanking[]>([]);
+  const [brand, setBrand] = useState<{ id: string; brandName?: string | null } | null>(null);
+  const [data, setData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!brand?.id) {
-      if (!authLoading) {
-        setIsLoading(false);
-      }
-      return;
-    }
-
-    async function fetchDashboardData() {
-      const supabase = getClient();
-      const brandId = brand!.id;
-
+    async function load() {
       try {
-        // 1. Get brand's campaign IDs
-        const { data: brandCampaigns } = await supabase
-          .from('campaigns')
-          .select('id, type, status, title, description, start_at, end_at, sold_count, total_stock, target_participants, commission_rate, recruitment_type, brand_id, created_at')
-          .eq('brand_id', brandId);
-
-        const campaignIds = (brandCampaigns ?? []).map((c) => c.id);
-
-        // 2. Get brand's order IDs
-        const { data: brandOrders } = await supabase
-          .from('orders')
-          .select('id, total_amount, status, creator_id')
-          .eq('brand_id', brandId);
-
-        const orders = brandOrders ?? [];
-        const orderIds = orders.map((o) => o.id);
-
-        // 3. Get products count
-        const { count: productCount } = await supabase
-          .from('products')
-          .select('id', { count: 'exact', head: true })
-          .eq('brand_id', brandId)
-          .eq('status', 'ACTIVE');
-
-        // 4. Get active participations (unique creators)
-        const { data: participations } = await supabase
-          .from('campaign_participations')
-          .select('creator_id')
-          .eq('status', 'APPROVED')
-          .in('campaign_id', campaignIds.length > 0 ? campaignIds : ['__none__']);
-
-        const uniqueCreatorIds = new Set(
-          (participations ?? []).map((p) => p.creator_id)
-        );
-
-        // 5. Get total commission
-        const { data: conversions } = await supabase
-          .from('conversions')
-          .select('commission_amount')
-          .eq('status', 'CONFIRMED')
-          .in('order_id', orderIds.length > 0 ? orderIds : ['__none__']);
-
-        const totalCommission = (conversions ?? []).reduce(
-          (sum, c) => sum + (c.commission_amount || 0),
-          0
-        );
-
-        // 6. Get visits count for creators associated with this brand's campaigns
-        const creatorIdArr = Array.from(uniqueCreatorIds);
-        let totalVisits = 0;
-        if (creatorIdArr.length > 0) {
-          const { count } = await supabase
-            .from('shop_visits')
-            .select('id', { count: 'exact', head: true })
-            .in('creator_id', creatorIdArr);
-          totalVisits = count ?? 0;
+        const brandData = await getBrandSession();
+        if (!brandData) {
+          setIsLoading(false);
+          return;
         }
+        setBrand(brandData as any);
 
-        // Calculate stats
-        const totalRevenue = orders
-          .filter((o) => o.status !== 'CANCELLED')
-          .reduce((sum, o) => sum + (o.total_amount || 0), 0);
-        const totalOrders = orders.filter((o) => o.status !== 'CANCELLED').length;
-        const activeCampaigns = (brandCampaigns ?? []).filter(
-          (c) => c.status === 'ACTIVE' || c.status === 'RECRUITING'
-        ).length;
-
-        setStats({
-          total_visits: totalVisits,
-          total_orders: totalOrders,
-          total_revenue: totalRevenue,
-          total_commission: totalCommission,
-          conversion_rate:
-            totalVisits > 0
-              ? Math.round((totalOrders / totalVisits) * 10000) / 100
-              : 0,
-          active_campaigns: activeCampaigns,
-          active_creators: uniqueCreatorIds.size,
-          product_count: productCount ?? 0,
-        });
-
-        // Active gonggu campaign
-        const gongguCampaign = (brandCampaigns ?? []).find(
-          (c) => c.type === 'GONGGU' && c.status === 'ACTIVE'
-        );
-        if (gongguCampaign) {
-          setActiveGonggu(gongguCampaign as Campaign);
-        }
-
-        // Creator sales ranking from orders
-        const creatorSalesMap = new Map<
-          string,
-          { totalSales: number; orderCount: number }
-        >();
-        for (const order of orders) {
-          if (order.status !== 'CANCELLED' && order.creator_id) {
-            const existing = creatorSalesMap.get(order.creator_id) ?? {
-              totalSales: 0,
-              orderCount: 0,
-            };
-            existing.totalSales += order.total_amount || 0;
-            existing.orderCount += 1;
-            creatorSalesMap.set(order.creator_id, existing);
-          }
-        }
-
-        const topCreatorIds = Array.from(creatorSalesMap.entries())
-          .sort((a, b) => b[1].totalSales - a[1].totalSales)
-          .slice(0, 10)
-          .map(([id]) => id);
-
-        if (topCreatorIds.length > 0) {
-          const { data: creators } = await supabase
-            .from('creators')
-            .select('*')
-            .in('id', topCreatorIds);
-
-          const rankings: CreatorRanking[] = (creators ?? [])
-            .map((creator) => ({
-              creator: creator as Creator,
-              ...(creatorSalesMap.get(creator.id) ?? {
-                totalSales: 0,
-                orderCount: 0,
-              }),
-            }))
-            .sort((a, b) => b.totalSales - a.totalSales);
-
-          setCreatorRankings(rankings);
-        }
+        const dashboardData = await getBrandDashboardData(brandData.id);
+        setData(dashboardData as any);
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
       } finally {
@@ -223,8 +105,8 @@ export default function BrandDashboardPage() {
       }
     }
 
-    fetchDashboardData();
-  }, [brand?.id, authLoading]);
+    load();
+  }, []);
 
   if (!isLoading && !brand?.id) {
     return (
@@ -271,12 +153,16 @@ export default function BrandDashboardPage() {
     );
   }
 
+  const stats = data?.stats;
+  const activeGonggu = data?.activeGonggu;
+  const creatorRankings = data?.creatorRankings ?? [];
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">대시보드</h1>
         <p className="text-sm text-muted-foreground">
-          {brand?.brand_name ?? '브랜드'}
+          {brand?.brandName ?? '브랜드'}
         </p>
       </div>
 
@@ -288,7 +174,7 @@ export default function BrandDashboardPage() {
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">
-              {formatNumber(stats?.total_visits ?? 0)}
+              {formatNumber(stats?.totalVisits ?? 0)}
             </p>
           </CardContent>
         </Card>
@@ -299,7 +185,7 @@ export default function BrandDashboardPage() {
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">
-              {formatNumber(stats?.total_orders ?? 0)}
+              {formatNumber(stats?.totalOrders ?? 0)}
             </p>
           </CardContent>
         </Card>
@@ -310,7 +196,7 @@ export default function BrandDashboardPage() {
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">
-              {stats?.conversion_rate ?? 0}%
+              {stats?.conversionRate ?? 0}%
             </p>
           </CardContent>
         </Card>
@@ -321,7 +207,7 @@ export default function BrandDashboardPage() {
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">
-              {formatCurrency(stats?.total_revenue ?? 0)}
+              {formatCurrency(stats?.totalRevenue ?? 0)}
             </p>
           </CardContent>
         </Card>
@@ -332,7 +218,7 @@ export default function BrandDashboardPage() {
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">
-              {formatCurrency(stats?.total_commission ?? 0)}
+              {formatCurrency(stats?.totalCommission ?? 0)}
             </p>
           </CardContent>
         </Card>
@@ -343,7 +229,7 @@ export default function BrandDashboardPage() {
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">
-              {formatNumber(stats?.active_campaigns ?? 0)}
+              {formatNumber(stats?.activeCampaigns ?? 0)}
             </p>
           </CardContent>
         </Card>
@@ -354,7 +240,7 @@ export default function BrandDashboardPage() {
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">
-              {formatNumber(stats?.active_creators ?? 0)}
+              {formatNumber(stats?.activeCreators ?? 0)}
             </p>
           </CardContent>
         </Card>
@@ -365,7 +251,7 @@ export default function BrandDashboardPage() {
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">
-              {formatNumber(stats?.product_count ?? 0)}
+              {formatNumber(stats?.productCount ?? 0)}
             </p>
           </CardContent>
         </Card>
@@ -387,7 +273,7 @@ export default function BrandDashboardPage() {
                   <div className="space-y-1">
                     <p className="font-semibold">{activeGonggu.title}</p>
                     <Badge variant="secondary">
-                      {CAMPAIGN_STATUS_LABELS[activeGonggu.status]}
+                      {CAMPAIGN_STATUS_LABELS[activeGonggu.status as keyof typeof CAMPAIGN_STATUS_LABELS]}
                     </Badge>
                   </div>
                   <Link href="campaigns/gonggu">
@@ -401,24 +287,24 @@ export default function BrandDashboardPage() {
                   <div className="flex justify-between text-sm">
                     <span>판매 진행률</span>
                     <span>
-                      {formatNumber(activeGonggu.sold_count)} /{' '}
-                      {formatNumber(activeGonggu.total_stock ?? 0)}
+                      {formatNumber(activeGonggu.soldCount)} /{' '}
+                      {formatNumber(activeGonggu.totalStock ?? 0)}
                     </span>
                   </div>
                   <Progress
                     value={
-                      activeGonggu.total_stock
-                        ? (activeGonggu.sold_count / activeGonggu.total_stock) *
+                      activeGonggu.totalStock
+                        ? (activeGonggu.soldCount / activeGonggu.totalStock) *
                           100
                         : 0
                     }
                   />
                 </div>
 
-                {activeGonggu.end_at && (
+                {activeGonggu.endAt && (
                   <div className="text-sm text-muted-foreground">
                     종료:{' '}
-                    {new Date(activeGonggu.end_at).toLocaleDateString('ko-KR', {
+                    {new Date(activeGonggu.endAt).toLocaleDateString('ko-KR', {
                       year: 'numeric',
                       month: 'long',
                       day: 'numeric',
@@ -428,10 +314,10 @@ export default function BrandDashboardPage() {
                   </div>
                 )}
 
-                {activeGonggu.target_participants && (
+                {activeGonggu.targetParticipants && (
                   <div className="text-sm text-muted-foreground">
                     목표 참여 크리에이터:{' '}
-                    {formatNumber(activeGonggu.target_participants)}명
+                    {formatNumber(activeGonggu.targetParticipants)}명
                   </div>
                 )}
               </div>
@@ -475,7 +361,7 @@ export default function BrandDashboardPage() {
                       <TableCell className="font-medium">
                         {index + 1}
                       </TableCell>
-                      <TableCell>{ranking.creator.display_name}</TableCell>
+                      <TableCell>{ranking.creator.displayName}</TableCell>
                       <TableCell className="text-right">
                         {formatNumber(ranking.orderCount)}
                       </TableCell>

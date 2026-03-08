@@ -11,66 +11,33 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Plus, Trash2, ChevronUp, ChevronDown, Loader2, Eye, EyeOff, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
-import { getClient } from '@/lib/supabase/client';
-import { useAuthStore } from '@/lib/store/auth';
+import {
+  getCreatorSession,
+  getCreatorRoutines,
+  createRoutine,
+  updateRoutine,
+  deleteRoutine,
+} from '@/lib/actions/creator';
 
-// ── Local types (no DB types imported yet) ──────────────────────────────
+// ── Local types ──────────────────────────────────────────────────────
 interface RoutineStep {
   id: string;
-  step_name: string;
-  step_description: string;
-  image_url: string;
-  product_tags: string[];
-  display_order: number;
+  stepName: string;
+  stepDescription: string;
+  imageUrl: string;
+  productTags: string[];
+  displayOrder: number;
 }
 
 interface Routine {
   id: string;
-  creator_id: string;
+  creatorId: string;
   name: string;
-  is_visible: boolean;
-  display_order: number;
+  isVisible: boolean;
+  displayOrder: number;
   steps: RoutineStep[];
-  created_at: string;
+  createdAt?: string;
 }
-
-// ── Mock data ───────────────────────────────────────────────────────────
-const MOCK_ROUTINES: Routine[] = [
-  {
-    id: 'mock-routine-1',
-    creator_id: 'mock-creator',
-    name: '나의 모닝 루틴',
-    is_visible: true,
-    display_order: 0,
-    created_at: new Date().toISOString(),
-    steps: [
-      {
-        id: 'step-1',
-        step_name: '클렌징',
-        step_description: '더블 클렌징으로 메이크업과 노폐물을 깨끗하게 제거하세요',
-        image_url: '',
-        product_tags: ['클렌징폼', '클렌징오일'],
-        display_order: 0,
-      },
-      {
-        id: 'step-2',
-        step_name: '토너',
-        step_description: '세안 후 피부결을 정돈하고 다음 스킨케어의 흡수를 도와요',
-        image_url: '',
-        product_tags: ['토너'],
-        display_order: 1,
-      },
-      {
-        id: 'step-3',
-        step_name: '세럼',
-        step_description: '고농축 에센스로 피부 고민에 맞는 집중 케어를 하세요',
-        image_url: '',
-        product_tags: ['세럼', '앰플'],
-        display_order: 2,
-      },
-    ],
-  },
-];
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 function generateId() {
@@ -79,8 +46,7 @@ function generateId() {
 
 // ── Page component ──────────────────────────────────────────────────────
 export default function CreatorRoutinesPage() {
-  const { creator, isLoading: authLoading } = useAuthStore();
-
+  const [creator, setCreator] = useState<{ id: string } | null>(null);
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedRoutineId, setExpandedRoutineId] = useState<string | null>(null);
@@ -92,77 +58,108 @@ export default function CreatorRoutinesPage() {
   // New step form (per routine)
   const [addingStepToId, setAddingStepToId] = useState<string | null>(null);
   const [newStep, setNewStep] = useState<{
-    step_name: string;
-    step_description: string;
-    image_url: string;
-    product_tags: string;
-  }>({ step_name: '', step_description: '', image_url: '', product_tags: '' });
+    stepName: string;
+    stepDescription: string;
+    imageUrl: string;
+    productTags: string;
+  }>({ stepName: '', stepDescription: '', imageUrl: '', productTags: '' });
 
-  // ── Data fetching (mock for MVP) ────────────────────────────────────
+  // ── Data fetching ────────────────────────────────────────────────────
   useEffect(() => {
-    if (authLoading) return;
+    let cancelled = false;
 
-    // TODO: Replace with real Supabase fetch once beauty_routines + routine_steps tables exist
-    // const supabase = getClient();
-    // const { data } = await supabase
-    //   .from('beauty_routines')
-    //   .select('*, steps:routine_steps(*)')
-    //   .eq('creator_id', creator!.id)
-    //   .order('display_order', { ascending: true });
-
-    const timer = setTimeout(() => {
-      setRoutines(MOCK_ROUTINES);
-      if (MOCK_ROUTINES.length > 0) {
-        setExpandedRoutineId(MOCK_ROUTINES[0].id);
+    async function fetchData() {
+      const creatorData = await getCreatorSession();
+      if (!creatorData || cancelled) {
+        if (!cancelled) setLoading(false);
+        return;
       }
-      setLoading(false);
-    }, 300);
+      setCreator(creatorData as any);
 
-    return () => clearTimeout(timer);
-  }, [authLoading, creator]);
+      try {
+        const data = await getCreatorRoutines(creatorData.id);
+        if (!cancelled) {
+          const mapped = (data as any[]).map((r) => ({
+            ...r,
+            steps: Array.isArray(r.steps) ? r.steps : [],
+          }));
+          setRoutines(mapped as Routine[]);
+          if (mapped.length > 0) {
+            setExpandedRoutineId(mapped[0].id);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch routines:', error);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    fetchData();
+    return () => { cancelled = true; };
+  }, []);
 
   // ── Routine CRUD ────────────────────────────────────────────────────
-  const handleCreateRoutine = () => {
+  const handleCreateRoutine = async () => {
     const trimmed = newRoutineName.trim();
-    if (!trimmed) return;
+    if (!trimmed || !creator) return;
 
     setCreatingRoutine(true);
 
-    // TODO: Replace with Supabase insert
-    const routine: Routine = {
-      id: generateId(),
-      creator_id: creator?.id ?? 'mock',
-      name: trimmed,
-      is_visible: true,
-      display_order: routines.length,
-      steps: [],
-      created_at: new Date().toISOString(),
-    };
+    try {
+      const data = await createRoutine({
+        creatorId: creator.id,
+        name: trimmed,
+      });
 
-    setRoutines((prev) => [...prev, routine]);
-    setNewRoutineName('');
-    setExpandedRoutineId(routine.id);
-    setCreatingRoutine(false);
-    toast.success('루틴이 생성되었습니다');
+      const routine: Routine = {
+        ...(data as any),
+        steps: [],
+      };
+
+      setRoutines((prev) => [...prev, routine]);
+      setNewRoutineName('');
+      setExpandedRoutineId(routine.id);
+      toast.success('루틴이 생성되었습니다');
+    } catch (error) {
+      toast.error('생성에 실패했습니다');
+    } finally {
+      setCreatingRoutine(false);
+    }
   };
 
-  const handleDeleteRoutine = (routineId: string) => {
+  const handleDeleteRoutine = async (routineId: string) => {
     if (!confirm('이 루틴을 삭제하시겠습니까?')) return;
 
-    // TODO: Replace with Supabase delete
-    setRoutines((prev) => prev.filter((r) => r.id !== routineId));
-    if (expandedRoutineId === routineId) setExpandedRoutineId(null);
-    toast.success('루틴이 삭제되었습니다');
+    try {
+      await deleteRoutine(routineId);
+      setRoutines((prev) => prev.filter((r) => r.id !== routineId));
+      if (expandedRoutineId === routineId) setExpandedRoutineId(null);
+      toast.success('루틴이 삭제되었습니다');
+    } catch (error) {
+      toast.error('삭제에 실패했습니다');
+    }
   };
 
-  const handleToggleVisibility = (routineId: string) => {
-    // TODO: Replace with Supabase update
+  const handleToggleVisibility = async (routineId: string) => {
+    const routine = routines.find((r) => r.id === routineId);
+    if (!routine) return;
+
+    const newVisible = !routine.isVisible;
     setRoutines((prev) =>
-      prev.map((r) => (r.id === routineId ? { ...r, is_visible: !r.is_visible } : r))
+      prev.map((r) => (r.id === routineId ? { ...r, isVisible: newVisible } : r))
     );
+
+    try {
+      await updateRoutine(routineId, { isVisible: newVisible });
+    } catch (error) {
+      setRoutines((prev) =>
+        prev.map((r) => (r.id === routineId ? { ...r, isVisible: !newVisible } : r))
+      );
+    }
   };
 
-  const handleMoveRoutine = (index: number, direction: 'up' | 'down') => {
+  const handleMoveRoutine = async (index: number, direction: 'up' | 'down') => {
     const newIndex = direction === 'up' ? index - 1 : index + 1;
     if (newIndex < 0 || newIndex >= routines.length) return;
 
@@ -171,13 +168,18 @@ export default function CreatorRoutinesPage() {
     updated[index] = updated[newIndex];
     updated[newIndex] = temp;
 
-    setRoutines(updated.map((r, i) => ({ ...r, display_order: i })));
+    const reordered = updated.map((r, i) => ({ ...r, displayOrder: i }));
+    setRoutines(reordered);
+
+    for (const r of reordered) {
+      await updateRoutine(r.id, { displayOrder: r.displayOrder });
+    }
   };
 
   // ── Step CRUD ───────────────────────────────────────────────────────
-  const handleAddStep = (routineId: string) => {
-    const name = newStep.step_name.trim();
-    const desc = newStep.step_description.trim();
+  const handleAddStep = async (routineId: string) => {
+    const name = newStep.stepName.trim();
+    const desc = newStep.stepDescription.trim();
     if (!name) return;
 
     const routine = routines.find((r) => r.id === routineId);
@@ -185,44 +187,56 @@ export default function CreatorRoutinesPage() {
 
     const step: RoutineStep = {
       id: generateId(),
-      step_name: name,
-      step_description: desc,
-      image_url: newStep.image_url.trim(),
-      product_tags: newStep.product_tags
+      stepName: name,
+      stepDescription: desc,
+      imageUrl: newStep.imageUrl.trim(),
+      productTags: newStep.productTags
         .split(',')
         .map((t) => t.trim())
         .filter(Boolean),
-      display_order: routine.steps.length,
+      displayOrder: routine.steps.length,
     };
 
-    // TODO: Replace with Supabase insert into routine_steps
+    const updatedSteps = [...routine.steps, step];
     setRoutines((prev) =>
       prev.map((r) =>
-        r.id === routineId ? { ...r, steps: [...r.steps, step] } : r
+        r.id === routineId ? { ...r, steps: updatedSteps } : r
       )
     );
-    setNewStep({ step_name: '', step_description: '', image_url: '', product_tags: '' });
+
+    try {
+      await updateRoutine(routineId, { steps: updatedSteps });
+    } catch (error) {
+      console.error('Failed to save step:', error);
+    }
+
+    setNewStep({ stepName: '', stepDescription: '', imageUrl: '', productTags: '' });
     setAddingStepToId(null);
     toast.success('단계가 추가되었습니다');
   };
 
-  const handleDeleteStep = (routineId: string, stepId: string) => {
-    // TODO: Replace with Supabase delete
+  const handleDeleteStep = async (routineId: string, stepId: string) => {
+    const routine = routines.find((r) => r.id === routineId);
+    if (!routine) return;
+
+    const updatedSteps = routine.steps
+      .filter((s) => s.id !== stepId)
+      .map((s, i) => ({ ...s, displayOrder: i }));
+
     setRoutines((prev) =>
       prev.map((r) =>
-        r.id === routineId
-          ? {
-              ...r,
-              steps: r.steps
-                .filter((s) => s.id !== stepId)
-                .map((s, i) => ({ ...s, display_order: i })),
-            }
-          : r
+        r.id === routineId ? { ...r, steps: updatedSteps } : r
       )
     );
+
+    try {
+      await updateRoutine(routineId, { steps: updatedSteps });
+    } catch (error) {
+      console.error('Failed to delete step:', error);
+    }
   };
 
-  const handleMoveStep = (routineId: string, stepIndex: number, direction: 'up' | 'down') => {
+  const handleMoveStep = async (routineId: string, stepIndex: number, direction: 'up' | 'down') => {
     const routine = routines.find((r) => r.id === routineId);
     if (!routine) return;
 
@@ -234,16 +248,21 @@ export default function CreatorRoutinesPage() {
     newSteps[stepIndex] = newSteps[newIndex];
     newSteps[newIndex] = temp;
 
-    const reordered = newSteps.map((s, i) => ({ ...s, display_order: i }));
+    const reordered = newSteps.map((s, i) => ({ ...s, displayOrder: i }));
 
-    // TODO: Replace with Supabase batch update display_order
     setRoutines((prev) =>
       prev.map((r) => (r.id === routineId ? { ...r, steps: reordered } : r))
     );
+
+    try {
+      await updateRoutine(routineId, { steps: reordered });
+    } catch (error) {
+      console.error('Failed to reorder steps:', error);
+    }
   };
 
   // ── Loading state ───────────────────────────────────────────────────
-  if (authLoading || loading) {
+  if (loading) {
     return (
       <div className="space-y-6">
         <div>
@@ -366,13 +385,13 @@ export default function CreatorRoutinesPage() {
                   {/* Visibility + delete */}
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-2">
-                      {routine.is_visible ? (
+                      {routine.isVisible ? (
                         <Eye className="h-4 w-4 text-muted-foreground" />
                       ) : (
                         <EyeOff className="h-4 w-4 text-muted-foreground" />
                       )}
                       <Switch
-                        checked={routine.is_visible}
+                        checked={routine.isVisible}
                         onCheckedChange={() => handleToggleVisibility(routine.id)}
                       />
                     </div>
@@ -437,15 +456,15 @@ export default function CreatorRoutinesPage() {
 
                           {/* Step content */}
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium">{step.step_name}</p>
+                            <p className="font-medium">{step.stepName}</p>
                             <p className="text-sm text-muted-foreground mt-0.5 whitespace-pre-wrap">
-                              {step.step_description}
+                              {step.stepDescription}
                             </p>
-                            {step.image_url && (
+                            {step.imageUrl && (
                               <div className="mt-2 rounded-lg overflow-hidden border max-w-[200px]">
                                 <img
-                                  src={step.image_url}
-                                  alt={step.step_name}
+                                  src={step.imageUrl}
+                                  alt={step.stepName}
                                   className="w-full h-24 object-cover"
                                   onError={(e) => {
                                     (e.target as HTMLImageElement).style.display = 'none';
@@ -453,9 +472,9 @@ export default function CreatorRoutinesPage() {
                                 />
                               </div>
                             )}
-                            {step.product_tags.length > 0 && (
+                            {step.productTags.length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-2">
-                                {step.product_tags.map((tag, ti) => (
+                                {step.productTags.map((tag, ti) => (
                                   <Badge key={ti} variant="outline" className="text-xs">
                                     {tag}
                                   </Badge>
@@ -485,44 +504,44 @@ export default function CreatorRoutinesPage() {
                         <Label>단계 이름</Label>
                         <Input
                           placeholder="예: 클렌징"
-                          value={newStep.step_name}
+                          value={newStep.stepName}
                           onChange={(e) =>
                             setNewStep((prev) => ({
                               ...prev,
-                              step_name: e.target.value.slice(0, 20),
+                              stepName: e.target.value.slice(0, 20),
                             }))
                           }
                           maxLength={20}
                         />
                         <p className="text-xs text-muted-foreground">
-                          {newStep.step_name.length}/20
+                          {newStep.stepName.length}/20
                         </p>
                       </div>
                       <div className="space-y-1">
                         <Label>설명</Label>
                         <Textarea
                           placeholder="이 단계에서 어떤 스킨케어를 하는지 설명해 주세요"
-                          value={newStep.step_description}
+                          value={newStep.stepDescription}
                           onChange={(e) =>
                             setNewStep((prev) => ({
                               ...prev,
-                              step_description: e.target.value.slice(0, 500),
+                              stepDescription: e.target.value.slice(0, 500),
                             }))
                           }
                           rows={3}
                           maxLength={500}
                         />
                         <p className="text-xs text-muted-foreground">
-                          {newStep.step_description.length}/500
+                          {newStep.stepDescription.length}/500
                         </p>
                       </div>
                       <div className="space-y-1">
                         <Label>이미지 URL (선택)</Label>
                         <Input
                           placeholder="https://example.com/step-image.jpg"
-                          value={newStep.image_url}
+                          value={newStep.imageUrl}
                           onChange={(e) =>
-                            setNewStep((prev) => ({ ...prev, image_url: e.target.value }))
+                            setNewStep((prev) => ({ ...prev, imageUrl: e.target.value }))
                           }
                         />
                       </div>
@@ -530,9 +549,9 @@ export default function CreatorRoutinesPage() {
                         <Label>상품 태그 (선택, 콤마로 구분)</Label>
                         <Input
                           placeholder="예: 클렌징폼, 클렌징오일"
-                          value={newStep.product_tags}
+                          value={newStep.productTags}
                           onChange={(e) =>
-                            setNewStep((prev) => ({ ...prev, product_tags: e.target.value }))
+                            setNewStep((prev) => ({ ...prev, productTags: e.target.value }))
                           }
                         />
                       </div>
@@ -543,10 +562,10 @@ export default function CreatorRoutinesPage() {
                           onClick={() => {
                             setAddingStepToId(null);
                             setNewStep({
-                              step_name: '',
-                              step_description: '',
-                              image_url: '',
-                              product_tags: '',
+                              stepName: '',
+                              stepDescription: '',
+                              imageUrl: '',
+                              productTags: '',
                             });
                           }}
                         >
@@ -555,7 +574,7 @@ export default function CreatorRoutinesPage() {
                         <Button
                           size="sm"
                           onClick={() => handleAddStep(routine.id)}
-                          disabled={!newStep.step_name.trim()}
+                          disabled={!newStep.stepName.trim()}
                         >
                           <Plus className="h-4 w-4 mr-1" />
                           단계 추가

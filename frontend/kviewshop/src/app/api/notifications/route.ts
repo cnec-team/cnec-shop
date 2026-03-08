@@ -1,19 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth-helpers';
-
-function getSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!url || !key) {
-    throw new Error('Missing Supabase credentials');
-  }
-
-  return createClient(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-}
+import { prisma } from '@/lib/db';
 
 // GET /api/notifications?userId=xxx&unread=true
 export async function GET(request: NextRequest) {
@@ -44,42 +31,24 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const supabase = getSupabase();
-
-    let query = supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-
+    const where: Record<string, unknown> = { userId };
     if (unreadOnly) {
-      query = query.eq('is_read', false);
+      where.isRead = false;
     }
 
-    const { data: notifications, error } = await query;
-
-    if (error) {
-      console.error('Error fetching notifications:', error);
-      return NextResponse.json(
-        { error: 'Failed to fetch notifications' },
-        { status: 500 }
-      );
-    }
+    const notifications = await prisma.notification.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+    });
 
     // Count unread
-    const { count: unreadCount, error: countError } = await supabase
-      .from('notifications')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .eq('is_read', false);
-
-    if (countError) {
-      console.error('Error counting unread notifications:', countError);
-    }
+    const unreadCount = await prisma.notification.count({
+      where: { userId, isRead: false },
+    });
 
     return NextResponse.json({
-      notifications: notifications || [],
-      unreadCount: unreadCount ?? 0,
+      notifications,
+      unreadCount,
     });
   } catch (error) {
     console.error('Notifications GET error:', error);
@@ -100,43 +69,24 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
-    const supabase = getSupabase();
 
     if (body.markAllRead && body.userId) {
       if (body.userId !== authUser.id) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
       }
-      const { error } = await supabase
-        .from('notifications')
-        .update({ is_read: true })
-        .eq('user_id', body.userId)
-        .eq('is_read', false);
-
-      if (error) {
-        console.error('Error marking all as read:', error);
-        return NextResponse.json(
-          { error: 'Failed to mark all as read' },
-          { status: 500 }
-        );
-      }
+      await prisma.notification.updateMany({
+        where: { userId: body.userId, isRead: false },
+        data: { isRead: true },
+      });
 
       return NextResponse.json({ success: true });
     }
 
     if (body.notificationId) {
-      const { error } = await supabase
-        .from('notifications')
-        .update({ is_read: true })
-        .eq('id', body.notificationId)
-        .eq('user_id', authUser.id);
-
-      if (error) {
-        console.error('Error marking notification as read:', error);
-        return NextResponse.json(
-          { error: 'Failed to mark notification as read' },
-          { status: 500 }
-        );
-      }
+      await prisma.notification.updateMany({
+        where: { id: body.notificationId, userId: authUser.id },
+        data: { isRead: true },
+      });
 
       return NextResponse.json({ success: true });
     }

@@ -7,7 +7,8 @@ import { useTranslations } from 'next-intl';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { getClient } from '@/lib/supabase/client';
+import { signIn } from 'next-auth/react';
+import { registerBuyer } from '@/lib/actions/auth-actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -57,57 +58,47 @@ export default function BuyerSignupPage() {
     setIsLoading(true);
     setSignupError(null);
     try {
-      const supabase = getClient();
-
-      // Sign up with Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
-        options: {
-          data: {
-            role: 'buyer',
-            name: data.nickname,
-          },
-        },
+      // Use the server action to register the buyer
+      // First, sign up via NextAuth credentials provider or a registration endpoint
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: data.email,
+          password: data.password,
+          name: data.nickname,
+          role: 'buyer',
+        }),
       });
 
-      if (authError) {
-        setSignupError(authError.message);
+      if (!res.ok) {
+        const errData = await res.json();
+        setSignupError(errData.error || 'Failed to create account');
         return;
       }
 
-      if (authData.user) {
-        // Create user record
-        const { error: userError } = await supabase.from('users').insert({
-          id: authData.user.id,
-          email: data.email,
-          name: data.nickname,
-          role: 'buyer',
-        });
+      // Sign in with the new credentials
+      const signInResult = await signIn('credentials', {
+        email: data.email,
+        password: data.password,
+        redirect: false,
+      });
 
-        if (userError) {
-          console.error('User creation error:', userError);
-          setSignupError('Failed to create user profile. Please try again.');
-          return;
-        }
-
-        // Create buyer profile
-        const { error: buyerError } = await supabase.from('buyers').insert({
-          user_id: authData.user.id,
-          nickname: data.nickname,
-          marketing_consent: data.marketingConsent || false,
-          preferred_language: locale,
-        });
-
-        if (buyerError) {
-          console.error('Buyer creation error:', buyerError);
-          setSignupError('Failed to create buyer profile. Please try again.');
-          return;
-        }
-
-        toast.success('Account created successfully! Welcome to CNEC Shop!');
-        router.push(`/${locale}/buyer/dashboard`);
+      if (signInResult?.error) {
+        setSignupError(signInResult.error);
+        return;
       }
+
+      // Create buyer profile via server action
+      await registerBuyer({
+        email: data.email,
+        nickname: data.nickname,
+        locale,
+        marketingConsent: data.marketingConsent || false,
+      });
+
+      toast.success('Account created successfully! Welcome to CNEC Shop!');
+      router.push(`/${locale}/buyer/dashboard`);
     } catch (error) {
       console.error('Signup error:', error);
       setSignupError('An error occurred during signup');

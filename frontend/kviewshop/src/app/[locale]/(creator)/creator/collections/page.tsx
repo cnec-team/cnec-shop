@@ -31,19 +31,49 @@ import {
   X,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getClient } from '@/lib/supabase/client';
-import { useAuthStore } from '@/lib/store/auth';
-import type { Collection, CreatorShopItem, Product } from '@/types/database';
+import {
+  getCreatorSession,
+  getCreatorCollections,
+  createCollection,
+  toggleCollectionVisibility,
+  deleteCollection,
+  updateCollectionOrder,
+  addItemToCollection,
+  removeItemFromCollection,
+  updateItemOrder,
+} from '@/lib/actions/creator';
 
-interface CollectionWithItems extends Collection {
-  items?: (CreatorShopItem & { product?: Product })[];
+interface ProductData {
+  id: string;
+  name: string;
+  images: string[] | null;
+}
+
+interface ShopItem {
+  id: string;
+  creatorId: string;
+  productId: string;
+  collectionId: string | null;
+  type: string;
+  displayOrder: number;
+  isVisible: boolean;
+  product?: ProductData;
+}
+
+interface CollectionWithItems {
+  id: string;
+  creatorId: string;
+  name: string;
+  description: string | null;
+  isVisible: boolean;
+  displayOrder: number;
+  items?: ShopItem[];
 }
 
 export default function CreatorCollectionsPage() {
-  const { creator, isLoading: authLoading } = useAuthStore();
-
+  const [creator, setCreator] = useState<{ id: string } | null>(null);
   const [collections, setCollections] = useState<CollectionWithItems[]>([]);
-  const [availableItems, setAvailableItems] = useState<(CreatorShopItem & { product?: Product })[]>([]);
+  const [availableItems, setAvailableItems] = useState<ShopItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Create dialog
@@ -57,40 +87,22 @@ export default function CreatorCollectionsPage() {
   const [addToCollectionId, setAddToCollectionId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (authLoading || !creator) {
-      if (!authLoading) setLoading(false);
-      return;
-    }
-
     let cancelled = false;
 
     async function fetchData() {
+      const creatorData = await getCreatorSession();
+      if (!creatorData || cancelled) {
+        if (!cancelled) setLoading(false);
+        return;
+      }
+      setCreator(creatorData as any);
+
       try {
-        const supabase = getClient();
-
-        const [collectionsRes, itemsRes] = await Promise.all([
-          supabase
-            .from('collections')
-            .select('*')
-            .eq('creator_id', creator!.id)
-            .order('display_order', { ascending: true }),
-          supabase
-            .from('creator_shop_items')
-            .select('*, product:products(*)')
-            .eq('creator_id', creator!.id)
-            .order('display_order', { ascending: true }),
-        ]);
-
-        if (cancelled) return;
-
-        const items = (itemsRes.data ?? []) as (CreatorShopItem & { product?: Product })[];
-        const cols = (collectionsRes.data ?? []).map((col) => ({
-          ...col,
-          items: items.filter((item) => item.collection_id === col.id),
-        })) as CollectionWithItems[];
-
-        setCollections(cols);
-        setAvailableItems(items);
+        const data = await getCreatorCollections(creatorData.id);
+        if (!cancelled) {
+          setCollections(data.collections as CollectionWithItems[]);
+          setAvailableItems(data.allItems as ShopItem[]);
+        }
       } catch (error) {
         console.error('Failed to fetch collections:', error);
       } finally {
@@ -100,36 +112,25 @@ export default function CreatorCollectionsPage() {
 
     fetchData();
     return () => { cancelled = true; };
-  }, [authLoading, creator]);
+  }, []);
 
   const handleCreate = async () => {
     if (!creator || !newName.trim()) return;
     setCreating(true);
 
     try {
-      const supabase = getClient();
-      const { data, error } = await supabase
-        .from('collections')
-        .insert({
-          creator_id: creator.id,
-          name: newName.trim(),
-          description: newDesc.trim() || null,
-          is_visible: true,
-          display_order: collections.length,
-        })
-        .select()
-        .single();
+      const data = await createCollection({
+        creatorId: creator.id,
+        name: newName.trim(),
+        description: newDesc.trim() || undefined,
+        displayOrder: collections.length,
+      });
 
-      if (error) {
-        toast.error('컬렉션 생성에 실패했습니다');
-        console.error('Create error:', error);
-      } else if (data) {
-        toast.success('컬렉션이 생성되었습니다');
-        setCollections((prev) => [...prev, { ...data, items: [] }]);
-        setNewName('');
-        setNewDesc('');
-        setCreateOpen(false);
-      }
+      toast.success('컬렉션이 생성되었습니다');
+      setCollections((prev) => [...prev, { ...data, items: [] } as CollectionWithItems]);
+      setNewName('');
+      setNewDesc('');
+      setCreateOpen(false);
     } catch (error) {
       toast.error('컬렉션 생성에 실패했습니다');
     } finally {
@@ -138,22 +139,18 @@ export default function CreatorCollectionsPage() {
   };
 
   const handleToggleVisibility = async (collection: CollectionWithItems) => {
-    const supabase = getClient();
-    const newVisible = !collection.is_visible;
+    const newVisible = !collection.isVisible;
 
     setCollections((prev) =>
-      prev.map((c) => (c.id === collection.id ? { ...c, is_visible: newVisible } : c))
+      prev.map((c) => (c.id === collection.id ? { ...c, isVisible: newVisible } : c))
     );
 
-    const { error } = await supabase
-      .from('collections')
-      .update({ is_visible: newVisible })
-      .eq('id', collection.id);
-
-    if (error) {
+    try {
+      await toggleCollectionVisibility(collection.id, newVisible);
+    } catch (error) {
       toast.error('변경에 실패했습니다');
       setCollections((prev) =>
-        prev.map((c) => (c.id === collection.id ? { ...c, is_visible: !newVisible } : c))
+        prev.map((c) => (c.id === collection.id ? { ...c, isVisible: !newVisible } : c))
       );
     }
   };
@@ -161,21 +158,12 @@ export default function CreatorCollectionsPage() {
   const handleDeleteCollection = async (collectionId: string) => {
     if (!confirm('이 컬렉션을 삭제하시겠습니까?')) return;
 
-    const supabase = getClient();
-
-    // Remove collection_id from items first
-    await supabase
-      .from('creator_shop_items')
-      .update({ collection_id: null })
-      .eq('collection_id', collectionId);
-
-    const { error } = await supabase.from('collections').delete().eq('id', collectionId);
-
-    if (error) {
-      toast.error('삭제에 실패했습니다');
-    } else {
+    try {
+      await deleteCollection(collectionId);
       toast.success('컬렉션이 삭제되었습니다');
       setCollections((prev) => prev.filter((c) => c.id !== collectionId));
+    } catch (error) {
+      toast.error('삭제에 실패했습니다');
     }
   };
 
@@ -183,37 +171,24 @@ export default function CreatorCollectionsPage() {
     const newIndex = direction === 'up' ? index - 1 : index + 1;
     if (newIndex < 0 || newIndex >= collections.length) return;
 
-    const supabase = getClient();
     const newCollections = [...collections];
     const temp = newCollections[index];
     newCollections[index] = newCollections[newIndex];
     newCollections[newIndex] = temp;
 
-    // Update display_order
-    const updated = newCollections.map((c, i) => ({ ...c, display_order: i }));
+    const updated = newCollections.map((c, i) => ({ ...c, displayOrder: i }));
     setCollections(updated);
 
-    // Persist
     for (const col of updated) {
-      await supabase
-        .from('collections')
-        .update({ display_order: col.display_order })
-        .eq('id', col.id);
+      await updateCollectionOrder(col.id, col.displayOrder);
     }
   };
 
-  const handleAddProduct = async (item: CreatorShopItem & { product?: Product }) => {
+  const handleAddProduct = async (item: ShopItem) => {
     if (!addToCollectionId) return;
 
-    const supabase = getClient();
-    const { error } = await supabase
-      .from('creator_shop_items')
-      .update({ collection_id: addToCollectionId })
-      .eq('id', item.id);
-
-    if (error) {
-      toast.error('추가에 실패했습니다');
-    } else {
+    try {
+      await addItemToCollection(item.id, addToCollectionId);
       toast.success('상품이 컬렉션에 추가되었습니다');
       setCollections((prev) =>
         prev.map((c) =>
@@ -223,19 +198,14 @@ export default function CreatorCollectionsPage() {
         )
       );
       setAddProductOpen(false);
+    } catch (error) {
+      toast.error('추가에 실패했습니다');
     }
   };
 
   const handleRemoveProduct = async (collectionId: string, itemId: string) => {
-    const supabase = getClient();
-    const { error } = await supabase
-      .from('creator_shop_items')
-      .update({ collection_id: null })
-      .eq('id', itemId);
-
-    if (error) {
-      toast.error('삭제에 실패했습니다');
-    } else {
+    try {
+      await removeItemFromCollection(itemId);
       setCollections((prev) =>
         prev.map((c) =>
           c.id === collectionId
@@ -243,6 +213,8 @@ export default function CreatorCollectionsPage() {
             : c
         )
       );
+    } catch (error) {
+      toast.error('삭제에 실패했습니다');
     }
   };
 
@@ -257,32 +229,28 @@ export default function CreatorCollectionsPage() {
     const newIndex = direction === 'up' ? itemIndex - 1 : itemIndex + 1;
     if (newIndex < 0 || newIndex >= col.items.length) return;
 
-    const supabase = getClient();
     const newItems = [...col.items];
     const temp = newItems[itemIndex];
     newItems[itemIndex] = newItems[newIndex];
     newItems[newIndex] = temp;
 
-    const updatedItems = newItems.map((item, i) => ({ ...item, display_order: i }));
+    const updatedItems = newItems.map((item, i) => ({ ...item, displayOrder: i }));
 
     setCollections((prev) =>
       prev.map((c) => (c.id === collectionId ? { ...c, items: updatedItems } : c))
     );
 
     for (const item of updatedItems) {
-      await supabase
-        .from('creator_shop_items')
-        .update({ display_order: item.display_order })
-        .eq('id', item.id);
+      await updateItemOrder(item.id, item.displayOrder);
     }
   };
 
   // Items not assigned to any collection
   const unassignedItems = availableItems.filter(
-    (item) => !item.collection_id
+    (item) => !item.collectionId
   );
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
       <div className="space-y-6">
         <div>
@@ -408,13 +376,13 @@ export default function CreatorCollectionsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="flex items-center gap-2">
-                    {collection.is_visible ? (
+                    {collection.isVisible ? (
                       <Eye className="h-4 w-4 text-muted-foreground" />
                     ) : (
                       <EyeOff className="h-4 w-4 text-muted-foreground" />
                     )}
                     <Switch
-                      checked={collection.is_visible}
+                      checked={collection.isVisible}
                       onCheckedChange={() => handleToggleVisibility(collection)}
                     />
                   </div>
