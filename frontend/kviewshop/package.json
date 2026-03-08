@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "postinstall": "prisma generate",
     "start": "next start",
     "lint": "eslint",
     "seed": "tsx scripts/seed-users.ts"
@@ -44,7 +45,6 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
-    "@netlify/plugin-nextjs": "^5.15.7",
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",

@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState({
     siteName: 'CNEC Shop',
-    siteUrl: 'https://cnecshop.netlify.app',
+    siteUrl: 'https://shop.cnec.kr',
     defaultCommission: 25,
     minCommission: 20,
     maxCommission: 30,
