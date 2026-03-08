@@ -22,6 +22,7 @@ import {
 import Image from 'next/image';
 import { toast } from 'sonner';
 import { getClient } from '@/lib/supabase/client';
+import { uploadImage } from '@/lib/upload';
 import { useTranslations } from 'next-intl';
 import { SHIPPING_REGIONS, CERTIFICATION_TYPES, getRegionCountryCodes } from '@/lib/shipping-countries';
 
@@ -126,19 +127,7 @@ export default function BrandSettingsPage() {
 
     setUploadingLogo(brandLineId);
     try {
-      const supabase = getClient();
-      const ext = file.name.split('.').pop();
-      const path = `brand-logos/${brandLineId}-${Date.now()}.${ext}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('products')
-        .upload(path, file, { upsert: true });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('products')
-        .getPublicUrl(path);
+      const publicUrl = await uploadImage(file, 'brand-logos');
 
       setBrandLines(prev => prev.map(bl =>
         bl.id === brandLineId ? { ...bl, logo_url: publicUrl } : bl
