@@ -7,7 +7,7 @@ import { useTranslations } from 'next-intl';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { getClient } from '@/lib/supabase/client';
+import { signIn } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -45,73 +45,25 @@ export default function BrandLoginPage() {
     setIsLoading(true);
     setLoginError(null);
     try {
-      const supabase = getClient();
-      const { data: authData, error } = await supabase.auth.signInWithPassword({
+      const result = await signIn('credentials', {
         email: data.email,
         password: data.password,
+        redirect: false,
       });
 
-      if (error) {
-        if (error.message.includes('Invalid login credentials')) {
-          setLoginError(t('invalidCredentials'));
-        } else if (error.message.includes('Email not confirmed')) {
-          setLoginError(t('emailNotConfirmed'));
-        } else {
-          setLoginError(error.message);
-        }
+      if (result?.error) {
+        setLoginError(t('invalidCredentials'));
         return;
       }
 
-      // Get role from auth user metadata first
-      let role = authData.user?.user_metadata?.role;
+      // Fetch session to verify role
+      const sessionRes = await fetch('/api/auth/session');
+      const session = await sessionRes.json();
 
-      // If no role in metadata, check DB
-      if (!role && authData.user) {
-        const { data: userData } = await supabase
-          .from('users')
-          .select('role')
-          .eq('id', authData.user.id)
-          .maybeSingle();
-
-        if (userData?.role) {
-          role = userData.role;
-          await supabase.auth.updateUser({
-            data: { role: userData.role }
-          });
-        }
-      }
-
-      // If still no role, check brands table
-      if (!role && authData.user) {
-        const { data: brandData } = await supabase
-          .from('brands')
-          .select('id, approved')
-          .eq('user_id', authData.user.id)
-          .maybeSingle();
-
-        if (brandData) {
-          role = 'brand_admin';
-          await supabase.auth.updateUser({ data: { role: 'brand_admin' } });
-        }
-      }
-
-      // Verify user is a brand_admin
-      if (role !== 'brand_admin') {
+      if (session?.user?.role !== 'brand_admin') {
         setLoginError(t('notBrandAccount'));
-        await supabase.auth.signOut();
-        return;
-      }
-
-      // Check if brand is approved
-      const { data: approvalData } = await supabase
-        .from('brands')
-        .select('approved')
-        .eq('user_id', authData.user.id)
-        .maybeSingle();
-
-      if (approvalData && !approvalData.approved) {
-        setLoginError(t('brandPendingApproval'));
-        await supabase.auth.signOut();
+        const { signOut: nextSignOut } = await import('next-auth/react');
+        await nextSignOut({ redirect: false });
         return;
       }
 

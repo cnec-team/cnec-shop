@@ -7,7 +7,7 @@ import { useTranslations } from 'next-intl';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { getClient } from '@/lib/supabase/client';
+import { signIn, signOut as nextAuthSignOut } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -45,31 +45,24 @@ export default function BuyerLoginPage() {
     setIsLoading(true);
     setLoginError(null);
     try {
-      const supabase = getClient();
-      const { data: authData, error } = await supabase.auth.signInWithPassword({
+      const result = await signIn('credentials', {
         email: data.email,
         password: data.password,
+        redirect: false,
       });
 
-      if (error) {
-        if (error.message.includes('Invalid login credentials')) {
-          setLoginError(t('invalidCredentials'));
-        } else {
-          setLoginError(error.message);
-        }
+      if (result?.error) {
+        setLoginError(t('invalidCredentials'));
         return;
       }
 
-      // Verify user is a buyer
-      const { data: userData } = await supabase
-        .from('users')
-        .select('role')
-        .eq('id', authData.user?.id)
-        .maybeSingle();
+      // Fetch session to verify role
+      const sessionRes = await fetch('/api/auth/session');
+      const session = await sessionRes.json();
 
-      if (userData?.role !== 'buyer') {
+      if (session?.user?.role !== 'buyer') {
         setLoginError('This account is not registered as a buyer.');
-        await supabase.auth.signOut();
+        await nextAuthSignOut({ redirect: false });
         return;
       }
 

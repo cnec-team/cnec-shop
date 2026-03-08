@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { getAuthUser } from '@/lib/auth-helpers';
 
 function getSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -8,27 +9,13 @@ function getSupabase() {
   return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
 }
 
-async function verifyAdmin(supabase: ReturnType<typeof getSupabase>, request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader) return false;
-  const token = authHeader.replace('Bearer ', '');
-  const { data: { user }, error } = await supabase.auth.getUser(token);
-  if (error || !user) return false;
-
-  const { data: userData } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-  return userData?.role === 'super_admin';
-}
-
 export async function GET(request: NextRequest) {
   try {
-    const supabase = getSupabase();
-    if (!(await verifyAdmin(supabase, request))) {
+    const authUser = await getAuthUser();
+    if (!authUser || authUser.role !== 'super_admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
+    const supabase = getSupabase();
 
     const { data: guides, error } = await supabase
       .from('guides')
@@ -48,10 +35,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = getSupabase();
-    if (!(await verifyAdmin(supabase, request))) {
+    const authUser = await getAuthUser();
+    if (!authUser || authUser.role !== 'super_admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
+    const supabase = getSupabase();
 
     const body = await request.json();
     const { title, category, content_type, content, target_grade, display_order, is_published } = body;

@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { getClient } from '@/lib/supabase/client';
 import { Loader2, CheckCircle2, Circle, Rocket, Trophy } from 'lucide-react';
 import { MISSION_LABELS } from '@/types/database';
 import type { MissionKey } from '@/types/database';
@@ -32,14 +31,7 @@ export function MissionWidget() {
   useEffect(() => {
     const fetchMissions = async () => {
       try {
-        const supabase = getClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-        const { data: { session } } = await supabase.auth.getSession();
-
-        const res = await fetch('/api/creator/missions', {
-          headers: { Authorization: `Bearer ${session?.access_token}` },
-        });
+        const res = await fetch('/api/creator/missions');
         if (res.ok) {
           setData(await res.json());
         }

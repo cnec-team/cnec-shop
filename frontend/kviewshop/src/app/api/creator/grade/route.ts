@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { GRADE_THRESHOLDS } from '@/types/database';
 import type { CreatorGrade } from '@/types/database';
+import { getAuthUser } from '@/lib/auth-helpers';
 
 function getSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -14,22 +15,16 @@ const GRADE_ORDER: CreatorGrade[] = ['ROOKIE', 'SILVER', 'GOLD', 'PLATINUM'];
 
 export async function GET(request: NextRequest) {
   try {
+    const authUser = await getAuthUser();
+    if (!authUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     const supabase = getSupabase();
-
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
     const { data: creator } = await supabase
       .from('creators')
       .select('id')
-      .eq('user_id', user.id)
+      .eq('user_id', authUser.id)
       .single();
     if (!creator) {
       return NextResponse.json({ error: 'Creator not found' }, { status: 404 });

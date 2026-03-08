@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getAuthUser } from '@/lib/auth-helpers';
 
 // Inline types
 type OrderStatus = 'PENDING' | 'PAID' | 'PREPARING' | 'SHIPPING' | 'DELIVERED' | 'CONFIRMED' | 'CANCELLED' | 'REFUNDED';
@@ -47,8 +48,8 @@ export async function POST(
     }
 
     // Authenticate the requesting user
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader) {
+    const authUser = await getAuthUser();
+    if (!authUser) {
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
@@ -56,15 +57,6 @@ export async function POST(
     }
 
     const supabase = getSupabaseClient();
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(token);
-
-    if (authError || !authUser) {
-      return NextResponse.json(
-        { error: 'Invalid authentication' },
-        { status: 401 }
-      );
-    }
 
     // Fetch the order with ownership info
     const { data: order, error: orderError } = await supabase

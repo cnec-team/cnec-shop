@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
-import { getClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,7 +10,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from 'sonner';
 import { Loader2, Building2, Sparkles, Instagram, Check, X, Camera } from 'lucide-react';
-import { uploadCreatorProfileImage } from '@/lib/supabase/storage';
 
 type Role = 'creator' | 'brand_admin';
 
@@ -52,13 +50,9 @@ export default function SignupPage() {
     if (id.length < 2) { setShopIdAvailable(null); return; }
     setShopIdChecking(true);
     try {
-      const supabase = getClient();
-      const { data } = await supabase
-        .from('creators')
-        .select('id')
-        .eq('shop_id', id)
-        .limit(1);
-      setShopIdAvailable(!data || data.length === 0);
+      const res = await fetch(`/api/auth/check-shop-id?id=${encodeURIComponent(id)}`);
+      const data = await res.json();
+      setShopIdAvailable(data.available);
     } catch {
       setShopIdAvailable(null);
     } finally {
@@ -105,77 +99,40 @@ export default function SignupPage() {
   const handleSubmit = async () => {
     setIsLoading(true);
     try {
-      const supabase = getClient();
-
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { data: { name, role } },
+      // TODO: Profile image upload will be handled separately (storage migration in M-3)
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          password,
+          name,
+          role,
+          companyName: role === 'brand_admin' ? companyName : undefined,
+          businessNumber: role === 'brand_admin' ? businessNumber : undefined,
+          shopId: role === 'creator' ? shopId : undefined,
+          shopName: role === 'creator' ? shopName : undefined,
+          instagram: role === 'creator' ? instagram : undefined,
+          tiktok: role === 'creator' ? tiktok : undefined,
+          youtube: role === 'creator' ? youtube : undefined,
+          refCode: refCode || undefined,
+        }),
       });
 
-      if (authError) { toast.error(authError.message); return; }
-      if (!authData.user) { toast.error('계정 생성에 실패했습니다'); return; }
+      const data = await res.json();
 
-      const { error: userError } = await supabase.from('users').insert({
-        id: authData.user.id,
-        email,
-        name,
-        role,
-      });
-
-      if (userError) { toast.error('프로필 생성에 실패했습니다'); return; }
+      if (!res.ok) {
+        toast.error(data.error || '회원가입에 실패했습니다');
+        return;
+      }
 
       if (role === 'brand_admin') {
-        const { error: brandError } = await supabase.from('brands').insert({
-          user_id: authData.user.id,
-          company_name: companyName,
-          business_number: businessNumber || null,
-          approved: false,
-        });
-        if (brandError) { toast.error('브랜드 생성에 실패했습니다'); return; }
         toast.success('브랜드 등록이 완료되었습니다');
         router.push(`/${locale}/login`);
         return;
       }
 
-      // Creator flow
-      let profileUrl: string | undefined;
-      if (profileImage) {
-        profileUrl = (await uploadCreatorProfileImage(profileImage, authData.user.id)) ?? undefined;
-      }
-
-      const { data: creatorData, error: creatorError } = await supabase.from('creators').insert({
-        user_id: authData.user.id,
-        shop_id: shopId,
-        display_name: shopName,
-        instagram_handle: instagram || null,
-        tiktok_handle: tiktok || null,
-        youtube_handle: youtube || null,
-        profile_image_url: profileUrl || null,
-        theme_color: '#1a1a1a',
-      }).select('id').single();
-
-      if (creatorError) { toast.error('크리에이터 생성에 실패했습니다'); return; }
-
-      // Init missions
-      if (creatorData?.id) {
-        await supabase.rpc('init_creator_missions', { p_creator_id: creatorData.id });
-      }
-
-      // Handle referral
-      if (refCode && creatorData?.id) {
-        await supabase
-          .from('creator_referrals')
-          .update({
-            referred_id: creatorData.id,
-            status: 'SIGNUP_COMPLETE',
-            updated_at: new Date().toISOString(),
-          })
-          .eq('referral_code', refCode)
-          .is('referred_id', null);
-      }
-
-      // Redirect to persona quiz
+      // Creator: redirect to persona quiz
       router.push(`/${locale}/signup/persona`);
     } catch {
       toast.error('오류가 발생했습니다');
