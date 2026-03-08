@@ -28,13 +28,14 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getClient } from '@/lib/supabase/client';
-import { useAuthStore } from '@/lib/store/auth';
-import type { Creator, SkinType, PersonalColor } from '@/types/database';
+import { getCreatorSession, updateCreatorShopProfile } from '@/lib/actions/creator';
 import {
   SKIN_TYPE_LABELS,
   PERSONAL_COLOR_LABELS,
 } from '@/types/database';
+
+type SkinType = 'DRY' | 'OILY' | 'COMBINATION' | 'SENSITIVE' | 'NORMAL';
+type PersonalColor = 'SPRING_WARM' | 'SUMMER_COOL' | 'AUTUMN_WARM' | 'WINTER_COOL';
 
 const SKIN_CONCERNS_OPTIONS = [
   { value: 'acne', label: '여드름' },
@@ -57,148 +58,94 @@ const SCALP_CONCERNS_OPTIONS = [
 ];
 
 interface ShopForm {
-  display_name: string;
+  displayName: string;
   bio: string;
-  cover_image_url: string;
-  profile_image_url: string;
-  instagram_handle: string;
-  youtube_handle: string;
-  tiktok_handle: string;
-  skin_type: SkinType | '';
-  personal_color: PersonalColor | '';
-  skin_concerns: string[];
-  scalp_concerns: string[];
-  banner_image_url: string;
-  banner_link: string;
+  coverImageUrl: string;
+  profileImageUrl: string;
+  instagramHandle: string;
+  youtubeHandle: string;
+  tiktokHandle: string;
+  skinType: SkinType | '';
+  personalColor: PersonalColor | '';
+  skinConcerns: string[];
+  scalpConcerns: string[];
+  bannerImageUrl: string;
+  bannerLink: string;
 }
 
 export default function CreatorShopPage() {
-  const { creator, setCreator, isLoading: authLoading } = useAuthStore();
+  const [creator, setCreator] = useState<Record<string, any> | null>(null);
 
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [form, setForm] = useState<ShopForm>({
-    display_name: '',
+    displayName: '',
     bio: '',
-    cover_image_url: '',
-    profile_image_url: '',
-    instagram_handle: '',
-    youtube_handle: '',
-    tiktok_handle: '',
-    skin_type: '',
-    personal_color: '',
-    skin_concerns: [],
-    scalp_concerns: [],
-    banner_image_url: '',
-    banner_link: '',
+    coverImageUrl: '',
+    profileImageUrl: '',
+    instagramHandle: '',
+    youtubeHandle: '',
+    tiktokHandle: '',
+    skinType: '',
+    personalColor: '',
+    skinConcerns: [],
+    scalpConcerns: [],
+    bannerImageUrl: '',
+    bannerLink: '',
   });
 
   useEffect(() => {
-    if (authLoading) return;
-
-    if (creator) {
-      setForm({
-        display_name: creator.display_name || '',
-        bio: creator.bio || '',
-        cover_image_url: creator.cover_image_url || '',
-        profile_image_url: creator.profile_image_url || '',
-        instagram_handle: creator.instagram_handle || '',
-        youtube_handle: creator.youtube_handle || '',
-        tiktok_handle: creator.tiktok_handle || '',
-        skin_type: creator.skin_type || '',
-        personal_color: creator.personal_color || '',
-        skin_concerns: creator.skin_concerns || [],
-        scalp_concerns: creator.scalp_concerns || [],
-        banner_image_url: creator.banner_image_url || '',
-        banner_link: creator.banner_link || '',
-      });
-      setIsLoading(false);
-      return;
-    }
-
-    // Fallback: fetch from Supabase
-    let cancelled = false;
-    async function fetchCreator() {
-      try {
-        const supabase = getClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user || cancelled) {
-          setIsLoading(false);
-          return;
-        }
-
-        const { data } = await supabase
-          .from('creators')
-          .select('*')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (data && !cancelled) {
-          setForm({
-            display_name: data.display_name || '',
-            bio: data.bio || '',
-            cover_image_url: data.cover_image_url || '',
-            profile_image_url: data.profile_image_url || '',
-            instagram_handle: data.instagram_handle || '',
-            youtube_handle: data.youtube_handle || '',
-            tiktok_handle: data.tiktok_handle || '',
-            skin_type: data.skin_type || '',
-            personal_color: data.personal_color || '',
-            skin_concerns: data.skin_concerns || [],
-            scalp_concerns: data.scalp_concerns || [],
-            banner_image_url: data.banner_image_url || '',
-            banner_link: data.banner_link || '',
-          });
-        }
-      } catch (error) {
-        console.error('Failed to fetch creator:', error);
-      } finally {
-        if (!cancelled) setIsLoading(false);
+    async function init() {
+      const creatorData = await getCreatorSession();
+      if (creatorData) {
+        const c = creatorData as Record<string, any>;
+        setCreator(c);
+        setForm({
+          displayName: c.displayName || '',
+          bio: c.bio || '',
+          coverImageUrl: c.coverImageUrl || '',
+          profileImageUrl: c.profileImageUrl || '',
+          instagramHandle: c.instagramHandle || '',
+          youtubeHandle: c.youtubeHandle || '',
+          tiktokHandle: c.tiktokHandle || '',
+          skinType: c.skinType || '',
+          personalColor: c.personalColor || '',
+          skinConcerns: c.skinConcerns || [],
+          scalpConcerns: c.scalpConcerns || [],
+          bannerImageUrl: c.bannerImageUrl || '',
+          bannerLink: c.bannerLink || '',
+        });
       }
+      setIsLoading(false);
     }
-
-    fetchCreator();
-    return () => { cancelled = true; };
-  }, [authLoading, creator]);
+    init();
+  }, []);
 
   const handleSave = async () => {
     if (!creator) return;
     setIsSaving(true);
 
     try {
-      const supabase = getClient();
+      const updated = await updateCreatorShopProfile({
+        creatorId: creator.id,
+        displayName: form.displayName || undefined,
+        bio: form.bio || undefined,
+        coverImageUrl: form.coverImageUrl || undefined,
+        profileImageUrl: form.profileImageUrl || undefined,
+        instagramHandle: form.instagramHandle || undefined,
+        youtubeHandle: form.youtubeHandle || undefined,
+        tiktokHandle: form.tiktokHandle || undefined,
+        skinType: form.skinType || undefined,
+        personalColor: form.personalColor || undefined,
+        skinConcerns: form.skinConcerns,
+        scalpConcerns: form.scalpConcerns,
+        bannerImageUrl: form.bannerImageUrl || undefined,
+        bannerLink: form.bannerLink || undefined,
+      });
 
-      const updateData: Record<string, unknown> = {
-        display_name: form.display_name || null,
-        bio: form.bio || null,
-        cover_image_url: form.cover_image_url || null,
-        profile_image_url: form.profile_image_url || null,
-        instagram_handle: form.instagram_handle || null,
-        youtube_handle: form.youtube_handle || null,
-        tiktok_handle: form.tiktok_handle || null,
-        skin_type: form.skin_type || null,
-        personal_color: form.personal_color || null,
-        skin_concerns: form.skin_concerns,
-        scalp_concerns: form.scalp_concerns,
-        banner_image_url: form.banner_image_url || null,
-        banner_link: form.banner_link || null,
-      };
-
-      const { data, error } = await supabase
-        .from('creators')
-        .update(updateData)
-        .eq('id', creator.id)
-        .select()
-        .single();
-
-      if (error) {
-        toast.error('저장에 실패했습니다');
-        console.error('Save error:', error);
-      } else {
-        toast.success('저장되었습니다');
-        if (data) {
-          setCreator(data as Creator);
-        }
+      toast.success('저장되었습니다');
+      if (updated) {
+        setCreator(updated as Record<string, any>);
       }
     } catch (error) {
       toast.error('저장에 실패했습니다');
@@ -211,22 +158,22 @@ export default function CreatorShopPage() {
   const toggleSkinConcern = (value: string) => {
     setForm((prev) => ({
       ...prev,
-      skin_concerns: prev.skin_concerns.includes(value)
-        ? prev.skin_concerns.filter((c) => c !== value)
-        : [...prev.skin_concerns, value],
+      skinConcerns: prev.skinConcerns.includes(value)
+        ? prev.skinConcerns.filter((c) => c !== value)
+        : [...prev.skinConcerns, value],
     }));
   };
 
   const toggleScalpConcern = (value: string) => {
     setForm((prev) => ({
       ...prev,
-      scalp_concerns: prev.scalp_concerns.includes(value)
-        ? prev.scalp_concerns.filter((c) => c !== value)
-        : [...prev.scalp_concerns, value],
+      scalpConcerns: prev.scalpConcerns.includes(value)
+        ? prev.scalpConcerns.filter((c) => c !== value)
+        : [...prev.scalpConcerns, value],
     }));
   };
 
-  if (authLoading || isLoading) {
+  if (isLoading) {
     return (
       <div className="space-y-6 max-w-3xl">
         <div>
@@ -271,16 +218,16 @@ export default function CreatorShopPage() {
             <Label>커버 이미지 URL</Label>
             <Input
               placeholder="https://example.com/cover.jpg"
-              value={form.cover_image_url}
-              onChange={(e) => setForm({ ...form, cover_image_url: e.target.value })}
+              value={form.coverImageUrl}
+              onChange={(e) => setForm({ ...form, coverImageUrl: e.target.value })}
             />
           </div>
           <div className="space-y-2">
             <Label>프로필 이미지 URL</Label>
             <Input
               placeholder="https://example.com/profile.jpg"
-              value={form.profile_image_url}
-              onChange={(e) => setForm({ ...form, profile_image_url: e.target.value })}
+              value={form.profileImageUrl}
+              onChange={(e) => setForm({ ...form, profileImageUrl: e.target.value })}
             />
           </div>
         </CardContent>
@@ -299,8 +246,8 @@ export default function CreatorShopPage() {
             <Label>샵 이름</Label>
             <Input
               placeholder="나의 뷰티 셀렉트샵"
-              value={form.display_name}
-              onChange={(e) => setForm({ ...form, display_name: e.target.value })}
+              value={form.displayName}
+              onChange={(e) => setForm({ ...form, displayName: e.target.value })}
             />
           </div>
           <div className="space-y-2">
@@ -331,8 +278,8 @@ export default function CreatorShopPage() {
             </Label>
             <Input
               placeholder="https://instagram.com/yourhandle"
-              value={form.instagram_handle}
-              onChange={(e) => setForm({ ...form, instagram_handle: e.target.value })}
+              value={form.instagramHandle}
+              onChange={(e) => setForm({ ...form, instagramHandle: e.target.value })}
             />
           </div>
           <div className="space-y-2">
@@ -341,8 +288,8 @@ export default function CreatorShopPage() {
             </Label>
             <Input
               placeholder="https://youtube.com/@yourchannel"
-              value={form.youtube_handle}
-              onChange={(e) => setForm({ ...form, youtube_handle: e.target.value })}
+              value={form.youtubeHandle}
+              onChange={(e) => setForm({ ...form, youtubeHandle: e.target.value })}
             />
           </div>
           <div className="space-y-2">
@@ -351,8 +298,8 @@ export default function CreatorShopPage() {
             </Label>
             <Input
               placeholder="https://tiktok.com/@yourhandle"
-              value={form.tiktok_handle}
-              onChange={(e) => setForm({ ...form, tiktok_handle: e.target.value })}
+              value={form.tiktokHandle}
+              onChange={(e) => setForm({ ...form, tiktokHandle: e.target.value })}
             />
           </div>
         </CardContent>
@@ -372,8 +319,8 @@ export default function CreatorShopPage() {
           <div className="space-y-2">
             <Label>피부 타입</Label>
             <Select
-              value={form.skin_type}
-              onValueChange={(value) => setForm({ ...form, skin_type: value as SkinType })}
+              value={form.skinType}
+              onValueChange={(value) => setForm({ ...form, skinType: value as SkinType })}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="피부 타입 선택" />
@@ -392,8 +339,8 @@ export default function CreatorShopPage() {
           <div className="space-y-2">
             <Label>퍼스널 컬러</Label>
             <Select
-              value={form.personal_color}
-              onValueChange={(value) => setForm({ ...form, personal_color: value as PersonalColor })}
+              value={form.personalColor}
+              onValueChange={(value) => setForm({ ...form, personalColor: value as PersonalColor })}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="퍼스널 컬러 선택" />
@@ -420,7 +367,7 @@ export default function CreatorShopPage() {
                   className="flex items-center gap-2 cursor-pointer"
                 >
                   <Checkbox
-                    checked={form.skin_concerns.includes(option.value)}
+                    checked={form.skinConcerns.includes(option.value)}
                     onCheckedChange={() => toggleSkinConcern(option.value)}
                   />
                   <span className="text-sm">{option.label}</span>
@@ -441,7 +388,7 @@ export default function CreatorShopPage() {
                   className="flex items-center gap-2 cursor-pointer"
                 >
                   <Checkbox
-                    checked={form.scalp_concerns.includes(option.value)}
+                    checked={form.scalpConcerns.includes(option.value)}
                     onCheckedChange={() => toggleScalpConcern(option.value)}
                   />
                   <span className="text-sm">{option.label}</span>
@@ -466,22 +413,22 @@ export default function CreatorShopPage() {
             <Label>배너 이미지 URL</Label>
             <Input
               placeholder="https://example.com/banner.jpg"
-              value={form.banner_image_url}
-              onChange={(e) => setForm({ ...form, banner_image_url: e.target.value })}
+              value={form.bannerImageUrl}
+              onChange={(e) => setForm({ ...form, bannerImageUrl: e.target.value })}
             />
           </div>
           <div className="space-y-2">
             <Label>배너 클릭 링크</Label>
             <Input
               placeholder="https://example.com/promotion"
-              value={form.banner_link}
-              onChange={(e) => setForm({ ...form, banner_link: e.target.value })}
+              value={form.bannerLink}
+              onChange={(e) => setForm({ ...form, bannerLink: e.target.value })}
             />
           </div>
-          {form.banner_image_url && (
+          {form.bannerImageUrl && (
             <div className="rounded-lg overflow-hidden border">
               <img
-                src={form.banner_image_url}
+                src={form.bannerImageUrl}
                 alt="배너 미리보기"
                 className="w-full h-32 object-cover"
                 onError={(e) => {

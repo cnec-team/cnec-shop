@@ -1,13 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth-helpers';
-
-function getSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error('Missing Supabase credentials');
-  return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
-}
+import { prisma } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,18 +8,12 @@ export async function GET(request: NextRequest) {
     if (!authUser || authUser.role !== 'super_admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
-    const supabase = getSupabase();
 
-    const { data: guides, error } = await supabase
-      .from('guides')
-      .select('*')
-      .order('display_order', { ascending: true });
+    const guides = await prisma.guide.findMany({
+      orderBy: { displayOrder: 'asc' },
+    });
 
-    if (error) {
-      return NextResponse.json({ error: 'Failed to fetch guides' }, { status: 500 });
-    }
-
-    return NextResponse.json({ guides: guides ?? [] });
+    return NextResponse.json({ guides });
   } catch (error) {
     console.error('Admin guides error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -39,7 +26,6 @@ export async function POST(request: NextRequest) {
     if (!authUser || authUser.role !== 'super_admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
-    const supabase = getSupabase();
 
     const body = await request.json();
     const { title, category, content_type, content, target_grade, display_order, is_published } = body;
@@ -48,24 +34,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'title and category are required' }, { status: 400 });
     }
 
-    const { data: guide, error } = await supabase
-      .from('guides')
-      .insert({
+    const guide = await prisma.guide.create({
+      data: {
         title,
         category,
-        content_type: content_type || 'CARD',
+        contentType: content_type || 'CARD',
         content: content || { sections: [] },
-        target_grade: target_grade || 'ALL',
-        display_order: display_order ?? 0,
-        is_published: is_published ?? false,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Guide create error:', error);
-      return NextResponse.json({ error: 'Failed to create guide' }, { status: 500 });
-    }
+        targetGrade: target_grade || 'ALL',
+        displayOrder: display_order ?? 0,
+        isPublished: is_published ?? false,
+      },
+    });
 
     return NextResponse.json({ guide }, { status: 201 });
   } catch (error) {

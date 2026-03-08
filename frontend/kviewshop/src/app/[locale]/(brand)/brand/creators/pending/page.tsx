@@ -2,13 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { getClient } from '@/lib/supabase/client';
-import { useAuthStore } from '@/lib/store/auth';
-import type {
-  Campaign,
-  CampaignParticipation,
-  Creator,
-} from '@/types/database';
+import { getBrandSession, getPendingParticipations, handleParticipationAction } from '@/lib/actions/brand';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -23,9 +17,35 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 
 interface PendingParticipation {
-  participation: CampaignParticipation;
-  creator: Creator;
-  campaign: Campaign;
+  participation: {
+    id: string;
+    campaignId: string;
+    creatorId: string;
+    status: string;
+    message: string | null;
+    appliedAt: string;
+    approvedAt: string | null;
+  };
+  creator: {
+    id: string;
+    shopId: string | null;
+    displayName: string | null;
+    bio: string | null;
+    profileImageUrl: string | null;
+    instagramHandle?: string | null;
+    youtubeHandle?: string | null;
+    tiktokHandle?: string | null;
+    totalSales: number | null;
+    totalEarnings: number | null;
+  } | null;
+  campaign: {
+    id: string;
+    title: string;
+    type: string;
+    status: string;
+    commissionRate: number | null;
+    recruitmentType: string | null;
+  } | null;
 }
 
 function formatDate(dateStr: string): string {
@@ -57,60 +77,27 @@ function CardSkeleton() {
 
 export default function PendingCreatorsPage() {
   const router = useRouter();
-  const { brand, isLoading: authLoading } = useAuthStore();
+  const [brand, setBrand] = useState<{ id: string } | null>(null);
   const [pendingList, setPendingList] = useState<PendingParticipation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!brand?.id) {
-      if (!authLoading) setIsLoading(false);
-      return;
+    async function init() {
+      const brandData = await getBrandSession();
+      if (brandData) setBrand(brandData);
+      else setIsLoading(false);
     }
+    init();
+  }, []);
+
+  useEffect(() => {
+    if (!brand?.id) return;
 
     async function fetchPending() {
-      const supabase = getClient();
-      const brandId = brand!.id;
-
       try {
-        // 1. Get brand campaign IDs
-        const { data: campaigns } = await supabase
-          .from('campaigns')
-          .select('id, title, type, status, commission_rate, recruitment_type')
-          .eq('brand_id', brandId);
-
-        const campaignIds = (campaigns ?? []).map((c) => c.id);
-        const campaignMap = new Map(
-          (campaigns ?? []).map((c) => [c.id, c as Campaign])
-        );
-
-        if (campaignIds.length === 0) {
-          setIsLoading(false);
-          return;
-        }
-
-        // 2. Get pending participations with creator data
-        const { data: participations } = await supabase
-          .from('campaign_participations')
-          .select('*, creator:creators(*)')
-          .eq('status', 'PENDING')
-          .in('campaign_id', campaignIds)
-          .order('applied_at', { ascending: true });
-
-        const result: PendingParticipation[] = [];
-        for (const p of participations ?? []) {
-          if (!p.creator) continue;
-          const campaign = campaignMap.get(p.campaign_id);
-          if (!campaign) continue;
-
-          result.push({
-            participation: p as CampaignParticipation,
-            creator: p.creator as Creator,
-            campaign,
-          });
-        }
-
-        setPendingList(result);
+        const result = await getPendingParticipations(brand!.id);
+        setPendingList(result as PendingParticipation[]);
       } catch (error) {
         console.error('Failed to fetch pending list:', error);
       } finally {
@@ -119,29 +106,20 @@ export default function PendingCreatorsPage() {
     }
 
     fetchPending();
-  }, [brand?.id, authLoading]);
+  }, [brand?.id]);
 
   async function handleAction(
     participationId: string,
     action: 'APPROVED' | 'REJECTED'
   ) {
     setProcessingId(participationId);
-    const supabase = getClient();
-
-    const updateData: Record<string, unknown> = { status: action };
-    if (action === 'APPROVED') {
-      updateData.approved_at = new Date().toISOString();
-    }
-
-    const { error } = await supabase
-      .from('campaign_participations')
-      .update(updateData)
-      .eq('id', participationId);
-
-    if (!error) {
+    try {
+      await handleParticipationAction(participationId, action);
       setPendingList(
         pendingList.filter((p) => p.participation.id !== participationId)
       );
+    } catch (error) {
+      console.error('Failed to process participation:', error);
     }
     setProcessingId(null);
   }
@@ -197,15 +175,15 @@ export default function PendingCreatorsPage() {
                 <div className="flex items-center gap-3">
                   <Avatar className="h-10 w-10">
                     <AvatarFallback>
-                      {item.creator.display_name.slice(0, 2)}
+                      {(item.creator?.displayName ?? '').slice(0, 2)}
                     </AvatarFallback>
                   </Avatar>
                   <div>
                     <CardTitle className="text-base">
-                      {item.creator.display_name}
+                      {item.creator?.displayName}
                     </CardTitle>
                     <CardDescription>
-                      @{item.creator.shop_id}
+                      @{item.creator?.shopId}
                     </CardDescription>
                   </div>
                 </div>
@@ -213,24 +191,24 @@ export default function PendingCreatorsPage() {
               <CardContent className="space-y-3">
                 {/* Creator info */}
                 <div className="flex flex-wrap gap-1">
-                  {item.creator.instagram_handle && (
+                  {(item.creator as any)?.instagramHandle && (
                     <Badge variant="outline" className="text-xs">
-                      IG @{item.creator.instagram_handle}
+                      IG @{(item.creator as any).instagramHandle}
                     </Badge>
                   )}
-                  {item.creator.youtube_handle && (
+                  {(item.creator as any)?.youtubeHandle && (
                     <Badge variant="outline" className="text-xs">
-                      YT @{item.creator.youtube_handle}
+                      YT @{(item.creator as any).youtubeHandle}
                     </Badge>
                   )}
-                  {item.creator.tiktok_handle && (
+                  {(item.creator as any)?.tiktokHandle && (
                     <Badge variant="outline" className="text-xs">
-                      TT @{item.creator.tiktok_handle}
+                      TT @{(item.creator as any).tiktokHandle}
                     </Badge>
                   )}
                 </div>
 
-                {item.creator.bio && (
+                {item.creator?.bio && (
                   <p className="text-sm text-muted-foreground">
                     {item.creator.bio.slice(0, 120)}
                     {item.creator.bio.length > 120 ? '...' : ''}
@@ -243,15 +221,15 @@ export default function PendingCreatorsPage() {
                 <div className="space-y-1">
                   <p className="text-sm">
                     <span className="font-medium">신청 캠페인:</span>{' '}
-                    {item.campaign.title}
+                    {item.campaign?.title}
                   </p>
                   <p className="text-sm text-muted-foreground">
                     <span className="font-medium">유형:</span>{' '}
-                    {item.campaign.type === 'GONGGU' ? '공구' : '상시'}
+                    {item.campaign?.type === 'GONGGU' ? '공구' : '상시'}
                   </p>
                   <p className="text-sm text-muted-foreground">
                     <span className="font-medium">신청일:</span>{' '}
-                    {formatDate(item.participation.applied_at)}
+                    {formatDate(item.participation.appliedAt)}
                   </p>
                   {item.participation.message && (
                     <div className="mt-2 rounded-md bg-muted p-3">
@@ -268,13 +246,13 @@ export default function PendingCreatorsPage() {
                   <div className="rounded-md bg-muted/50 p-2 text-center">
                     <p className="text-xs text-muted-foreground">총 매출</p>
                     <p className="font-medium">
-                      {(item.creator.total_sales ?? 0).toLocaleString('ko-KR')}원
+                      {(Number(item.creator?.totalSales) ?? 0).toLocaleString('ko-KR')}원
                     </p>
                   </div>
                   <div className="rounded-md bg-muted/50 p-2 text-center">
                     <p className="text-xs text-muted-foreground">총 수익</p>
                     <p className="font-medium">
-                      {(item.creator.total_earnings ?? 0).toLocaleString('ko-KR')}원
+                      {(Number(item.creator?.totalEarnings) ?? 0).toLocaleString('ko-KR')}원
                     </p>
                   </div>
                 </div>

@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { getClient } from '@/lib/supabase/client';
-import { useAuthStore } from '@/lib/store/auth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,88 +33,95 @@ import {
   Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  getCreatorSession,
+  getCreatorLiveSessions,
+  getCreatorBotSettings,
+  createLiveSession,
+  saveBotSettings,
+} from '@/lib/actions/creator';
 
 interface LiveSession {
   id: string;
   title: string;
   description: string;
-  platform: 'instagram' | 'youtube' | 'tiktok' | 'internal';
-  external_url: string;
-  scheduled_at: string;
-  started_at: string | null;
-  ended_at: string | null;
-  status: 'scheduled' | 'live' | 'ended' | 'cancelled';
-  peak_viewers: number;
-  total_viewers: number;
-  total_orders: number;
-  total_revenue: number;
-  chat_enabled: boolean;
-  bot_enabled: boolean;
+  platform: string;
+  externalUrl?: string;
+  scheduledAt: string;
+  startedAt: string | null;
+  endedAt?: string | null;
+  status: string;
+  peakViewers?: number;
+  totalViewers?: number;
+  totalOrders?: number;
+  totalRevenue?: number;
+  chatEnabled: boolean;
+  botEnabled: boolean;
 }
 
-interface BotSettings {
-  is_enabled: boolean;
-  welcome_message: string;
-  product_link_interval: number;
-  scheduled_messages: Array<{ time_offset: number; message: string }>;
-  auto_responses: Record<string, string>;
+interface BotSettingsData {
+  isEnabled: boolean;
+  welcomeMessage: string;
+  productLinkInterval: number;
+  scheduledMessages: Array<{ time_offset: number; message: string }>;
+  autoResponses: Record<string, string>;
 }
 
 export default function CreatorLivePage() {
-  const { creator } = useAuthStore();
   const params = useParams();
   const locale = params.locale as string;
 
+  const [creator, setCreator] = useState<{ id: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [sessions, setSessions] = useState<LiveSession[]>([]);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [botSettings, setBotSettings] = useState<BotSettings>({
-    is_enabled: false,
-    welcome_message: 'Welcome to the live stream! Check out our products below.',
-    product_link_interval: 300,
-    scheduled_messages: [],
-    auto_responses: {},
+  const [botSettingsState, setBotSettingsState] = useState<BotSettingsData>({
+    isEnabled: false,
+    welcomeMessage: 'Welcome to the live stream! Check out our products below.',
+    productLinkInterval: 300,
+    scheduledMessages: [],
+    autoResponses: {},
   });
 
   const [newSession, setNewSession] = useState({
     title: '',
     description: '',
-    platform: 'instagram' as const,
-    external_url: '',
-    scheduled_at: '',
-    chat_enabled: true,
-    bot_enabled: false,
+    platform: 'instagram' as string,
+    externalUrl: '',
+    scheduledAt: '',
+    chatEnabled: true,
+    botEnabled: false,
   });
 
   const [newAutoResponse, setNewAutoResponse] = useState({ keyword: '', response: '' });
 
   useEffect(() => {
     const loadData = async () => {
-      if (!creator) return;
+      const creatorData = await getCreatorSession();
+      if (!creatorData) {
+        setIsLoading(false);
+        return;
+      }
+      setCreator(creatorData as any);
 
       try {
-        const supabase = getClient();
-
-        // Load live sessions
-        const { data: sessionsData } = await supabase
-          .from('live_sessions')
-          .select('*')
-          .eq('creator_id', creator.id)
-          .order('scheduled_at', { ascending: false });
+        const [sessionsData, botData] = await Promise.all([
+          getCreatorLiveSessions(creatorData.id),
+          getCreatorBotSettings(creatorData.id),
+        ]);
 
         if (sessionsData) {
-          setSessions(sessionsData);
+          setSessions(sessionsData as unknown as LiveSession[]);
         }
 
-        // Load bot settings
-        const { data: botData } = await supabase
-          .from('live_bot_settings')
-          .select('*')
-          .eq('creator_id', creator.id)
-          .maybeSingle();
-
         if (botData) {
-          setBotSettings(botData);
+          setBotSettingsState({
+            isEnabled: (botData as any).isEnabled ?? false,
+            welcomeMessage: (botData as any).welcomeMessage ?? '',
+            productLinkInterval: (botData as any).productLinkInterval ?? 300,
+            scheduledMessages: (botData as any).scheduledMessages ?? [],
+            autoResponses: (botData as any).autoResponses ?? {},
+          });
         }
       } catch (error) {
         console.error('Failed to load data:', error);
@@ -126,49 +131,36 @@ export default function CreatorLivePage() {
     };
 
     loadData();
-  }, [creator]);
+  }, []);
 
   const handleCreateSession = async () => {
-    if (!creator || !newSession.title || !newSession.scheduled_at) {
+    if (!creator || !newSession.title || !newSession.scheduledAt) {
       toast.error('Please fill in required fields');
       return;
     }
 
     try {
-      const supabase = getClient();
-      const { data, error } = await supabase
-        .from('live_sessions')
-        .insert({
-          creator_id: creator.id,
-          title: newSession.title,
-          description: newSession.description,
-          platform: newSession.platform,
-          external_url: newSession.external_url,
-          scheduled_at: newSession.scheduled_at,
-          chat_enabled: newSession.chat_enabled,
-          bot_enabled: newSession.bot_enabled,
-        })
-        .select()
-        .single();
+      const data = await createLiveSession({
+        creatorId: creator.id,
+        title: newSession.title,
+        description: newSession.description,
+        platform: newSession.platform,
+        externalUrl: newSession.externalUrl,
+        scheduledAt: newSession.scheduledAt,
+        chatEnabled: newSession.chatEnabled,
+        botEnabled: newSession.botEnabled,
+      });
 
-      if (error) {
-        if (error.code === '42P01') {
-          toast.error('라이브 기능은 곧 출시 예정입니다.');
-          return;
-        }
-        throw error;
-      }
-
-      setSessions([data, ...sessions]);
+      setSessions([data as unknown as LiveSession, ...sessions]);
       setShowCreateForm(false);
       setNewSession({
         title: '',
         description: '',
         platform: 'instagram',
-        external_url: '',
-        scheduled_at: '',
-        chat_enabled: true,
-        bot_enabled: false,
+        externalUrl: '',
+        scheduledAt: '',
+        chatEnabled: true,
+        botEnabled: false,
       });
       toast.success('Live session scheduled!');
     } catch (error) {
@@ -180,15 +172,14 @@ export default function CreatorLivePage() {
     if (!creator) return;
 
     try {
-      const supabase = getClient();
-      const { error } = await supabase
-        .from('live_bot_settings')
-        .upsert({
-          creator_id: creator.id,
-          ...botSettings,
-        });
-
-      if (error) throw error;
+      await saveBotSettings({
+        creatorId: creator.id,
+        isEnabled: botSettingsState.isEnabled,
+        welcomeMessage: botSettingsState.welcomeMessage,
+        productLinkInterval: botSettingsState.productLinkInterval,
+        scheduledMessages: botSettingsState.scheduledMessages,
+        autoResponses: botSettingsState.autoResponses,
+      });
       toast.success('Bot settings saved!');
     } catch (error) {
       toast.error('Failed to save settings');
@@ -197,10 +188,10 @@ export default function CreatorLivePage() {
 
   const addAutoResponse = () => {
     if (!newAutoResponse.keyword || !newAutoResponse.response) return;
-    setBotSettings({
-      ...botSettings,
-      auto_responses: {
-        ...botSettings.auto_responses,
+    setBotSettingsState({
+      ...botSettingsState,
+      autoResponses: {
+        ...botSettingsState.autoResponses,
         [newAutoResponse.keyword]: newAutoResponse.response,
       },
     });
@@ -208,8 +199,8 @@ export default function CreatorLivePage() {
   };
 
   const removeAutoResponse = (keyword: string) => {
-    const { [keyword]: _, ...rest } = botSettings.auto_responses;
-    setBotSettings({ ...botSettings, auto_responses: rest });
+    const { [keyword]: _, ...rest } = botSettingsState.autoResponses;
+    setBotSettingsState({ ...botSettingsState, autoResponses: rest });
   };
 
   const getStatusBadge = (status: string) => {
@@ -299,7 +290,7 @@ export default function CreatorLivePage() {
                     <Label>Platform</Label>
                     <select
                       value={newSession.platform}
-                      onChange={(e) => setNewSession({ ...newSession, platform: e.target.value as any })}
+                      onChange={(e) => setNewSession({ ...newSession, platform: e.target.value })}
                       className="w-full px-3 py-2 rounded-md border bg-background"
                     >
                       <option value="instagram">Instagram</option>
@@ -325,16 +316,16 @@ export default function CreatorLivePage() {
                     <Label>Scheduled Time *</Label>
                     <Input
                       type="datetime-local"
-                      value={newSession.scheduled_at}
-                      onChange={(e) => setNewSession({ ...newSession, scheduled_at: e.target.value })}
+                      value={newSession.scheduledAt}
+                      onChange={(e) => setNewSession({ ...newSession, scheduledAt: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>External URL</Label>
                     <Input
                       placeholder="https://..."
-                      value={newSession.external_url}
-                      onChange={(e) => setNewSession({ ...newSession, external_url: e.target.value })}
+                      value={newSession.externalUrl}
+                      onChange={(e) => setNewSession({ ...newSession, externalUrl: e.target.value })}
                     />
                   </div>
                 </div>
@@ -342,15 +333,15 @@ export default function CreatorLivePage() {
                 <div className="flex items-center gap-6">
                   <div className="flex items-center gap-2">
                     <Switch
-                      checked={newSession.chat_enabled}
-                      onCheckedChange={(checked) => setNewSession({ ...newSession, chat_enabled: checked })}
+                      checked={newSession.chatEnabled}
+                      onCheckedChange={(checked) => setNewSession({ ...newSession, chatEnabled: checked })}
                     />
                     <Label>Enable Chat</Label>
                   </div>
                   <div className="flex items-center gap-2">
                     <Switch
-                      checked={newSession.bot_enabled}
-                      onCheckedChange={(checked) => setNewSession({ ...newSession, bot_enabled: checked })}
+                      checked={newSession.botEnabled}
+                      onCheckedChange={(checked) => setNewSession({ ...newSession, botEnabled: checked })}
                     />
                     <Label>Enable Auto Bot</Label>
                   </div>
@@ -396,30 +387,30 @@ export default function CreatorLivePage() {
                           <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
                             <span className="flex items-center gap-1">
                               <Calendar className="h-3 w-3" />
-                              {new Date(session.scheduled_at).toLocaleString()}
+                              {new Date(session.scheduledAt).toLocaleString()}
                             </span>
                             {session.status === 'ended' && (
                               <>
                                 <span className="flex items-center gap-1">
                                   <Users className="h-3 w-3" />
-                                  {session.total_viewers} viewers
+                                  {session.totalViewers} viewers
                                 </span>
                                 <span className="flex items-center gap-1">
                                   <ShoppingBag className="h-3 w-3" />
-                                  {session.total_orders} orders
+                                  {session.totalOrders} orders
                                 </span>
                                 <span className="flex items-center gap-1">
                                   <DollarSign className="h-3 w-3" />
-                                  ${session.total_revenue}
+                                  ${session.totalRevenue}
                                 </span>
                               </>
                             )}
                           </div>
                         </div>
                       </div>
-                      {session.external_url && (
+                      {session.externalUrl && (
                         <Button variant="outline" size="sm" asChild>
-                          <a href={session.external_url} target="_blank" rel="noopener noreferrer">
+                          <a href={session.externalUrl} target="_blank" rel="noopener noreferrer">
                             <ExternalLink className="h-4 w-4" />
                           </a>
                         </Button>
@@ -452,8 +443,8 @@ export default function CreatorLivePage() {
                   </p>
                 </div>
                 <Switch
-                  checked={botSettings.is_enabled}
-                  onCheckedChange={(checked) => setBotSettings({ ...botSettings, is_enabled: checked })}
+                  checked={botSettingsState.isEnabled}
+                  onCheckedChange={(checked) => setBotSettingsState({ ...botSettingsState, isEnabled: checked })}
                 />
               </div>
 
@@ -461,8 +452,8 @@ export default function CreatorLivePage() {
                 <Label>Welcome Message</Label>
                 <Textarea
                   placeholder="Message to send when live starts..."
-                  value={botSettings.welcome_message}
-                  onChange={(e) => setBotSettings({ ...botSettings, welcome_message: e.target.value })}
+                  value={botSettingsState.welcomeMessage}
+                  onChange={(e) => setBotSettingsState({ ...botSettingsState, welcomeMessage: e.target.value })}
                   rows={2}
                 />
               </div>
@@ -471,10 +462,10 @@ export default function CreatorLivePage() {
                 <Label>Product Link Interval (seconds)</Label>
                 <Input
                   type="number"
-                  value={botSettings.product_link_interval}
-                  onChange={(e) => setBotSettings({
-                    ...botSettings,
-                    product_link_interval: parseInt(e.target.value) || 300
+                  value={botSettingsState.productLinkInterval}
+                  onChange={(e) => setBotSettingsState({
+                    ...botSettingsState,
+                    productLinkInterval: parseInt(e.target.value) || 300
                   })}
                 />
                 <p className="text-xs text-muted-foreground">
@@ -506,7 +497,7 @@ export default function CreatorLivePage() {
                 </div>
 
                 <div className="space-y-2">
-                  {Object.entries(botSettings.auto_responses).map(([keyword, response]) => (
+                  {Object.entries(botSettingsState.autoResponses).map(([keyword, response]) => (
                     <div key={keyword} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                       <div>
                         <span className="font-mono text-sm px-2 py-1 rounded bg-primary/10 text-primary">

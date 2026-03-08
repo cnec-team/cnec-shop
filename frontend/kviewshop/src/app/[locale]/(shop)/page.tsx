@@ -1,10 +1,9 @@
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
+import { prisma } from '@/lib/db';
 import { CreatorCard } from '@/components/shop/CreatorCard';
 import { ProductCard } from '@/components/shop/ProductCard';
 import { DiscoveryFilters } from './discovery-filters';
 import type { Metadata } from 'next';
-import type { Creator, Product, Campaign, CampaignProduct } from '@/types/database';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -34,89 +33,103 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-type GongguCampaign = Omit<Campaign, 'brand' | 'products'> & {
-  products?: (CampaignProduct & { product?: Product })[];
-  brand?: { id: string; brand_name: string; logo_url?: string };
-};
+async function getActiveGonggu() {
+  const campaigns = await prisma.campaign.findMany({
+    where: {
+      type: 'GONGGU',
+      status: 'ACTIVE',
+      endAt: {
+        gt: new Date(),
+      },
+    },
+    include: {
+      brand: {
+        select: {
+          id: true,
+          brandName: true,
+          logoUrl: true,
+        },
+      },
+      products: {
+        include: {
+          product: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+    take: 10,
+  });
 
-async function getActiveGonggu(): Promise<GongguCampaign[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from('campaigns')
-    .select(`
-      *,
-      brand:brands(id, brand_name, logo_url),
-      products:campaign_products(
-        *,
-        product:products(*)
-      )
-    `)
-    .eq('type', 'GONGGU')
-    .eq('status', 'ACTIVE')
-    .gt('end_at', new Date().toISOString())
-    .order('created_at', { ascending: false })
-    .limit(10);
-
-  return (data || []) as GongguCampaign[];
+  return campaigns;
 }
 
-async function getTopCreators(): Promise<(Creator & { product_count: number })[]> {
-  const supabase = await createClient();
-
+async function getTopCreators() {
   // Try by total_sales first
-  const { data: bySales } = await supabase
-    .from('creators')
-    .select('*')
-    .gt('total_sales', 0)
-    .order('total_sales', { ascending: false })
-    .limit(10);
-
-  let creators = bySales || [];
+  let creators = await prisma.creator.findMany({
+    where: {
+      totalSales: {
+        gt: 0,
+      },
+    },
+    orderBy: {
+      totalSales: 'desc',
+    },
+    take: 10,
+  });
 
   // Fallback to newest creators
   if (creators.length === 0) {
-    const { data: byDate } = await supabase
-      .from('creators')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(10);
-    creators = byDate || [];
+    creators = await prisma.creator.findMany({
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: 10,
+    });
   }
 
   // Get product counts
   const creatorIds = creators.map((c) => c.id);
   if (creatorIds.length === 0) return [];
 
-  const { data: counts } = await supabase
-    .from('creator_shop_items')
-    .select('creator_id')
-    .in('creator_id', creatorIds)
-    .eq('is_visible', true);
+  const counts = await prisma.creatorShopItem.findMany({
+    where: {
+      creatorId: { in: creatorIds },
+      isVisible: true,
+    },
+    select: {
+      creatorId: true,
+    },
+  });
 
   const countMap: Record<string, number> = {};
-  (counts || []).forEach((item: { creator_id: string }) => {
-    countMap[item.creator_id] = (countMap[item.creator_id] || 0) + 1;
+  counts.forEach((item) => {
+    countMap[item.creatorId] = (countMap[item.creatorId] || 0) + 1;
   });
 
   return creators.map((c) => ({
     ...c,
     product_count: countMap[c.id] || 0,
-  })) as (Creator & { product_count: number })[];
+  }));
 }
 
-async function getTopProducts(): Promise<Product[]> {
-  const supabase = await createClient();
-
+async function getTopProducts() {
   // Try to get products with orders (popular)
-  const { data: orderItems } = await supabase
-    .from('order_items')
-    .select('product_id, quantity')
-    .limit(200);
+  const orderItems = await prisma.orderItem.findMany({
+    select: {
+      productId: true,
+      quantity: true,
+    },
+    take: 200,
+  });
 
-  if (orderItems && orderItems.length > 0) {
+  if (orderItems.length > 0) {
     const salesMap: Record<string, number> = {};
-    orderItems.forEach((item: { product_id: string; quantity: number }) => {
-      salesMap[item.product_id] = (salesMap[item.product_id] || 0) + item.quantity;
+    orderItems.forEach((item) => {
+      if (item.productId) {
+        salesMap[item.productId] = (salesMap[item.productId] || 0) + item.quantity;
+      }
     });
 
     const topIds = Object.entries(salesMap)
@@ -125,51 +138,84 @@ async function getTopProducts(): Promise<Product[]> {
       .map(([id]) => id);
 
     if (topIds.length > 0) {
-      const { data: products } = await supabase
-        .from('products')
-        .select('*, brand:brands(id, brand_name, logo_url)')
-        .in('id', topIds)
-        .eq('status', 'ACTIVE');
+      const products = await prisma.product.findMany({
+        where: {
+          id: { in: topIds },
+          status: 'ACTIVE',
+        },
+        include: {
+          brand: {
+            select: {
+              id: true,
+              brandName: true,
+              logoUrl: true,
+            },
+          },
+        },
+      });
 
-      if (products && products.length > 0) {
+      if (products.length > 0) {
         // Sort by sales count
         const sorted = [...products].sort(
           (a, b) => (salesMap[b.id] || 0) - (salesMap[a.id] || 0)
         );
-        return sorted as Product[];
+        return sorted;
       }
     }
   }
 
   // Fallback: newest products
-  const { data: products } = await supabase
-    .from('products')
-    .select('*, brand:brands(id, brand_name, logo_url)')
-    .eq('status', 'ACTIVE')
-    .order('created_at', { ascending: false })
-    .limit(10);
+  const products = await prisma.product.findMany({
+    where: {
+      status: 'ACTIVE',
+    },
+    include: {
+      brand: {
+        select: {
+          id: true,
+          brandName: true,
+          logoUrl: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+    take: 10,
+  });
 
-  return (products || []) as Product[];
+  return products;
 }
 
-async function getNewProducts(): Promise<Product[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from('products')
-    .select('*, brand:brands(id, brand_name, logo_url)')
-    .eq('status', 'ACTIVE')
-    .order('created_at', { ascending: false })
-    .limit(8);
+async function getNewProducts() {
+  const products = await prisma.product.findMany({
+    where: {
+      status: 'ACTIVE',
+    },
+    include: {
+      brand: {
+        select: {
+          id: true,
+          brandName: true,
+          logoUrl: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+    take: 8,
+  });
 
-  return (data || []) as Product[];
+  return products;
 }
 
-function GongguCard({ campaign, locale }: { campaign: GongguCampaign; locale: string }) {
+function GongguCard({ campaign, locale }: { campaign: any; locale: string }) {
   const product = campaign.products?.[0]?.product;
   const campaignProduct = campaign.products?.[0];
   if (!product) return null;
 
-  const endAt = campaign.end_at;
+  const endAt = campaign.endAt;
   let dDayLabel = '';
   if (endAt) {
     const diff = new Date(endAt).getTime() - Date.now();
@@ -179,13 +225,13 @@ function GongguCard({ campaign, locale }: { campaign: GongguCampaign; locale: st
     }
   }
 
-  const effectivePrice = campaignProduct?.campaign_price ?? product.sale_price;
+  const effectivePrice = campaignProduct?.campaignPrice ?? product.salePrice;
   const discount =
-    product.original_price > 0
-      ? Math.round(((product.original_price - effectivePrice) / product.original_price) * 100)
+    product.originalPrice > 0
+      ? Math.round(((product.originalPrice - effectivePrice) / product.originalPrice) * 100)
       : 0;
 
-  const imageUrl = product.thumbnail_url || product.images?.[0];
+  const imageUrl = product.thumbnailUrl || product.images?.[0];
 
   return (
     <div className="flex-shrink-0 w-64 snap-start">
@@ -217,7 +263,7 @@ function GongguCard({ campaign, locale }: { campaign: GongguCampaign; locale: st
           <div className="flex items-baseline gap-1.5">
             {discount > 0 && (
               <span className="text-xs text-muted-foreground line-through">
-                {new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', minimumFractionDigits: 0 }).format(product.original_price)}
+                {new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', minimumFractionDigits: 0 }).format(product.originalPrice)}
               </span>
             )}
             <span className="text-sm font-bold">
@@ -338,7 +384,7 @@ export default async function DiscoveryPage({ params }: PageProps) {
               {topCreators.map((creator) => (
                 <CreatorCard
                   key={creator.id}
-                  creator={creator}
+                  creator={creator as any}
                   locale={locale}
                   productsLabel={t.productsCount}
                 />
@@ -365,7 +411,7 @@ export default async function DiscoveryPage({ params }: PageProps) {
           {topProducts.length > 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
               {topProducts.map((product) => (
-                <ProductCard key={product.id} product={product} locale={locale} />
+                <ProductCard key={product.id} product={product as any} locale={locale} />
               ))}
             </div>
           ) : (
@@ -381,7 +427,7 @@ export default async function DiscoveryPage({ params }: PageProps) {
             <h2 className="text-xl font-bold mb-6">{t.newProducts}</h2>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {newProducts.map((product) => (
-                <ProductCard key={product.id} product={product} locale={locale} />
+                <ProductCard key={product.id} product={product as any} locale={locale} />
               ))}
             </div>
           </div>

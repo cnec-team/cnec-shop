@@ -2,9 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getClient } from '@/lib/supabase/client';
-import { useAuthStore } from '@/lib/store/auth';
-import type { Product } from '@/types/database';
+import { getBrandProducts, getBrandSession } from '@/lib/actions/brand';
 import { PRODUCT_CATEGORY_LABELS } from '@/types/database';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +24,18 @@ import {
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 
+interface ProductData {
+  id: string;
+  name: string | null;
+  category: string | null;
+  originalPrice: number | string | null;
+  salePrice: number | string | null;
+  stock: number;
+  status: string;
+  allowCreatorPick: boolean;
+  defaultCommissionRate: number | string;
+}
+
 function formatCurrency(num: number): string {
   return `${num.toLocaleString('ko-KR')}원`;
 }
@@ -42,45 +52,34 @@ function TableSkeleton() {
 }
 
 export default function BrandProductsPage() {
-  const { brand, isLoading: authLoading } = useAuthStore();
-  const [products, setProducts] = useState<Product[]>([]);
+  const [brand, setBrand] = useState<{ id: string } | null>(null);
+  const [products, setProducts] = useState<ProductData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
 
   useEffect(() => {
-    if (!brand?.id) {
-      if (!authLoading) setIsLoading(false);
-      return;
-    }
+    async function load() {
+      try {
+        const brandData = await getBrandSession();
+        if (!brandData) {
+          setIsLoading(false);
+          return;
+        }
+        setBrand(brandData);
 
-    async function fetchProducts() {
-      const supabase = getClient();
-      let query = supabase
-        .from('products')
-        .select('*')
-        .eq('brand_id', brand!.id)
-        .order('created_at', { ascending: false });
-
-      if (statusFilter !== 'ALL') {
-        query = query.eq('status', statusFilter);
-      }
-      if (categoryFilter !== 'ALL') {
-        query = query.eq('category', categoryFilter);
-      }
-
-      const { data, error } = await query;
-      if (error) {
+        const data = await getBrandProducts(brandData.id, statusFilter, categoryFilter);
+        setProducts(data as any);
+      } catch (error) {
         console.error('Failed to fetch products:', error);
-      } else {
-        setProducts((data ?? []) as Product[]);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     }
 
     setIsLoading(true);
-    fetchProducts();
-  }, [brand?.id, statusFilter, categoryFilter, authLoading]);
+    load();
+  }, [statusFilter, categoryFilter]);
 
   return (
     <div className="space-y-6">
@@ -178,13 +177,13 @@ export default function BrandProductsPage() {
                       {product.name}
                     </TableCell>
                     <TableCell>
-                      {PRODUCT_CATEGORY_LABELS[product.category]}
+                      {PRODUCT_CATEGORY_LABELS[(product.category ?? '') as keyof typeof PRODUCT_CATEGORY_LABELS]}
                     </TableCell>
                     <TableCell className="text-right">
-                      {formatCurrency(product.original_price)}
+                      {formatCurrency(Number(product.originalPrice ?? 0))}
                     </TableCell>
                     <TableCell className="text-right">
-                      {formatCurrency(product.sale_price)}
+                      {formatCurrency(Number(product.salePrice ?? 0))}
                     </TableCell>
                     <TableCell className="text-right">
                       <span
@@ -209,14 +208,14 @@ export default function BrandProductsPage() {
                     <TableCell>
                       <Badge
                         variant={
-                          product.allow_creator_pick ? 'default' : 'outline'
+                          product.allowCreatorPick ? 'default' : 'outline'
                         }
                       >
-                        {product.allow_creator_pick ? '허용' : '미허용'}
+                        {product.allowCreatorPick ? '허용' : '미허용'}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      {product.default_commission_rate}%
+                      {product.defaultCommissionRate}%
                     </TableCell>
                     <TableCell className="text-right">
                       <Link href={`products/${product.id}`}>

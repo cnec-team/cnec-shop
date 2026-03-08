@@ -2,10 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getClient } from '@/lib/supabase/client';
-import { useAuthStore } from '@/lib/store/auth';
-import type { Creator, SkinType } from '@/types/database';
-import { SKIN_TYPE_LABELS } from '@/types/database';
+import { getBrandSession, getCreatorPerformance } from '@/lib/actions/brand';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -34,8 +31,14 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, TrendingUp, Users, Megaphone } from 'lucide-react';
 
-interface CreatorPerformance {
-  creator: Creator;
+interface CreatorPerformanceData {
+  creator: {
+    id: string;
+    shopId: string | null;
+    displayName: string | null;
+    profileImageUrl: string | null;
+    skinType: string | null;
+  };
   orderCount: number;
   totalSales: number;
   visitCount: number;
@@ -47,21 +50,6 @@ type PeriodFilter = 'this_month' | 'last_month' | 'all';
 
 function formatCurrency(num: number): string {
   return `${num.toLocaleString('ko-KR')}원`;
-}
-
-function getMonthRange(period: PeriodFilter): { start: string | null; end: string | null } {
-  const now = new Date();
-  if (period === 'this_month') {
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-    return { start: start.toISOString(), end: end.toISOString() };
-  }
-  if (period === 'last_month') {
-    const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
-    return { start: start.toISOString(), end: end.toISOString() };
-  }
-  return { start: null, end: null };
 }
 
 function TableSkeleton() {
@@ -76,91 +64,28 @@ function TableSkeleton() {
 }
 
 export default function CreatorPerformancePage() {
-  const { brand, isLoading: authLoading } = useAuthStore();
-  const [performances, setPerformances] = useState<CreatorPerformance[]>([]);
+  const [brand, setBrand] = useState<{ id: string } | null>(null);
+  const [performances, setPerformances] = useState<CreatorPerformanceData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [sortField, setSortField] = useState<SortField>('totalSales');
   const [period, setPeriod] = useState<PeriodFilter>('this_month');
 
   useEffect(() => {
-    if (!brand?.id) {
-      if (!authLoading) setIsLoading(false);
-      return;
+    async function init() {
+      const brandData = await getBrandSession();
+      if (brandData) setBrand(brandData);
+      else setIsLoading(false);
     }
+    init();
+  }, []);
+
+  useEffect(() => {
+    if (!brand?.id) return;
 
     async function fetchPerformance() {
-      const supabase = getClient();
-      const brandId = brand!.id;
-      const { start, end } = getMonthRange(period);
-
       try {
-        // Get orders for this brand, optionally filtered by date
-        let orderQuery = supabase
-          .from('orders')
-          .select('id, creator_id, total_amount, status')
-          .eq('brand_id', brandId)
-          .neq('status', 'CANCELLED');
-
-        if (start) orderQuery = orderQuery.gte('created_at', start);
-        if (end) orderQuery = orderQuery.lte('created_at', end);
-
-        const { data: orders } = await orderQuery;
-
-        // Group by creator
-        const creatorMap = new Map<string, { count: number; total: number }>();
-        for (const order of orders ?? []) {
-          if (!order.creator_id) continue;
-          const existing = creatorMap.get(order.creator_id) ?? { count: 0, total: 0 };
-          existing.count += 1;
-          existing.total += order.total_amount || 0;
-          creatorMap.set(order.creator_id, existing);
-        }
-
-        const creatorIds = Array.from(creatorMap.keys());
-        if (creatorIds.length === 0) {
-          setPerformances([]);
-          setIsLoading(false);
-          return;
-        }
-
-        // Fetch creator details
-        const { data: creators } = await supabase
-          .from('creators')
-          .select('*')
-          .in('id', creatorIds);
-
-        // Fetch visit counts per creator
-        let visitQuery = supabase
-          .from('shop_visits')
-          .select('creator_id')
-          .in('creator_id', creatorIds);
-
-        if (start) visitQuery = visitQuery.gte('visited_at', start);
-        if (end) visitQuery = visitQuery.lte('visited_at', end);
-
-        const { data: visits } = await visitQuery;
-
-        const visitMap = new Map<string, number>();
-        for (const v of visits ?? []) {
-          visitMap.set(v.creator_id, (visitMap.get(v.creator_id) ?? 0) + 1);
-        }
-
-        // Build performance data
-        const performanceData: CreatorPerformance[] = (creators ?? []).map((creator) => {
-          const orderData = creatorMap.get(creator.id) ?? { count: 0, total: 0 };
-          const visitCount = visitMap.get(creator.id) ?? 0;
-          return {
-            creator: creator as Creator,
-            orderCount: orderData.count,
-            totalSales: orderData.total,
-            visitCount,
-            conversionRate: visitCount > 0
-              ? Math.round((orderData.count / visitCount) * 10000) / 100
-              : 0,
-          };
-        });
-
-        setPerformances(performanceData);
+        const result = await getCreatorPerformance(brand!.id, period);
+        setPerformances(result as CreatorPerformanceData[]);
       } catch (error) {
         console.error('Failed to fetch creator performance:', error);
       } finally {
@@ -170,7 +95,7 @@ export default function CreatorPerformancePage() {
 
     setIsLoading(true);
     fetchPerformance();
-  }, [brand?.id, authLoading, period]);
+  }, [brand?.id, period]);
 
   const sortedPerformances = [...performances].sort((a, b) => {
     return b[sortField] - a[sortField];
@@ -287,25 +212,25 @@ export default function CreatorPerformancePage() {
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8">
-                          {perf.creator.profile_image_url && (
-                            <AvatarImage src={perf.creator.profile_image_url} />
+                          {perf.creator.profileImageUrl && (
+                            <AvatarImage src={perf.creator.profileImageUrl} />
                           )}
                           <AvatarFallback className="text-xs">
-                            {perf.creator.display_name.slice(0, 2)}
+                            {(perf.creator.displayName ?? '').slice(0, 2)}
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className="font-medium">{perf.creator.display_name}</p>
+                          <p className="font-medium">{perf.creator.displayName}</p>
                           <p className="text-xs text-muted-foreground">
-                            @{perf.creator.shop_id}
+                            @{perf.creator.shopId}
                           </p>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      {perf.creator.skin_type ? (
+                      {perf.creator.skinType ? (
                         <Badge variant="outline">
-                          {SKIN_TYPE_LABELS[perf.creator.skin_type as SkinType] ?? perf.creator.skin_type}
+                          {perf.creator.skinType}
                         </Badge>
                       ) : (
                         <span className="text-xs text-muted-foreground">-</span>

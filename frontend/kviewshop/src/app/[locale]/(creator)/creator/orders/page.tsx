@@ -13,23 +13,23 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/i18n/config';
-import { getClient } from '@/lib/supabase/client';
-import { useAuthStore } from '@/lib/store/auth';
-import type { OrderStatus } from '@/types/database';
+import { getCreatorSession, getCreatorOrders } from '@/lib/actions/creator';
+
+type OrderStatus = 'PENDING' | 'PAID' | 'PREPARING' | 'SHIPPING' | 'DELIVERED' | 'CONFIRMED' | 'CANCELLED' | 'REFUNDED';
 
 interface CreatorOrder {
   id: string;
-  order_number: string;
-  customer_name: string;
-  total_amount: number;
-  creator_revenue: number;
-  currency: string;
-  country: string;
+  orderNumber: string;
+  buyerName: string;
+  totalAmount: number;
+  creatorRevenue?: number;
+  currency?: string;
+  country?: string;
   status: OrderStatus;
-  tracking_number?: string;
-  created_at: string;
-  brand?: { company_name: string; company_name_en?: string };
-  items?: { product_id: string; quantity: number; unit_price: number; product?: { name_en: string; name_ko: string } }[];
+  trackingNumber?: string | null;
+  createdAt: string | Date;
+  brand?: { companyName: string; companyNameEn?: string };
+  orderItems?: { productId: string; quantity: number; unitPrice: number; product?: { name: string; nameEn: string; nameKo: string } }[];
 }
 
 function getStatusColor(status: OrderStatus) {
@@ -50,48 +50,26 @@ export default function CreatorOrdersPage() {
   const t = useTranslations('order');
   const tCreator = useTranslations('creator');
 
-  // Read auth state from zustand store (populated by Header's useUser hook)
-  const { creator, isLoading: authLoading } = useAuthStore();
-
+  const [creator, setCreator] = useState<{ id: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<CreatorOrder[]>([]);
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
 
   useEffect(() => {
-    // Wait for auth store to finish loading
-    if (authLoading) return;
-
-    // No creator = not logged in or wrong role
-    if (!creator) {
-      setLoading(false);
-      return;
-    }
-
     let cancelled = false;
-    const timeout = setTimeout(() => {
-      if (!cancelled) setLoading(false);
-    }, 8000);
 
-    async function loadOrders(creatorId: string) {
+    async function init() {
+      const creatorData = await getCreatorSession();
+      if (!creatorData || cancelled) {
+        if (!cancelled) setLoading(false);
+        return;
+      }
+      setCreator(creatorData as any);
+
       try {
-        const supabase = getClient();
-        const { data } = await supabase
-          .from('orders')
-          .select(`
-            *,
-            brand:brands(company_name, company_name_en),
-            items:order_items(
-              product_id,
-              quantity,
-              unit_price,
-              product:products(name_en, name_ko)
-            )
-          `)
-          .eq('creator_id', creatorId)
-          .order('created_at', { ascending: false });
-
+        const data = await getCreatorOrders(creatorData.id);
         if (!cancelled) {
-          setOrders((data as unknown as CreatorOrder[]) || []);
+          setOrders(data as unknown as CreatorOrder[]);
         }
       } catch (error) {
         console.error('Failed to load orders:', error);
@@ -100,23 +78,19 @@ export default function CreatorOrdersPage() {
       }
     }
 
-    loadOrders(creator.id);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timeout);
-    };
-  }, [authLoading, creator]);
+    init();
+    return () => { cancelled = true; };
+  }, []);
 
   const totalRevenue = orders
     .filter(o => o.status !== 'CANCELLED')
-    .reduce((sum, o) => sum + (o.creator_revenue || 0), 0);
+    .reduce((sum, o) => sum + (o.creatorRevenue || 0), 0);
 
   const pendingRevenue = orders
     .filter(o => o.status === 'PAID' || o.status === 'SHIPPING')
-    .reduce((sum, o) => sum + (o.creator_revenue || 0), 0);
+    .reduce((sum, o) => sum + (o.creatorRevenue || 0), 0);
 
-  if (loading || authLoading) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -195,23 +169,23 @@ export default function CreatorOrdersPage() {
                       <div className="flex items-center justify-between gap-2">
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-mono text-sm font-medium">#{order.order_number}</span>
+                            <span className="font-mono text-sm font-medium">#{order.orderNumber}</span>
                             <Badge className={getStatusColor(order.status)}>
                               {t(order.status)}
                             </Badge>
                           </div>
                           <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                            <span>{order.brand?.company_name_en || order.brand?.company_name}</span>
-                            <span>{new Date(order.created_at).toLocaleDateString()}</span>
+                            <span>{order.brand?.companyName}</span>
+                            <span>{new Date(order.createdAt).toLocaleDateString()}</span>
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <div className="text-right">
                             <p className="font-bold text-sm text-success">
-                              +{formatCurrency(order.creator_revenue || 0, order.currency || 'KRW')}
+                              +{formatCurrency(order.creatorRevenue || 0, order.currency || 'KRW')}
                             </p>
                             <p className="text-[10px] text-muted-foreground">
-                              / {formatCurrency(order.total_amount, order.currency || 'KRW')}
+                              / {formatCurrency(order.totalAmount, order.currency || 'KRW')}
                             </p>
                           </div>
                           {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -224,35 +198,35 @@ export default function CreatorOrdersPage() {
                         <div className="grid grid-cols-2 gap-3 text-center">
                           <div className="bg-muted/50 p-3 rounded-lg">
                             <p className="text-[10px] text-muted-foreground">{t('myEarning')}</p>
-                            <p className="text-sm font-bold text-success">{formatCurrency(order.creator_revenue || 0, order.currency || 'KRW')}</p>
+                            <p className="text-sm font-bold text-success">{formatCurrency(order.creatorRevenue || 0, order.currency || 'KRW')}</p>
                           </div>
                           <div className="bg-muted/50 p-3 rounded-lg">
                             <p className="text-[10px] text-muted-foreground">{t('orderTotal')}</p>
-                            <p className="text-sm font-bold">{formatCurrency(order.total_amount, order.currency || 'KRW')}</p>
+                            <p className="text-sm font-bold">{formatCurrency(order.totalAmount, order.currency || 'KRW')}</p>
                           </div>
                         </div>
 
-                        {order.items && order.items.length > 0 && (
+                        {order.orderItems && order.orderItems.length > 0 && (
                           <div className="space-y-2">
-                            {order.items.map((item, idx) => (
+                            {order.orderItems.map((item, idx) => (
                               <div key={idx} className="flex items-center justify-between text-sm">
-                                <span className="text-muted-foreground">{item.product?.name_en || item.product?.name_ko || 'Product'} x{item.quantity}</span>
-                                <span>{formatCurrency(item.unit_price * item.quantity, order.currency || 'KRW')}</span>
+                                <span className="text-muted-foreground">{item.product?.nameEn || item.product?.nameKo || item.product?.name || 'Product'} x{item.quantity}</span>
+                                <span>{formatCurrency(item.unitPrice * item.quantity, order.currency || 'KRW')}</span>
                               </div>
                             ))}
                           </div>
                         )}
 
-                        {order.tracking_number && (
+                        {order.trackingNumber && (
                           <div className="flex items-center gap-2 text-sm">
                             <Package className="h-4 w-4 text-muted-foreground" />
                             <span className="text-muted-foreground">{t('trackingNumber')}:</span>
-                            <span className="font-mono">{order.tracking_number}</span>
+                            <span className="font-mono">{order.trackingNumber}</span>
                           </div>
                         )}
 
                         <div className="text-xs text-muted-foreground">
-                          {t('customerInfo')}: {order.customer_name} ({order.country})
+                          {t('customerInfo')}: {order.buyerName} ({order.country})
                         </div>
                       </div>
                     )}

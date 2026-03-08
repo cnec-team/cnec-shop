@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { prisma } from '@/lib/db';
+import { decrementStock } from '@/lib/stock';
 
 // Inline types to avoid dependency on database.ts
 type OrderStatus = 'PENDING' | 'PAID' | 'PREPARING' | 'SHIPPING' | 'DELIVERED' | 'CONFIRMED' | 'CANCELLED' | 'REFUNDED';
@@ -38,19 +39,6 @@ function generateOrderNumber(): string {
   const day = String(now.getDate()).padStart(2, '0');
   const random = String(Math.floor(Math.random() * 100000)).padStart(5, '0');
   return `CNEC-${year}${month}${day}-${random}`;
-}
-
-function getSupabaseClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Missing Supabase configuration');
-  }
-
-  return createClient(supabaseUrl, supabaseKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
 }
 
 export async function POST(request: NextRequest) {
@@ -103,8 +91,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const supabase = getSupabaseClient();
-
     // Calculate total amount
     const productAmount = items.reduce(
       (sum, item) => sum + item.unitPrice * item.quantity,
@@ -113,138 +99,111 @@ export async function POST(request: NextRequest) {
 
     // Calculate shipping fee based on product shipping_fee_type
     const productIds = items.map((item) => item.productId);
-    const { data: productShippingData } = await supabase
-      .from('products')
-      .select('id, shipping_fee_type, shipping_fee, free_shipping_threshold')
-      .in('id', productIds);
+    const productShippingData = await prisma.product.findMany({
+      where: { id: { in: productIds } },
+      select: { id: true, shippingFeeType: true, shippingFee: true, freeShippingThreshold: true },
+    });
 
     let shippingFee = 0;
-    if (productShippingData) {
-      // Use the highest shipping fee among all products (single shipment assumption)
-      for (const product of productShippingData) {
-        const feeType = product.shipping_fee_type || 'FREE';
-        if (feeType === 'PAID') {
-          shippingFee = Math.max(shippingFee, product.shipping_fee || 0);
-        } else if (feeType === 'CONDITIONAL_FREE') {
-          const threshold = product.free_shipping_threshold || 0;
-          if (productAmount < threshold) {
-            shippingFee = Math.max(shippingFee, product.shipping_fee || 0);
-          }
+    for (const product of productShippingData) {
+      const feeType = product.shippingFeeType || 'FREE';
+      if (feeType === 'PAID') {
+        shippingFee = Math.max(shippingFee, Number(product.shippingFee) || 0);
+      } else if (feeType === 'CONDITIONAL_FREE') {
+        const threshold = Number(product.freeShippingThreshold) || 0;
+        if (productAmount < threshold) {
+          shippingFee = Math.max(shippingFee, Number(product.shippingFee) || 0);
         }
-        // FREE: no fee
       }
+      // FREE: no fee
     }
 
     const totalAmount = productAmount + shippingFee;
 
-    // Look up the brand_id from the first product
-    const { data: firstProduct, error: productError } = await supabase
-      .from('products')
-      .select('brand_id')
-      .eq('id', items[0].productId)
-      .single();
+    // Look up the brandId from the first product
+    const firstProduct = await prisma.product.findUnique({
+      where: { id: items[0].productId },
+      select: { brandId: true },
+    });
 
-    if (productError || !firstProduct) {
+    if (!firstProduct) {
       return NextResponse.json(
         { error: 'Invalid product: could not determine brand' },
         { status: 400 }
       );
     }
 
-    const brandId: string = firstProduct.brand_id;
+    const brandId: string = firstProduct.brandId;
 
     // Generate order number
     const orderNumber = generateOrderNumber();
     const status: OrderStatus = 'PENDING';
 
     // Create order record
-    const { data: order, error: orderError } = await supabase
-      .from('orders')
-      .insert({
-        order_number: orderNumber,
-        creator_id: creatorId,
-        brand_id: brandId,
-        buyer_name: buyer.name,
-        buyer_phone: buyer.phone,
-        buyer_email: buyer.email,
-        shipping_address: shipping.address,
-        shipping_zipcode: shipping.zipcode,
-        shipping_detail: shipping.detail || null,
-        shipping_memo: shipping.memo || null,
-        total_amount: totalAmount,
-        product_amount: productAmount,
-        shipping_fee: shippingFee,
+    const order = await prisma.order.create({
+      data: {
+        orderNumber,
+        creatorId,
+        brandId,
+        buyerName: buyer.name,
+        buyerPhone: buyer.phone,
+        buyerEmail: buyer.email,
+        shippingAddress: shipping.address,
+        shippingZipcode: shipping.zipcode,
+        shippingDetail: shipping.detail || null,
+        shippingMemo: shipping.memo || null,
+        totalAmount,
+        productAmount,
+        shippingFee,
         status,
-      })
-      .select('id, order_number, total_amount')
-      .single();
-
-    if (orderError || !order) {
-      console.error('Failed to create order:', orderError);
-      return NextResponse.json(
-        { error: 'Failed to create order', detail: orderError?.message },
-        { status: 500 }
-      );
-    }
+      },
+      select: { id: true, orderNumber: true, totalAmount: true },
+    });
 
     // Fetch product info for denormalization
-    const { data: productInfos } = await supabase
-      .from('products')
-      .select('id, name, name_ko, image_url, images')
-      .in('id', productIds);
-    const productMap = new Map((productInfos || []).map((p: any) => [p.id, p]));
+    const productInfos = await prisma.product.findMany({
+      where: { id: { in: productIds } },
+      select: { id: true, name: true, nameKo: true, imageUrl: true, images: true },
+    });
+    const productMap = new Map(productInfos.map((p) => [p.id, p]));
 
     // Create order items with denormalized product info
-    const orderItems = items.map((item) => {
-      const prod = productMap.get(item.productId) as any;
+    const orderItemsData = items.map((item) => {
+      const prod = productMap.get(item.productId);
       return {
-        order_id: order.id,
-        product_id: item.productId,
-        campaign_id: item.campaignId || null,
+        orderId: order.id,
+        productId: item.productId,
+        campaignId: item.campaignId || null,
         quantity: item.quantity,
-        unit_price: item.unitPrice,
-        total_price: item.unitPrice * item.quantity,
-        product_name: prod?.name || prod?.name_ko || null,
-        product_image: prod?.image_url || (prod?.images && prod.images[0]) || null,
+        unitPrice: item.unitPrice,
+        totalPrice: item.unitPrice * item.quantity,
+        productName: prod?.name || prod?.nameKo || null,
+        productImage: prod?.imageUrl || (prod?.images && (prod.images as string[])[0]) || null,
       };
     });
 
-    const { error: itemsError } = await supabase
-      .from('order_items')
-      .insert(orderItems);
-
-    if (itemsError) {
+    try {
+      await prisma.orderItem.createMany({
+        data: orderItemsData,
+      });
+    } catch (itemsError) {
       console.error('Failed to create order items:', itemsError);
       // Attempt to clean up the order
-      await supabase.from('orders').delete().eq('id', order.id);
+      await prisma.order.delete({ where: { id: order.id } });
       return NextResponse.json(
-        { error: 'Failed to create order items', detail: itemsError.message },
+        { error: 'Failed to create order items', detail: itemsError instanceof Error ? itemsError.message : 'Unknown error' },
         { status: 500 }
       );
     }
 
-    // Decrement product stock for each item using atomic RPC
+    // Decrement product stock for each item using atomic helper
     for (const item of items) {
-      const { data: stockResult, error: stockError } = await supabase.rpc('decrement_stock', {
-        p_product_id: item.productId,
-        p_quantity: item.quantity,
-      });
+      const stockResult = await decrementStock(item.productId, item.quantity);
 
-      if (stockError) {
-        console.error('Stock decrement failed:', stockError);
-        // Clean up: delete order items and order
-        await supabase.from('order_items').delete().eq('order_id', order.id);
-        await supabase.from('orders').delete().eq('id', order.id);
-        return NextResponse.json(
-          { error: 'Failed to update stock', detail: stockError.message },
-          { status: 500 }
-        );
-      }
-
-      if (stockResult && !stockResult.success) {
+      if (!stockResult.success) {
         // Insufficient stock - clean up and return error
-        await supabase.from('order_items').delete().eq('order_id', order.id);
-        await supabase.from('orders').delete().eq('id', order.id);
+        await prisma.orderItem.deleteMany({ where: { orderId: order.id } });
+        await prisma.order.delete({ where: { id: order.id } });
         return NextResponse.json(
           { error: 'Insufficient stock', productId: item.productId, available: stockResult.available },
           { status: 409 }
@@ -254,8 +213,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       orderId: order.id,
-      orderNumber: order.order_number,
-      totalAmount: order.total_amount,
+      orderNumber: order.orderNumber,
+      totalAmount: order.totalAmount,
     });
   } catch (error: unknown) {
     console.error('Payment prepare error:', error);

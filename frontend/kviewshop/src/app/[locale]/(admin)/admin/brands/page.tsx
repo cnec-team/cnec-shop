@@ -15,15 +15,15 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Search, Building2, Check } from 'lucide-react';
-import { getClient } from '@/lib/supabase/client';
+import { getAdminBrands, approveBrand } from '@/lib/actions/admin';
 import { toast } from 'sonner';
 
 interface Brand {
   id: string;
-  company_name: string;
-  business_number: string;
+  companyName: string;
+  businessNumber: string | null;
   approved: boolean;
-  created_at: string;
+  createdAt: Date;
 }
 
 export default function AdminBrandsPage() {
@@ -39,14 +39,8 @@ export default function AdminBrandsPage() {
 
   async function fetchBrands() {
     try {
-      const supabase = getClient();
-      const { data, error } = await supabase
-        .from('brands')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setBrands(data || []);
+      const data = await getAdminBrands();
+      setBrands(data as Brand[]);
     } catch (err) {
       console.error('Error:', err);
       setError('데이터를 불러올 수 없습니다');
@@ -56,14 +50,13 @@ export default function AdminBrandsPage() {
   }
 
   const handleApprove = async (id: string) => {
-    const supabase = getClient();
-    await supabase.from('brands').update({ approved: true }).eq('id', id);
+    await approveBrand(id);
     toast.success('브랜드가 승인되었습니다');
     fetchBrands();
   };
 
   const filteredBrands = brands.filter(b =>
-    b.company_name?.toLowerCase().includes(search.toLowerCase())
+    b.companyName?.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -118,14 +111,14 @@ export default function AdminBrandsPage() {
               <TableBody>
                 {filteredBrands.map((brand) => (
                   <TableRow key={brand.id}>
-                    <TableCell className="font-medium">{brand.company_name}</TableCell>
-                    <TableCell>{brand.business_number || '-'}</TableCell>
+                    <TableCell className="font-medium">{brand.companyName}</TableCell>
+                    <TableCell>{brand.businessNumber || '-'}</TableCell>
                     <TableCell>
                       <Badge variant={brand.approved ? 'default' : 'secondary'}>
                         {brand.approved ? '승인됨' : '대기 중'}
                       </Badge>
                     </TableCell>
-                    <TableCell>{new Date(brand.created_at).toLocaleDateString('ko-KR')}</TableCell>
+                    <TableCell>{new Date(brand.createdAt).toLocaleDateString('ko-KR')}</TableCell>
                     <TableCell className="text-right">
                       {!brand.approved && (
                         <Button size="sm" onClick={() => handleApprove(brand.id)}>

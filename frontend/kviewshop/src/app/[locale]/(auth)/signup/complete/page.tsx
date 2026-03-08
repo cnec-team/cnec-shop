@@ -2,16 +2,17 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { getClient } from '@/lib/supabase/client';
+import { useSession } from 'next-auth/react';
+import { completeCreatorOnboarding } from '@/lib/actions/auth-actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { toast } from 'sonner';
 import { Loader2, PartyPopper, ArrowRight, Gift, Star } from 'lucide-react';
 
 export default function SignupCompletePage() {
   const router = useRouter();
   const params = useParams();
   const locale = params.locale as string;
+  const { data: session, status } = useSession();
 
   const [isLoading, setIsLoading] = useState(true);
   const [totalPoints, setTotalPoints] = useState(0);
@@ -19,28 +20,14 @@ export default function SignupCompletePage() {
 
   useEffect(() => {
     const completeOnboarding = async () => {
+      if (status === 'loading') return;
+      if (!session?.user) {
+        router.push(`/${locale}/login`);
+        return;
+      }
+
       try {
-        const supabase = getClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          router.push(`/${locale}/login`);
-          return;
-        }
-        const { data: { session } } = await supabase.auth.getSession();
-
-        const res = await fetch('/api/creator/onboarding-complete', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session?.access_token}`,
-          },
-        });
-
-        if (!res.ok) {
-          throw new Error('Failed to complete onboarding');
-        }
-
-        const data = await res.json();
+        const data = await completeCreatorOnboarding();
         setTotalPoints(data.totalPoints ?? 5000);
       } catch (err) {
         console.error('Onboarding complete error:', err);
@@ -51,7 +38,7 @@ export default function SignupCompletePage() {
     };
 
     completeOnboarding();
-  }, [locale, router]);
+  }, [locale, router, session, status]);
 
   if (isLoading) {
     return (

@@ -7,55 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Search, Package, Truck, Loader2, ShoppingBag } from 'lucide-react';
-import { getClient } from '@/lib/supabase/client';
+import { lookupOrder } from '@/lib/actions/shop';
 
-// Inline types to avoid dependency on database.ts
 type OrderStatus = 'PENDING' | 'PAID' | 'PREPARING' | 'SHIPPING' | 'DELIVERED' | 'CONFIRMED' | 'CANCELLED' | 'REFUNDED';
-
-interface OrderItemResult {
-  id: string;
-  product_id: string;
-  campaign_id: string | null;
-  quantity: number;
-  unit_price: number;
-  total_price: number;
-  product: {
-    id: string;
-    name: string;
-    thumbnail_url: string | null;
-    images: string[];
-    brand: {
-      id: string;
-      brand_name: string;
-    } | null;
-  } | null;
-}
-
-interface OrderResult {
-  id: string;
-  order_number: string;
-  status: OrderStatus;
-  total_amount: number;
-  product_amount: number | null;
-  shipping_fee: number;
-  buyer_name: string;
-  buyer_phone: string;
-  buyer_email: string;
-  shipping_address: string;
-  shipping_detail: string | null;
-  shipping_zipcode: string | null;
-  shipping_memo: string | null;
-  payment_method: string | null;
-  courier_code: string | null;
-  tracking_number: string | null;
-  paid_at: string | null;
-  shipped_at: string | null;
-  delivered_at: string | null;
-  cancelled_at: string | null;
-  cancel_reason: string | null;
-  created_at: string;
-  items: OrderItemResult[];
-}
 
 const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   PENDING: '결제대기',
@@ -96,7 +50,7 @@ const COURIER_TRACKING_URL: Record<string, string> = {
   lotte: 'https://www.lotteglogis.com/home/reservation/tracking/linkView?InvNo=',
 };
 
-function formatDate(dateString: string | null): string {
+function formatDate(dateString: string | Date | null): string {
   if (!dateString) return '-';
   const date = new Date(dateString);
   return date.toLocaleDateString('ko-KR', {
@@ -115,7 +69,7 @@ function formatCurrency(amount: number): string {
 export default function OrderLookupPage() {
   const [orderNumber, setOrderNumber] = useState('');
   const [buyerPhone, setBuyerPhone] = useState('');
-  const [order, setOrder] = useState<OrderResult | null>(null);
+  const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
@@ -134,62 +88,14 @@ export default function OrderLookupPage() {
     setSearched(true);
 
     try {
-      const supabase = getClient();
+      const data = await lookupOrder(orderNumber.trim(), buyerPhone.trim());
 
-      const { data, error: queryError } = await supabase
-        .from('orders')
-        .select(`
-          id,
-          order_number,
-          status,
-          total_amount,
-          product_amount,
-          shipping_fee,
-          buyer_name,
-          buyer_phone,
-          buyer_email,
-          shipping_address,
-          shipping_detail,
-          shipping_zipcode,
-          shipping_memo,
-          payment_method,
-          courier_code,
-          tracking_number,
-          paid_at,
-          shipped_at,
-          delivered_at,
-          cancelled_at,
-          cancel_reason,
-          created_at,
-          items:order_items (
-            id,
-            product_id,
-            campaign_id,
-            quantity,
-            unit_price,
-            total_price,
-            product:products (
-              id,
-              name,
-              thumbnail_url,
-              images,
-              brand:brands (
-                id,
-                brand_name
-              )
-            )
-          )
-        `)
-        .eq('order_number', orderNumber.trim())
-        .eq('buyer_phone', buyerPhone.trim())
-        .single();
-
-      if (queryError || !data) {
+      if (!data) {
         setError('주문을 찾을 수 없습니다. 주문번호와 전화번호를 확인해주세요.');
         return;
       }
 
-      setOrder(data as unknown as OrderResult);
+      setOrder(data);
     } catch (err) {
       console.error('Order lookup error:', err);
       setError('주문 조회 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
@@ -296,9 +202,9 @@ export default function OrderLookupPage() {
                   <CardTitle className="text-lg">주문 상태</CardTitle>
                   <Badge
                     variant="outline"
-                    className={STATUS_BADGE_VARIANT[order.status]}
+                    className={STATUS_BADGE_VARIANT[order.status as OrderStatus] || ''}
                   >
-                    {ORDER_STATUS_LABELS[order.status]}
+                    {ORDER_STATUS_LABELS[order.status as OrderStatus] || order.status}
                   </Badge>
                 </div>
               </CardHeader>
@@ -306,40 +212,34 @@ export default function OrderLookupPage() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-500">주문번호</span>
-                    <span className="font-mono font-medium">{order.order_number}</span>
+                    <span className="font-mono font-medium">{order.orderNumber}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">주문일시</span>
-                    <span>{formatDate(order.created_at)}</span>
+                    <span>{formatDate(order.createdAt)}</span>
                   </div>
-                  {order.paid_at && (
+                  {order.paidAt && (
                     <div className="flex justify-between">
                       <span className="text-gray-500">결제일시</span>
-                      <span>{formatDate(order.paid_at)}</span>
+                      <span>{formatDate(order.paidAt)}</span>
                     </div>
                   )}
-                  {order.shipped_at && (
+                  {order.shippedAt && (
                     <div className="flex justify-between">
                       <span className="text-gray-500">발송일시</span>
-                      <span>{formatDate(order.shipped_at)}</span>
+                      <span>{formatDate(order.shippedAt)}</span>
                     </div>
                   )}
-                  {order.delivered_at && (
+                  {order.deliveredAt && (
                     <div className="flex justify-between">
                       <span className="text-gray-500">배송완료</span>
-                      <span>{formatDate(order.delivered_at)}</span>
+                      <span>{formatDate(order.deliveredAt)}</span>
                     </div>
                   )}
-                  {order.cancelled_at && (
+                  {order.cancelledAt && (
                     <div className="flex justify-between">
                       <span className="text-gray-500">취소일시</span>
-                      <span>{formatDate(order.cancelled_at)}</span>
-                    </div>
-                  )}
-                  {order.cancel_reason && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">취소사유</span>
-                      <span className="text-red-600">{order.cancel_reason}</span>
+                      <span>{formatDate(order.cancelledAt)}</span>
                     </div>
                   )}
                 </div>
@@ -356,11 +256,12 @@ export default function OrderLookupPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {order.items?.map((item, index) => {
-                    const productName = item.product?.name || '상품 정보 없음';
-                    const brandName = item.product?.brand?.brand_name || '';
+                  {order.orderItems?.map((item: any, index: number) => {
+                    const productName = item.product?.name || item.productName || '상품 정보 없음';
+                    const brandName = item.product?.brand?.brandName || '';
                     const imageUrl =
-                      item.product?.thumbnail_url ||
+                      item.product?.thumbnailUrl ||
+                      item.productImage ||
                       (item.product?.images && item.product.images.length > 0
                         ? item.product.images[0]
                         : null);
@@ -393,10 +294,10 @@ export default function OrderLookupPage() {
                             </p>
                             <div className="flex items-center justify-between mt-1">
                               <span className="text-xs text-gray-500">
-                                {formatCurrency(item.unit_price)} x {item.quantity}
+                                {formatCurrency(Number(item.unitPrice))} x {item.quantity}
                               </span>
                               <span className="text-sm font-semibold">
-                                {formatCurrency(item.total_price)}
+                                {formatCurrency(Number(item.totalPrice))}
                               </span>
                             </div>
                           </div>
@@ -410,25 +311,19 @@ export default function OrderLookupPage() {
 
                 {/* Amount Summary */}
                 <div className="space-y-2 text-sm">
-                  {order.product_amount != null && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">상품금액</span>
-                      <span>{formatCurrency(order.product_amount)}</span>
-                    </div>
-                  )}
                   <div className="flex justify-between">
                     <span className="text-gray-500">배송비</span>
                     <span>
-                      {order.shipping_fee === 0
+                      {Number(order.shippingFee) === 0
                         ? '무료'
-                        : formatCurrency(order.shipping_fee)}
+                        : formatCurrency(Number(order.shippingFee))}
                     </span>
                   </div>
                   <Separator />
                   <div className="flex justify-between font-bold text-base">
                     <span>총 결제금액</span>
                     <span className="text-blue-600">
-                      {formatCurrency(order.total_amount)}
+                      {formatCurrency(Number(order.totalAmount))}
                     </span>
                   </div>
                 </div>
@@ -447,53 +342,41 @@ export default function OrderLookupPage() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-500">받는분</span>
-                    <span>{order.buyer_name}</span>
+                    <span>{order.buyerName}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">연락처</span>
-                    <span>{order.buyer_phone}</span>
+                    <span>{order.buyerPhone}</span>
                   </div>
                   <div className="flex justify-between items-start">
                     <span className="text-gray-500 flex-shrink-0">배송지</span>
                     <span className="text-right ml-4">
-                      {order.shipping_address}
-                      {order.shipping_detail && ` ${order.shipping_detail}`}
-                      {order.shipping_zipcode && (
-                        <span className="text-gray-400 ml-1">
-                          ({order.shipping_zipcode})
-                        </span>
-                      )}
+                      {order.shippingAddress}
                     </span>
                   </div>
-                  {order.shipping_memo && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">배송메모</span>
-                      <span>{order.shipping_memo}</span>
-                    </div>
-                  )}
                 </div>
 
                 {/* Tracking Information */}
-                {order.tracking_number && (
+                {order.trackingNumber && (
                   <>
                     <Separator className="my-4" />
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
                         <span className="text-gray-500">택배사</span>
                         <span>
-                          {order.courier_code
-                            ? COURIER_LABELS[order.courier_code] || order.courier_code
+                          {order.courierCode
+                            ? COURIER_LABELS[order.courierCode] || order.courierCode
                             : '-'}
                         </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-500">운송장번호</span>
-                        <span className="font-mono">{order.tracking_number}</span>
+                        <span className="font-mono">{order.trackingNumber}</span>
                       </div>
                       {(() => {
                         const trackingUrl = getTrackingUrl(
-                          order.courier_code,
-                          order.tracking_number
+                          order.courierCode,
+                          order.trackingNumber
                         );
                         if (!trackingUrl) return null;
                         return (

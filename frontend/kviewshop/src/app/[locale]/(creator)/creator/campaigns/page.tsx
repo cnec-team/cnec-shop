@@ -35,22 +35,41 @@ import {
   Clock,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getClient } from '@/lib/supabase/client';
-import { useAuthStore } from '@/lib/store/auth';
-import type { Campaign, CampaignProduct, Brand, CampaignStatus } from '@/types/database';
+import {
+  getCreatorSession,
+  getAvailableCampaigns,
+  applyCampaignParticipation,
+  addCampaignShopItems,
+} from '@/lib/actions/creator';
 import { CAMPAIGN_STATUS_LABELS } from '@/types/database';
 
-interface CampaignWithDetails extends Campaign {
-  brand?: Brand;
-  products?: CampaignProduct[];
-  participant_count?: number;
+type CampaignStatus = 'RECRUITING' | 'ACTIVE' | 'ENDED' | 'PAUSED' | 'DRAFT';
+
+interface CampaignWithDetails {
+  id: string;
+  brandId: string;
+  type: string;
+  title: string;
+  description: string | null;
+  status: CampaignStatus;
+  startAt: string | null;
+  endAt: string | null;
+  commissionRate: number;
+  totalStock: number | null;
+  soldCount: number | null;
+  recruitmentType?: string;
+  targetParticipants?: number | null;
+  conditions?: string | null;
+  createdAt: string;
+  brand?: { id: string; brandName: string; companyName: string } | null;
+  products?: Array<{ id: string; campaignId: string; productId: string; campaignPrice: number }>;
+  participantCount?: number;
 }
 
 export default function CreatorCampaignsPage() {
   const params = useParams();
   const locale = params.locale as string;
-  const { creator, isLoading: authLoading } = useAuthStore();
-
+  const [creator, setCreator] = useState<{ id: string } | null>(null);
   const [campaigns, setCampaigns] = useState<CampaignWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -62,59 +81,17 @@ export default function CreatorCampaignsPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (authLoading) return;
-
     let cancelled = false;
 
     async function fetchData() {
+      const creatorData = await getCreatorSession();
+      if (creatorData && !cancelled) setCreator(creatorData as any);
+
       try {
-        const supabase = getClient();
-
-        const [campaignsRes, brandsRes, productsRes, participationsRes] = await Promise.all([
-          supabase
-            .from('campaigns')
-            .select('*')
-            .in('status', ['RECRUITING', 'ACTIVE'])
-            .order('created_at', { ascending: false }),
-          supabase.from('brands').select('*'),
-          supabase.from('campaign_products').select('*'),
-          supabase
-            .from('campaign_participations')
-            .select('campaign_id')
-            .in('status', ['PENDING', 'APPROVED']),
-        ]);
-
-        if (cancelled) return;
-
-        // Build brand map
-        const brandMap: Record<string, Brand> = {};
-        for (const b of brandsRes.data ?? []) {
-          brandMap[b.id] = b;
+        const data = await getAvailableCampaigns();
+        if (!cancelled) {
+          setCampaigns(data as unknown as CampaignWithDetails[]);
         }
-
-        // Build products map: campaign_id -> CampaignProduct[]
-        const productsByCampaign: Record<string, CampaignProduct[]> = {};
-        for (const cp of productsRes.data ?? []) {
-          if (!productsByCampaign[cp.campaign_id]) {
-            productsByCampaign[cp.campaign_id] = [];
-          }
-          productsByCampaign[cp.campaign_id].push(cp);
-        }
-
-        // Count participants per campaign
-        const participantCounts: Record<string, number> = {};
-        for (const p of participationsRes.data ?? []) {
-          participantCounts[p.campaign_id] = (participantCounts[p.campaign_id] ?? 0) + 1;
-        }
-
-        const combined: CampaignWithDetails[] = (campaignsRes.data ?? []).map((c) => ({
-          ...c,
-          brand: brandMap[c.brand_id],
-          products: productsByCampaign[c.id] ?? [],
-          participant_count: participantCounts[c.id] ?? 0,
-        }));
-
-        setCampaigns(combined);
       } catch (error) {
         console.error('Failed to fetch campaigns:', error);
       } finally {
@@ -124,14 +101,14 @@ export default function CreatorCampaignsPage() {
 
     fetchData();
     return () => { cancelled = true; };
-  }, [authLoading]);
+  }, []);
 
   const filteredCampaigns = useMemo(() => {
     if (statusFilter === 'all') return campaigns;
     return campaigns.filter((c) => c.status === statusFilter);
   }, [campaigns, statusFilter]);
 
-  const getDDay = (endAt?: string) => {
+  const getDDay = (endAt?: string | null) => {
     if (!endAt) return null;
     const end = new Date(endAt);
     const now = new Date();
@@ -165,27 +142,19 @@ export default function CreatorCampaignsPage() {
     setSubmitting(true);
 
     try {
-      const supabase = getClient();
-
-      const { error } = await supabase.from('campaign_participations').insert({
-        campaign_id: applyingCampaign.id,
-        creator_id: creator.id,
+      await applyCampaignParticipation({
+        campaignId: applyingCampaign.id,
         status: 'PENDING',
-        message: applyMessage.trim() || null,
+        message: applyMessage.trim() || undefined,
       });
-
-      if (error) {
-        if (error.code === '23505') {
-          toast.error('이미 참여 신청한 캠페인입니다');
-        } else {
-          toast.error('신청에 실패했습니다');
-        }
+      toast.success('참여 신청이 완료되었습니다');
+      setApplyOpen(false);
+    } catch (error: any) {
+      if (error?.message?.includes('Unique')) {
+        toast.error('이미 참여 신청한 캠페인입니다');
       } else {
-        toast.success('참여 신청이 완료되었습니다');
-        setApplyOpen(false);
+        toast.error('신청에 실패했습니다');
       }
-    } catch (error) {
-      toast.error('신청에 실패했습니다');
     } finally {
       setSubmitting(false);
     }
@@ -196,45 +165,29 @@ export default function CreatorCampaignsPage() {
     setSubmitting(true);
 
     try {
-      const supabase = getClient();
-
-      // Create participation (auto-approved)
-      const { error: partError } = await supabase.from('campaign_participations').insert({
-        campaign_id: campaign.id,
-        creator_id: creator.id,
+      await applyCampaignParticipation({
+        campaignId: campaign.id,
         status: 'APPROVED',
       });
 
-      if (partError) {
-        if (partError.code === '23505') {
-          toast.error('이미 참여 중인 캠페인입니다');
-        } else {
-          toast.error('참여에 실패했습니다');
-        }
-        return;
-      }
-
-      // Add campaign products to shop items
-      for (const cp of campaign.products ?? []) {
-        await supabase.from('creator_shop_items').insert({
-          creator_id: creator.id,
-          product_id: cp.product_id,
-          campaign_id: campaign.id,
-          type: 'GONGGU',
-          display_order: 0,
-          is_visible: true,
-        });
+      const productIds = (campaign.products ?? []).map((cp) => cp.productId);
+      if (productIds.length > 0) {
+        await addCampaignShopItems(campaign.id, productIds);
       }
 
       toast.success('캠페인 참여가 완료되었습니다');
-    } catch (error) {
-      toast.error('참여에 실패했습니다');
+    } catch (error: any) {
+      if (error?.message?.includes('Unique')) {
+        toast.error('이미 참여 중인 캠페인입니다');
+      } else {
+        toast.error('참여에 실패했습니다');
+      }
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
       <div className="space-y-6">
         <div>
@@ -294,7 +247,7 @@ export default function CreatorCampaignsPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filteredCampaigns.map((campaign) => {
-            const dDay = getDDay(campaign.end_at);
+            const dDay = getDDay(campaign.endAt);
 
             return (
               <Card key={campaign.id} className="flex flex-col">
@@ -303,7 +256,7 @@ export default function CreatorCampaignsPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <Badge className={getStatusBadgeVariant(campaign.status)}>
-                          {CAMPAIGN_STATUS_LABELS[campaign.status]}
+                          {CAMPAIGN_STATUS_LABELS[campaign.status as keyof typeof CAMPAIGN_STATUS_LABELS]}
                         </Badge>
                         <Badge variant="outline">
                           {campaign.type === 'GONGGU' ? '공구' : '상시'}
@@ -335,7 +288,7 @@ export default function CreatorCampaignsPage() {
                   <div className="space-y-2 text-sm flex-1">
                     {campaign.brand && (
                       <p className="text-muted-foreground">
-                        {campaign.brand.brand_name}
+                        {campaign.brand.brandName}
                       </p>
                     )}
                     {campaign.description && (
@@ -347,34 +300,34 @@ export default function CreatorCampaignsPage() {
                       <div className="flex items-center gap-1.5">
                         <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                         <span className="text-xs text-muted-foreground">
-                          {campaign.start_at
-                            ? new Date(campaign.start_at).toLocaleDateString('ko-KR')
+                          {campaign.startAt
+                            ? new Date(campaign.startAt).toLocaleDateString('ko-KR')
                             : '-'}{' '}
                           ~{' '}
-                          {campaign.end_at
-                            ? new Date(campaign.end_at).toLocaleDateString('ko-KR')
+                          {campaign.endAt
+                            ? new Date(campaign.endAt).toLocaleDateString('ko-KR')
                             : '-'}
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <Percent className="h-3.5 w-3.5 text-muted-foreground" />
                         <span className="text-xs">
-                          내 수익 {(campaign.commission_rate * 100).toFixed(0)}%
+                          내 수익 {(campaign.commissionRate * 100).toFixed(0)}%
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <Users className="h-3.5 w-3.5 text-muted-foreground" />
                         <span className="text-xs">
-                          {campaign.participant_count ?? 0}
-                          {campaign.target_participants
-                            ? ` / ${campaign.target_participants}명`
+                          {campaign.participantCount ?? 0}
+                          {campaign.targetParticipants
+                            ? ` / ${campaign.targetParticipants}명`
                             : '명 참여'}
                         </span>
                       </div>
-                      {campaign.total_stock && (
+                      {campaign.totalStock && (
                         <div className="flex items-center gap-1.5">
                           <span className="text-xs text-muted-foreground">
-                            판매 {campaign.sold_count} / {campaign.total_stock}
+                            판매 {campaign.soldCount} / {campaign.totalStock}
                           </span>
                         </div>
                       )}
@@ -383,7 +336,7 @@ export default function CreatorCampaignsPage() {
 
                   {/* Action Button */}
                   <div className="mt-4">
-                    {campaign.recruitment_type === 'APPROVAL' ? (
+                    {campaign.recruitmentType === 'APPROVAL' ? (
                       <Button
                         className="w-full"
                         onClick={() => handleApplyApproval(campaign)}

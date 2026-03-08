@@ -2,9 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getClient } from '@/lib/supabase/client';
-import { useAuthStore } from '@/lib/store/auth';
-import type { Campaign, CampaignProduct, Product } from '@/types/database';
+import { getBrandCampaigns, getBrandSession } from '@/lib/actions/brand';
 import { CAMPAIGN_STATUS_LABELS } from '@/types/database';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -44,8 +42,20 @@ function getStatusVariant(
   }
 }
 
-interface AlwaysCampaign extends Campaign {
-  campaign_products?: (CampaignProduct & { product?: Product })[];
+interface AlwaysCampaign {
+  id: string;
+  title: string;
+  description: string | null;
+  status: string;
+  recruitmentType: string;
+  commissionRate: number | string;
+  soldCount: number;
+  createdAt: string;
+  products: Array<{
+    id: string;
+    campaignPrice: number | string;
+    product: { name: string | null } | null;
+  }>;
 }
 
 function TableSkeleton() {
@@ -60,37 +70,31 @@ function TableSkeleton() {
 }
 
 export default function AlwaysCampaignsPage() {
-  const { brand, isLoading: authLoading } = useAuthStore();
+  const [brand, setBrand] = useState<{ id: string } | null>(null);
   const [campaigns, setCampaigns] = useState<AlwaysCampaign[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!brand?.id) {
-      if (!authLoading) setIsLoading(false);
-      return;
-    }
+    async function load() {
+      try {
+        const brandData = await getBrandSession();
+        if (!brandData) {
+          setIsLoading(false);
+          return;
+        }
+        setBrand(brandData);
 
-    async function fetchCampaigns() {
-      const supabase = getClient();
-      const { data, error } = await supabase
-        .from('campaigns')
-        .select(
-          '*, campaign_products:campaign_products(*, product:products(*))'
-        )
-        .eq('brand_id', brand!.id)
-        .eq('type', 'ALWAYS')
-        .order('created_at', { ascending: false });
-
-      if (error) {
+        const data = await getBrandCampaigns(brandData.id, 'ALWAYS');
+        setCampaigns(data as any);
+      } catch (error) {
         console.error('Failed to fetch always campaigns:', error);
-      } else {
-        setCampaigns((data ?? []) as AlwaysCampaign[]);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     }
 
-    fetchCampaigns();
-  }, [brand?.id, authLoading]);
+    load();
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -155,27 +159,27 @@ export default function AlwaysCampaignsPage() {
                     </TableCell>
                     <TableCell>
                       <Badge variant={getStatusVariant(campaign.status)}>
-                        {CAMPAIGN_STATUS_LABELS[campaign.status]}
+                        {CAMPAIGN_STATUS_LABELS[campaign.status as keyof typeof CAMPAIGN_STATUS_LABELS]}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline">
-                        {campaign.recruitment_type === 'OPEN'
+                        {campaign.recruitmentType === 'OPEN'
                           ? '자동 승인'
                           : '승인제'}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      {campaign.commission_rate}%
+                      {campaign.commissionRate}%
                     </TableCell>
                     <TableCell className="text-right">
-                      {campaign.sold_count.toLocaleString('ko-KR')}
+                      {campaign.soldCount.toLocaleString('ko-KR')}
                     </TableCell>
                     <TableCell>
-                      {campaign.campaign_products &&
-                      campaign.campaign_products.length > 0 ? (
+                      {campaign.products &&
+                      campaign.products.length > 0 ? (
                         <div className="space-y-0.5">
-                          {campaign.campaign_products
+                          {campaign.products
                             .slice(0, 2)
                             .map((cp) => (
                               <p
@@ -184,13 +188,13 @@ export default function AlwaysCampaignsPage() {
                               >
                                 {cp.product?.name ?? '상품'}{' '}
                                 <span className="text-muted-foreground">
-                                  ({formatCurrency(cp.campaign_price)})
+                                  ({formatCurrency(Number(cp.campaignPrice))})
                                 </span>
                               </p>
                             ))}
-                          {campaign.campaign_products.length > 2 && (
+                          {campaign.products.length > 2 && (
                             <p className="text-xs text-muted-foreground">
-                              +{campaign.campaign_products.length - 2}개 더
+                              +{campaign.products.length - 2}개 더
                             </p>
                           )}
                         </div>
@@ -201,7 +205,7 @@ export default function AlwaysCampaignsPage() {
                       )}
                     </TableCell>
                     <TableCell className="text-right text-sm text-muted-foreground">
-                      {new Date(campaign.created_at).toLocaleDateString(
+                      {new Date(campaign.createdAt).toLocaleDateString(
                         'ko-KR'
                       )}
                     </TableCell>

@@ -20,7 +20,7 @@ import {
   User,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getClient } from '@/lib/supabase/client';
+import { getBrandSupportTickets, replySupportTicket } from '@/lib/actions/brand';
 
 type TicketCategory = 'product' | 'cs';
 type TicketStatus = 'open' | 'resolved';
@@ -31,12 +31,12 @@ interface SupportTicket {
   subject: string;
   description: string;
   status: TicketStatus;
-  from_name: string;
-  from_email: string;
-  order_id?: string;
-  created_at: string;
-  updated_at: string;
-  response?: string;
+  fromName: string;
+  fromEmail: string | null;
+  orderId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  response?: string | null;
 }
 
 export default function BrandSupportPage() {
@@ -53,25 +53,8 @@ export default function BrandSupportPage() {
   useEffect(() => {
     async function loadTickets() {
       try {
-        const supabase = getClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) { setLoading(false); return; }
-
-        const { data: brand } = await supabase
-          .from('brands')
-          .select('id')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (!brand) { setLoading(false); return; }
-
-        const { data } = await supabase
-          .from('support_tickets')
-          .select('*')
-          .eq('brand_id', brand.id)
-          .order('created_at', { ascending: false });
-
-        setTickets(data || []);
+        const data = await getBrandSupportTickets();
+        setTickets(data as any);
       } catch (error) {
         console.error('Failed to load tickets:', error);
       } finally {
@@ -88,21 +71,13 @@ export default function BrandSupportPage() {
 
     setSubmitting(ticketId);
     try {
-      const supabase = getClient();
-      const { error } = await supabase
-        .from('support_tickets')
-        .update({ response: text, status: 'resolved', updated_at: new Date().toISOString() })
-        .eq('id', ticketId);
+      await replySupportTicket(ticketId, text);
 
-      if (error) {
-        toast.error(tCommon('error'));
-      } else {
-        setTickets(tickets.map(t =>
-          t.id === ticketId ? { ...t, response: text, status: 'resolved' as TicketStatus } : t
-        ));
-        setReplyText({ ...replyText, [ticketId]: '' });
-        toast.success(t('replied'));
-      }
+      setTickets(tickets.map(t =>
+        t.id === ticketId ? { ...t, response: text, status: 'resolved' as TicketStatus } : t
+      ));
+      setReplyText({ ...replyText, [ticketId]: '' });
+      toast.success(t('replied'));
     } catch {
       toast.error(tCommon('error'));
     } finally {
@@ -261,10 +236,10 @@ export default function BrandSupportPage() {
                               </Badge>
                               <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                                 <User className="h-2.5 w-2.5" />
-                                {ticket.from_name || 'Customer'}
+                                {ticket.fromName || 'Customer'}
                               </span>
                               <span className="text-[10px] text-muted-foreground">
-                                {new Date(ticket.created_at).toLocaleDateString()}
+                                {new Date(ticket.createdAt).toLocaleDateString()}
                               </span>
                             </div>
                           </div>
@@ -290,15 +265,15 @@ export default function BrandSupportPage() {
                         <div className="bg-muted/30 p-3 rounded-lg">
                           <div className="flex items-center gap-2 mb-2">
                             <User className="h-3.5 w-3.5 text-muted-foreground" />
-                            <span className="text-xs font-medium">{ticket.from_name || 'Customer'}</span>
-                            {ticket.from_email && (
-                              <span className="text-xs text-muted-foreground">{ticket.from_email}</span>
+                            <span className="text-xs font-medium">{ticket.fromName || 'Customer'}</span>
+                            {ticket.fromEmail && (
+                              <span className="text-xs text-muted-foreground">{ticket.fromEmail}</span>
                             )}
                           </div>
                           <p className="text-sm">{ticket.description}</p>
-                          {ticket.order_id && (
+                          {ticket.orderId && (
                             <p className="text-xs text-muted-foreground mt-2">
-                              {t('relatedOrder')}: <span className="font-mono">#{ticket.order_id}</span>
+                              {t('relatedOrder')}: <span className="font-mono">#{ticket.orderId}</span>
                             </p>
                           )}
                         </div>

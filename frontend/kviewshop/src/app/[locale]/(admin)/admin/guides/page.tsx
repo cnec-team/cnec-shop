@@ -6,13 +6,26 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, Pencil, Trash2, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAuthStore } from '@/lib/store/auth';
-import { getClient } from '@/lib/supabase/client';
-import { GUIDE_CATEGORY_LABELS } from '@/types/database';
-import type { Guide, GuideCategory } from '@/types/database';
+import { getAdminGuides, createGuide, updateGuide, deleteGuide } from '@/lib/actions/admin';
+
+const GUIDE_CATEGORY_LABELS: Record<string, string> = {
+  CREATOR_BEGINNER: '크리에이터 시작',
+  CREATOR_SALES: '판매 노하우',
+  BRAND_START: '브랜드 시작',
+  BRAND_CAMPAIGN: '캠페인 운영',
+};
+
+interface Guide {
+  id: string;
+  title: string;
+  category: string;
+  targetGrade: string;
+  displayOrder: number;
+  isPublished: boolean;
+  content: any;
+}
 
 export default function AdminGuidesPage() {
-  const { isLoading: authLoading } = useAuthStore();
   const [guides, setGuides] = useState<Guide[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Guide | null>(null);
@@ -29,18 +42,8 @@ export default function AdminGuidesPage() {
 
   const fetchGuides = useCallback(async () => {
     try {
-      const supabase = getClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: { session } } = await supabase.auth.getSession();
-
-      const res = await fetch('/api/admin/guides', {
-        headers: { 'Authorization': `Bearer ${session?.access_token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setGuides(data.guides);
-      }
+      const data = await getAdminGuides();
+      setGuides(data as Guide[]);
     } catch (error) {
       console.error('Failed to fetch guides:', error);
     } finally {
@@ -49,8 +52,8 @@ export default function AdminGuidesPage() {
   }, []);
 
   useEffect(() => {
-    if (!authLoading) fetchGuides();
-  }, [authLoading, fetchGuides]);
+    fetchGuides();
+  }, [fetchGuides]);
 
   const openCreate = () => {
     setEditing(null);
@@ -68,9 +71,9 @@ export default function AdminGuidesPage() {
     setEditing(guide);
     setFormTitle(guide.title);
     setFormCategory(guide.category);
-    setFormTargetGrade(guide.target_grade);
-    setFormOrder(guide.display_order);
-    setFormPublished(guide.is_published);
+    setFormTargetGrade(guide.targetGrade);
+    setFormOrder(guide.displayOrder);
+    setFormPublished(guide.isPublished);
     setFormContent(JSON.stringify(guide.content, null, 2));
   };
 
@@ -83,41 +86,25 @@ export default function AdminGuidesPage() {
 
     setSaving(true);
     try {
-      const supabase = getClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: { session } } = await supabase.auth.getSession();
-
       const body = {
         title: formTitle,
         category: formCategory,
-        target_grade: formTargetGrade,
-        display_order: formOrder,
-        is_published: formPublished,
+        targetGrade: formTargetGrade,
+        displayOrder: formOrder,
+        isPublished: formPublished,
         content: parsedContent,
       };
 
-      const url = editing ? `/api/admin/guides/${editing.id}` : '/api/admin/guides';
-      const method = editing ? 'PUT' : 'POST';
-
-      const res = await fetch(url, {
-        method,
-        headers: {
-          'Authorization': `Bearer ${session?.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      });
-
-      if (res.ok) {
-        toast.success(editing ? '가이드가 수정되었습니다' : '가이드가 생성되었습니다');
-        setEditing(null);
-        setCreating(false);
-        fetchGuides();
+      if (editing) {
+        await updateGuide(editing.id, body);
       } else {
-        const data = await res.json();
-        toast.error(data.error || '저장에 실패했습니다');
+        await createGuide(body);
       }
+
+      toast.success(editing ? '가이드가 수정되었습니다' : '가이드가 생성되었습니다');
+      setEditing(null);
+      setCreating(false);
+      fetchGuides();
     } catch {
       toast.error('오류가 발생했습니다');
     } finally {
@@ -128,25 +115,15 @@ export default function AdminGuidesPage() {
   const handleDelete = async (id: string) => {
     if (!confirm('정말 삭제하시겠습니까?')) return;
     try {
-      const supabase = getClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: { session } } = await supabase.auth.getSession();
-
-      const res = await fetch(`/api/admin/guides/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${session?.access_token}` },
-      });
-      if (res.ok) {
-        toast.success('가이드가 삭제되었습니다');
-        fetchGuides();
-      }
+      await deleteGuide(id);
+      toast.success('가이드가 삭제되었습니다');
+      fetchGuides();
     } catch {
       toast.error('삭제에 실패했습니다');
     }
   };
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-8 w-48" />
@@ -245,7 +222,7 @@ export default function AdminGuidesPage() {
                 <div key={guide.id} className="flex items-center justify-between p-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      {guide.is_published ? (
+                      {guide.isPublished ? (
                         <Eye className="h-4 w-4 text-green-500 shrink-0" />
                       ) : (
                         <EyeOff className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -254,11 +231,11 @@ export default function AdminGuidesPage() {
                     </div>
                     <div className="flex gap-2 mt-1">
                       <span className="text-xs px-2 py-0.5 rounded-full bg-muted">
-                        {GUIDE_CATEGORY_LABELS[guide.category as GuideCategory]}
+                        {GUIDE_CATEGORY_LABELS[guide.category] || guide.category}
                       </span>
-                      {guide.target_grade !== 'ALL' && (
+                      {guide.targetGrade !== 'ALL' && (
                         <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
-                          {guide.target_grade}+
+                          {guide.targetGrade}+
                         </span>
                       )}
                     </div>

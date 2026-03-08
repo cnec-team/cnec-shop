@@ -5,11 +5,11 @@ import { useParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Trophy, TrendingUp, Crown, Medal } from 'lucide-react';
-import { useAuthStore } from '@/lib/store/auth';
-import { getClient } from '@/lib/supabase/client';
 import { formatCurrency } from '@/lib/i18n/config';
 import { GRADE_LABELS, GRADE_THRESHOLDS } from '@/types/database';
-import type { CreatorGrade } from '@/types/database';
+import { getCreatorSession, getCreatorGradeAndRankings } from '@/lib/actions/creator';
+
+type CreatorGrade = 'ROOKIE' | 'SILVER' | 'GOLD' | 'PLATINUM';
 
 const GRADE_COLORS: Record<CreatorGrade, string> = {
   ROOKIE: 'bg-gray-100 text-gray-800 border-gray-300',
@@ -43,36 +43,43 @@ interface RankEntry {
 export default function CreatorGradePage() {
   const params = useParams();
   const locale = params.locale as string;
-  const { creator, isLoading: authLoading } = useAuthStore();
-
+  const [creator, setCreator] = useState<{ id: string } | null>(null);
   const [gradeData, setGradeData] = useState<GradeData | null>(null);
   const [rankings, setRankings] = useState<RankEntry[]>([]);
   const [rankPeriod, setRankPeriod] = useState<'weekly' | 'monthly'>('monthly');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!creator) { setLoading(false); return; }
+    let cancelled = false;
+
+    async function init() {
+      const creatorData = await getCreatorSession();
+      if (!creatorData || cancelled) {
+        if (!cancelled) setLoading(false);
+        return;
+      }
+      if (!creator) setCreator(creatorData as any);
+    }
+
+    init();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!creator) return;
 
     async function fetchGrade() {
+      setLoading(true);
       try {
-        const supabase = getClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-        const { data: { session } } = await supabase.auth.getSession();
-
-        const [gradeRes, rankRes] = await Promise.all([
-          fetch('/api/creator/grade', { headers: { 'Authorization': `Bearer ${session?.access_token}` } }),
-          fetch(`/api/creator/ranking?period=${rankPeriod}`),
-        ]);
-
-        if (gradeRes.ok) {
-          setGradeData(await gradeRes.json());
-        }
-        if (rankRes.ok) {
-          const rankData = await rankRes.json();
-          setRankings(rankData.rankings);
-        }
+        const data = await getCreatorGradeAndRankings(rankPeriod);
+        setGradeData({
+          grade: (data.grade as CreatorGrade) ?? 'ROOKIE',
+          monthlySales: data.monthlySales,
+          commissionBonusRate: Number(data.commissionBonusRate),
+          nextGrade: data.nextGrade as CreatorGrade | null,
+          amountToNext: data.amountToNext,
+        });
+        setRankings(data.rankings);
       } catch (error) {
         console.error('Failed to fetch grade:', error);
       } finally {
@@ -81,9 +88,9 @@ export default function CreatorGradePage() {
     }
 
     fetchGrade();
-  }, [authLoading, creator, rankPeriod]);
+  }, [creator, rankPeriod]);
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-8 w-48" />

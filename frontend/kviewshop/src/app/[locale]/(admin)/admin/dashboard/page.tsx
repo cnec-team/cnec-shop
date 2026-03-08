@@ -11,7 +11,7 @@ import {
   Megaphone,
   TrendingUp,
 } from 'lucide-react';
-import { getClient } from '@/lib/supabase/client';
+import { getAdminDashboardStats } from '@/lib/actions/admin';
 
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState({
@@ -27,26 +27,8 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     async function fetchStats() {
       try {
-        const supabase = getClient();
-
-        const [brandsRes, creatorsRes, ordersRes, campaignsRes, settlementsRes] = await Promise.all([
-          supabase.from('brands').select('id', { count: 'exact', head: true }),
-          supabase.from('creators').select('id', { count: 'exact', head: true }),
-          supabase.from('orders').select('id, total_amount'),
-          supabase.from('campaigns').select('id', { count: 'exact', head: true }).in('status', ['RECRUITING', 'ACTIVE']),
-          supabase.from('settlements').select('id', { count: 'exact', head: true }).eq('status', 'PENDING'),
-        ]);
-
-        const totalGMV = (ordersRes.data || []).reduce((sum, o) => sum + Number(o.total_amount || 0), 0);
-
-        setStats({
-          totalBrands: brandsRes.count || 0,
-          totalCreators: creatorsRes.count || 0,
-          totalOrders: ordersRes.data?.length || 0,
-          totalGMV,
-          activeCampaigns: campaignsRes.count || 0,
-          pendingSettlements: settlementsRes.count || 0,
-        });
+        const data = await getAdminDashboardStats();
+        setStats(data);
       } catch (error) {
         console.error('Error fetching stats:', error);
       }

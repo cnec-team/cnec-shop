@@ -23,30 +23,45 @@ import {
   Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getClient } from '@/lib/supabase/client';
-import { useAuthStore } from '@/lib/store/auth';
 import { formatCurrency } from '@/lib/i18n/config';
-import type {
-  Product,
-  Brand,
-  Campaign,
-  CampaignProduct,
-  ProductCategory,
-} from '@/types/database';
 import { PRODUCT_CATEGORY_LABELS } from '@/types/database';
+import {
+  getCreatorSession,
+  getPickableProducts,
+  addProductToShop,
+  applyGongguProduct,
+  triggerMissionCheck,
+} from '@/lib/actions/creator';
 
-interface ProductWithCampaign extends Product {
-  brand?: Brand;
-  active_campaign?: Campaign & { campaign_product?: CampaignProduct };
+interface ProductWithCampaign {
+  id: string;
+  name: string;
+  nameKo: string | null;
+  nameEn: string | null;
+  originalPrice: number;
+  salePrice: number;
+  images: string[] | null;
+  imageUrl: string | null;
+  category: string | null;
+  defaultCommissionRate: number;
+  brandId: string;
+  brand: { brandName: string } | null;
+  activeCampaign: {
+    id: string;
+    type: string;
+    commissionRate: number;
+    recruitmentType?: string;
+    campaignProduct?: { campaignPrice: number };
+  } | null;
 }
 
+type ProductCategory = 'SKINCARE' | 'MAKEUP' | 'HAIRCARE' | 'BODYCARE' | 'FRAGRANCE' | 'TOOLS' | 'SUPPLEMENT' | 'OTHER';
 type SortOption = 'commission_desc' | 'commission_asc' | 'price_asc' | 'price_desc' | 'name';
 
 export default function CreatorProductsPage() {
   const params = useParams();
   const locale = params.locale as string;
-  const { creator, isLoading: authLoading } = useAuthStore();
-
+  const [creator, setCreator] = useState<{ id: string } | null>(null);
   const [products, setProducts] = useState<ProductWithCampaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [addingId, setAddingId] = useState<string | null>(null);
@@ -58,68 +73,22 @@ export default function CreatorProductsPage() {
   const [sortBy, setSortBy] = useState<SortOption>('commission_desc');
 
   useEffect(() => {
-    if (authLoading) return;
-
     let cancelled = false;
 
     async function fetchData() {
+      const creatorData = await getCreatorSession();
+      if (!creatorData || cancelled) {
+        if (!cancelled) setLoading(false);
+        return;
+      }
+      setCreator(creatorData as any);
+
       try {
-        const supabase = getClient();
-
-        // Fetch products with brands, active campaigns, and creator's shop items in parallel
-        const [productsRes, brandsRes, campaignsRes, campaignProductsRes, shopItemsRes] =
-          await Promise.all([
-            supabase
-              .from('products')
-              .select('*')
-              .eq('status', 'ACTIVE')
-              .eq('allow_creator_pick', true),
-            supabase.from('brands').select('*'),
-            supabase
-              .from('campaigns')
-              .select('*')
-              .in('status', ['RECRUITING', 'ACTIVE']),
-            supabase.from('campaign_products').select('*, product:products(*)'),
-            creator
-              ? supabase
-                  .from('creator_shop_items')
-                  .select('product_id')
-                  .eq('creator_id', creator.id)
-              : Promise.resolve({ data: [] }),
-          ]);
-
-        if (cancelled) return;
-
-        // Build brand map
-        const brandMap: Record<string, Brand> = {};
-        for (const b of brandsRes.data ?? []) {
-          brandMap[b.id] = b;
+        const data = await getPickableProducts(creatorData.id);
+        if (!cancelled) {
+          setProducts(data.products as unknown as ProductWithCampaign[]);
+          setMyShopItemIds(new Set(data.myShopItemProductIds));
         }
-
-        // Build campaign map: product_id -> campaign + campaign_product
-        const campaignMap: Record<string, Campaign & { campaign_product?: CampaignProduct }> = {};
-        for (const cp of campaignProductsRes.data ?? []) {
-          const campaign = (campaignsRes.data ?? []).find((c) => c.id === cp.campaign_id);
-          if (campaign) {
-            campaignMap[cp.product_id] = { ...campaign, campaign_product: cp };
-          }
-        }
-
-        // Build my shop item set
-        const itemIds = new Set<string>();
-        for (const item of shopItemsRes.data ?? []) {
-          itemIds.add(item.product_id);
-        }
-
-        // Combine
-        const combined: ProductWithCampaign[] = (productsRes.data ?? []).map((p) => ({
-          ...p,
-          brand: brandMap[p.brand_id],
-          active_campaign: campaignMap[p.id],
-        }));
-
-        setProducts(combined);
-        setMyShopItemIds(itemIds);
       } catch (error) {
         console.error('Failed to load products:', error);
       } finally {
@@ -129,43 +98,40 @@ export default function CreatorProductsPage() {
 
     fetchData();
     return () => { cancelled = true; };
-  }, [authLoading, creator]);
+  }, []);
 
   const filteredProducts = useMemo(() => {
     let result = products;
 
-    // Search filter
     if (search) {
       const q = search.toLowerCase();
       result = result.filter(
         (p) =>
           p.name.toLowerCase().includes(q) ||
-          (p.brand?.brand_name ?? '').toLowerCase().includes(q)
+          (p.brand?.brandName ?? '').toLowerCase().includes(q)
       );
     }
 
-    // Category filter
     if (categoryFilter !== 'all') {
       result = result.filter((p) => p.category === categoryFilter);
     }
 
-    // Sort
     result = [...result].sort((a, b) => {
       switch (sortBy) {
         case 'commission_desc':
           return (
-            (b.active_campaign?.commission_rate ?? b.default_commission_rate) -
-            (a.active_campaign?.commission_rate ?? a.default_commission_rate)
+            (b.activeCampaign?.commissionRate ?? b.defaultCommissionRate) -
+            (a.activeCampaign?.commissionRate ?? a.defaultCommissionRate)
           );
         case 'commission_asc':
           return (
-            (a.active_campaign?.commission_rate ?? a.default_commission_rate) -
-            (b.active_campaign?.commission_rate ?? b.default_commission_rate)
+            (a.activeCampaign?.commissionRate ?? a.defaultCommissionRate) -
+            (b.activeCampaign?.commissionRate ?? b.defaultCommissionRate)
           );
         case 'price_asc':
-          return a.sale_price - b.sale_price;
+          return a.salePrice - b.salePrice;
         case 'price_desc':
-          return b.sale_price - a.sale_price;
+          return b.salePrice - a.salePrice;
         case 'name':
           return a.name.localeCompare(b.name, 'ko');
         default:
@@ -185,112 +151,73 @@ export default function CreatorProductsPage() {
     setAddingId(product.id);
 
     try {
-      const supabase = getClient();
+      await addProductToShop(product.id);
+      toast.success('내 샵에 추가되었습니다');
+      setMyShopItemIds((prev) => new Set([...prev, product.id]));
 
-      const { error } = await supabase.from('creator_shop_items').insert({
-        creator_id: creator.id,
-        product_id: product.id,
-        type: 'PICK' as const,
-        display_order: 0,
-        is_visible: true,
-      });
-
-      if (error) {
-        if (error.code === '23505') {
-          toast.error('이미 추가된 상품입니다');
-        } else {
-          toast.error('추가에 실패했습니다');
-          console.error('Add error:', error);
-        }
-      } else {
-        toast.success('내 샵에 추가되었습니다');
-        setMyShopItemIds((prev) => new Set([...prev, product.id]));
-
-        // Trigger mission check for FIRST_PRODUCT point award (₩1,000)
-        try {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            await fetch('/api/creator/missions', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ missionKey: 'FIRST_PRODUCT' }),
-            });
-          }
-        } catch {
-          // Non-critical: mission check failure shouldn't block the flow
-        }
+      try {
+        await triggerMissionCheck('FIRST_PRODUCT');
+      } catch {
+        // Non-critical
       }
-    } catch (error) {
-      toast.error('추가에 실패했습니다');
+    } catch (error: any) {
+      if (error?.message?.includes('Unique')) {
+        toast.error('이미 추가된 상품입니다');
+      } else {
+        toast.error('추가에 실패했습니다');
+      }
     } finally {
       setAddingId(null);
     }
   };
 
   const handleApplyGonggu = async (product: ProductWithCampaign) => {
-    if (!creator || !product.active_campaign) return;
+    if (!creator || !product.activeCampaign) return;
 
     setAddingId(product.id);
 
     try {
-      const supabase = getClient();
-
-      // Create campaign participation
-      const { error: partError } = await supabase.from('campaign_participations').insert({
-        campaign_id: product.active_campaign.id,
-        creator_id: creator.id,
-        status: product.active_campaign.recruitment_type === 'OPEN' ? 'APPROVED' : 'PENDING',
+      const result = await applyGongguProduct({
+        productId: product.id,
+        campaignId: product.activeCampaign.id,
+        recruitmentType: product.activeCampaign.recruitmentType ?? 'APPROVAL',
       });
 
-      if (partError) {
-        if (partError.code === '23505') {
-          toast.error('이미 참여 신청한 공구입니다');
-        } else {
-          toast.error('신청에 실패했습니다');
-        }
-        return;
-      }
-
-      // If OPEN type, also add to shop items
-      if (product.active_campaign.recruitment_type === 'OPEN') {
-        await supabase.from('creator_shop_items').insert({
-          creator_id: creator.id,
-          product_id: product.id,
-          campaign_id: product.active_campaign.id,
-          type: 'GONGGU' as const,
-          display_order: 0,
-          is_visible: true,
-        });
+      if (result.isOpen) {
         setMyShopItemIds((prev) => new Set([...prev, product.id]));
       }
 
       toast.success(
-        product.active_campaign.recruitment_type === 'OPEN'
+        result.isOpen
           ? '공구 참여가 완료되었습니다'
           : '공구 참여 신청이 완료되었습니다'
       );
-    } catch (error) {
-      toast.error('신청에 실패했습니다');
+    } catch (error: any) {
+      if (error?.message?.includes('Unique')) {
+        toast.error('이미 참여 신청한 공구입니다');
+      } else {
+        toast.error('신청에 실패했습니다');
+      }
     } finally {
       setAddingId(null);
     }
   };
 
-  const getDiscountRate = (product: Product) => {
-    if (product.original_price > product.sale_price) {
+  const getDiscountRate = (product: ProductWithCampaign) => {
+    if (product.originalPrice > product.salePrice) {
       return Math.round(
-        ((product.original_price - product.sale_price) / product.original_price) * 100
+        ((product.originalPrice - product.salePrice) / product.originalPrice) * 100
       );
     }
     return 0;
   };
 
   const getCommissionInfo = (product: ProductWithCampaign) => {
-    const campaign = product.active_campaign;
+    const campaign = product.activeCampaign;
     if (campaign) {
-      const rate = campaign.commission_rate * 100;
+      const rate = campaign.commissionRate * 100;
       const amount = Math.round(
-        (campaign.campaign_product?.campaign_price ?? product.sale_price) * campaign.commission_rate
+        (campaign.campaignProduct?.campaignPrice ?? product.salePrice) * campaign.commissionRate
       );
       return {
         type: campaign.type === 'GONGGU' ? '공구' : '상시',
@@ -300,8 +227,8 @@ export default function CreatorProductsPage() {
         amountLabel: formatCurrency(amount, 'KRW'),
       };
     }
-    const rate = product.default_commission_rate * 100;
-    const amount = Math.round(product.sale_price * product.default_commission_rate);
+    const rate = product.defaultCommissionRate * 100;
+    const amount = Math.round(product.salePrice * product.defaultCommissionRate);
     return {
       type: '상시',
       rate,
@@ -311,7 +238,7 @@ export default function CreatorProductsPage() {
     };
   };
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
       <div className="space-y-6">
         <div>
@@ -330,7 +257,6 @@ export default function CreatorProductsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold">상품 둘러보기</h1>
         <p className="text-sm text-muted-foreground">
@@ -338,7 +264,6 @@ export default function CreatorProductsPage() {
         </p>
       </div>
 
-      {/* Search & Filters */}
       <Card>
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row gap-3">
@@ -383,12 +308,10 @@ export default function CreatorProductsPage() {
         </CardContent>
       </Card>
 
-      {/* Results count */}
       <p className="text-sm text-muted-foreground">
         총 {filteredProducts.length}개 상품
       </p>
 
-      {/* Product Grid */}
       {filteredProducts.length === 0 ? (
         <div className="text-center py-16">
           <Package className="mx-auto h-12 w-12 text-muted-foreground/50" />
@@ -400,11 +323,10 @@ export default function CreatorProductsPage() {
             const discount = getDiscountRate(product);
             const commission = getCommissionInfo(product);
             const isAdded = myShopItemIds.has(product.id);
-            const isGonggu = product.active_campaign?.type === 'GONGGU';
+            const isGonggu = product.activeCampaign?.type === 'GONGGU';
 
             return (
               <Card key={product.id} className="overflow-hidden flex flex-col">
-                {/* Thumbnail */}
                 <div className="aspect-square bg-muted relative">
                   {product.images?.[0] ? (
                     <img
@@ -417,7 +339,6 @@ export default function CreatorProductsPage() {
                       <Package className="h-12 w-12 text-muted-foreground/30" />
                     </div>
                   )}
-                  {/* Commission Badge */}
                   <div className="absolute top-2 left-2">
                     <Badge
                       className={
@@ -433,31 +354,27 @@ export default function CreatorProductsPage() {
 
                 <CardContent className="p-4 flex-1 flex flex-col">
                   <div className="flex-1">
-                    {/* Brand */}
                     {product.brand && (
                       <p className="text-xs text-muted-foreground">
-                        {product.brand.brand_name}
+                        {product.brand.brandName}
                       </p>
                     )}
-                    {/* Name */}
                     <p className="font-medium line-clamp-2 mt-1">{product.name}</p>
-                    {/* Price */}
                     <div className="flex items-center gap-2 mt-2">
                       {discount > 0 && (
                         <span className="text-sm font-bold text-destructive">{discount}%</span>
                       )}
                       <span className="text-lg font-bold">
-                        {formatCurrency(product.sale_price, 'KRW')}
+                        {formatCurrency(product.salePrice, 'KRW')}
                       </span>
                     </div>
                     {discount > 0 && (
                       <p className="text-xs text-muted-foreground line-through">
-                        {formatCurrency(product.original_price, 'KRW')}
+                        {formatCurrency(product.originalPrice, 'KRW')}
                       </p>
                     )}
                   </div>
 
-                  {/* Action Button */}
                   <div className="mt-4">
                     {isAdded ? (
                       <Button variant="outline" size="sm" className="w-full" disabled>

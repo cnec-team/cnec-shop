@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { useUser } from '@/lib/hooks/use-user';
-import { getClient } from '@/lib/supabase/client';
+import { getBuyerReviewsData, submitReview } from '@/lib/actions/buyer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,53 +23,14 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-interface Review {
-  id: string;
-  product_id: string;
-  rating: number;
-  title: string;
-  content: string;
-  images: string[];
-  instagram_post_url: string | null;
-  instagram_verified: boolean;
-  points_awarded: number;
-  is_approved: boolean;
-  helpful_count: number;
-  created_at: string;
-  product?: {
-    name: string | null;
-    name_ko: string | null;
-    name_en: string | null;
-    images: string[] | null;
-    image_url: string | null;
-  };
-}
-
-interface PendingReviewOrder {
-  id: string;
-  order_number: string;
-  created_at: string;
-  items: Array<{
-    product_id: string;
-    product: {
-      id: string;
-      name: string | null;
-      name_ko: string | null;
-      name_en: string | null;
-      images: string[] | null;
-      image_url: string | null;
-    };
-  }>;
-}
-
 export default function BuyerReviewsPage() {
   const { buyer } = useUser();
   const params = useParams();
   const locale = params.locale as string;
 
   const [isLoading, setIsLoading] = useState(true);
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [pendingOrders, setPendingOrders] = useState<PendingReviewOrder[]>([]);
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [pendingOrders, setPendingOrders] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'write' | 'history'>('write');
 
   // Review form state
@@ -87,63 +48,9 @@ export default function BuyerReviewsPage() {
       if (!buyer) return;
 
       try {
-        const supabase = getClient();
-
-        // Load existing reviews
-        const { data: reviewsData } = await supabase
-          .from('product_reviews')
-          .select(`
-            *,
-            product:products (
-              name,
-              name_ko,
-              name_en,
-              images,
-              image_url
-            )
-          `)
-          .eq('buyer_id', buyer.id)
-          .order('created_at', { ascending: false });
-
-        if (reviewsData) {
-          setReviews(reviewsData);
-        }
-
-        // Load completed orders without reviews
-        const { data: ordersData } = await supabase
-          .from('orders')
-          .select(`
-            id,
-            order_number,
-            created_at,
-            items:order_items (
-              product_id,
-              product:products (
-                id,
-                name,
-                name_ko,
-                name_en,
-                images,
-                image_url
-              )
-            )
-          `)
-          .eq('buyer_id', buyer.id)
-          .eq('status', 'DELIVERED')
-          .order('created_at', { ascending: false });
-
-        if (ordersData) {
-          // Filter out products that already have reviews
-          const reviewedProductIds = new Set(reviewsData?.map(r => r.product_id) || []);
-          const ordersWithPendingReviews = ordersData
-            .map(order => ({
-              ...order,
-              items: order.items.filter(item => !reviewedProductIds.has(item.product_id)),
-            }))
-            .filter(order => order.items.length > 0);
-
-          setPendingOrders(ordersWithPendingReviews as any);
-        }
+        const data = await getBuyerReviewsData(buyer.id);
+        setReviews(data.reviews || []);
+        setPendingOrders(data.pendingOrders || []);
       } catch (error) {
         console.error('Failed to load data:', error);
       } finally {
@@ -162,33 +69,22 @@ export default function BuyerReviewsPage() {
 
     setIsSubmitting(true);
     try {
-      const supabase = getClient();
-
       // Find the order that contains this product
-      const orderWithProduct = pendingOrders.find(o =>
-        o.items.some(i => i.product_id === selectedProduct)
+      const orderWithProduct = pendingOrders.find((o: any) =>
+        o.items?.some((i: any) => i.product_id === selectedProduct || i.productId === selectedProduct)
       );
 
-      const { data, error } = await supabase
-        .from('product_reviews')
-        .insert({
-          product_id: selectedProduct,
-          buyer_id: buyer.id,
-          order_id: orderWithProduct?.id,
-          rating: reviewForm.rating,
-          title: reviewForm.title || null,
-          content: reviewForm.content,
-          instagram_post_url: reviewForm.instagram_post_url || null,
-          is_verified_purchase: true,
-          is_approved: true, // Auto-approve for now
-        })
-        .select()
-        .single();
+      const result = await submitReview({
+        buyerId: buyer.id,
+        productId: selectedProduct,
+        orderId: orderWithProduct?.id,
+        rating: reviewForm.rating,
+        title: reviewForm.title || undefined,
+        content: reviewForm.content,
+        instagramPostUrl: reviewForm.instagram_post_url || undefined,
+      });
 
-      if (error) throw error;
-
-      // Calculate points
-      const pointsEarned = reviewForm.instagram_post_url ? 1000 : 500;
+      const pointsEarned = result.pointsEarned || (reviewForm.instagram_post_url ? 1000 : 500);
 
       toast.success(`Review submitted! You earned ${pointsEarned} points!`);
 
@@ -196,13 +92,14 @@ export default function BuyerReviewsPage() {
       setSelectedProduct(null);
       setReviewForm({ rating: 5, title: '', content: '', instagram_post_url: '' });
 
-      // Refresh data
-      setReviews([data, ...reviews]);
+      // Remove the reviewed product from pending
       setPendingOrders(orders =>
-        orders.map(o => ({
+        orders.map((o: any) => ({
           ...o,
-          items: o.items.filter(i => i.product_id !== selectedProduct),
-        })).filter(o => o.items.length > 0)
+          items: (o.items || []).filter((i: any) =>
+            (i.product_id || i.productId) !== selectedProduct
+          ),
+        })).filter((o: any) => (o.items || []).length > 0)
       );
     } catch (error) {
       console.error('Submit error:', error);
@@ -262,7 +159,7 @@ export default function BuyerReviewsPage() {
               : 'border-transparent text-muted-foreground hover:text-foreground'
           }`}
         >
-          Write Review ({pendingOrders.reduce((acc, o) => acc + o.items.length, 0)})
+          Write Review ({pendingOrders.reduce((acc: number, o: any) => acc + (o.items?.length || 0), 0)})
         </button>
         <button
           onClick={() => setActiveTab('history')}
@@ -293,31 +190,23 @@ export default function BuyerReviewsPage() {
               {/* Product Selection */}
               {!selectedProduct ? (
                 <div className="grid gap-4 md:grid-cols-2">
-                  {pendingOrders.flatMap(order =>
-                    order.items.map(item => (
+                  {pendingOrders.flatMap((order: any) =>
+                    (order.items || []).map((item: any) => (
                       <Card
-                        key={item.product_id}
+                        key={item.product_id || item.productId}
                         className="cursor-pointer hover:border-primary/50 transition-colors"
-                        onClick={() => setSelectedProduct(item.product_id)}
+                        onClick={() => setSelectedProduct(item.product_id || item.productId)}
                       >
                         <CardContent className="flex items-center gap-4 pt-6">
                           <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
-                            {item.product.images?.[0] ? (
-                              <img
-                                src={item.product.image_url || (item.product.images && item.product.images[0]) || ''}
-                                alt={item.product.name_en || item.product.name || ''}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <ImageIcon className="h-6 w-6 text-muted-foreground" />
-                            )}
+                            <ImageIcon className="h-6 w-6 text-muted-foreground" />
                           </div>
                           <div className="flex-1">
                             <p className="font-medium">
-                              {locale === 'ko' ? (item.product.name_ko || item.product.name || item.product.name_en) : (item.product.name_en || item.product.name || item.product.name_ko)}
+                              {item.product?.name || item.product?.nameKo || item.product?.nameEn || 'Product'}
                             </p>
                             <p className="text-sm text-muted-foreground">
-                              Order: {order.order_number}
+                              Order: {order.order_number || order.orderNumber}
                             </p>
                           </div>
                           <Badge variant="secondary" className="bg-primary/10 text-primary">
@@ -438,23 +327,17 @@ export default function BuyerReviewsPage() {
               </CardContent>
             </Card>
           ) : (
-            reviews.map((review) => (
+            reviews.map((review: any) => (
               <Card key={review.id}>
                 <CardContent className="pt-6">
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-4">
                       <div className="w-16 h-16 rounded-lg bg-muted overflow-hidden">
-                        {review.product?.images?.[0] && (
-                          <img
-                            src={review.product.image_url || (review.product.images && review.product.images[0]) || ''}
-                            alt=""
-                            className="w-full h-full object-cover"
-                          />
-                        )}
+                        {/* placeholder for product image */}
                       </div>
                       <div>
                         <p className="font-medium">
-                          {locale === 'ko' ? (review.product?.name_ko || review.product?.name || review.product?.name_en) : (review.product?.name_en || review.product?.name || review.product?.name_ko)}
+                          {review.product?.name || review.product?.nameKo || review.product?.nameEn || 'Product'}
                         </p>
                         <div className="flex items-center gap-1 mt-1">
                           {[1, 2, 3, 4, 5].map((star) => (
@@ -470,10 +353,10 @@ export default function BuyerReviewsPage() {
                         </div>
                         <p className="text-sm mt-2">{review.content}</p>
                         <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                          <span>{new Date(review.created_at).toLocaleDateString()}</span>
-                          {review.instagram_post_url && (
+                          <span>{new Date(review.createdAt || review.created_at).toLocaleDateString()}</span>
+                          {(review.instagramPostUrl || review.instagram_post_url) && (
                             <a
-                              href={review.instagram_post_url}
+                              href={review.instagramPostUrl || review.instagram_post_url}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="flex items-center gap-1 text-pink-500"
@@ -484,13 +367,13 @@ export default function BuyerReviewsPage() {
                           )}
                           <span className="flex items-center gap-1">
                             <ThumbsUp className="h-3 w-3" />
-                            {review.helpful_count} helpful
+                            {review.helpfulCount || review.helpful_count || 0} helpful
                           </span>
                         </div>
                       </div>
                     </div>
                     <Badge variant="secondary" className="bg-primary/10 text-primary">
-                      +{review.points_awarded}P
+                      +{review.pointsAwarded || review.points_awarded || 0}P
                     </Badge>
                   </div>
                 </CardContent>

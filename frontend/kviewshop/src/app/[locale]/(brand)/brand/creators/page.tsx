@@ -2,13 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getClient } from '@/lib/supabase/client';
-import { useAuthStore } from '@/lib/store/auth';
-import type {
-  Campaign,
-  CampaignParticipation,
-  Creator,
-} from '@/types/database';
+import { getBrandSession, getBrandCreatorsData } from '@/lib/actions/brand';
 import { CAMPAIGN_STATUS_LABELS } from '@/types/database';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -31,11 +25,19 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface CreatorParticipation {
-  creator: Creator;
+  creator: {
+    id: string;
+    shopId: string | null;
+    displayName: string | null;
+    profileImageUrl: string | null;
+    instagramHandle: string | null;
+    youtubeHandle: string | null;
+    tiktokHandle: string | null;
+  };
   campaigns: {
-    campaign: Campaign;
+    campaign: { id: string; title: string; type: string; status: string } | null;
     status: string;
-    applied_at: string;
+    appliedAt: string;
   }[];
   totalOrders: number;
   totalSales: number;
@@ -57,107 +59,32 @@ function TableSkeleton() {
 }
 
 export default function BrandCreatorsPage() {
-  const { brand, isLoading: authLoading } = useAuthStore();
+  const [brand, setBrand] = useState<{ id: string } | null>(null);
   const [creatorData, setCreatorData] = useState<CreatorParticipation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
-    if (!brand?.id) {
-      if (!authLoading) setIsLoading(false);
-      return;
+    async function init() {
+      const brandData = await getBrandSession();
+      if (brandData) setBrand(brandData);
+      else setIsLoading(false);
     }
+    init();
+  }, []);
+
+  useEffect(() => {
+    if (!brand?.id) return;
 
     async function fetchCreatorData() {
-      const supabase = getClient();
-      const brandId = brand!.id;
-
       try {
-        // 1. Get brand campaigns
-        const { data: campaigns } = await supabase
-          .from('campaigns')
-          .select('id, title, type, status')
-          .eq('brand_id', brandId);
-
-        const campaignIds = (campaigns ?? []).map((c) => c.id);
-        const campaignMap = new Map(
-          (campaigns ?? []).map((c) => [c.id, c as Campaign])
-        );
-
-        if (campaignIds.length === 0) {
-          setIsLoading(false);
-          return;
-        }
-
-        // 2. Get participations
-        const { data: participations } = await supabase
-          .from('campaign_participations')
-          .select('*, creator:creators(*)')
-          .in('campaign_id', campaignIds);
-
-        // Count pending
-        const pending = (participations ?? []).filter(
-          (p) => p.status === 'PENDING'
-        );
-        setPendingCount(pending.length);
-
-        // 3. Get orders per creator
-        const { data: orders } = await supabase
-          .from('orders')
-          .select('creator_id, total_amount, status')
-          .eq('brand_id', brandId)
-          .neq('status', 'CANCELLED');
-
-        const ordersByCreator = new Map<
-          string,
-          { count: number; total: number }
-        >();
-        for (const order of orders ?? []) {
-          if (!order.creator_id) continue;
-          const existing = ordersByCreator.get(order.creator_id) ?? {
-            count: 0,
-            total: 0,
-          };
-          existing.count += 1;
-          existing.total += order.total_amount || 0;
-          ordersByCreator.set(order.creator_id, existing);
-        }
-
-        // 4. Group by creator
-        const creatorMap = new Map<string, CreatorParticipation>();
-        for (const p of participations ?? []) {
-          if (!p.creator) continue;
-          const creator = p.creator as Creator;
-          const existing = creatorMap.get(creator.id);
-          const campaignData = campaignMap.get(p.campaign_id);
-
-          const campaignEntry = {
-            campaign: campaignData as Campaign,
-            status: p.status,
-            applied_at: p.applied_at,
-          };
-
-          if (existing) {
-            existing.campaigns.push(campaignEntry);
-          } else {
-            const orderData = ordersByCreator.get(creator.id) ?? {
-              count: 0,
-              total: 0,
-            };
-            creatorMap.set(creator.id, {
-              creator,
-              campaigns: [campaignEntry],
-              totalOrders: orderData.count,
-              totalSales: orderData.total,
-            });
-          }
-        }
-
+        const result = await getBrandCreatorsData(brand!.id);
         setCreatorData(
-          Array.from(creatorMap.values()).sort(
+          (result.creators as CreatorParticipation[]).sort(
             (a, b) => b.totalSales - a.totalSales
           )
         );
+        setPendingCount(result.pendingCount);
       } catch (error) {
         console.error('Failed to fetch creator data:', error);
       } finally {
@@ -166,7 +93,7 @@ export default function BrandCreatorsPage() {
     }
 
     fetchCreatorData();
-  }, [brand?.id, authLoading]);
+  }, [brand?.id]);
 
   return (
     <div className="space-y-6">
@@ -255,39 +182,39 @@ export default function BrandCreatorsPage() {
                       <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8">
                           <AvatarFallback className="text-xs">
-                            {data.creator.display_name.slice(0, 2)}
+                            {(data.creator.displayName ?? '').slice(0, 2)}
                           </AvatarFallback>
                         </Avatar>
                         <div>
                           <p className="font-medium">
-                            {data.creator.display_name}
+                            {data.creator.displayName}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            @{data.creator.shop_id}
+                            @{data.creator.shopId}
                           </p>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
-                        {data.creator.instagram_handle && (
+                        {data.creator.instagramHandle && (
                           <Badge variant="outline" className="text-xs">
-                            IG @{data.creator.instagram_handle}
+                            IG @{data.creator.instagramHandle}
                           </Badge>
                         )}
-                        {data.creator.youtube_handle && (
+                        {data.creator.youtubeHandle && (
                           <Badge variant="outline" className="text-xs">
-                            YT @{data.creator.youtube_handle}
+                            YT @{data.creator.youtubeHandle}
                           </Badge>
                         )}
-                        {data.creator.tiktok_handle && (
+                        {data.creator.tiktokHandle && (
                           <Badge variant="outline" className="text-xs">
-                            TT @{data.creator.tiktok_handle}
+                            TT @{data.creator.tiktokHandle}
                           </Badge>
                         )}
-                        {!data.creator.instagram_handle &&
-                          !data.creator.youtube_handle &&
-                          !data.creator.tiktok_handle && (
+                        {!data.creator.instagramHandle &&
+                          !data.creator.youtubeHandle &&
+                          !data.creator.tiktokHandle && (
                             <span className="text-xs text-muted-foreground">
                               -
                             </span>

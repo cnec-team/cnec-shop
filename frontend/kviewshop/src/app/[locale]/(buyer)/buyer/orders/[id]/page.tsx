@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { getClient } from '@/lib/supabase/client';
 import { useUser } from '@/lib/hooks/use-user';
+import { getBuyerOrderDetail } from '@/lib/actions/buyer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -23,55 +23,9 @@ import {
   Mail,
   CreditCard,
   Copy,
-  ExternalLink,
   Loader2,
   Star,
 } from 'lucide-react';
-
-interface OrderItem {
-  id: string;
-  product_id: string;
-  product_name: string | null;
-  product_image: string | null;
-  quantity: number;
-  unit_price: number;
-  total_price: number;
-  product?: {
-    name: string;
-    image_url: string | null;
-  } | null;
-}
-
-interface Order {
-  id: string;
-  order_number: string;
-  status: string;
-  total_amount: number;
-  shipping_fee: number;
-  payment_method: string | null;
-  payment_key: string | null;
-  tracking_number: string | null;
-  buyer_name: string;
-  buyer_phone: string;
-  buyer_email: string;
-  shipping_address: string;
-  shipping_detail: string | null;
-  shipping_zipcode: string | null;
-  created_at: string;
-  paid_at: string | null;
-  shipped_at: string | null;
-  delivered_at: string | null;
-  creator: {
-    id: string;
-    shop_id: string | null;
-    username: string | null;
-    display_name: string;
-    theme_color: string | null;
-    background_color: string | null;
-    profile_image_url: string | null;
-  } | null;
-  order_items: OrderItem[];
-}
 
 const statusConfig: Record<string, { icon: typeof Clock; color: string; bgColor: string; label: string }> = {
   PENDING: { icon: Clock, color: 'text-yellow-600', bgColor: 'bg-yellow-500/10', label: 'Pending Payment' },
@@ -94,7 +48,7 @@ export default function OrderDetailPage() {
   const { buyer } = useUser();
 
   const [isLoading, setIsLoading] = useState(true);
-  const [order, setOrder] = useState<Order | null>(null);
+  const [order, setOrder] = useState<any>(null);
 
   useEffect(() => {
     const loadOrder = async () => {
@@ -104,63 +58,14 @@ export default function OrderDetailPage() {
       }
 
       try {
-        const supabase = getClient();
+        const orderData = await getBuyerOrderDetail(orderId, buyer.id);
 
-        const { data: orderData, error } = await supabase
-          .from('orders')
-          .select(`
-            id,
-            order_number,
-            status,
-            total_amount,
-            shipping_fee,
-            payment_method,
-            payment_key,
-            tracking_number,
-            buyer_name,
-            buyer_phone,
-            buyer_email,
-            shipping_address,
-            shipping_detail,
-            shipping_zipcode,
-            created_at,
-            paid_at,
-            shipped_at,
-            delivered_at,
-            creator:creators (
-              id,
-              shop_id,
-              username,
-              display_name,
-              theme_color,
-              background_color,
-              profile_image_url
-            ),
-            order_items (
-              id,
-              product_id,
-              product_name,
-              product_image,
-              quantity,
-              unit_price,
-              total_price,
-              product:products (
-                name,
-                image_url
-              )
-            )
-          `)
-          .eq('id', orderId)
-          .eq('buyer_id', buyer.id)
-          .single();
-
-        if (error) {
-          console.error('Error loading order:', error);
+        if (!orderData) {
           router.push('/' + locale + '/buyer/orders');
           return;
         }
 
-        setOrder(orderData as unknown as Order);
+        setOrder(orderData);
       } catch (error) {
         console.error('Failed to load order:', error);
       } finally {
@@ -171,7 +76,7 @@ export default function OrderDetailPage() {
     loadOrder();
   }, [buyer, orderId, router, locale]);
 
-  const formatDate = (dateString: string | null) => {
+  const formatDate = (dateString: string | Date | null) => {
     if (!dateString) return '-';
     return new Date(dateString).toLocaleDateString(locale, {
       year: 'numeric',
@@ -183,27 +88,27 @@ export default function OrderDetailPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return '₩' + amount.toLocaleString();
+    return '₩' + Number(amount).toLocaleString();
   };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
   };
 
-  const getItemName = (item: OrderItem): string => {
-    return item.product_name || item.product?.name || 'Unknown Product';
+  const getItemName = (item: any): string => {
+    return item.productName || item.product?.name || 'Unknown Product';
   };
 
-  const getItemImage = (item: OrderItem): string | null => {
-    return item.product_image || item.product?.image_url || null;
+  const getItemImage = (item: any): string | null => {
+    return item.productImage || item.product?.imageUrl || null;
   };
 
   const getCreatorSlug = () => {
-    return order?.creator?.shop_id || order?.creator?.username || '';
+    return order?.creator?.shopId || order?.creator?.username || '';
   };
 
   const getCreatorColor = () => {
-    return order?.creator?.theme_color || order?.creator?.background_color || '#000';
+    return order?.creator?.themeColor || order?.creator?.backgroundColor || '#000';
   };
 
   const getCurrentStep = () => {
@@ -235,7 +140,7 @@ export default function OrderDetailPage() {
   const status = statusConfig[order.status] || statusConfig.PENDING;
   const StatusIcon = status.icon;
   const currentStep = getCurrentStep();
-  const subtotal = order.total_amount - (order.shipping_fee || 0);
+  const subtotal = Number(order.totalAmount) - Number(order.shippingFee || 0);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -252,17 +157,17 @@ export default function OrderDetailPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-headline font-bold flex items-center gap-2">
-            Order {order.order_number}
+            Order {order.orderNumber}
             <Button
               variant="ghost"
               size="icon"
               className="h-6 w-6"
-              onClick={() => copyToClipboard(order.order_number)}
+              onClick={() => copyToClipboard(order.orderNumber)}
             >
               <Copy className="h-3 w-3" />
             </Button>
           </h1>
-          <p className="text-muted-foreground">Placed on {formatDate(order.created_at)}</p>
+          <p className="text-muted-foreground">Placed on {formatDate(order.createdAt)}</p>
         </div>
         <Badge className={'text-sm px-3 py-1 ' + status.bgColor + ' ' + status.color + ' border-0'}>
           <StatusIcon className="h-4 w-4 mr-1" />
@@ -339,13 +244,13 @@ export default function OrderDetailPage() {
                       className="w-3 h-3 rounded-full"
                       style={{ backgroundColor: getCreatorColor() }}
                     />
-                    {order.creator?.display_name || getCreatorSlug()}
+                    {order.creator?.displayName || getCreatorSlug()}
                   </Link>
                 )}
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {order.order_items.map((item) => (
+              {order.orderItems?.map((item: any) => (
                 <div key={item.id} className="flex gap-4">
                   <div className="relative w-20 h-20 rounded-md overflow-hidden bg-muted flex-shrink-0">
                     {getItemImage(item) ? (
@@ -364,11 +269,11 @@ export default function OrderDetailPage() {
                   <div className="flex-1 min-w-0">
                     <h3 className="font-medium">{getItemName(item)}</h3>
                     <p className="text-sm text-muted-foreground">
-                      Qty: {item.quantity} × {formatCurrency(item.unit_price)}
+                      Qty: {item.quantity} x {formatCurrency(Number(item.unitPrice))}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold">{formatCurrency(item.total_price)}</p>
+                    <p className="font-semibold">{formatCurrency(Number(item.totalPrice))}</p>
                   </div>
                 </div>
               ))}
@@ -383,19 +288,19 @@ export default function OrderDetailPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Shipping</span>
-                  <span>{(order.shipping_fee || 0) > 0 ? formatCurrency(order.shipping_fee) : 'Free'}</span>
+                  <span>{Number(order.shippingFee || 0) > 0 ? formatCurrency(Number(order.shippingFee)) : 'Free'}</span>
                 </div>
                 <Separator />
                 <div className="flex justify-between font-semibold text-lg">
                   <span>Total</span>
-                  <span>{formatCurrency(order.total_amount)}</span>
+                  <span>{formatCurrency(Number(order.totalAmount))}</span>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Tracking Info */}
-          {order.tracking_number && (
+          {order.trackingNumber && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -408,12 +313,12 @@ export default function OrderDetailPage() {
                   <div>
                     <p className="text-sm text-muted-foreground">Tracking Number</p>
                     <p className="font-mono font-semibold flex items-center gap-2">
-                      {order.tracking_number}
+                      {order.trackingNumber}
                       <Button
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6"
-                        onClick={() => copyToClipboard(order.tracking_number || '')}
+                        onClick={() => copyToClipboard(order.trackingNumber || '')}
                       >
                         <Copy className="h-3 w-3" />
                       </Button>
@@ -436,18 +341,16 @@ export default function OrderDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="text-sm space-y-1">
-              <p className="font-medium">{order.buyer_name}</p>
-              <p>{order.shipping_address}</p>
-              {order.shipping_detail && <p>{order.shipping_detail}</p>}
-              {order.shipping_zipcode && <p>{order.shipping_zipcode}</p>}
+              <p className="font-medium">{order.buyerName}</p>
+              <p>{order.shippingAddress}</p>
               <Separator className="my-3" />
               <p className="flex items-center gap-2">
                 <Phone className="h-3 w-3 text-muted-foreground" />
-                {order.buyer_phone}
+                {order.buyerPhone}
               </p>
               <p className="flex items-center gap-2">
                 <Mail className="h-3 w-3 text-muted-foreground" />
-                {order.buyer_email}
+                {order.buyerEmail}
               </p>
             </CardContent>
           </Card>
@@ -462,19 +365,15 @@ export default function OrderDetailPage() {
             </CardHeader>
             <CardContent className="text-sm space-y-2">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Method</span>
-                <span className="capitalize">{order.payment_method || 'Card'}</span>
-              </div>
-              <div className="flex justify-between">
                 <span className="text-muted-foreground">Status</span>
                 <Badge variant="outline" className="text-xs">
-                  {order.paid_at ? 'Paid' : 'Pending'}
+                  {order.paidAt ? 'Paid' : 'Pending'}
                 </Badge>
               </div>
-              {order.paid_at && (
+              {order.paidAt && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Paid At</span>
-                  <span>{formatDate(order.paid_at)}</span>
+                  <span>{formatDate(order.paidAt)}</span>
                 </div>
               )}
             </CardContent>

@@ -7,9 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Copy, Check, UserPlus, Users, ShoppingCart, Gift } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAuthStore } from '@/lib/store/auth';
-import { getClient } from '@/lib/supabase/client';
 import { formatCurrency } from '@/lib/i18n/config';
+import { getCreatorSession, getCreatorReferralData } from '@/lib/actions/creator';
 
 interface ReferralStats {
   totalInvited: number;
@@ -20,17 +19,16 @@ interface ReferralStats {
 
 interface ReferralEntry {
   id: string;
-  referred_id: string | null;
+  referredId: string | null;
   status: string;
-  referrer_reward_total: number;
-  created_at: string;
+  referrerRewardTotal: number;
+  createdAt: string;
 }
 
 export default function CreatorReferralPage() {
   const params = useParams();
   const locale = params.locale as string;
-  const { creator, isLoading: authLoading } = useAuthStore();
-
+  const [creator, setCreator] = useState<{ id: string } | null>(null);
   const [referralCode, setReferralCode] = useState('');
   const [shareLink, setShareLink] = useState('');
   const [stats, setStats] = useState<ReferralStats>({ totalInvited: 0, signupComplete: 0, firstSaleComplete: 0, totalReward: 0 });
@@ -39,21 +37,19 @@ export default function CreatorReferralPage() {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!creator) { setLoading(false); return; }
+    let cancelled = false;
 
     async function fetchReferral() {
-      try {
-        const supabase = getClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-        const { data: { session } } = await supabase.auth.getSession();
+      const creatorData = await getCreatorSession();
+      if (!creatorData || cancelled) {
+        if (!cancelled) setLoading(false);
+        return;
+      }
+      setCreator(creatorData as any);
 
-        const res = await fetch('/api/creator/referral', {
-          headers: { 'Authorization': `Bearer ${session?.access_token}` },
-        });
-        const data = await res.json();
-        if (res.ok) {
+      try {
+        const data = await getCreatorReferralData();
+        if (!cancelled) {
           setReferralCode(data.referralCode);
           setShareLink(data.shareLink);
           setStats(data.stats);
@@ -62,12 +58,13 @@ export default function CreatorReferralPage() {
       } catch (error) {
         console.error('Failed to fetch referral:', error);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
 
     fetchReferral();
-  }, [authLoading, creator]);
+    return () => { cancelled = true; };
+  }, []);
 
   const copyLink = () => {
     navigator.clipboard.writeText(shareLink);
@@ -88,7 +85,7 @@ export default function CreatorReferralPage() {
     FIRST_SALE_COMPLETE: 'bg-green-100 text-green-800',
   };
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-8 w-48" />
@@ -125,15 +122,15 @@ export default function CreatorReferralPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center text-xs text-muted-foreground">
               <div className="p-3 bg-muted/50 rounded-lg">
                 <p className="font-semibold text-foreground">초대자 보상</p>
-                <p>₩5,000</p>
+                <p>&#8361;5,000</p>
               </div>
               <div className="p-3 bg-muted/50 rounded-lg">
                 <p className="font-semibold text-foreground">피초대자 보상</p>
-                <p>₩3,000</p>
+                <p>&#8361;3,000</p>
               </div>
               <div className="p-3 bg-muted/50 rounded-lg">
                 <p className="font-semibold text-foreground">친구 첫 판매 시</p>
-                <p>추가 ₩3,000</p>
+                <p>추가 &#8361;3,000</p>
               </div>
             </div>
           </div>
@@ -175,7 +172,7 @@ export default function CreatorReferralPage() {
                   <div>
                     <p className="text-sm">초대된 크리에이터</p>
                     <p className="text-xs text-muted-foreground">
-                      {new Date(r.created_at).toLocaleDateString('ko-KR')}
+                      {new Date(r.createdAt).toLocaleDateString('ko-KR')}
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
@@ -183,7 +180,7 @@ export default function CreatorReferralPage() {
                       {statusLabels[r.status] || r.status}
                     </span>
                     <span className="text-sm font-medium text-green-600">
-                      +{formatCurrency(r.referrer_reward_total, locale)}
+                      +{formatCurrency(r.referrerRewardTotal, locale)}
                     </span>
                   </div>
                 </div>

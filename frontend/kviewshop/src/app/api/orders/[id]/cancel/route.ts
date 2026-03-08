@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { getAuthUser } from '@/lib/auth-helpers';
+import { prisma } from '@/lib/db';
+import { incrementStock } from '@/lib/stock';
 
 // Inline types
 type OrderStatus = 'PENDING' | 'PAID' | 'PREPARING' | 'SHIPPING' | 'DELIVERED' | 'CONFIRMED' | 'CANCELLED' | 'REFUNDED';
@@ -9,27 +10,8 @@ interface CancelRequestBody {
   reason: string;
 }
 
-interface OrderItemRow {
-  id: string;
-  product_id: string;
-  quantity: number;
-}
-
 // Statuses that allow cancellation
 const CANCELLABLE_STATUSES: OrderStatus[] = ['PENDING', 'PAID', 'PREPARING'];
-
-function getSupabaseClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Missing Supabase configuration');
-  }
-
-  return createClient(supabaseUrl, supabaseKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-}
 
 export async function POST(
   request: NextRequest,
@@ -56,42 +38,37 @@ export async function POST(
       );
     }
 
-    const supabase = getSupabaseClient();
-
     // Fetch the order with ownership info
-    const { data: order, error: orderError } = await supabase
-      .from('orders')
-      .select('id, status, order_number, buyer_id, creator_id')
-      .eq('id', orderId)
-      .single();
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: { id: true, status: true, orderNumber: true, buyerId: true, creatorId: true },
+    });
 
-    if (orderError || !order) {
+    if (!order) {
       return NextResponse.json(
         { error: 'Order not found' },
         { status: 404 }
       );
     }
 
-    // Verify the user owns this order (buyer_id or creator_id match)
-    const { data: userData } = await supabase
-      .from('users')
-      .select('id, role')
-      .eq('id', authUser.id)
-      .single();
+    // Verify the user owns this order (buyerId or creatorId match)
+    const userData = await prisma.user.findUnique({
+      where: { id: authUser.id },
+      select: { id: true, role: true },
+    });
 
     let authorized = false;
     if (userData?.role === 'super_admin') {
       authorized = true;
-    } else if (order.buyer_id === authUser.id) {
+    } else if (order.buyerId === authUser.id) {
       authorized = true;
     } else {
-      // Check if user is the creator or brand admin for this order
-      const { data: creatorData } = await supabase
-        .from('creators')
-        .select('id')
-        .eq('user_id', authUser.id)
-        .maybeSingle();
-      if (creatorData && order.creator_id === creatorData.id) {
+      // Check if user is the creator for this order
+      const creatorData = await prisma.creator.findUnique({
+        where: { userId: authUser.id },
+        select: { id: true },
+      });
+      if (creatorData && order.creatorId === creatorData.id) {
         authorized = true;
       }
     }
@@ -113,64 +90,50 @@ export async function POST(
       );
     }
 
-    const now = new Date().toISOString();
+    const now = new Date();
 
     // Update order status to CANCELLED
-    const { error: updateError } = await supabase
-      .from('orders')
-      .update({
-        status: 'CANCELLED' as OrderStatus,
-        cancelled_at: now,
-        cancel_reason: reason.trim(),
-        updated_at: now,
-      })
-      .eq('id', orderId);
-
-    if (updateError) {
-      console.error('Failed to cancel order:', updateError);
-      return NextResponse.json(
-        { error: 'Failed to cancel order', detail: updateError.message },
-        { status: 500 }
-      );
-    }
+    await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        status: 'CANCELLED',
+        cancelledAt: now,
+        cancelReason: reason.trim(),
+      },
+    });
 
     // Update related conversion records to CANCELLED
-    const { error: conversionError } = await supabase
-      .from('conversions')
-      .update({
-        status: 'CANCELLED',
-      })
-      .eq('order_id', orderId);
-
-    if (conversionError) {
+    try {
+      await prisma.conversion.updateMany({
+        where: { orderId },
+        data: { status: 'CANCELLED' },
+      });
+    } catch (conversionError) {
       console.error('Failed to cancel conversions:', conversionError);
       // Non-fatal: order is already cancelled
     }
 
     // Restore product stock by incrementing quantities
-    const { data: orderItems, error: itemsError } = await supabase
-      .from('order_items')
-      .select('id, product_id, quantity')
-      .eq('order_id', orderId);
+    try {
+      const orderItems = await prisma.orderItem.findMany({
+        where: { orderId },
+        select: { id: true, productId: true, quantity: true },
+      });
 
-    if (itemsError) {
-      console.error('Failed to fetch order items for stock restore:', itemsError);
-    } else if (orderItems && orderItems.length > 0) {
-      for (const item of orderItems as OrderItemRow[]) {
-        const { error: stockError } = await supabase.rpc('increment_stock', {
-          p_product_id: item.product_id,
-          p_quantity: item.quantity,
-        });
-
-        if (stockError) {
-          console.error('Failed to restore stock for product:', item.product_id, stockError);
+      for (const item of orderItems) {
+        try {
+          await incrementStock(item.productId, item.quantity);
+        } catch (stockError) {
+          console.error('Failed to restore stock for product:', item.productId, stockError);
         }
       }
+    } catch (itemsError) {
+      console.error('Failed to fetch order items for stock restore:', itemsError);
     }
 
     return NextResponse.json({
       success: true,
-      orderNumber: order.order_number,
+      orderNumber: order.orderNumber,
     });
   } catch (error: unknown) {
     console.error('Order cancel error:', error);

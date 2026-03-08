@@ -14,8 +14,9 @@ import {
   Check,
   Loader2,
 } from 'lucide-react';
-import { useAuthStore } from '@/lib/store/auth';
-import type { NotificationType } from '@/types/database';
+import { getCreatorSession } from '@/lib/actions/creator';
+
+type NotificationType = 'ORDER' | 'SHIPPING' | 'SETTLEMENT' | 'CAMPAIGN' | 'SYSTEM';
 
 interface NotificationItem {
   id: string;
@@ -130,13 +131,13 @@ function formatDate(dateStr: string): string {
 }
 
 export default function CreatorNotificationsPage() {
-  const { user } = useAuthStore();
+  const [creator, setCreator] = useState<{ id: string } | null>(null);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
 
   const fetchNotifications = useCallback(async () => {
-    if (!user?.id) {
+    if (!creator?.id) {
       // Use mock data for MVP
       setNotifications(mockNotifications);
       setLoading(false);
@@ -144,7 +145,7 @@ export default function CreatorNotificationsPage() {
     }
 
     try {
-      const res = await fetch(`/api/notifications?userId=${user.id}`);
+      const res = await fetch(`/api/notifications?userId=${creator.id}`);
       if (!res.ok) throw new Error('Failed to fetch');
       const data = await res.json();
       setNotifications(data.notifications || []);
@@ -154,16 +155,32 @@ export default function CreatorNotificationsPage() {
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [creator?.id]);
 
   useEffect(() => {
-    fetchNotifications();
-  }, [fetchNotifications]);
+    async function init() {
+      const creatorData = await getCreatorSession();
+      if (creatorData) {
+        setCreator(creatorData as any);
+      } else {
+        // Use mock data when no session
+        setNotifications(mockNotifications);
+        setLoading(false);
+      }
+    }
+    init();
+  }, []);
+
+  useEffect(() => {
+    if (creator) {
+      fetchNotifications();
+    }
+  }, [creator, fetchNotifications]);
 
   const handleMarkAsRead = async (notification: NotificationItem) => {
     if (notification.is_read) return;
 
-    if (user?.id) {
+    if (creator?.id) {
       try {
         await fetch('/api/notifications', {
           method: 'PATCH',
@@ -181,12 +198,12 @@ export default function CreatorNotificationsPage() {
   };
 
   const handleMarkAllRead = async () => {
-    if (user?.id) {
+    if (creator?.id) {
       try {
         await fetch('/api/notifications', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ markAllRead: true, userId: user.id }),
+          body: JSON.stringify({ markAllRead: true, userId: creator.id }),
         });
       } catch {
         console.error('Failed to mark all as read');

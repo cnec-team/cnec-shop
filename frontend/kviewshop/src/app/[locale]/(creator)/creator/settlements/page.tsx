@@ -20,40 +20,49 @@ import {
   ArrowRightLeft,
   Receipt,
 } from 'lucide-react';
-import { getClient } from '@/lib/supabase/client';
-import { useAuthStore } from '@/lib/store/auth';
 import { formatCurrency } from '@/lib/i18n/config';
-import type { Settlement, SettlementStatus } from '@/types/database';
+import { getCreatorSession, getCreatorSettlements } from '@/lib/actions/creator';
+
+type SettlementStatus = 'PENDING' | 'COMPLETED' | 'CARRIED_OVER';
+
+interface Settlement {
+  id: string;
+  creatorId: string;
+  periodStart: string;
+  periodEnd: string;
+  totalSales: number;
+  grossCommission: number;
+  directCommission?: number;
+  indirectCommission?: number;
+  totalConversions?: number;
+  netAmount: number;
+  withholdingTax: number;
+  status: SettlementStatus;
+  paidAt: string | null;
+  createdAt: string;
+}
 
 export default function CreatorSettlementsPage() {
-  const { creator, isLoading: authLoading } = useAuthStore();
-
+  const [creator, setCreator] = useState<{ id: string } | null>(null);
   const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
 
   useEffect(() => {
-    if (authLoading || !creator) {
-      if (!authLoading) setLoading(false);
-      return;
-    }
-
     let cancelled = false;
 
     async function fetchData() {
+      const creatorData = await getCreatorSession();
+      if (!creatorData || cancelled) {
+        if (!cancelled) setLoading(false);
+        return;
+      }
+      setCreator(creatorData as any);
+
       try {
-        const supabase = getClient();
-
-        const { data, error } = await supabase
-          .from('settlements')
-          .select('*')
-          .eq('creator_id', creator!.id)
-          .order('period_start', { ascending: false });
-
-        if (cancelled) return;
-
-        if (!error && data) {
-          setSettlements(data);
+        const data = await getCreatorSettlements(creatorData.id);
+        if (!cancelled) {
+          setSettlements(data as unknown as Settlement[]);
         }
       } catch (error) {
         console.error('Failed to fetch settlements:', error);
@@ -64,7 +73,7 @@ export default function CreatorSettlementsPage() {
 
     fetchData();
     return () => { cancelled = true; };
-  }, [authLoading, creator]);
+  }, []);
 
   const filteredSettlements = useMemo(() => {
     if (activeTab === 'all') return settlements;
@@ -76,13 +85,13 @@ export default function CreatorSettlementsPage() {
   // Summary stats
   const totalPending = settlements
     .filter((s) => s.status === 'PENDING')
-    .reduce((sum, s) => sum + s.net_amount, 0);
+    .reduce((sum, s) => sum + s.netAmount, 0);
   const totalCompleted = settlements
     .filter((s) => s.status === 'COMPLETED')
-    .reduce((sum, s) => sum + s.net_amount, 0);
+    .reduce((sum, s) => sum + s.netAmount, 0);
   const totalCarriedOver = settlements
     .filter((s) => s.status === 'CARRIED_OVER')
-    .reduce((sum, s) => sum + s.net_amount, 0);
+    .reduce((sum, s) => sum + s.netAmount, 0);
 
   const getStatusBadge = (status: SettlementStatus) => {
     switch (status) {
@@ -107,7 +116,7 @@ export default function CreatorSettlementsPage() {
     }
   };
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
       <div className="space-y-6">
         <div>
@@ -215,27 +224,27 @@ export default function CreatorSettlementsPage() {
                   return (
                     <TableRow key={settlement.id}>
                       <TableCell className="text-sm">
-                        {new Date(settlement.period_start).toLocaleDateString('ko-KR')}
+                        {new Date(settlement.periodStart).toLocaleDateString('ko-KR')}
                         {' ~ '}
-                        {new Date(settlement.period_end).toLocaleDateString('ko-KR')}
+                        {new Date(settlement.periodEnd).toLocaleDateString('ko-KR')}
                       </TableCell>
                       <TableCell className="text-right text-sm">
-                        {settlement.total_conversions.toLocaleString()}건
+                        {(settlement.totalConversions ?? 0).toLocaleString()}건
                       </TableCell>
                       <TableCell className="text-right text-sm">
-                        {formatCurrency(settlement.total_sales, 'KRW')}
+                        {formatCurrency(settlement.totalSales, 'KRW')}
                       </TableCell>
                       <TableCell className="text-right text-sm">
-                        {formatCurrency(settlement.direct_commission, 'KRW')}
+                        {formatCurrency(settlement.directCommission ?? 0, 'KRW')}
                       </TableCell>
                       <TableCell className="text-right text-sm">
-                        {formatCurrency(settlement.indirect_commission, 'KRW')}
+                        {formatCurrency(settlement.indirectCommission ?? 0, 'KRW')}
                       </TableCell>
                       <TableCell className="text-right text-sm text-destructive">
-                        -{formatCurrency(settlement.withholding_tax, 'KRW')}
+                        -{formatCurrency(settlement.withholdingTax, 'KRW')}
                       </TableCell>
                       <TableCell className="text-right text-sm font-bold text-primary">
-                        {formatCurrency(settlement.net_amount, 'KRW')}
+                        {formatCurrency(settlement.netAmount, 'KRW')}
                       </TableCell>
                       <TableCell>
                         <Badge className={statusInfo.className}>

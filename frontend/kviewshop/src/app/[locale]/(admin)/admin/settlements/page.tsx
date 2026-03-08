@@ -22,21 +22,26 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { DollarSign, Clock, Receipt, Download, FileSpreadsheet, FileText, MoreHorizontal } from 'lucide-react';
 import { formatCurrency } from '@/lib/i18n/config';
-import { getClient } from '@/lib/supabase/client';
+import { getAdminSettlements } from '@/lib/actions/admin';
 import { exportToExcel, exportToPDF } from '@/lib/export/settlements';
 import { toast } from 'sonner';
 
 interface Settlement {
   id: string;
-  recipient_name: string;
-  recipient_type: 'creator' | 'brand';
-  amount: number;
-  currency: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
-  period_start: string;
-  period_end: string;
-  created_at: string;
-  paid_at?: string;
+  userId: string | null;
+  userRole: string | null;
+  totalSales: number;
+  grossCommission: number;
+  netAmount: number;
+  status: string;
+  periodStart: Date;
+  periodEnd: Date;
+  createdAt: Date;
+  paidAt: Date | null;
+  user?: {
+    name: string | null;
+    role: string | null;
+  } | null;
 }
 
 export default function AdminSettlementsPage() {
@@ -50,14 +55,8 @@ export default function AdminSettlementsPage() {
 
   async function fetchSettlements() {
     try {
-      const supabase = getClient();
-      const { data, error } = await supabase
-        .from('settlements')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setSettlements(data || []);
+      const data = await getAdminSettlements();
+      setSettlements(data as unknown as Settlement[]);
     } catch (err) {
       console.error('Error:', err);
     } finally {
@@ -65,27 +64,53 @@ export default function AdminSettlementsPage() {
     }
   }
 
-  const pendingSettlements = settlements.filter((s) => s.status === 'pending' || s.status === 'processing');
-  const completedSettlements = settlements.filter((s) => s.status === 'completed');
+  const pendingSettlements = settlements.filter((s) => s.status === 'PENDING' || s.status === 'processing');
+  const completedSettlements = settlements.filter((s) => s.status === 'COMPLETED' || s.status === 'completed');
 
-  const totalPending = pendingSettlements.reduce((sum, s) => sum + s.amount, 0);
-  const totalCompleted = completedSettlements.reduce((sum, s) => sum + s.amount, 0);
-  const totalAll = settlements.reduce((sum, s) => sum + s.amount, 0);
+  const totalPending = pendingSettlements.reduce((sum, s) => sum + Number(s.netAmount), 0);
+  const totalCompleted = completedSettlements.reduce((sum, s) => sum + Number(s.netAmount), 0);
+  const totalAll = settlements.reduce((sum, s) => sum + Number(s.netAmount), 0);
 
   const handleExportExcel = (data: Settlement[]) => {
     if (data.length === 0) {
       toast.error('내보낼 데이터가 없습니다');
       return;
     }
-    exportToExcel(data, 'settlements');
+    // Map to the format expected by the export util
+    const exportData = data.map(s => ({
+      id: s.id,
+      recipient_name: s.user?.name || '-',
+      recipient_type: s.userRole === 'creator' ? 'creator' as const : 'brand' as const,
+      amount: Number(s.netAmount),
+      currency: 'USD',
+      status: s.status.toLowerCase() as 'pending' | 'processing' | 'completed' | 'failed',
+      period_start: new Date(s.periodStart).toISOString(),
+      period_end: new Date(s.periodEnd).toISOString(),
+      created_at: new Date(s.createdAt).toISOString(),
+      paid_at: s.paidAt ? new Date(s.paidAt).toISOString() : undefined,
+    }));
+    exportToExcel(exportData, 'settlements');
     toast.success('Excel 파일이 다운로드되었습니다');
   };
 
   const handleExportPDF = (settlement: Settlement) => {
-    exportToPDF(settlement);
+    const exportData = {
+      id: settlement.id,
+      recipient_name: settlement.user?.name || '-',
+      recipient_type: settlement.userRole === 'creator' ? 'creator' as const : 'brand' as const,
+      amount: Number(settlement.netAmount),
+      currency: 'USD',
+      status: settlement.status.toLowerCase() as 'pending' | 'processing' | 'completed' | 'failed',
+      period_start: new Date(settlement.periodStart).toISOString(),
+      period_end: new Date(settlement.periodEnd).toISOString(),
+      created_at: new Date(settlement.createdAt).toISOString(),
+      paid_at: settlement.paidAt ? new Date(settlement.paidAt).toISOString() : undefined,
+    };
+    exportToPDF(exportData);
   };
 
   const getStatusBadge = (status: string) => {
+    const normalizedStatus = status.toLowerCase();
     const styles: Record<string, string> = {
       pending: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30',
       processing: 'bg-blue-500/10 text-blue-500 border-blue-500/30',
@@ -99,8 +124,8 @@ export default function AdminSettlementsPage() {
       failed: '실패',
     };
     return (
-      <Badge variant="outline" className={styles[status]}>
-        {labels[status]}
+      <Badge variant="outline" className={styles[normalizedStatus] || ''}>
+        {labels[normalizedStatus] || status}
       </Badge>
     );
   };
@@ -130,18 +155,18 @@ export default function AdminSettlementsPage() {
         <TableBody>
           {data.map((settlement) => (
             <TableRow key={settlement.id}>
-              <TableCell className="font-medium">{settlement.recipient_name}</TableCell>
+              <TableCell className="font-medium">{settlement.user?.name || '-'}</TableCell>
               <TableCell>
                 <Badge variant="outline">
-                  {settlement.recipient_type === 'creator' ? '크리에이터' : '브랜드'}
+                  {settlement.userRole === 'creator' ? '크리에이터' : '브랜드'}
                 </Badge>
               </TableCell>
               <TableCell className="font-bold">
-                {formatCurrency(settlement.amount, settlement.currency as 'USD' | 'JPY' | 'KRW')}
+                {formatCurrency(Number(settlement.netAmount), 'USD')}
               </TableCell>
               <TableCell className="text-sm text-muted-foreground">
-                {new Date(settlement.period_start).toLocaleDateString('ko-KR')} ~{' '}
-                {new Date(settlement.period_end).toLocaleDateString('ko-KR')}
+                {new Date(settlement.periodStart).toLocaleDateString('ko-KR')} ~{' '}
+                {new Date(settlement.periodEnd).toLocaleDateString('ko-KR')}
               </TableCell>
               <TableCell>{getStatusBadge(settlement.status)}</TableCell>
               <TableCell className="text-right">

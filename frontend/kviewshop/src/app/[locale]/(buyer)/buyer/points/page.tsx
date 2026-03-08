@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useUser } from '@/lib/hooks/use-user';
-import { getClient } from '@/lib/supabase/client';
+import { getBuyerPointsHistory } from '@/lib/actions/buyer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -16,36 +16,18 @@ import {
   Loader2,
 } from 'lucide-react';
 
-interface PointsHistoryItem {
-  id: string;
-  amount: number;
-  balance_after: number;
-  type: string;
-  description: string;
-  created_at: string;
-}
-
 export default function BuyerPointsPage() {
   const { buyer } = useUser();
   const [isLoading, setIsLoading] = useState(true);
-  const [history, setHistory] = useState<PointsHistoryItem[]>([]);
+  const [history, setHistory] = useState<any[]>([]);
 
   useEffect(() => {
     const loadHistory = async () => {
       if (!buyer) return;
 
       try {
-        const supabase = getClient();
-        const { data } = await supabase
-          .from('points_history')
-          .select('*')
-          .eq('buyer_id', buyer.id)
-          .order('created_at', { ascending: false })
-          .limit(50);
-
-        if (data) {
-          setHistory(data);
-        }
+        const data = await getBuyerPointsHistory(buyer.id);
+        setHistory(data || []);
       } catch (error) {
         console.error('Failed to load history:', error);
       } finally {
@@ -60,13 +42,15 @@ export default function BuyerPointsPage() {
     switch (type) {
       case 'review_text':
       case 'review_instagram':
+      case 'REVIEW':
         return <Star className="h-4 w-4" />;
       case 'purchase':
-        return <ShoppingBag className="h-4 w-4" />;
-      case 'referral':
-        return <Users className="h-4 w-4" />;
+      case 'PURCHASE':
       case 'use_order':
         return <ShoppingBag className="h-4 w-4" />;
+      case 'referral':
+      case 'REFERRAL':
+        return <Users className="h-4 w-4" />;
       default:
         return <Gift className="h-4 w-4" />;
     }
@@ -79,8 +63,10 @@ export default function BuyerPointsPage() {
       case 'review_instagram':
         return 'Instagram Review';
       case 'purchase':
+      case 'PURCHASE':
         return 'Purchase Bonus';
       case 'referral':
+      case 'REFERRAL':
         return 'Referral Bonus';
       case 'event':
         return 'Event Bonus';
@@ -90,6 +76,10 @@ export default function BuyerPointsPage() {
         return 'Points Expired';
       case 'admin_adjustment':
         return 'Adjustment';
+      case 'SIGNUP_BONUS':
+        return 'Signup Bonus';
+      case 'PERSONA_BONUS':
+        return 'Persona Bonus';
       default:
         return type;
     }
@@ -122,7 +112,7 @@ export default function BuyerPointsPage() {
             <div className="text-center">
               <p className="text-sm text-muted-foreground">Current Balance</p>
               <p className="text-4xl font-bold text-primary mt-1">
-                {buyer?.points_balance?.toLocaleString() || 0}
+                {(buyer?.points_balance || buyer?.pointsBalance || 0).toLocaleString()}
                 <span className="text-lg ml-1">P</span>
               </p>
             </div>
@@ -138,7 +128,7 @@ export default function BuyerPointsPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Total Earned</p>
                 <p className="text-2xl font-bold">
-                  {buyer?.total_points_earned?.toLocaleString() || 0} P
+                  {(buyer?.total_points_earned || buyer?.totalPointsEarned || 0).toLocaleString()} P
                 </p>
               </div>
             </div>
@@ -154,7 +144,7 @@ export default function BuyerPointsPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Total Used</p>
                 <p className="text-2xl font-bold">
-                  {buyer?.total_points_used?.toLocaleString() || 0} P
+                  {(buyer?.total_points_used || buyer?.totalPointsUsed || 0).toLocaleString()} P
                 </p>
               </div>
             </div>
@@ -215,33 +205,33 @@ export default function BuyerPointsPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {history.map((item) => (
+              {history.map((item: any) => (
                 <div
                   key={item.id}
                   className="flex items-center justify-between p-3 rounded-lg bg-muted/30"
                 >
                   <div className="flex items-center gap-3">
                     <div className={`p-2 rounded-full ${
-                      item.amount > 0 ? 'bg-green-500/10' : 'bg-red-500/10'
+                      Number(item.amount) > 0 ? 'bg-green-500/10' : 'bg-red-500/10'
                     }`}>
-                      {getTypeIcon(item.type)}
+                      {getTypeIcon(item.pointType || '')}
                     </div>
                     <div>
-                      <p className="font-medium text-sm">{getTypeLabel(item.type)}</p>
+                      <p className="font-medium text-sm">{getTypeLabel(item.pointType || '')}</p>
                       <p className="text-xs text-muted-foreground">
-                        {new Date(item.created_at).toLocaleDateString()}
+                        {new Date(item.createdAt).toLocaleDateString()}
                         {item.description && ` • ${item.description}`}
                       </p>
                     </div>
                   </div>
                   <div className="text-right">
                     <p className={`font-semibold ${
-                      item.amount > 0 ? 'text-green-500' : 'text-red-500'
+                      Number(item.amount) > 0 ? 'text-green-500' : 'text-red-500'
                     }`}>
-                      {item.amount > 0 ? '+' : ''}{item.amount.toLocaleString()}P
+                      {Number(item.amount) > 0 ? '+' : ''}{Number(item.amount).toLocaleString()}P
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Balance: {item.balance_after.toLocaleString()}P
+                      Balance: {Number(item.balanceAfter).toLocaleString()}P
                     </p>
                   </div>
                 </div>

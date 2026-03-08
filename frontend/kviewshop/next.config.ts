@@ -22,9 +22,9 @@ const securityHeaders = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.tosspayments.com https://t1.kakaocdn.net https://developers.kakao.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "img-src 'self' data: blob: https://*.supabase.co https://*.supabase.in https://t1.kakaocdn.net https://k.kakaocdn.net https://storage.cnec.kr",
+      "img-src 'self' data: blob: https://t1.kakaocdn.net https://k.kakaocdn.net https://storage.cnec.kr",
       "font-src 'self' https://fonts.gstatic.com",
-      "connect-src 'self' https://*.supabase.co https://*.supabase.in https://api.tosspayments.com https://api.portone.io https://kapi.kakao.com https://storage.cnec.kr",
+      "connect-src 'self' https://api.tosspayments.com https://api.portone.io https://kapi.kakao.com https://storage.cnec.kr",
       "frame-src https://js.tosspayments.com https://accounts.kakao.com",
     ].join('; '),
   },
@@ -33,14 +33,6 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '*.supabase.co',
-      },
-      {
-        protocol: 'https',
-        hostname: '*.supabase.in',
-      },
       {
         protocol: 'https',
         hostname: 'storage.cnec.kr',

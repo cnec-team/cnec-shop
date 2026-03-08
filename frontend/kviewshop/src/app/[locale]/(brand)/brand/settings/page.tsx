@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/select';
 import Image from 'next/image';
 import { toast } from 'sonner';
-import { getClient } from '@/lib/supabase/client';
+import { getBrandSettings, updateBrandSettings } from '@/lib/actions/brand';
 import { uploadImage } from '@/lib/upload';
 import { useTranslations } from 'next-intl';
 import { SHIPPING_REGIONS, CERTIFICATION_TYPES, getRegionCountryCodes } from '@/lib/shipping-countries';
@@ -198,68 +198,32 @@ export default function BrandSettingsPage() {
   const handleSave = async (section?: string) => {
     setLoading(true);
     try {
-      const supabase = getClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      if (section === 'shipping' || !section) {
-        await supabase
-          .from('brands')
-          .update({ shipping_countries: shippingCountries })
-          .eq('user_id', user.id);
-      }
-
-      if (section === 'certifications' || !section) {
-        await supabase
-          .from('brands')
-          .update({ certifications: certifications })
-          .eq('user_id', user.id);
-      }
-
-      if (section === 'brand_lines' || !section) {
-        await supabase
-          .from('brands')
-          .update({ brand_lines: brandLines })
-          .eq('user_id', user.id);
-      }
-
-      if (section === 'product_shipping' || !section) {
-        await supabase
-          .from('brands')
-          .update({
-            default_shipping_fee: settings.defaultShippingFee,
-            free_shipping_threshold: settings.freeShippingThreshold,
-            default_courier: settings.defaultCourier,
-            return_address: settings.returnAddress,
-            exchange_policy: settings.exchangePolicy,
-            default_commission_rate: settings.defaultCommissionRate,
-            allow_creator_pick_global: settings.allowCreatorPickGlobal,
-          })
-          .eq('user_id', user.id);
-      }
-
-      if (section === 'general' || section === 'commission' || section === 'settlement' || !section) {
-        await supabase
-          .from('brands')
-          .update({
-            brand_name: settings.brandName,
-            business_number: settings.businessNumber,
-            contact_email: settings.contactEmail,
-            contact_phone: settings.contactPhone,
-            creator_commission_rate: settings.creatorCommissionRate,
-            enable_tiered_commission: settings.enableTieredCommission,
-            tier1_rate: settings.tier1Rate,
-            tier2_rate: settings.tier2Rate,
-            tier3_rate: settings.tier3Rate,
-            tier4_rate: settings.tier4Rate,
-            settlement_cycle: settings.settlementCycle,
-            minimum_payout: settings.minimumPayout,
-            bank_name: settings.bankName,
-            account_number: settings.accountNumber,
-            account_holder: settings.accountHolder,
-          })
-          .eq('user_id', user.id);
-      }
+      await updateBrandSettings({
+        section,
+        shippingCountries,
+        certifications,
+        brandLines,
+        brandName: settings.brandName,
+        businessNumber: settings.businessNumber,
+        contactEmail: settings.contactEmail,
+        contactPhone: settings.contactPhone,
+        creatorCommissionRate: settings.creatorCommissionRate,
+        enableTieredCommission: settings.enableTieredCommission,
+        tier1Rate: settings.tier1Rate,
+        tier2Rate: settings.tier2Rate,
+        tier3Rate: settings.tier3Rate,
+        tier4Rate: settings.tier4Rate,
+        settlementCycle: settings.settlementCycle,
+        minimumPayout: settings.minimumPayout,
+        bankName: settings.bankName,
+        accountNumber: settings.accountNumber,
+        accountHolder: settings.accountHolder,
+        defaultShippingFee: settings.defaultShippingFee,
+        freeShippingThreshold: settings.freeShippingThreshold,
+        defaultCourier: settings.defaultCourier,
+        returnAddress: settings.returnAddress,
+        exchangePolicy: settings.exchangePolicy,
+      });
 
       toast.success(t('saved'));
     } catch (error) {
@@ -273,45 +237,36 @@ export default function BrandSettingsPage() {
   useEffect(() => {
     const loadSettings = async () => {
       try {
-        const supabase = getClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const { data } = await supabase
-          .from('brands')
-          .select('*')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
+        const data = await getBrandSettings();
         if (data) {
           setSettings(prev => ({
             ...prev,
-            brandName: data.brand_name || '',
-            businessNumber: data.business_number || '',
-            contactEmail: data.contact_email || '',
-            contactPhone: data.contact_phone || '',
-            creatorCommissionRate: data.creator_commission_rate ?? 20,
-            enableTieredCommission: data.enable_tiered_commission ?? false,
-            tier1Rate: data.tier1_rate ?? 15,
-            tier2Rate: data.tier2_rate ?? 20,
-            tier3Rate: data.tier3_rate ?? 25,
-            tier4Rate: data.tier4_rate ?? 30,
-            settlementCycle: data.settlement_cycle || 'monthly',
-            minimumPayout: data.minimum_payout ?? 50,
-            bankName: data.bank_name || '',
-            accountNumber: data.account_number || '',
-            accountHolder: data.account_holder || '',
-            defaultShippingFee: data.default_shipping_fee ?? 3000,
-            freeShippingThreshold: data.free_shipping_threshold ?? 50000,
-            defaultCourier: data.default_courier || 'cj',
-            returnAddress: data.return_address || '',
-            exchangePolicy: data.exchange_policy || '',
-            defaultCommissionRate: data.default_commission_rate ?? 15,
-            allowCreatorPickGlobal: data.allow_creator_pick_global ?? true,
+            brandName: data.brandName || '',
+            businessNumber: data.businessNumber || '',
+            contactEmail: data.contactEmail || '',
+            contactPhone: data.contactPhone || '',
+            creatorCommissionRate: Number(data.creatorCommissionRate) ?? 20,
+            enableTieredCommission: data.enableTieredCommission ?? false,
+            tier1Rate: Number(data.tier1Rate) ?? 15,
+            tier2Rate: Number(data.tier2Rate) ?? 20,
+            tier3Rate: Number(data.tier3Rate) ?? 25,
+            tier4Rate: Number(data.tier4Rate) ?? 30,
+            settlementCycle: data.settlementCycle || 'monthly',
+            minimumPayout: Number(data.minimumPayout) ?? 50,
+            bankName: data.bankName || '',
+            accountNumber: (data as any).bankAccount || '',
+            accountHolder: (data as any).bankHolder || '',
+            defaultShippingFee: Number(data.defaultShippingFee) ?? 3000,
+            freeShippingThreshold: Number(data.freeShippingThreshold) ?? 50000,
+            defaultCourier: data.defaultCourier || 'cj',
+            returnAddress: data.returnAddress || '',
+            exchangePolicy: data.exchangePolicy || '',
+            defaultCommissionRate: Number(data.creatorCommissionRate) ?? 15,
+            allowCreatorPickGlobal: true,
           }));
-          setShippingCountries(data.shipping_countries || []);
-          setCertifications(data.certifications || []);
-          setBrandLines(data.brand_lines || []);
+          setShippingCountries((data.shippingCountries as string[]) || []);
+          setCertifications((data.certifications as unknown as Certification[]) || []);
+          setBrandLines((data.brandLines as unknown as BrandLine[]) || []);
         }
       } catch (error) {
         console.error('Failed to load settings:', error);
