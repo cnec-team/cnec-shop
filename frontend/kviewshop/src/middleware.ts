@@ -1,7 +1,10 @@
 import createMiddleware from 'next-intl/middleware';
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import NextAuth from 'next-auth';
+import { authConfig } from '@/lib/auth.config';
 import { locales, defaultLocale, localePattern, type Locale } from '@/lib/i18n/config';
+
+const { auth } = NextAuth(authConfig);
 
 // Country code -> locale mapping for IP-based (geo) detection
 const countryToLocale: Record<string, Locale> = {
