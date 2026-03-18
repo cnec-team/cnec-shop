@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getBrandCampaigns, getBrandSession } from '@/lib/actions/brand';
+import { getBrandCampaigns, getBrandSession, updateCampaignStatus } from '@/lib/actions/brand';
 import { CAMPAIGN_STATUS_LABELS } from '@/types/database';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -86,28 +86,41 @@ export default function GongguCampaignsPage() {
   const [brand, setBrand] = useState<{ id: string } | null>(null);
   const [campaigns, setCampaigns] = useState<GongguCampaign[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  async function load() {
+    try {
+      const brandData = await getBrandSession();
+      if (!brandData) {
+        setIsLoading(false);
+        return;
+      }
+      setBrand(brandData);
+
+      const data = await getBrandCampaigns(brandData.id, 'GONGGU');
+      setCampaigns(data as any);
+    } catch (error) {
+      console.error('Failed to fetch gonggu campaigns:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   useEffect(() => {
-    async function load() {
-      try {
-        const brandData = await getBrandSession();
-        if (!brandData) {
-          setIsLoading(false);
-          return;
-        }
-        setBrand(brandData);
-
-        const data = await getBrandCampaigns(brandData.id, 'GONGGU');
-        setCampaigns(data as any);
-      } catch (error) {
-        console.error('Failed to fetch gonggu campaigns:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
     load();
   }, []);
+
+  async function handleStatusChange(campaignId: string, newStatus: string) {
+    setUpdatingId(campaignId);
+    try {
+      await updateCampaignStatus(campaignId, newStatus);
+      await load();
+    } catch (error) {
+      console.error('Failed to update campaign status:', error);
+    } finally {
+      setUpdatingId(null);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -147,27 +160,30 @@ export default function GongguCampaignsPage() {
               campaign.totalStock && campaign.totalStock > 0
                 ? (campaign.soldCount / campaign.totalStock) * 100
                 : 0;
+            const isUpdating = updatingId === campaign.id;
 
             return (
-              <Card key={campaign.id}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <CardTitle className="text-lg">
-                        {campaign.title}
-                      </CardTitle>
-                      <CardDescription>
-                        {campaign.description
-                          ? campaign.description.slice(0, 80) +
-                            (campaign.description.length > 80 ? '...' : '')
-                          : '설명 없음'}
-                      </CardDescription>
+              <Card key={campaign.id} className="relative">
+                <Link href={`../campaigns/${campaign.id}`}>
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1">
+                        <CardTitle className="text-lg">
+                          {campaign.title}
+                        </CardTitle>
+                        <CardDescription>
+                          {campaign.description
+                            ? campaign.description.slice(0, 80) +
+                              (campaign.description.length > 80 ? '...' : '')
+                            : '설명 없음'}
+                        </CardDescription>
+                      </div>
+                      <Badge variant={getStatusVariant(campaign.status)}>
+                        {CAMPAIGN_STATUS_LABELS[campaign.status as keyof typeof CAMPAIGN_STATUS_LABELS]}
+                      </Badge>
                     </div>
-                    <Badge variant={getStatusVariant(campaign.status)}>
-                      {CAMPAIGN_STATUS_LABELS[campaign.status as keyof typeof CAMPAIGN_STATUS_LABELS]}
-                    </Badge>
-                  </div>
-                </CardHeader>
+                  </CardHeader>
+                </Link>
                 <CardContent className="space-y-4">
                   {/* Progress */}
                   <div className="space-y-2">
@@ -224,6 +240,61 @@ export default function GongguCampaignsPage() {
                         ? '자동 승인'
                         : '승인제'}
                     </span>
+                  </div>
+
+                  {/* Status transition buttons */}
+                  <div className="flex gap-2 pt-2 border-t">
+                    {campaign.status === 'DRAFT' && (
+                      <>
+                        <Button
+                          size="sm"
+                          disabled={isUpdating}
+                          onClick={() => handleStatusChange(campaign.id, 'RECRUITING')}
+                        >
+                          {isUpdating ? '처리 중...' : '모집 시작'}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={isUpdating}
+                          onClick={() => handleStatusChange(campaign.id, 'ENDED')}
+                        >
+                          취소
+                        </Button>
+                      </>
+                    )}
+                    {campaign.status === 'RECRUITING' && (
+                      <>
+                        <Button
+                          size="sm"
+                          disabled={isUpdating}
+                          onClick={() => handleStatusChange(campaign.id, 'ACTIVE')}
+                        >
+                          {isUpdating ? '처리 중...' : '캠페인 시작'}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={isUpdating}
+                          onClick={() => handleStatusChange(campaign.id, 'ENDED')}
+                        >
+                          취소
+                        </Button>
+                      </>
+                    )}
+                    {campaign.status === 'ACTIVE' && (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        disabled={isUpdating}
+                        onClick={() => handleStatusChange(campaign.id, 'ENDED')}
+                      >
+                        {isUpdating ? '처리 중...' : '종료'}
+                      </Button>
+                    )}
+                    {campaign.status === 'ENDED' && (
+                      <span className="text-sm text-muted-foreground">종료된 캠페인</span>
+                    )}
                   </div>
                 </CardContent>
               </Card>
