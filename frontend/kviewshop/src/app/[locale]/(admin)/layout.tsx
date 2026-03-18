@@ -12,7 +12,7 @@ export default async function AdminLayout({
   const { locale } = await params;
 
   return (
-    <div className="light min-h-screen bg-background">
+    <div className="min-h-screen bg-background">
       <Header locale={locale as Locale} />
       <div className="flex">
         <Sidebar role="super_admin" locale={locale as Locale} />
