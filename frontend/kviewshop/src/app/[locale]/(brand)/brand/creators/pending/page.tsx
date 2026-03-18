@@ -12,9 +12,10 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
+import { ExternalLink } from 'lucide-react';
 
 interface PendingParticipation {
   participation: {
@@ -35,6 +36,8 @@ interface PendingParticipation {
     instagramHandle?: string | null;
     youtubeHandle?: string | null;
     tiktokHandle?: string | null;
+    skinType?: string | null;
+    skinConcerns?: string[];
     totalSales: number | null;
     totalEarnings: number | null;
   } | null;
@@ -174,14 +177,29 @@ export default function PendingCreatorsPage() {
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-10 w-10">
+                    {item.creator?.profileImageUrl && (
+                      <AvatarImage src={item.creator.profileImageUrl} alt={item.creator.displayName ?? ''} />
+                    )}
                     <AvatarFallback>
                       {(item.creator?.displayName ?? '').slice(0, 2)}
                     </AvatarFallback>
                   </Avatar>
-                  <div>
-                    <CardTitle className="text-base">
-                      {item.creator?.displayName}
-                    </CardTitle>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <CardTitle className="text-base">
+                        {item.creator?.displayName}
+                      </CardTitle>
+                      {item.creator?.shopId && (
+                        <a
+                          href={`/shop/${item.creator.shopId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                        >
+                          샵 <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
+                    </div>
                     <CardDescription>
                       @{item.creator?.shopId}
                     </CardDescription>
@@ -189,24 +207,48 @@ export default function PendingCreatorsPage() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
-                {/* Creator info */}
+                {/* Creator SNS */}
                 <div className="flex flex-wrap gap-1">
-                  {(item.creator as any)?.instagramHandle && (
+                  {item.creator?.instagramHandle && (
+                    <a
+                      href={`https://instagram.com/${item.creator.instagramHandle}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1"
+                    >
+                      <Badge variant="outline" className="text-xs">
+                        IG @{item.creator.instagramHandle}
+                      </Badge>
+                      <ExternalLink className="h-3 w-3 text-muted-foreground" />
+                    </a>
+                  )}
+                  {item.creator?.youtubeHandle && (
                     <Badge variant="outline" className="text-xs">
-                      IG @{(item.creator as any).instagramHandle}
+                      YT @{item.creator.youtubeHandle}
                     </Badge>
                   )}
-                  {(item.creator as any)?.youtubeHandle && (
+                  {item.creator?.tiktokHandle && (
                     <Badge variant="outline" className="text-xs">
-                      YT @{(item.creator as any).youtubeHandle}
-                    </Badge>
-                  )}
-                  {(item.creator as any)?.tiktokHandle && (
-                    <Badge variant="outline" className="text-xs">
-                      TT @{(item.creator as any).tiktokHandle}
+                      TT @{item.creator.tiktokHandle}
                     </Badge>
                   )}
                 </div>
+
+                {/* Beauty persona */}
+                {(item.creator?.skinType || (item.creator?.skinConcerns && item.creator.skinConcerns.length > 0)) && (
+                  <div className="flex flex-wrap gap-1">
+                    {item.creator?.skinType && (
+                      <Badge variant="secondary" className="text-xs">
+                        {item.creator.skinType}
+                      </Badge>
+                    )}
+                    {item.creator?.skinConcerns?.map((concern) => (
+                      <Badge key={concern} variant="outline" className="text-xs">
+                        {concern}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
 
                 {item.creator?.bio && (
                   <p className="text-sm text-muted-foreground">

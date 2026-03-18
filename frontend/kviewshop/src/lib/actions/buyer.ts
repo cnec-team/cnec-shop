@@ -21,9 +21,26 @@ export async function getBecomeCreatorData(buyerId: string) {
   const { buyer } = await requireBuyer()
   if (buyer.id !== buyerId) throw new Error('Forbidden')
 
-  // Check for existing application - no creator_applications table in Prisma model
-  // This appears to be a custom table, so we return null for now
-  const existingApplication = null
+  // Check for existing application
+  const existingApplication = await prisma.creatorApplication.findFirst({
+    where: { buyerId: buyer.id },
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      status: true,
+      desiredUsername: true,
+      displayName: true,
+      rejectionReason: true,
+      createdCreatorId: true,
+      createdAt: true,
+    },
+  })
+
+  // Also check if buyer already has a creator account
+  const existingCreator = await prisma.creator.findFirst({
+    where: { userId: buyer.userId },
+    select: { id: true, status: true, shopId: true },
+  })
 
   // Default criteria
   const criteria = {
@@ -33,15 +50,41 @@ export async function getBecomeCreatorData(buyerId: string) {
     minAccountAgeDays: 30,
   }
 
-  return { criteria, existingApplication }
+  return {
+    criteria,
+    existingApplication: existingApplication
+      ? {
+          ...existingApplication,
+          createdAt: existingApplication.createdAt.toISOString(),
+        }
+      : null,
+    existingCreator,
+  }
 }
 
 export async function checkUsernameAvailability(username: string) {
+  const lower = username.toLowerCase()
+  // Check both username and shopId uniqueness
   const existing = await prisma.creator.findFirst({
-    where: { username: username.toLowerCase() },
+    where: {
+      OR: [
+        { username: lower },
+        { shopId: { equals: lower, mode: 'insensitive' } },
+      ],
+    },
     select: { id: true },
   })
-  return !existing
+  if (existing) return false
+
+  // Also check pending applications with same desired username
+  const pendingApp = await prisma.creatorApplication.findFirst({
+    where: {
+      desiredUsername: lower,
+      status: 'pending',
+    },
+    select: { id: true },
+  })
+  return !pendingApp
 }
 
 export async function submitCreatorApplication(data: {
@@ -59,13 +102,44 @@ export async function submitCreatorApplication(data: {
   const { buyer } = await requireBuyer()
   if (buyer.id !== data.buyerId) throw new Error('Forbidden')
 
-  // Check username availability
-  const isAvailable = await checkUsernameAvailability(data.desiredUsername)
-  if (!isAvailable) throw new Error('Username already taken')
+  // Check for existing pending/approved application
+  const existingApp = await prisma.creatorApplication.findFirst({
+    where: {
+      buyerId: buyer.id,
+      status: { in: ['pending', 'approved'] },
+    },
+  })
+  if (existingApp) throw new Error('이미 신청이 진행 중입니다.')
 
-  // For now, directly create creator (since there's no creator_applications model)
-  // In production, this would go through an approval flow
-  return { success: true }
+  // Check if buyer already has a creator account
+  const existingCreator = await prisma.creator.findFirst({
+    where: { userId: buyer.userId },
+    select: { id: true },
+  })
+  if (existingCreator) throw new Error('이미 크리에이터 계정이 있습니다.')
+
+  // Check username/shopId availability
+  const isAvailable = await checkUsernameAvailability(data.desiredUsername)
+  if (!isAvailable) throw new Error('이 사용자명은 이미 사용 중입니다.')
+
+  // Create application record
+  const application = await prisma.creatorApplication.create({
+    data: {
+      buyerId: buyer.id,
+      desiredUsername: data.desiredUsername.toLowerCase(),
+      displayName: data.displayName,
+      bio: data.bio || null,
+      instagramUrl: data.instagramUrl || null,
+      youtubeUrl: data.youtubeUrl || null,
+      tiktokUrl: data.tiktokUrl || null,
+      followerCount: data.followerCount || null,
+      motivation: data.motivation || null,
+      contentPlan: data.contentPlan || null,
+      status: 'pending',
+    },
+  })
+
+  return { id: application.id, success: true }
 }
 
 // ==================== Cart ====================
@@ -239,9 +313,81 @@ export async function getBuyerReviewsData(buyerId: string) {
   const { buyer } = await requireBuyer()
   if (buyer.id !== buyerId) throw new Error('Forbidden')
 
-  // Since there's no product_reviews in Prisma model, return empty data
-  // The actual implementation would need a productReview model
-  return { reviews: [], pendingOrders: [] }
+  // Fetch existing reviews by this buyer
+  const reviews = await prisma.productReview.findMany({
+    where: { buyerId: buyer.id },
+    orderBy: { createdAt: 'desc' },
+    include: {
+      product: {
+        select: {
+          id: true,
+          name: true,
+          nameKo: true,
+          nameEn: true,
+          imageUrl: true,
+          images: true,
+        },
+      },
+    },
+  })
+
+  // Fetch reviewed productId+orderId pairs for duplicate prevention
+  const reviewedKeys = new Set(
+    reviews.map((r) => `${r.orderId}:${r.productId}`)
+  )
+
+  // Fetch delivered orders with items that haven't been reviewed yet
+  const deliveredOrders = await prisma.order.findMany({
+    where: {
+      buyerId: buyer.id,
+      status: { in: ['DELIVERED', 'COMPLETED'] },
+    },
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      orderNumber: true,
+      createdAt: true,
+      items: {
+        select: {
+          id: true,
+          productId: true,
+          productName: true,
+          productImage: true,
+          product: {
+            select: {
+              id: true,
+              name: true,
+              nameKo: true,
+              nameEn: true,
+              imageUrl: true,
+              images: true,
+            },
+          },
+        },
+      },
+    },
+  })
+
+  // Filter to only items not yet reviewed
+  const pendingOrders = deliveredOrders
+    .map((order) => ({
+      ...order,
+      createdAt: order.createdAt.toISOString(),
+      items: order.items.filter(
+        (item) => !reviewedKeys.has(`${order.id}:${item.productId}`)
+      ),
+    }))
+    .filter((order) => order.items.length > 0)
+
+  return {
+    reviews: reviews.map((r) => ({
+      ...r,
+      createdAt: r.createdAt.toISOString(),
+      updatedAt: r.updatedAt.toISOString(),
+      pointsAwardedAt: r.pointsAwardedAt?.toISOString() ?? null,
+    })),
+    pendingOrders,
+  }
 }
 
 export async function submitReview(data: {
@@ -256,8 +402,41 @@ export async function submitReview(data: {
   const { buyer } = await requireBuyer()
   if (buyer.id !== data.buyerId) throw new Error('Forbidden')
 
+  // Validate rating
+  if (data.rating < 1 || data.rating > 5) throw new Error('Rating must be 1-5')
+
+  // Duplicate check: same buyer + order + product
+  if (data.orderId) {
+    const existing = await prisma.productReview.findFirst({
+      where: {
+        buyerId: buyer.id,
+        orderId: data.orderId,
+        productId: data.productId,
+      },
+    })
+    if (existing) throw new Error('이미 이 상품에 대한 리뷰를 작성했습니다.')
+  }
+
   const pointsEarned = data.instagramPostUrl ? 1000 : 500
-  return { pointsEarned }
+
+  const review = await prisma.productReview.create({
+    data: {
+      productId: data.productId,
+      buyerId: buyer.id,
+      orderId: data.orderId || null,
+      rating: data.rating,
+      title: data.title || null,
+      content: data.content,
+      instagramPostUrl: data.instagramPostUrl || null,
+      isVerifiedPurchase: !!data.orderId,
+      pointsAwarded: pointsEarned,
+      pointsAwardedAt: new Date(),
+    },
+  })
+
+  // TODO: Award points to buyer's point balance when BuyerPoint model is available
+
+  return { id: review.id, pointsEarned }
 }
 
 // ==================== Subscriptions ====================

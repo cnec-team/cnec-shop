@@ -142,7 +142,8 @@ export default function BecomeCreatorPage() {
       });
 
       toast.success('Application submitted successfully!');
-      router.push(`/${locale}/buyer/dashboard`);
+      // Reload to show application status
+      setExistingApplication({ status: 'pending', desiredUsername: form.desired_username });
     } catch (error) {
       console.error('Submit error:', error);
       toast.error('Failed to submit application');
@@ -206,7 +207,7 @@ export default function BecomeCreatorPage() {
                   </div>
                   <h2 className="text-xl font-semibold">Not Approved</h2>
                   <p className="text-muted-foreground">
-                    {existingApplication.rejection_reason || 'Your application was not approved at this time.'}
+                    {existingApplication.rejectionReason || existingApplication.rejection_reason || 'Your application was not approved at this time.'}
                   </p>
                 </>
               )}
