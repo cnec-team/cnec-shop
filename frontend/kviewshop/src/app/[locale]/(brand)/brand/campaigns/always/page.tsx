@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getBrandCampaigns, getBrandSession } from '@/lib/actions/brand';
+import { getBrandCampaigns, getBrandSession, updateCampaignStatus } from '@/lib/actions/brand';
 import { CAMPAIGN_STATUS_LABELS } from '@/types/database';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -73,28 +73,41 @@ export default function AlwaysCampaignsPage() {
   const [brand, setBrand] = useState<{ id: string } | null>(null);
   const [campaigns, setCampaigns] = useState<AlwaysCampaign[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  async function load() {
+    try {
+      const brandData = await getBrandSession();
+      if (!brandData) {
+        setIsLoading(false);
+        return;
+      }
+      setBrand(brandData);
+
+      const data = await getBrandCampaigns(brandData.id, 'ALWAYS');
+      setCampaigns(data as any);
+    } catch (error) {
+      console.error('Failed to fetch always campaigns:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   useEffect(() => {
-    async function load() {
-      try {
-        const brandData = await getBrandSession();
-        if (!brandData) {
-          setIsLoading(false);
-          return;
-        }
-        setBrand(brandData);
-
-        const data = await getBrandCampaigns(brandData.id, 'ALWAYS');
-        setCampaigns(data as any);
-      } catch (error) {
-        console.error('Failed to fetch always campaigns:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
     load();
   }, []);
+
+  async function handleStatusChange(campaignId: string, newStatus: string) {
+    setUpdatingId(campaignId);
+    try {
+      await updateCampaignStatus(campaignId, newStatus);
+      await load();
+    } catch (error) {
+      console.error('Failed to update campaign status:', error);
+    } finally {
+      setUpdatingId(null);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -141,76 +154,133 @@ export default function AlwaysCampaignsPage() {
                   <TableHead className="text-right">수수료율</TableHead>
                   <TableHead className="text-right">판매수</TableHead>
                   <TableHead>포함 상품</TableHead>
-                  <TableHead className="text-right">생성일</TableHead>
+                  <TableHead className="text-right">관리</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {campaigns.map((campaign) => (
-                  <TableRow key={campaign.id}>
-                    <TableCell className="font-medium">
-                      <div>
-                        <p>{campaign.title}</p>
-                        {campaign.description && (
-                          <p className="text-xs text-muted-foreground truncate max-w-[200px]">
-                            {campaign.description}
-                          </p>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={getStatusVariant(campaign.status)}>
-                        {CAMPAIGN_STATUS_LABELS[campaign.status as keyof typeof CAMPAIGN_STATUS_LABELS]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
-                        {campaign.recruitmentType === 'OPEN'
-                          ? '자동 승인'
-                          : '승인제'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {Number(campaign.commissionRate) * 100}%
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {campaign.soldCount.toLocaleString('ko-KR')}
-                    </TableCell>
-                    <TableCell>
-                      {campaign.products &&
-                      campaign.products.length > 0 ? (
-                        <div className="space-y-0.5">
-                          {campaign.products
-                            .slice(0, 2)
-                            .map((cp) => (
-                              <p
-                                key={cp.id}
-                                className="text-sm truncate max-w-[160px]"
-                              >
-                                {cp.product?.name ?? '상품'}{' '}
-                                <span className="text-muted-foreground">
-                                  ({formatCurrency(Number(cp.campaignPrice))})
-                                </span>
+                {campaigns.map((campaign) => {
+                  const isUpdating = updatingId === campaign.id;
+                  return (
+                    <TableRow key={campaign.id}>
+                      <TableCell className="font-medium">
+                        <Link href={`../campaigns/${campaign.id}`} className="hover:underline">
+                          <div>
+                            <p>{campaign.title}</p>
+                            {campaign.description && (
+                              <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                                {campaign.description}
                               </p>
-                            ))}
-                          {campaign.products.length > 2 && (
-                            <p className="text-xs text-muted-foreground">
-                              +{campaign.products.length - 2}개 더
-                            </p>
+                            )}
+                          </div>
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={getStatusVariant(campaign.status)}>
+                          {CAMPAIGN_STATUS_LABELS[campaign.status as keyof typeof CAMPAIGN_STATUS_LABELS]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {campaign.recruitmentType === 'OPEN'
+                            ? '자동 승인'
+                            : '승인제'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {Number(campaign.commissionRate) * 100}%
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {campaign.soldCount.toLocaleString('ko-KR')}
+                      </TableCell>
+                      <TableCell>
+                        {campaign.products &&
+                        campaign.products.length > 0 ? (
+                          <div className="space-y-0.5">
+                            {campaign.products
+                              .slice(0, 2)
+                              .map((cp) => (
+                                <p
+                                  key={cp.id}
+                                  className="text-sm truncate max-w-[160px]"
+                                >
+                                  {cp.product?.name ?? '상품'}{' '}
+                                  <span className="text-muted-foreground">
+                                    ({formatCurrency(Number(cp.campaignPrice))})
+                                  </span>
+                                </p>
+                              ))}
+                            {campaign.products.length > 2 && (
+                              <p className="text-xs text-muted-foreground">
+                                +{campaign.products.length - 2}개 더
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">
+                            -
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          {campaign.status === 'DRAFT' && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="default"
+                                disabled={isUpdating}
+                                onClick={() => handleStatusChange(campaign.id, 'RECRUITING')}
+                              >
+                                모집 시작
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                disabled={isUpdating}
+                                onClick={() => handleStatusChange(campaign.id, 'ENDED')}
+                              >
+                                취소
+                              </Button>
+                            </>
+                          )}
+                          {campaign.status === 'RECRUITING' && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="default"
+                                disabled={isUpdating}
+                                onClick={() => handleStatusChange(campaign.id, 'ACTIVE')}
+                              >
+                                시작
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                disabled={isUpdating}
+                                onClick={() => handleStatusChange(campaign.id, 'ENDED')}
+                              >
+                                취소
+                              </Button>
+                            </>
+                          )}
+                          {campaign.status === 'ACTIVE' && (
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              disabled={isUpdating}
+                              onClick={() => handleStatusChange(campaign.id, 'ENDED')}
+                            >
+                              종료
+                            </Button>
+                          )}
+                          {campaign.status === 'ENDED' && (
+                            <span className="text-xs text-muted-foreground">종료됨</span>
                           )}
                         </div>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">
-                          -
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right text-sm text-muted-foreground">
-                      {new Date(campaign.createdAt).toLocaleDateString(
-                        'ko-KR'
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}

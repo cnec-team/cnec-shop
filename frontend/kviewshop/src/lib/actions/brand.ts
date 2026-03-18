@@ -1105,3 +1105,130 @@ export async function replySupportTicket(ticketId: string, response: string) {
     },
   })
 }
+
+// ==================== Campaign Status ====================
+
+const ALLOWED_TRANSITIONS: Record<string, string[]> = {
+  DRAFT: ['RECRUITING', 'ENDED'],
+  RECRUITING: ['ACTIVE', 'ENDED'],
+  ACTIVE: ['ENDED'],
+  ENDED: [],
+}
+
+export async function updateCampaignStatus(
+  campaignId: string,
+  newStatus: string
+) {
+  const { brand } = await requireBrand()
+
+  const campaign = await prisma.campaign.findUnique({
+    where: { id: campaignId },
+    include: {
+      products: true,
+      participations: {
+        where: { status: 'APPROVED' },
+        select: { creatorId: true },
+      },
+    },
+  })
+
+  if (!campaign || campaign.brandId !== brand.id) {
+    throw new Error('Forbidden')
+  }
+
+  const allowed = ALLOWED_TRANSITIONS[campaign.status] ?? []
+  if (!allowed.includes(newStatus)) {
+    throw new Error(
+      `Cannot transition from ${campaign.status} to ${newStatus}`
+    )
+  }
+
+  // When activating: auto-add campaign products to approved creators' shops
+  if (newStatus === 'ACTIVE' && campaign.participations.length > 0) {
+    const existingItems = await prisma.creatorShopItem.findMany({
+      where: { campaignId: campaign.id },
+      select: { creatorId: true, productId: true },
+    })
+    const existingSet = new Set(
+      existingItems.map((i) => `${i.creatorId}:${i.productId}`)
+    )
+
+    const newItems: Array<{
+      creatorId: string
+      productId: string
+      campaignId: string
+      type: string
+      isVisible: boolean
+    }> = []
+
+    for (const p of campaign.participations) {
+      for (const cp of campaign.products) {
+        const key = `${p.creatorId}:${cp.productId}`
+        if (!existingSet.has(key)) {
+          newItems.push({
+            creatorId: p.creatorId,
+            productId: cp.productId,
+            campaignId: campaign.id,
+            type: campaign.type,
+            isVisible: true,
+          })
+        }
+      }
+    }
+
+    if (newItems.length > 0) {
+      await prisma.creatorShopItem.createMany({ data: newItems })
+    }
+  }
+
+  // When ending: hide campaign shop items
+  if (newStatus === 'ENDED') {
+    await prisma.creatorShopItem.updateMany({
+      where: { campaignId: campaign.id },
+      data: { isVisible: false },
+    })
+  }
+
+  return prisma.campaign.update({
+    where: { id: campaignId },
+    data: { status: newStatus as any },
+  })
+}
+
+export async function getBrandCampaignById(campaignId: string) {
+  const { brand } = await requireBrand()
+
+  const campaign = await prisma.campaign.findUnique({
+    where: { id: campaignId },
+    include: {
+      products: {
+        include: { product: true },
+      },
+      participations: true,
+    },
+  })
+
+  if (!campaign || campaign.brandId !== brand.id) return null
+
+  // Get order stats for this campaign
+  const orderStats = await prisma.orderItem.aggregate({
+    where: { campaignId: campaign.id },
+    _count: true,
+    _sum: { totalPrice: true },
+  })
+
+  return {
+    ...campaign,
+    startAt: campaign.startAt?.toISOString() ?? null,
+    endAt: campaign.endAt?.toISOString() ?? null,
+    createdAt: campaign.createdAt.toISOString(),
+    updatedAt: campaign.updatedAt.toISOString(),
+    participations: campaign.participations.map((p) => ({
+      ...p,
+      appliedAt: p.appliedAt.toISOString(),
+      approvedAt: p.approvedAt?.toISOString() ?? null,
+    })),
+    orderCount: orderStats._count,
+    totalGMV: Number(orderStats._sum.totalPrice ?? 0),
+  }
+}

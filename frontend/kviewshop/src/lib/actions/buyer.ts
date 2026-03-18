@@ -222,11 +222,15 @@ export async function getBuyerPointsHistory(buyerId: string) {
   const { buyer } = await requireBuyer()
   if (buyer.id !== buyerId) throw new Error('Forbidden')
 
-  return prisma.creatorPoint.findMany({
-    where: { creatorId: buyer.id },
-    orderBy: { createdAt: 'desc' },
-    take: 50,
-  })
+  // TODO: BuyerPoint model does not exist in schema yet.
+  // Return empty array until buyer_points table is added.
+  return [] as Array<{
+    id: string
+    amount: number
+    type: string
+    description: string | null
+    createdAt: Date
+  }>
 }
 
 // ==================== Reviews ====================
