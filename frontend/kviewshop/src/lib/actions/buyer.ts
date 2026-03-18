@@ -21,9 +21,26 @@ export async function getBecomeCreatorData(buyerId: string) {
   const { buyer } = await requireBuyer()
   if (buyer.id !== buyerId) throw new Error('Forbidden')
 
-  // Check for existing application - no creator_applications table in Prisma model
-  // This appears to be a custom table, so we return null for now
-  const existingApplication = null
+  // Check for existing application
+  const existingApplication = await prisma.creatorApplication.findFirst({
+    where: { buyerId: buyer.id },
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      status: true,
+      desiredUsername: true,
+      displayName: true,
+      rejectionReason: true,
+      createdCreatorId: true,
+      createdAt: true,
+    },
+  })
+
+  // Also check if buyer already has a creator account
+  const existingCreator = await prisma.creator.findFirst({
+    where: { userId: buyer.userId },
+    select: { id: true, status: true, shopId: true },
+  })
 
   // Default criteria
   const criteria = {
@@ -33,15 +50,41 @@ export async function getBecomeCreatorData(buyerId: string) {
     minAccountAgeDays: 30,
   }
 
-  return { criteria, existingApplication }
+  return {
+    criteria,
+    existingApplication: existingApplication
+      ? {
+          ...existingApplication,
+          createdAt: existingApplication.createdAt.toISOString(),
+        }
+      : null,
+    existingCreator,
+  }
 }
 
 export async function checkUsernameAvailability(username: string) {
+  const lower = username.toLowerCase()
+  // Check both username and shopId uniqueness
   const existing = await prisma.creator.findFirst({
-    where: { username: username.toLowerCase() },
+    where: {
+      OR: [
+        { username: lower },
+        { shopId: { equals: lower, mode: 'insensitive' } },
+      ],
+    },
     select: { id: true },
   })
-  return !existing
+  if (existing) return false
+
+  // Also check pending applications with same desired username
+  const pendingApp = await prisma.creatorApplication.findFirst({
+    where: {
+      desiredUsername: lower,
+      status: 'pending',
+    },
+    select: { id: true },
+  })
+  return !pendingApp
 }
 
 export async function submitCreatorApplication(data: {
@@ -59,13 +102,44 @@ export async function submitCreatorApplication(data: {
   const { buyer } = await requireBuyer()
   if (buyer.id !== data.buyerId) throw new Error('Forbidden')
 
-  // Check username availability
-  const isAvailable = await checkUsernameAvailability(data.desiredUsername)
-  if (!isAvailable) throw new Error('Username already taken')
+  // Check for existing pending/approved application
+  const existingApp = await prisma.creatorApplication.findFirst({
+    where: {
+      buyerId: buyer.id,
+      status: { in: ['pending', 'approved'] },
+    },
+  })
+  if (existingApp) throw new Error('이미 신청이 진행 중입니다.')
 
-  // For now, directly create creator (since there's no creator_applications model)
-  // In production, this would go through an approval flow
-  return { success: true }
+  // Check if buyer already has a creator account
+  const existingCreator = await prisma.creator.findFirst({
+    where: { userId: buyer.userId },
+    select: { id: true },
+  })
+  if (existingCreator) throw new Error('이미 크리에이터 계정이 있습니다.')
+
+  // Check username/shopId availability
+  const isAvailable = await checkUsernameAvailability(data.desiredUsername)
+  if (!isAvailable) throw new Error('이 사용자명은 이미 사용 중입니다.')
+
+  // Create application record
+  const application = await prisma.creatorApplication.create({
+    data: {
+      buyerId: buyer.id,
+      desiredUsername: data.desiredUsername.toLowerCase(),
+      displayName: data.displayName,
+      bio: data.bio || null,
+      instagramUrl: data.instagramUrl || null,
+      youtubeUrl: data.youtubeUrl || null,
+      tiktokUrl: data.tiktokUrl || null,
+      followerCount: data.followerCount || null,
+      motivation: data.motivation || null,
+      contentPlan: data.contentPlan || null,
+      status: 'pending',
+    },
+  })
+
+  return { id: application.id, success: true }
 }
 
 // ==================== Cart ====================
