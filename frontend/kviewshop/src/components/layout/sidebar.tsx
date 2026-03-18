@@ -180,22 +180,27 @@ export function Sidebar({ role, locale }: SidebarProps) {
 
   return (
     <>
-      <button
-        onClick={() => setMobileOpen(!mobileOpen)}
-        className="fixed bottom-4 right-4 z-50 lg:hidden bg-foreground text-background p-3 rounded-full shadow-lg transition-transform active:scale-95"
-        aria-label="Toggle menu"
-      >
-        {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-      </button>
-      {mobileOpen && (
-        <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden" onClick={() => setMobileOpen(false)} />
+      {/* Mobile sidebar toggle - hidden for creator (uses bottom tab nav instead) */}
+      {role !== 'creator' && (
+        <>
+          <button
+            onClick={() => setMobileOpen(!mobileOpen)}
+            className="fixed bottom-4 right-4 z-50 lg:hidden bg-foreground text-background p-3 rounded-full shadow-lg transition-transform active:scale-95"
+            aria-label="Toggle menu"
+          >
+            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+          {mobileOpen && (
+            <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden" onClick={() => setMobileOpen(false)} />
+          )}
+          <aside className={cn(
+            'fixed left-0 top-14 z-40 h-[calc(100vh-3.5rem)] w-60 border-r border-border bg-sidebar transition-transform duration-200 ease-out lg:hidden overflow-y-auto',
+            mobileOpen ? 'translate-x-0' : '-translate-x-full'
+          )}>
+            {navContent}
+          </aside>
+        </>
       )}
-      <aside className={cn(
-        'fixed left-0 top-14 z-40 h-[calc(100vh-3.5rem)] w-60 border-r border-border bg-sidebar transition-transform duration-200 ease-out lg:hidden overflow-y-auto',
-        mobileOpen ? 'translate-x-0' : '-translate-x-full'
-      )}>
-        {navContent}
-      </aside>
       <aside className="fixed left-0 top-14 z-40 h-[calc(100vh-3.5rem)] w-60 border-r border-border bg-sidebar hidden lg:block overflow-y-auto">
         {navContent}
       </aside>
