@@ -50,9 +50,54 @@ export async function createOrder(data: {
     productImage?: string | null
   }>
   conversionType: 'DIRECT' | 'INDIRECT'
-  commissionRates: Record<string, number>
 }) {
-  // Create order
+  // ---- Resolve commission rates from DB ----
+  const campaignIds = [...new Set(data.items.map((i) => i.campaignId).filter(Boolean))] as string[]
+  const productIds = [...new Set(data.items.map((i) => i.productId))]
+
+  // Fetch campaign commission rates
+  const campaigns = campaignIds.length > 0
+    ? await prisma.campaign.findMany({
+        where: { id: { in: campaignIds } },
+        select: { id: true, commissionRate: true },
+      })
+    : []
+  const campaignRateMap = new Map(campaigns.map((c) => [c.id, Number(c.commissionRate)]))
+
+  // Fetch product default commission rates
+  const products = await prisma.product.findMany({
+    where: { id: { in: productIds } },
+    select: { id: true, defaultCommissionRate: true },
+  })
+  const productRateMap = new Map(products.map((p) => [p.id, Number(p.defaultCommissionRate)]))
+
+  // Fetch brand fallback rate
+  let brandFallbackRate = 0.03
+  if (data.brandId) {
+    const brand = await prisma.brand.findUnique({
+      where: { id: data.brandId },
+      select: { platformFeeRate: true },
+    })
+    if (brand?.platformFeeRate) {
+      brandFallbackRate = Number(brand.platformFeeRate)
+    }
+  }
+
+  // Determine commission rate per item:
+  // 1. Campaign item → Campaign.commissionRate
+  // 2. Non-campaign item → Product.defaultCommissionRate
+  // 3. Fallback → Brand.platformFeeRate or 0.03
+  function getCommissionRate(item: { productId: string; campaignId?: string | null }): number {
+    if (item.campaignId) {
+      const campaignRate = campaignRateMap.get(item.campaignId)
+      if (campaignRate !== undefined && campaignRate > 0) return campaignRate
+    }
+    const productRate = productRateMap.get(item.productId)
+    if (productRate !== undefined && productRate > 0) return productRate
+    return brandFallbackRate
+  }
+
+  // ---- Create order ----
   const order = await prisma.order.create({
     data: {
       orderNumber: data.orderNumber,
@@ -86,20 +131,22 @@ export async function createOrder(data: {
     )
   )
 
-  // Create conversions
+  // Create conversions with DB-resolved commission rates
   await prisma.conversion.createMany({
-    data: orderItems.map((item) => ({
-      orderId: order.id,
-      orderItemId: item.id,
-      creatorId: data.creatorId,
-      conversionType: data.conversionType,
-      orderAmount: item.totalPrice,
-      commissionRate: data.commissionRates[item.productId] || 0.03,
-      commissionAmount: Math.round(
-        Number(item.totalPrice) * (data.commissionRates[item.productId] || 0.03)
-      ),
-      status: 'PENDING',
-    })),
+    data: orderItems.map((orderItem, index) => {
+      const sourceItem = data.items[index]
+      const rate = getCommissionRate(sourceItem)
+      return {
+        orderId: order.id,
+        orderItemId: orderItem.id,
+        creatorId: data.creatorId,
+        conversionType: data.conversionType,
+        orderAmount: orderItem.totalPrice,
+        commissionRate: rate,
+        commissionAmount: Math.round(Number(orderItem.totalPrice) * rate),
+        status: 'PENDING',
+      }
+    }),
   })
 
   return { id: order.id, orderNumber: order.orderNumber }

@@ -21,8 +21,6 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-const INDIRECT_COMMISSION_RATE = 0.03;
-
 // =============================================
 // Helpers
 // =============================================
@@ -206,15 +204,7 @@ export default function CheckoutPage() {
         .find((c) => c.startsWith('cnec_visitor='));
       const conversionType = visitorCookie ? 'DIRECT' : 'INDIRECT';
 
-      // Build commission rates
-      const commissionRates: Record<string, number> = {};
-      cartItems.forEach((ci) => {
-        commissionRates[ci.productId] = ci.campaignId
-          ? 0.1
-          : INDIRECT_COMMISSION_RATE;
-      });
-
-      // Create order via server action
+      // Create order via server action (commission rates resolved server-side from DB)
       const result = await createOrder({
         orderNumber,
         creatorId: creator.id,
@@ -238,7 +228,6 @@ export default function CheckoutPage() {
           productImage: item.product?.imageUrl || (item.product?.images && item.product.images[0]) || null,
         })),
         conversionType: conversionType as 'DIRECT' | 'INDIRECT',
-        commissionRates,
       });
 
       // Clear cart for this creator
