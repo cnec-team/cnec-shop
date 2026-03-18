@@ -712,6 +712,12 @@ export async function createProduct(data: {
   const { brand } = await requireBrand()
   if (brand.id !== data.brandId) throw new Error('Forbidden')
 
+  // Convert commission rate: if > 1 treat as percentage (e.g. 10 → 0.10)
+  const rate = data.defaultCommissionRate > 1
+    ? data.defaultCommissionRate / 100
+    : data.defaultCommissionRate
+  const clampedRate = Math.min(Math.max(rate, 0), 0.9999)
+
   return prisma.product.create({
     data: {
       brandId: brand.id,
@@ -734,7 +740,7 @@ export async function createProduct(data: {
       returnPolicy: data.returnPolicy ?? null,
       status: data.status,
       allowCreatorPick: data.allowCreatorPick,
-      defaultCommissionRate: data.defaultCommissionRate,
+      defaultCommissionRate: clampedRate,
     },
   })
 }
@@ -761,22 +767,27 @@ export async function bulkCreateProducts(
   if (brand.id !== brandId) throw new Error('Forbidden')
 
   return prisma.product.createMany({
-    data: products.map((p) => ({
-      brandId: brand.id,
-      name: p.name,
-      category: p.category,
-      originalPrice: p.originalPrice,
-      salePrice: p.salePrice,
-      stock: p.stock,
-      defaultCommissionRate: p.defaultCommissionRate,
-      description: p.description ?? null,
-      images: p.images,
-      thumbnailUrl: p.thumbnailUrl ?? null,
-      allowCreatorPick: p.allowCreatorPick,
-      status: p.status,
-      shippingFeeType: p.shippingFeeType as ShippingFeeType,
-      shippingFee: p.shippingFee,
-    })),
+    data: products.map((p) => {
+      const rate = p.defaultCommissionRate > 1
+        ? p.defaultCommissionRate / 100
+        : p.defaultCommissionRate
+      return {
+        brandId: brand.id,
+        name: p.name,
+        category: p.category,
+        originalPrice: p.originalPrice,
+        salePrice: p.salePrice,
+        stock: p.stock,
+        defaultCommissionRate: Math.min(Math.max(rate, 0), 0.9999),
+        description: p.description ?? null,
+        images: p.images,
+        thumbnailUrl: p.thumbnailUrl ?? null,
+        allowCreatorPick: p.allowCreatorPick,
+        status: p.status,
+        shippingFeeType: p.shippingFeeType as ShippingFeeType,
+        shippingFee: p.shippingFee,
+      }
+    }),
   })
 }
 
