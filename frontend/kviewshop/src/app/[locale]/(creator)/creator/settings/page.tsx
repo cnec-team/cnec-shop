@@ -8,9 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
-import { User, CreditCard, Bell, Globe, Loader2, Save } from 'lucide-react';
+import { User, CreditCard, Bell, Globe, Loader2, Save, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { getCreatorSession, updateCreatorSettings } from '@/lib/actions/creator';
+import { useOnboardingStore } from '@/lib/store/onboarding';
 
 export default function CreatorSettingsPage() {
   const t = useTranslations('creator');
@@ -360,6 +361,27 @@ export default function CreatorSettingsPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Tutorial Reset */}
+      <Card>
+        <CardContent className="p-4 sm:p-6 flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">온보딩 튜토리얼</p>
+            <p className="text-xs text-muted-foreground">처음 시작 가이드를 다시 볼 수 있습니다</p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              useOnboardingStore.getState().resetTutorial();
+              toast.success('튜토리얼이 초기화되었습니다. 대시보드로 이동하면 다시 시작됩니다.');
+            }}
+          >
+            <RotateCcw className="h-4 w-4 mr-1" />
+            다시 보기
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }

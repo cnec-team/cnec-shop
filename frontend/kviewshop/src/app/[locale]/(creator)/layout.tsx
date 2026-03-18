@@ -1,5 +1,8 @@
 import { Header } from '@/components/layout/header';
 import { Sidebar } from '@/components/layout/sidebar';
+import { MobileBottomNav } from '@/components/creator/MobileBottomNav';
+import { CreatorMobileHeader } from '@/components/creator/CreatorMobileHeader';
+import { OnboardingTutorial } from '@/components/creator/OnboardingTutorial';
 import type { Locale } from '@/lib/i18n/config';
 
 export default async function CreatorLayout({
@@ -14,10 +17,13 @@ export default async function CreatorLayout({
   return (
     <div className="min-h-screen bg-background">
       <Header locale={locale as Locale} />
+      <CreatorMobileHeader />
       <div className="flex">
         <Sidebar role="creator" locale={locale as Locale} />
-        <main className="w-full lg:ml-60 flex-1 p-4 sm:p-6">{children}</main>
+        <main className="w-full lg:ml-60 flex-1 p-4 sm:p-6 pb-24 md:pb-6">{children}</main>
       </div>
+      <MobileBottomNav />
+      <OnboardingTutorial />
     </div>
   );
 }

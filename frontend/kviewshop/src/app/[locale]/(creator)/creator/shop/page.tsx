@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,6 +28,10 @@ import {
   Image as ImageIcon,
   Link as LinkIcon,
   Sparkles,
+  ExternalLink,
+  ChevronDown,
+  ChevronUp,
+  Store,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ImageUpload from '@/components/common/ImageUpload';
@@ -74,11 +80,16 @@ interface ShopForm {
   bannerLink: string;
 }
 
-export default function CreatorShopPage() {
-  const [creator, setCreator] = useState<Record<string, any> | null>(null);
+type SectionKey = 'images' | 'basic' | 'social' | 'beauty' | 'banner';
 
+export default function CreatorShopPage() {
+  const params = useParams();
+  const locale = params.locale as string;
+  const [creator, setCreator] = useState<Record<string, any> | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  // On mobile, use accordion. On desktop, all open.
+  const [openSections, setOpenSections] = useState<Set<SectionKey>>(new Set(['images', 'basic', 'social', 'beauty', 'banner']));
   const [form, setForm] = useState<ShopForm>({
     displayName: '',
     bio: '',
@@ -174,24 +185,52 @@ export default function CreatorShopPage() {
     }));
   };
 
+  const toggleSection = (key: SectionKey) => {
+    setOpenSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+
   if (isLoading) {
     return (
-      <div className="space-y-6 max-w-3xl">
-        <div>
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-4 w-72 mt-2" />
-        </div>
+      <div className="space-y-4 max-w-3xl">
+        <Skeleton className="h-12 w-full rounded-xl" />
         {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-48 w-full" />
+          <Skeleton key={i} className="h-32 w-full rounded-xl" />
         ))}
       </div>
     );
   }
 
+  const shopUrl = creator?.shopId ? `https://shop.cnec.kr/${creator.shopId}` : null;
+
+  const AccordionHeader = ({ sectionKey, icon: Icon, title }: { sectionKey: SectionKey; icon: React.ComponentType<{ className?: string }>; title: string }) => (
+    <button
+      onClick={() => toggleSection(sectionKey)}
+      className="md:hidden flex items-center justify-between w-full p-4 text-left"
+    >
+      <div className="flex items-center gap-2">
+        <Icon className="h-5 w-5" />
+        <span className="font-semibold">{title}</span>
+      </div>
+      {openSections.has(sectionKey) ? (
+        <ChevronUp className="h-4 w-4 text-muted-foreground" />
+      ) : (
+        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+      )}
+    </button>
+  );
+
   return (
-    <div className="space-y-6 max-w-3xl">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 max-w-3xl">
+      {/* Desktop Header */}
+      <div className="hidden md:flex items-center justify-between">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold">샵 프로필 설정</h1>
           <p className="text-sm text-muted-foreground">내 샵의 프로필과 뷰티 정보를 관리하세요</p>
@@ -205,16 +244,35 @@ export default function CreatorShopPage() {
         </Button>
       </div>
 
+      {/* Shop Preview Link */}
+      {shopUrl && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="p-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Store className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium">내 샵 미리보기</span>
+            </div>
+            <Button variant="outline" size="sm" asChild className="h-8 text-xs">
+              <a href={shopUrl} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                내 샵 보기
+              </a>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Cover & Profile Images */}
       <Card>
-        <CardHeader>
+        <AccordionHeader sectionKey="images" icon={ImageIcon} title="이미지 설정" />
+        <CardHeader className="hidden md:block">
           <CardTitle className="flex items-center gap-2">
             <ImageIcon className="h-5 w-5" />
             이미지 설정
           </CardTitle>
-          <CardDescription>샵에 표시될 커버 이미지와 프로필 이미지 URL을 입력하세요</CardDescription>
+          <CardDescription>샵에 표시될 커버 이미지와 프로필 이미지를 설정하세요</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className={`space-y-4 ${openSections.has('images') ? 'block' : 'hidden md:block'}`}>
           <div className="space-y-2">
             <Label>커버 이미지</Label>
             <ImageUpload
@@ -241,13 +299,14 @@ export default function CreatorShopPage() {
 
       {/* Basic Info */}
       <Card>
-        <CardHeader>
+        <AccordionHeader sectionKey="basic" icon={User} title="기본 정보" />
+        <CardHeader className="hidden md:block">
           <CardTitle className="flex items-center gap-2">
             <User className="h-5 w-5" />
             기본 정보
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className={`space-y-4 ${openSections.has('basic') ? 'block' : 'hidden md:block'}`}>
           <div className="space-y-2">
             <Label>샵 이름</Label>
             <Input
@@ -262,7 +321,7 @@ export default function CreatorShopPage() {
               placeholder="내 샵을 소개해 주세요"
               value={form.bio}
               onChange={(e) => setForm({ ...form, bio: e.target.value })}
-              rows={4}
+              rows={3}
             />
           </div>
         </CardContent>
@@ -270,14 +329,15 @@ export default function CreatorShopPage() {
 
       {/* Social Channels */}
       <Card>
-        <CardHeader>
+        <AccordionHeader sectionKey="social" icon={LinkIcon} title="대표 채널 URL" />
+        <CardHeader className="hidden md:block">
           <CardTitle className="flex items-center gap-2">
             <LinkIcon className="h-5 w-5" />
             대표 채널 URL
           </CardTitle>
           <CardDescription>SNS 채널 주소를 입력하세요</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className={`space-y-4 ${openSections.has('social') ? 'block' : 'hidden md:block'}`}>
           <div className="space-y-2">
             <Label className="flex items-center gap-2">
               <Instagram className="h-4 w-4" /> Instagram
@@ -313,15 +373,15 @@ export default function CreatorShopPage() {
 
       {/* Beauty Profile Tags */}
       <Card>
-        <CardHeader>
+        <AccordionHeader sectionKey="beauty" icon={Sparkles} title="뷰티 프로필 태그" />
+        <CardHeader className="hidden md:block">
           <CardTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5" />
             뷰티 프로필 태그
           </CardTitle>
           <CardDescription>뷰티 프로필 정보를 설정하면 맞춤 추천에 활용됩니다</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Skin Type */}
+        <CardContent className={`space-y-6 ${openSections.has('beauty') ? 'block' : 'hidden md:block'}`}>
           <div className="space-y-2">
             <Label>피부 타입</Label>
             <Select
@@ -341,7 +401,6 @@ export default function CreatorShopPage() {
             </Select>
           </div>
 
-          {/* Personal Color */}
           <div className="space-y-2">
             <Label>퍼스널 컬러</Label>
             <Select
@@ -363,14 +422,13 @@ export default function CreatorShopPage() {
 
           <Separator />
 
-          {/* Skin Concerns */}
           <div className="space-y-3">
             <Label>피부 고민 (복수 선택)</Label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {SKIN_CONCERNS_OPTIONS.map((option) => (
                 <label
                   key={option.value}
-                  className="flex items-center gap-2 cursor-pointer"
+                  className="flex items-center gap-2 cursor-pointer min-h-[44px]"
                 >
                   <Checkbox
                     checked={form.skinConcerns.includes(option.value)}
@@ -384,14 +442,13 @@ export default function CreatorShopPage() {
 
           <Separator />
 
-          {/* Scalp Concerns */}
           <div className="space-y-3">
             <Label>두피 고민 (복수 선택)</Label>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {SCALP_CONCERNS_OPTIONS.map((option) => (
                 <label
                   key={option.value}
-                  className="flex items-center gap-2 cursor-pointer"
+                  className="flex items-center gap-2 cursor-pointer min-h-[44px]"
                 >
                   <Checkbox
                     checked={form.scalpConcerns.includes(option.value)}
@@ -407,14 +464,15 @@ export default function CreatorShopPage() {
 
       {/* Banner Settings */}
       <Card>
-        <CardHeader>
+        <AccordionHeader sectionKey="banner" icon={ImageIcon} title="배너 설정" />
+        <CardHeader className="hidden md:block">
           <CardTitle className="flex items-center gap-2">
             <ImageIcon className="h-5 w-5" />
             배너 설정
           </CardTitle>
           <CardDescription>샵 상단에 표시되는 배너를 설정하세요</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className={`space-y-4 ${openSections.has('banner') ? 'block' : 'hidden md:block'}`}>
           <div className="space-y-2">
             <Label>배너 이미지</Label>
             <ImageUpload
@@ -437,8 +495,8 @@ export default function CreatorShopPage() {
       </Card>
 
       {/* Sticky Save Button */}
-      <div className="sticky bottom-0 bg-background py-4 border-t">
-        <Button className="w-full" onClick={handleSave} disabled={isSaving}>
+      <div className="sticky bottom-16 md:bottom-0 bg-background py-3 border-t z-10">
+        <Button className="w-full h-12 text-base" onClick={handleSave} disabled={isSaving}>
           {isSaving ? (
             <><Loader2 className="mr-2 h-4 w-4 animate-spin" />저장 중...</>
           ) : (

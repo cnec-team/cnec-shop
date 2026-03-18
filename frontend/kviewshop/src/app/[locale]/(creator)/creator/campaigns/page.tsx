@@ -6,17 +6,9 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -33,6 +25,7 @@ import {
   Loader2,
   ArrowRight,
   Clock,
+  Search,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -72,7 +65,7 @@ export default function CreatorCampaignsPage() {
   const [creator, setCreator] = useState<{ id: string } | null>(null);
   const [campaigns, setCampaigns] = useState<CampaignWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState<'recruiting' | 'my'>('recruiting');
 
   // Apply dialog
   const [applyOpen, setApplyOpen] = useState(false);
@@ -103,10 +96,10 @@ export default function CreatorCampaignsPage() {
     return () => { cancelled = true; };
   }, []);
 
-  const filteredCampaigns = useMemo(() => {
-    if (statusFilter === 'all') return campaigns;
-    return campaigns.filter((c) => c.status === statusFilter);
-  }, [campaigns, statusFilter]);
+  const recruitingCampaigns = useMemo(
+    () => campaigns.filter((c) => c.status === 'RECRUITING' || c.status === 'ACTIVE'),
+    [campaigns]
+  );
 
   const getDDay = (endAt?: string | null) => {
     if (!endAt) return null;
@@ -189,15 +182,11 @@ export default function CreatorCampaignsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div>
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-4 w-72 mt-2" />
-        </div>
-        <Skeleton className="h-12 w-full" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="space-y-4">
+        <Skeleton className="h-10 w-full rounded-lg" />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-64" />
+            <Skeleton key={i} className="h-56 rounded-xl" />
           ))}
         </div>
       </div>
@@ -205,175 +194,174 @@ export default function CreatorCampaignsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-4">
+      {/* Desktop Header */}
+      <div className="hidden md:flex items-center justify-between">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">캠페인 둘러보기</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">캠페인</h1>
           <p className="text-sm text-muted-foreground">
             진행 중인 공구/상시 캠페인에 참여하세요
           </p>
         </div>
-        <Button variant="outline" asChild>
-          <Link href={`/${locale}/creator/campaigns/my`}>
-            내 캠페인
-            <ArrowRight className="h-4 w-4 ml-1" />
-          </Link>
-        </Button>
       </div>
 
-      {/* Filter */}
-      <div className="flex gap-3">
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="상태 필터" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">전체</SelectItem>
-            <SelectItem value="RECRUITING">모집중</SelectItem>
-            <SelectItem value="ACTIVE">진행중</SelectItem>
-          </SelectContent>
-        </Select>
+      {/* Mobile Tab Switcher */}
+      <div className="flex rounded-lg bg-muted p-1 gap-1">
+        <button
+          onClick={() => setActiveTab('recruiting')}
+          className={`flex-1 py-2.5 px-4 rounded-md text-sm font-medium transition-colors ${
+            activeTab === 'recruiting'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground'
+          }`}
+        >
+          공구 모집중
+          {recruitingCampaigns.length > 0 && (
+            <Badge className="ml-1.5 bg-primary text-white text-[10px] px-1.5 py-0">
+              {recruitingCampaigns.length}
+            </Badge>
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab('my')}
+          className={`flex-1 py-2.5 px-4 rounded-md text-sm font-medium transition-colors ${
+            activeTab === 'my'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground'
+          }`}
+        >
+          내 캠페인
+        </button>
       </div>
 
-      {/* Campaign Grid */}
-      {filteredCampaigns.length === 0 ? (
-        <Card>
-          <CardContent className="py-16 text-center">
-            <Megaphone className="mx-auto h-12 w-12 text-muted-foreground/50" />
-            <p className="mt-4 text-muted-foreground">참여 가능한 캠페인이 없습니다</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredCampaigns.map((campaign) => {
-            const dDay = getDDay(campaign.endAt);
+      {activeTab === 'recruiting' ? (
+        <>
+          {/* Campaign Grid */}
+          {recruitingCampaigns.length === 0 ? (
+            <div className="text-center py-16">
+              <Megaphone className="mx-auto h-12 w-12 text-muted-foreground/50" />
+              <p className="mt-4 text-muted-foreground">참여 가능한 캠페인이 없습니다</p>
+              <p className="text-xs text-muted-foreground mt-1">새로운 캠페인이 열리면 알려드릴게요</p>
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {recruitingCampaigns.map((campaign) => {
+                const dDay = getDDay(campaign.endAt);
 
-            return (
-              <Card key={campaign.id} className="flex flex-col">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Badge className={getStatusBadgeVariant(campaign.status)}>
-                          {CAMPAIGN_STATUS_LABELS[campaign.status as keyof typeof CAMPAIGN_STATUS_LABELS]}
-                        </Badge>
-                        <Badge variant="outline">
-                          {campaign.type === 'GONGGU' ? '공구' : '상시'}
-                        </Badge>
-                      </div>
-                      <CardTitle className="text-base line-clamp-2">
-                        {campaign.title}
-                      </CardTitle>
-                    </div>
-                    {dDay && (
-                      <Badge
-                        variant="secondary"
-                        className={
-                          dDay === '종료'
-                            ? 'bg-gray-100 text-gray-600'
-                            : dDay === 'D-Day'
-                            ? 'bg-red-100 text-red-600'
-                            : 'bg-orange-100 text-orange-600'
-                        }
-                      >
-                        <Clock className="h-3 w-3 mr-1" />
-                        {dDay}
-                      </Badge>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="flex-1 flex flex-col">
-                  {/* Campaign info */}
-                  <div className="space-y-2 text-sm flex-1">
-                    {campaign.brand && (
-                      <p className="text-muted-foreground">
-                        {campaign.brand.brandName}
-                      </p>
-                    )}
-                    {campaign.description && (
-                      <p className="text-muted-foreground line-clamp-2">
-                        {campaign.description}
-                      </p>
-                    )}
-                    <div className="grid grid-cols-2 gap-2 pt-2">
-                      <div className="flex items-center gap-1.5">
-                        <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">
-                          {campaign.startAt
-                            ? new Date(campaign.startAt).toLocaleDateString('ko-KR')
-                            : '-'}{' '}
-                          ~{' '}
-                          {campaign.endAt
-                            ? new Date(campaign.endAt).toLocaleDateString('ko-KR')
-                            : '-'}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <Percent className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className="text-xs">
-                          내 수익 {(campaign.commissionRate * 100).toFixed(0)}%
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <Users className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className="text-xs">
-                          {campaign.participantCount ?? 0}
-                          {campaign.targetParticipants
-                            ? ` / ${campaign.targetParticipants}명`
-                            : '명 참여'}
-                        </span>
-                      </div>
-                      {campaign.totalStock && (
+                return (
+                  <Card key={campaign.id} className="flex flex-col overflow-hidden">
+                    <CardContent className="p-3 sm:p-4 flex-1 flex flex-col">
+                      {/* Top: Status + D-Day */}
+                      <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs text-muted-foreground">
-                            판매 {campaign.soldCount} / {campaign.totalStock}
+                          <Badge className={`text-[10px] ${getStatusBadgeVariant(campaign.status)}`}>
+                            {CAMPAIGN_STATUS_LABELS[campaign.status as keyof typeof CAMPAIGN_STATUS_LABELS]}
+                          </Badge>
+                          <Badge variant="outline" className="text-[10px]">
+                            {campaign.type === 'GONGGU' ? '공구' : '상시'}
+                          </Badge>
+                        </div>
+                        {dDay && (
+                          <Badge
+                            variant="secondary"
+                            className={`text-[10px] ${
+                              dDay === '종료'
+                                ? 'bg-gray-100 text-gray-600'
+                                : dDay === 'D-Day'
+                                ? 'bg-red-100 text-red-600'
+                                : 'bg-orange-100 text-orange-600'
+                            }`}
+                          >
+                            <Clock className="h-2.5 w-2.5 mr-0.5" />
+                            {dDay}
+                          </Badge>
+                        )}
+                      </div>
+
+                      {/* Title */}
+                      <h3 className="font-semibold text-sm sm:text-base line-clamp-2 mb-1">
+                        {campaign.title}
+                      </h3>
+
+                      {/* Brand & Info */}
+                      <div className="flex-1 space-y-1.5 text-xs text-muted-foreground">
+                        {campaign.brand && (
+                          <p className="font-medium text-foreground/80">{campaign.brand.brandName}</p>
+                        )}
+                        {campaign.description && (
+                          <p className="line-clamp-2">{campaign.description}</p>
+                        )}
+                      </div>
+
+                      {/* Stats Row */}
+                      <div className="flex items-center gap-3 mt-3 text-xs">
+                        <div className="flex items-center gap-1">
+                          <Percent className="h-3 w-3 text-primary" />
+                          <span className="font-semibold text-primary">
+                            내 수익 {(campaign.commissionRate * 100).toFixed(0)}%
                           </span>
                         </div>
-                      )}
-                    </div>
-                  </div>
+                        <div className="flex items-center gap-1 text-muted-foreground">
+                          <Users className="h-3 w-3" />
+                          <span>
+                            {campaign.participantCount ?? 0}
+                            {campaign.targetParticipants ? `/${campaign.targetParticipants}` : ''}명
+                          </span>
+                        </div>
+                      </div>
 
-                  {/* Action Button */}
-                  <div className="mt-4">
-                    {campaign.recruitmentType === 'APPROVAL' ? (
-                      <Button
-                        className="w-full"
-                        onClick={() => handleApplyApproval(campaign)}
-                        disabled={submitting}
-                      >
-                        {submitting ? (
-                          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      {/* Action Button */}
+                      <div className="mt-3">
+                        {campaign.recruitmentType === 'APPROVAL' ? (
+                          <Button
+                            className="w-full h-10"
+                            onClick={() => handleApplyApproval(campaign)}
+                            disabled={submitting}
+                          >
+                            {submitting ? (
+                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                            ) : (
+                              <Megaphone className="h-4 w-4 mr-1" />
+                            )}
+                            참여하기
+                          </Button>
                         ) : (
-                          <Megaphone className="h-4 w-4 mr-1" />
+                          <Button
+                            className="w-full h-10 bg-orange-500 hover:bg-orange-600 text-white"
+                            onClick={() => handleJoinOpen(campaign)}
+                            disabled={submitting}
+                          >
+                            {submitting ? (
+                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                            ) : (
+                              <ArrowRight className="h-4 w-4 mr-1" />
+                            )}
+                            바로 참여
+                          </Button>
                         )}
-                        참여 신청
-                      </Button>
-                    ) : (
-                      <Button
-                        className="w-full bg-orange-500 hover:bg-orange-600 text-white"
-                        onClick={() => handleJoinOpen(campaign)}
-                        disabled={submitting}
-                      >
-                        {submitting ? (
-                          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                        ) : (
-                          <ArrowRight className="h-4 w-4 mr-1" />
-                        )}
-                        바로 참여
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </>
+      ) : (
+        /* My Campaigns Tab */
+        <div className="text-center py-16">
+          <Link href={`/${locale}/creator/campaigns/my`}>
+            <Button variant="outline" size="lg">
+              내 캠페인 보기
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
+          </Link>
         </div>
       )}
 
-      {/* Apply Dialog (for APPROVAL type campaigns) */}
+      {/* Apply Dialog */}
       <Dialog open={applyOpen} onOpenChange={setApplyOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>캠페인 참여 신청</DialogTitle>
             <DialogDescription>
@@ -397,11 +385,11 @@ export default function CreatorCampaignsPage() {
               </div>
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setApplyOpen(false)}>
+          <DialogFooter className="flex-row gap-2">
+            <Button variant="outline" onClick={() => setApplyOpen(false)} className="flex-1">
               취소
             </Button>
-            <Button onClick={handleSubmitApply} disabled={submitting}>
+            <Button onClick={handleSubmitApply} disabled={submitting} className="flex-1">
               {submitting ? (
                 <><Loader2 className="h-4 w-4 mr-2 animate-spin" />신청 중...</>
               ) : (
