@@ -27,6 +27,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { LegalFooter } from '@/components/shop/legal-footer';
 import { locales, localeNames, type Locale } from '@/lib/i18n/config';
+import { getPlatformStats } from '@/lib/actions/admin';
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 24 },
@@ -44,6 +45,7 @@ export default function HomePage() {
   const t = useTranslations('home');
   const router = useRouter();
   const [langOpen, setLangOpen] = useState(false);
+  const [platformStats, setPlatformStats] = useState<{ products: number; creators: number; brands: number; orders: number } | null>(null);
   const langRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -54,6 +56,12 @@ export default function HomePage() {
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    getPlatformStats()
+      .then(setPlatformStats)
+      .catch(() => {});
   }, []);
 
   function switchLocale(newLocale: Locale) {
@@ -74,12 +82,14 @@ export default function HomePage() {
     { icon: BadgeCheck, title: t('benefit4Title'), desc: t('benefit4Desc') },
   ];
 
-  const stats = [
-    { value: '500+', label: t('stats.products') },
-    { value: '1,200+', label: t('stats.creators') },
-    { value: '11', label: t('stats.countries') },
-    { value: '80+', label: t('stats.brands') },
-  ];
+  const stats = platformStats
+    ? [
+        { value: String(platformStats.products), label: t('stats.products') },
+        { value: String(platformStats.creators), label: t('stats.creators') },
+        { value: String(platformStats.orders), label: t('stats.orders') },
+        { value: String(platformStats.brands), label: t('stats.brands') },
+      ]
+    : null;
 
   const forCreators = [
     { icon: ShoppingBag, title: t('forCreator1Title'), desc: t('forCreator1Desc') },
@@ -217,24 +227,26 @@ export default function HomePage() {
       </section>
 
       {/* Stats */}
-      <section className="border-y border-border/50 bg-card/50">
-        <div className="container mx-auto px-4 py-12">
-          <motion.div
-            className="grid grid-cols-2 md:grid-cols-4 gap-8"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-80px' }}
-            variants={staggerContainer}
-          >
-            {stats.map((stat) => (
-              <motion.div key={stat.label} className="text-center" variants={fadeInUp} transition={{ duration: 0.4 }}>
-                <p className="stat-value text-3xl md:text-4xl text-primary">{stat.value}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{stat.label}</p>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
+      {stats && stats.some((s) => Number(s.value) > 0) && (
+        <section className="border-y border-border/50 bg-card/50">
+          <div className="container mx-auto px-4 py-12">
+            <motion.div
+              className="grid grid-cols-2 md:grid-cols-4 gap-8"
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: '-80px' }}
+              variants={staggerContainer}
+            >
+              {stats.map((stat) => (
+                <motion.div key={stat.label} className="text-center" variants={fadeInUp} transition={{ duration: 0.4 }}>
+                  <p className="stat-value text-3xl md:text-4xl text-primary">{stat.value}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{stat.label}</p>
+                </motion.div>
+              ))}
+            </motion.div>
+          </div>
+        </section>
+      )}
 
       {/* How It Works - Flow Visualization */}
       <section className="py-20 md:py-28">

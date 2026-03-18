@@ -625,6 +625,7 @@
       "products": "商品数",
       "creators": "アクティブクリエイター",
       "countries": "配送対応国",
+      "orders": "総注文数",
       "brands": "パートナーブランド"
     },
     "ctaTitle": "今すぐ始めましょう",

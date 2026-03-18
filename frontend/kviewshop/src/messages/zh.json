@@ -496,6 +496,7 @@
       "products": "商品数",
       "creators": "活跃创作者",
       "countries": "配送国家",
+      "orders": "总订单",
       "brands": "合作品牌"
     },
     "ctaTitle": "立即开始",
