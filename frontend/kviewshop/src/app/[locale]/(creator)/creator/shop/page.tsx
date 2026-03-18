@@ -28,6 +28,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import ImageUpload from '@/components/common/ImageUpload';
 import { getCreatorSession, updateCreatorShopProfile } from '@/lib/actions/creator';
 import {
   SKIN_TYPE_LABELS,
@@ -215,20 +216,25 @@ export default function CreatorShopPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>커버 이미지 URL</Label>
-            <Input
-              placeholder="https://example.com/cover.jpg"
+            <Label>커버 이미지</Label>
+            <ImageUpload
               value={form.coverImageUrl}
-              onChange={(e) => setForm({ ...form, coverImageUrl: e.target.value })}
+              onChange={(url) => setForm({ ...form, coverImageUrl: url })}
+              placeholder="커버 이미지를 업로드하세요"
+              aspectRatio="cover"
+              folder="creator/cover"
             />
           </div>
           <div className="space-y-2">
-            <Label>프로필 이미지 URL</Label>
-            <Input
-              placeholder="https://example.com/profile.jpg"
-              value={form.profileImageUrl}
-              onChange={(e) => setForm({ ...form, profileImageUrl: e.target.value })}
-            />
+            <Label>프로필 이미지</Label>
+            <div className="max-w-[200px]">
+              <ImageUpload
+                value={form.profileImageUrl}
+                onChange={(url) => setForm({ ...form, profileImageUrl: url })}
+                placeholder="프로필 이미지"
+                folder="creator/profile"
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -410,11 +416,13 @@ export default function CreatorShopPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>배너 이미지 URL</Label>
-            <Input
-              placeholder="https://example.com/banner.jpg"
+            <Label>배너 이미지</Label>
+            <ImageUpload
               value={form.bannerImageUrl}
-              onChange={(e) => setForm({ ...form, bannerImageUrl: e.target.value })}
+              onChange={(url) => setForm({ ...form, bannerImageUrl: url })}
+              placeholder="배너 이미지를 업로드하세요"
+              aspectRatio="banner"
+              folder="creator/banner"
             />
           </div>
           <div className="space-y-2">
@@ -425,18 +433,6 @@ export default function CreatorShopPage() {
               onChange={(e) => setForm({ ...form, bannerLink: e.target.value })}
             />
           </div>
-          {form.bannerImageUrl && (
-            <div className="rounded-lg overflow-hidden border">
-              <img
-                src={form.bannerImageUrl}
-                alt="배너 미리보기"
-                className="w-full h-32 object-cover"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                }}
-              />
-            </div>
-          )}
         </CardContent>
       </Card>
 
