@@ -23,53 +23,10 @@ interface NotificationItem {
   type: NotificationType;
   title: string;
   message: string;
-  link_url?: string;
-  is_read: boolean;
-  created_at: string;
+  linkUrl?: string;
+  isRead: boolean;
+  createdAt: string;
 }
-
-const mockNotifications: NotificationItem[] = [
-  {
-    id: '1',
-    type: 'ORDER',
-    title: '새 주문 발생',
-    message: '뷰티진 샵에서 하우파파 로션 1건이 판매되었습니다. 예상 수익: ₩3,705',
-    is_read: false,
-    created_at: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-  },
-  {
-    id: '2',
-    type: 'CAMPAIGN',
-    title: '공구 승인',
-    message: '누씨오 특가전 캠페인 참여가 승인되었습니다.',
-    is_read: false,
-    created_at: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
-  },
-  {
-    id: '3',
-    type: 'SETTLEMENT',
-    title: '정산 예정 안내',
-    message: '1월 정산금 ₩45,200이 2월 20일에 지급됩니다.',
-    is_read: true,
-    created_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-  },
-  {
-    id: '4',
-    type: 'SHIPPING',
-    title: '배송 완료',
-    message: '주문 CNEC-20260210-12345의 배송이 완료되었습니다.',
-    is_read: true,
-    created_at: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
-  },
-  {
-    id: '5',
-    type: 'CAMPAIGN',
-    title: '새 공구 캠페인',
-    message: '하우파파 3월 공구 캠페인이 오픈되었습니다. 내 수익 20%!',
-    is_read: true,
-    created_at: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(),
-  },
-];
 
 const TABS: { value: string; label: string; type?: NotificationType }[] = [
   { value: 'all', label: '전체' },
@@ -131,40 +88,33 @@ function formatDate(dateStr: string): string {
 }
 
 export default function CreatorNotificationsPage() {
-  const [creator, setCreator] = useState<{ id: string } | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
 
   const fetchNotifications = useCallback(async () => {
-    if (!creator?.id) {
-      // Use mock data for MVP
-      setNotifications(mockNotifications);
-      setLoading(false);
-      return;
-    }
+    if (!userId) return;
 
     try {
-      const res = await fetch(`/api/notifications?userId=${creator.id}`);
+      const res = await fetch(`/api/notifications?userId=${userId}`);
       if (!res.ok) throw new Error('Failed to fetch');
       const data = await res.json();
       setNotifications(data.notifications || []);
     } catch {
-      // Fallback to mock data on error
-      setNotifications(mockNotifications);
+      console.error('Failed to fetch notifications');
+      setNotifications([]);
     } finally {
       setLoading(false);
     }
-  }, [creator?.id]);
+  }, [userId]);
 
   useEffect(() => {
     async function init() {
       const creatorData = await getCreatorSession();
       if (creatorData) {
-        setCreator(creatorData as any);
+        setUserId((creatorData as any).userId);
       } else {
-        // Use mock data when no session
-        setNotifications(mockNotifications);
         setLoading(false);
       }
     }
@@ -172,15 +122,15 @@ export default function CreatorNotificationsPage() {
   }, []);
 
   useEffect(() => {
-    if (creator) {
+    if (userId) {
       fetchNotifications();
     }
-  }, [creator, fetchNotifications]);
+  }, [userId, fetchNotifications]);
 
   const handleMarkAsRead = async (notification: NotificationItem) => {
-    if (notification.is_read) return;
+    if (notification.isRead) return;
 
-    if (creator?.id) {
+    if (userId) {
       try {
         await fetch('/api/notifications', {
           method: 'PATCH',
@@ -193,24 +143,24 @@ export default function CreatorNotificationsPage() {
     }
 
     setNotifications((prev) =>
-      prev.map((n) => (n.id === notification.id ? { ...n, is_read: true } : n))
+      prev.map((n) => (n.id === notification.id ? { ...n, isRead: true } : n))
     );
   };
 
   const handleMarkAllRead = async () => {
-    if (creator?.id) {
+    if (userId) {
       try {
         await fetch('/api/notifications', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ markAllRead: true, userId: creator.id }),
+          body: JSON.stringify({ markAllRead: true, userId }),
         });
       } catch {
         console.error('Failed to mark all as read');
       }
     }
 
-    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
   };
 
   const filteredNotifications =
@@ -218,7 +168,7 @@ export default function CreatorNotificationsPage() {
       ? notifications
       : notifications.filter((n) => n.type === activeTab);
 
-  const unreadCount = notifications.filter((n) => !n.is_read).length;
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   if (loading) {
     return (
@@ -289,7 +239,7 @@ export default function CreatorNotificationsPage() {
                         <Card
                           key={notification.id}
                           className={`cursor-pointer transition-colors hover:bg-muted/30 ${
-                            !notification.is_read ? 'border-primary/20 bg-primary/5' : ''
+                            !notification.isRead ? 'border-primary/20 bg-primary/5' : ''
                           }`}
                           onClick={() => handleMarkAsRead(notification)}
                         >
@@ -309,14 +259,14 @@ export default function CreatorNotificationsPage() {
                                     <div className="flex items-center gap-2">
                                       <h3
                                         className={`text-sm font-semibold truncate ${
-                                          !notification.is_read
+                                          !notification.isRead
                                             ? 'text-foreground'
                                             : 'text-muted-foreground'
                                         }`}
                                       >
                                         {notification.title}
                                       </h3>
-                                      {!notification.is_read && (
+                                      {!notification.isRead && (
                                         <span className="shrink-0 h-2 w-2 rounded-full bg-blue-500" />
                                       )}
                                     </div>
@@ -325,7 +275,7 @@ export default function CreatorNotificationsPage() {
                                     </p>
                                   </div>
                                   <span className="shrink-0 text-xs text-muted-foreground/60 whitespace-nowrap">
-                                    {formatDate(notification.created_at)}
+                                    {formatDate(notification.createdAt)}
                                   </span>
                                 </div>
                               </div>

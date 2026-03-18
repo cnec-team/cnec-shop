@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Skeleton } from '@/components/ui/skeleton';
+import ImageUpload from '@/components/common/ImageUpload';
 
 const COURIERS = [
   { code: 'cj', name: 'CJ대한통운' },
@@ -55,7 +56,7 @@ export default function ProductDetailPage() {
 
   // Detail
   const [mainImage, setMainImage] = useState('');
-  const [additionalImages, setAdditionalImages] = useState('');
+  const [additionalImages, setAdditionalImages] = useState<string[]>([]);
   const [description, setDescription] = useState('');
   const [volume, setVolume] = useState('');
   const [ingredients, setIngredients] = useState('');
@@ -110,7 +111,7 @@ export default function ProductDetailPage() {
         const imgs = product.images ?? [];
         if (imgs.length > 0) {
           setMainImage(imgs[0]);
-          setAdditionalImages(imgs.slice(1).join('\n'));
+          setAdditionalImages(imgs.slice(1));
         }
       } catch {
         setError('상품을 불러오는 데 실패했습니다.');
@@ -142,14 +143,7 @@ export default function ProductDetailPage() {
     try {
       const images: string[] = [];
       if (mainImage.trim()) images.push(mainImage.trim());
-      if (additionalImages.trim()) {
-        images.push(
-          ...additionalImages
-            .split('\n')
-            .map((url) => url.trim())
-            .filter(Boolean)
-        );
-      }
+      images.push(...additionalImages.filter(Boolean));
 
       await updateProduct(productId, {
         name: name.trim(),
@@ -296,23 +290,47 @@ export default function ProductDetailPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="mainImage">대표 이미지 URL</Label>
-            <Input
-              id="mainImage"
-              value={mainImage}
-              onChange={(e) => setMainImage(e.target.value)}
-              placeholder="https://example.com/image.jpg"
-            />
+            <Label>대표 이미지</Label>
+            <div className="max-w-xs">
+              <ImageUpload
+                value={mainImage}
+                onChange={setMainImage}
+                placeholder="대표 이미지를 업로드하세요"
+                folder="products"
+              />
+            </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="additionalImages">추가 이미지 URLs (줄바꿈으로 구분)</Label>
-            <Textarea
-              id="additionalImages"
-              value={additionalImages}
-              onChange={(e) => setAdditionalImages(e.target.value)}
-              placeholder={'https://example.com/image2.jpg\nhttps://example.com/image3.jpg'}
-              rows={3}
-            />
+            <Label>추가 이미지</Label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {additionalImages.map((url, idx) => (
+                <ImageUpload
+                  key={idx}
+                  value={url}
+                  onChange={(newUrl) => {
+                    const updated = [...additionalImages];
+                    if (newUrl) {
+                      updated[idx] = newUrl;
+                    } else {
+                      updated.splice(idx, 1);
+                    }
+                    setAdditionalImages(updated);
+                  }}
+                  placeholder="추가 이미지"
+                  folder="products"
+                />
+              ))}
+              {additionalImages.length < 8 && (
+                <ImageUpload
+                  value=""
+                  onChange={(url) => {
+                    if (url) setAdditionalImages([...additionalImages, url]);
+                  }}
+                  placeholder="추가 이미지"
+                  folder="products"
+                />
+              )}
+            </div>
           </div>
           <Separator />
           <div className="space-y-2">
@@ -365,13 +383,15 @@ export default function ProductDetailPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="thumbnailUrl">대표 이미지 URL</Label>
-            <Input
-              id="thumbnailUrl"
-              value={thumbnailUrl}
-              onChange={(e) => setThumbnailUrl(e.target.value)}
-              placeholder="https://example.com/thumbnail.jpg"
-            />
+            <Label>대표 썸네일 이미지</Label>
+            <div className="max-w-xs">
+              <ImageUpload
+                value={thumbnailUrl}
+                onChange={setThumbnailUrl}
+                placeholder="썸네일 이미지를 업로드하세요"
+                folder="products"
+              />
+            </div>
           </div>
         </CardContent>
       </Card>

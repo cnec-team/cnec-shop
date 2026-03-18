@@ -28,6 +28,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import ImageUpload from '@/components/common/ImageUpload';
 import {
   getCreatorSession,
   getCreatorBanners,
@@ -282,28 +283,14 @@ export default function CreatorBannersPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label>이미지 URL</Label>
-              <Input
-                placeholder="https://example.com/banner.jpg"
+              <Label>배너 이미지</Label>
+              <ImageUpload
                 value={form.imageUrl}
-                onChange={(e) => setForm((prev) => ({ ...prev, imageUrl: e.target.value }))}
+                onChange={(url) => setForm((prev) => ({ ...prev, imageUrl: url }))}
+                placeholder="배너 이미지를 업로드하세요"
+                aspectRatio={form.bannerType === 'HORIZONTAL' ? 'banner' : 'square'}
+                folder="banners"
               />
-              {form.imageUrl && (
-                <div className="rounded-lg overflow-hidden border">
-                  <img
-                    src={form.imageUrl}
-                    alt="배너 미리보기"
-                    className={
-                      form.bannerType === 'HORIZONTAL'
-                        ? 'w-full h-32 object-cover'
-                        : 'w-32 h-48 object-cover'
-                    }
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                    }}
-                  />
-                </div>
-              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
