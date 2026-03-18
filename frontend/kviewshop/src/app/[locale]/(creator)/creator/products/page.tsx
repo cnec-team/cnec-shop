@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +21,8 @@ import {
   ShoppingBag,
   ArrowUpDown,
   Loader2,
+  SlidersHorizontal,
+  Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/i18n/config';
@@ -66,6 +68,7 @@ export default function CreatorProductsPage() {
   const [loading, setLoading] = useState(true);
   const [addingId, setAddingId] = useState<string | null>(null);
   const [myShopItemIds, setMyShopItemIds] = useState<Set<string>>(new Set());
+  const [showFilters, setShowFilters] = useState(false);
 
   // Filters
   const [search, setSearch] = useState('');
@@ -87,7 +90,7 @@ export default function CreatorProductsPage() {
         const data = await getPickableProducts(creatorData.id);
         if (!cancelled) {
           setProducts(data.products as unknown as ProductWithCampaign[]);
-          setMyShopItemIds(new Set(data.myShopItemProductIds));
+          setMyShopItemIds(new Set(data.myShopItemProductIds as unknown as string[]));
         }
       } catch (error) {
         console.error('Failed to load products:', error);
@@ -240,15 +243,11 @@ export default function CreatorProductsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div>
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-4 w-72 mt-2" />
-        </div>
-        <Skeleton className="h-12 w-full" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="space-y-4">
+        <Skeleton className="h-10 w-full rounded-lg" />
+        <div className="grid gap-3 grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton key={i} className="h-80" />
+            <Skeleton key={i} className="h-72 sm:h-80 rounded-xl" />
           ))}
         </div>
       </div>
@@ -256,59 +255,67 @@ export default function CreatorProductsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="space-y-4">
+      {/* Desktop header */}
+      <div className="hidden md:block">
         <h1 className="text-2xl sm:text-3xl font-bold">상품 둘러보기</h1>
-        <p className="text-sm text-muted-foreground">
-          내 샵에 추가할 상품을 찾아보세요
-        </p>
+        <p className="text-sm text-muted-foreground">내 샵에 추가할 상품을 찾아보세요</p>
       </div>
 
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="상품명, 브랜드명 검색"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-full sm:w-[160px]">
-                <SelectValue placeholder="카테고리" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">전체 카테고리</SelectItem>
-                {(Object.entries(PRODUCT_CATEGORY_LABELS) as [ProductCategory, string][]).map(
-                  ([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
-                  )
-                )}
-              </SelectContent>
-            </Select>
-            <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <ArrowUpDown className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="정렬" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="commission_desc">내 수익 높은 순</SelectItem>
-                <SelectItem value="commission_asc">내 수익 낮은 순</SelectItem>
-                <SelectItem value="price_asc">가격 낮은 순</SelectItem>
-                <SelectItem value="price_desc">가격 높은 순</SelectItem>
-                <SelectItem value="name">이름 순</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Search Bar + Filter Toggle */}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="상품명, 브랜드명 검색"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10 h-10"
+          />
+        </div>
+        <Button
+          variant={showFilters ? 'default' : 'outline'}
+          size="icon"
+          className="h-10 w-10 shrink-0 md:hidden"
+          onClick={() => setShowFilters(!showFilters)}
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+        </Button>
+      </div>
 
-      <p className="text-sm text-muted-foreground">
+      {/* Filter Bar - always visible on desktop, toggle on mobile */}
+      <div className={`flex flex-col sm:flex-row gap-2 ${showFilters ? 'block' : 'hidden md:flex'}`}>
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="w-full sm:w-[160px] h-9">
+            <SelectValue placeholder="카테고리" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">전체 카테고리</SelectItem>
+            {(Object.entries(PRODUCT_CATEGORY_LABELS) as [ProductCategory, string][]).map(
+              ([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              )
+            )}
+          </SelectContent>
+        </Select>
+        <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
+          <SelectTrigger className="w-full sm:w-[180px] h-9">
+            <ArrowUpDown className="h-3.5 w-3.5 mr-2" />
+            <SelectValue placeholder="정렬" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="commission_desc">내 수익 높은 순</SelectItem>
+            <SelectItem value="commission_asc">내 수익 낮은 순</SelectItem>
+            <SelectItem value="price_asc">가격 낮은 순</SelectItem>
+            <SelectItem value="price_desc">가격 높은 순</SelectItem>
+            <SelectItem value="name">이름 순</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <p className="text-xs text-muted-foreground">
         총 {filteredProducts.length}개 상품
       </p>
 
@@ -316,9 +323,12 @@ export default function CreatorProductsPage() {
         <div className="text-center py-16">
           <Package className="mx-auto h-12 w-12 text-muted-foreground/50" />
           <p className="mt-4 text-muted-foreground">검색 결과가 없습니다</p>
+          <Button variant="outline" className="mt-3" onClick={() => { setSearch(''); setCategoryFilter('all'); }}>
+            필터 초기화
+          </Button>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filteredProducts.map((product) => {
             const discount = getDiscountRate(product);
             const commission = getCommissionInfo(product);
@@ -336,76 +346,71 @@ export default function CreatorProductsPage() {
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <Package className="h-12 w-12 text-muted-foreground/30" />
+                      <Package className="h-10 w-10 text-muted-foreground/30" />
                     </div>
                   )}
-                  <div className="absolute top-2 left-2">
-                    <Badge
-                      className={
-                        isGonggu
-                          ? 'bg-orange-500 text-white'
-                          : 'bg-blue-500 text-white'
-                      }
-                    >
-                      {commission.label} &rarr; {commission.amountLabel}
-                    </Badge>
+                  {/* Earnings badge */}
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2 pt-6">
+                    <p className="text-white text-xs font-bold">
+                      이 상품 팔면 {commission.amountLabel}
+                    </p>
                   </div>
+                  {isGonggu && (
+                    <Badge className="absolute top-1.5 left-1.5 bg-orange-500 text-white text-[10px]">
+                      공구
+                    </Badge>
+                  )}
                 </div>
 
-                <CardContent className="p-4 flex-1 flex flex-col">
+                <CardContent className="p-2.5 sm:p-4 flex-1 flex flex-col">
                   <div className="flex-1">
                     {product.brand && (
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
                         {product.brand.brandName}
                       </p>
                     )}
-                    <p className="font-medium line-clamp-2 mt-1">{product.name}</p>
-                    <div className="flex items-center gap-2 mt-2">
+                    <p className="text-xs sm:text-sm font-medium line-clamp-2 mt-0.5 leading-tight">{product.name}</p>
+                    <div className="flex items-center gap-1.5 mt-1.5">
                       {discount > 0 && (
-                        <span className="text-sm font-bold text-destructive">{discount}%</span>
+                        <span className="text-xs sm:text-sm font-bold text-destructive">{discount}%</span>
                       )}
-                      <span className="text-lg font-bold">
+                      <span className="text-sm sm:text-base font-bold">
                         {formatCurrency(product.salePrice, 'KRW')}
                       </span>
                     </div>
-                    {discount > 0 && (
-                      <p className="text-xs text-muted-foreground line-through">
-                        {formatCurrency(product.originalPrice, 'KRW')}
-                      </p>
-                    )}
                   </div>
 
-                  <div className="mt-4">
+                  <div className="mt-2.5">
                     {isAdded ? (
-                      <Button variant="outline" size="sm" className="w-full" disabled>
-                        <Package className="h-4 w-4 mr-1" />
+                      <Button variant="outline" size="sm" className="w-full h-9 text-xs" disabled>
+                        <Check className="h-3.5 w-3.5 mr-1" />
                         추가됨
                       </Button>
                     ) : isGonggu ? (
                       <Button
                         size="sm"
-                        className="w-full bg-orange-500 hover:bg-orange-600 text-white"
+                        className="w-full h-9 text-xs bg-orange-500 hover:bg-orange-600 text-white"
                         onClick={() => handleApplyGonggu(product)}
                         disabled={addingId === product.id}
                       >
                         {addingId === product.id ? (
-                          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                          <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
                         ) : (
-                          <ShoppingBag className="h-4 w-4 mr-1" />
+                          <ShoppingBag className="h-3.5 w-3.5 mr-1" />
                         )}
-                        공구 참여 신청
+                        공구 참여
                       </Button>
                     ) : (
                       <Button
                         size="sm"
-                        className="w-full"
+                        className="w-full h-9 text-xs"
                         onClick={() => handleAddToShop(product)}
                         disabled={addingId === product.id}
                       >
                         {addingId === product.id ? (
-                          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                          <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
                         ) : (
-                          <Plus className="h-4 w-4 mr-1" />
+                          <Plus className="h-3.5 w-3.5 mr-1" />
                         )}
                         내 샵에 추가
                       </Button>
