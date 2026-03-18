@@ -260,6 +260,12 @@ export async function createCampaign(data: {
   const { brand } = await requireBrand()
   if (brand.id !== data.brandId) throw new Error('Forbidden')
 
+  // Convert commission rate: if > 1 treat as percentage (e.g. 10 → 0.10)
+  const commRate = data.commissionRate > 1
+    ? data.commissionRate / 100
+    : data.commissionRate
+  const clampedCommRate = Math.min(Math.max(commRate, 0), 0.9999)
+
   const campaign = await prisma.campaign.create({
     data: {
       brandId: brand.id,
@@ -268,7 +274,7 @@ export async function createCampaign(data: {
       description: data.description ?? null,
       status: 'DRAFT',
       recruitmentType: data.recruitmentType,
-      commissionRate: data.commissionRate,
+      commissionRate: clampedCommRate,
       soldCount: 0,
       totalStock: data.totalStock ?? null,
       targetParticipants: data.targetParticipants ?? null,
@@ -683,6 +689,87 @@ export async function getBrandProducts(
   return prisma.product.findMany({
     where: where as any,
     orderBy: { createdAt: 'desc' },
+  })
+}
+
+export async function getBrandProductById(productId: string) {
+  const { brand } = await requireBrand()
+
+  const product = await prisma.product.findUnique({
+    where: { id: productId },
+  })
+
+  if (!product || product.brandId !== brand.id) {
+    return null
+  }
+
+  return product
+}
+
+export async function updateProduct(
+  productId: string,
+  data: {
+    name?: string
+    category?: string
+    description?: string | null
+    originalPrice?: number
+    salePrice?: number
+    stock?: number
+    images?: string[]
+    thumbnailUrl?: string | null
+    volume?: string | null
+    ingredients?: string | null
+    howToUse?: string | null
+    shippingFeeType?: string
+    shippingFee?: number
+    freeShippingThreshold?: number | null
+    courier?: string | null
+    shippingInfo?: string | null
+    returnPolicy?: string | null
+    status?: string
+    allowCreatorPick?: boolean
+    defaultCommissionRate?: number
+  }
+) {
+  const { brand } = await requireBrand()
+
+  const product = await prisma.product.findUnique({
+    where: { id: productId },
+    select: { brandId: true },
+  })
+  if (!product || product.brandId !== brand.id) throw new Error('Forbidden')
+
+  const updateData: Record<string, unknown> = {}
+
+  if (data.name !== undefined) updateData.name = data.name
+  if (data.category !== undefined) updateData.category = data.category
+  if (data.description !== undefined) updateData.description = data.description
+  if (data.originalPrice !== undefined) updateData.originalPrice = data.originalPrice
+  if (data.salePrice !== undefined) updateData.salePrice = data.salePrice
+  if (data.stock !== undefined) updateData.stock = data.stock
+  if (data.images !== undefined) updateData.images = data.images
+  if (data.thumbnailUrl !== undefined) updateData.thumbnailUrl = data.thumbnailUrl
+  if (data.volume !== undefined) updateData.volume = data.volume
+  if (data.ingredients !== undefined) updateData.ingredients = data.ingredients
+  if (data.howToUse !== undefined) updateData.howToUse = data.howToUse
+  if (data.shippingFeeType !== undefined) updateData.shippingFeeType = data.shippingFeeType
+  if (data.shippingFee !== undefined) updateData.shippingFee = data.shippingFee
+  if (data.freeShippingThreshold !== undefined) updateData.freeShippingThreshold = data.freeShippingThreshold
+  if (data.courier !== undefined) updateData.courier = data.courier
+  if (data.shippingInfo !== undefined) updateData.shippingInfo = data.shippingInfo
+  if (data.returnPolicy !== undefined) updateData.returnPolicy = data.returnPolicy
+  if (data.status !== undefined) updateData.status = data.status
+  if (data.allowCreatorPick !== undefined) updateData.allowCreatorPick = data.allowCreatorPick
+  if (data.defaultCommissionRate !== undefined) {
+    const rate = data.defaultCommissionRate > 1
+      ? data.defaultCommissionRate / 100
+      : data.defaultCommissionRate
+    updateData.defaultCommissionRate = Math.min(Math.max(rate, 0), 0.9999)
+  }
+
+  return prisma.product.update({
+    where: { id: productId },
+    data: updateData as any,
   })
 }
 
