@@ -71,7 +71,7 @@ export default function BuyerReviewsPage() {
     try {
       // Find the order that contains this product
       const orderWithProduct = pendingOrders.find((o: any) =>
-        o.items?.some((i: any) => i.product_id === selectedProduct || i.productId === selectedProduct)
+        o.items?.some((i: any) => i.productId === selectedProduct)
       );
 
       const result = await submitReview({
@@ -191,30 +191,37 @@ export default function BuyerReviewsPage() {
               {!selectedProduct ? (
                 <div className="grid gap-4 md:grid-cols-2">
                   {pendingOrders.flatMap((order: any) =>
-                    (order.items || []).map((item: any) => (
-                      <Card
-                        key={item.product_id || item.productId}
-                        className="cursor-pointer hover:border-primary/50 transition-colors"
-                        onClick={() => setSelectedProduct(item.product_id || item.productId)}
-                      >
-                        <CardContent className="flex items-center gap-4 pt-6">
-                          <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
-                            <ImageIcon className="h-6 w-6 text-muted-foreground" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-medium">
-                              {item.product?.name || item.product?.nameKo || item.product?.nameEn || 'Product'}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              Order: {order.order_number || order.orderNumber}
-                            </p>
-                          </div>
-                          <Badge variant="secondary" className="bg-primary/10 text-primary">
-                            +500P~
-                          </Badge>
-                        </CardContent>
-                      </Card>
-                    ))
+                    (order.items || []).map((item: any) => {
+                      const imgSrc = item.product?.imageUrl || item.product?.images?.[0] || item.productImage;
+                      return (
+                        <Card
+                          key={`${order.id}-${item.productId}`}
+                          className="cursor-pointer hover:border-primary/50 transition-colors"
+                          onClick={() => setSelectedProduct(item.productId)}
+                        >
+                          <CardContent className="flex items-center gap-4 pt-6">
+                            <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
+                              {imgSrc ? (
+                                <img src={imgSrc} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                              )}
+                            </div>
+                            <div className="flex-1">
+                              <p className="font-medium">
+                                {item.product?.name || item.product?.nameKo || item.product?.nameEn || item.productName || 'Product'}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                Order: {order.orderNumber}
+                              </p>
+                            </div>
+                            <Badge variant="secondary" className="bg-primary/10 text-primary">
+                              +500P~
+                            </Badge>
+                          </CardContent>
+                        </Card>
+                      );
+                    })
                   )}
                 </div>
               ) : (
@@ -327,13 +334,19 @@ export default function BuyerReviewsPage() {
               </CardContent>
             </Card>
           ) : (
-            reviews.map((review: any) => (
+            reviews.map((review: any) => {
+              const imgSrc = review.product?.imageUrl || review.product?.images?.[0];
+              return (
               <Card key={review.id}>
                 <CardContent className="pt-6">
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-4">
-                      <div className="w-16 h-16 rounded-lg bg-muted overflow-hidden">
-                        {/* placeholder for product image */}
+                      <div className="w-16 h-16 rounded-lg bg-muted overflow-hidden flex items-center justify-center">
+                        {imgSrc ? (
+                          <img src={imgSrc} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                        )}
                       </div>
                       <div>
                         <p className="font-medium">
@@ -378,7 +391,8 @@ export default function BuyerReviewsPage() {
                   </div>
                 </CardContent>
               </Card>
-            ))
+              );
+            })
           )}
         </div>
       )}

@@ -239,9 +239,81 @@ export async function getBuyerReviewsData(buyerId: string) {
   const { buyer } = await requireBuyer()
   if (buyer.id !== buyerId) throw new Error('Forbidden')
 
-  // Since there's no product_reviews in Prisma model, return empty data
-  // The actual implementation would need a productReview model
-  return { reviews: [], pendingOrders: [] }
+  // Fetch existing reviews by this buyer
+  const reviews = await prisma.productReview.findMany({
+    where: { buyerId: buyer.id },
+    orderBy: { createdAt: 'desc' },
+    include: {
+      product: {
+        select: {
+          id: true,
+          name: true,
+          nameKo: true,
+          nameEn: true,
+          imageUrl: true,
+          images: true,
+        },
+      },
+    },
+  })
+
+  // Fetch reviewed productId+orderId pairs for duplicate prevention
+  const reviewedKeys = new Set(
+    reviews.map((r) => `${r.orderId}:${r.productId}`)
+  )
+
+  // Fetch delivered orders with items that haven't been reviewed yet
+  const deliveredOrders = await prisma.order.findMany({
+    where: {
+      buyerId: buyer.id,
+      status: { in: ['DELIVERED', 'COMPLETED'] },
+    },
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      orderNumber: true,
+      createdAt: true,
+      items: {
+        select: {
+          id: true,
+          productId: true,
+          productName: true,
+          productImage: true,
+          product: {
+            select: {
+              id: true,
+              name: true,
+              nameKo: true,
+              nameEn: true,
+              imageUrl: true,
+              images: true,
+            },
+          },
+        },
+      },
+    },
+  })
+
+  // Filter to only items not yet reviewed
+  const pendingOrders = deliveredOrders
+    .map((order) => ({
+      ...order,
+      createdAt: order.createdAt.toISOString(),
+      items: order.items.filter(
+        (item) => !reviewedKeys.has(`${order.id}:${item.productId}`)
+      ),
+    }))
+    .filter((order) => order.items.length > 0)
+
+  return {
+    reviews: reviews.map((r) => ({
+      ...r,
+      createdAt: r.createdAt.toISOString(),
+      updatedAt: r.updatedAt.toISOString(),
+      pointsAwardedAt: r.pointsAwardedAt?.toISOString() ?? null,
+    })),
+    pendingOrders,
+  }
 }
 
 export async function submitReview(data: {
@@ -256,8 +328,41 @@ export async function submitReview(data: {
   const { buyer } = await requireBuyer()
   if (buyer.id !== data.buyerId) throw new Error('Forbidden')
 
+  // Validate rating
+  if (data.rating < 1 || data.rating > 5) throw new Error('Rating must be 1-5')
+
+  // Duplicate check: same buyer + order + product
+  if (data.orderId) {
+    const existing = await prisma.productReview.findFirst({
+      where: {
+        buyerId: buyer.id,
+        orderId: data.orderId,
+        productId: data.productId,
+      },
+    })
+    if (existing) throw new Error('이미 이 상품에 대한 리뷰를 작성했습니다.')
+  }
+
   const pointsEarned = data.instagramPostUrl ? 1000 : 500
-  return { pointsEarned }
+
+  const review = await prisma.productReview.create({
+    data: {
+      productId: data.productId,
+      buyerId: buyer.id,
+      orderId: data.orderId || null,
+      rating: data.rating,
+      title: data.title || null,
+      content: data.content,
+      instagramPostUrl: data.instagramPostUrl || null,
+      isVerifiedPurchase: !!data.orderId,
+      pointsAwarded: pointsEarned,
+      pointsAwardedAt: new Date(),
+    },
+  })
+
+  // TODO: Award points to buyer's point balance when BuyerPoint model is available
+
+  return { id: review.id, pointsEarned }
 }
 
 // ==================== Subscriptions ====================
