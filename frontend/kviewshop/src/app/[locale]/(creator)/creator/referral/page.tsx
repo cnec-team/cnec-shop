@@ -143,7 +143,7 @@ export default function CreatorReferralPage() {
           { label: '총 초대', value: stats.totalInvited, icon: UserPlus },
           { label: '가입 완료', value: stats.signupComplete, icon: Users },
           { label: '첫 판매', value: stats.firstSaleComplete, icon: ShoppingCart },
-          { label: '총 보상', value: formatCurrency(stats.totalReward, locale), icon: Gift },
+          { label: '총 보상', value: formatCurrency(stats.totalReward, 'KRW'), icon: Gift },
         ].map((stat) => (
           <Card key={stat.label}>
             <CardContent className="p-4 flex items-center gap-3">
@@ -180,7 +180,7 @@ export default function CreatorReferralPage() {
                       {statusLabels[r.status] || r.status}
                     </span>
                     <span className="text-sm font-medium text-green-600">
-                      +{formatCurrency(r.referrerRewardTotal, locale)}
+                      +{formatCurrency(r.referrerRewardTotal, 'KRW')}
                     </span>
                   </div>
                 </div>

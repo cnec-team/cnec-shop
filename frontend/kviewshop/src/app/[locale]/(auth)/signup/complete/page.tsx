@@ -42,9 +42,9 @@ export default function SignupCompletePage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-pink-50 to-white">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-gray-50 to-white">
         <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-pink-500" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <p className="text-sm text-gray-500">가입을 완료하고 있어요...</p>
         </div>
       </div>
@@ -53,7 +53,7 @@ export default function SignupCompletePage() {
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-pink-50 to-white p-4">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-gray-50 to-white p-4">
         <Card className="w-full max-w-md">
           <CardContent className="p-6 text-center">
             <p className="mb-4 text-gray-600">포인트 적립 중 문제가 발생했습니다.</p>
@@ -67,39 +67,39 @@ export default function SignupCompletePage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-pink-50 to-white p-4">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-gray-50 to-white p-4">
       <Card className="w-full max-w-md overflow-hidden">
         {/* Celebration Header */}
-        <div className="bg-gradient-to-r from-pink-500 to-purple-500 p-8 text-center text-white">
+        <div className="bg-gradient-to-r from-primary to-purple-500 p-8 text-center text-white">
           <div className="mb-3 flex justify-center gap-2">
             <Star className="h-6 w-6 animate-pulse" />
             <PartyPopper className="h-8 w-8" />
             <Star className="h-6 w-6 animate-pulse" />
           </div>
           <h1 className="text-2xl font-bold">가입 완료!</h1>
-          <p className="mt-2 text-pink-100">크넥샵 크리에이터가 되신 것을 환영합니다</p>
+          <p className="mt-2 text-blue-100">크넥샵 크리에이터가 되신 것을 환영합니다</p>
         </div>
 
         <CardContent className="p-6">
           {/* Points Earned */}
-          <div className="mb-6 rounded-xl border-2 border-pink-100 bg-pink-50 p-5">
+          <div className="mb-6 rounded-xl border-2 border-blue-100 bg-blue-50 p-5">
             <div className="mb-3 flex items-center gap-2">
-              <Gift className="h-5 w-5 text-pink-500" />
+              <Gift className="h-5 w-5 text-primary" />
               <span className="font-semibold text-gray-900">축하 포인트 적립!</span>
             </div>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600">가입 축하 포인트</span>
-                <span className="font-medium text-pink-600">+3,000P</span>
+                <span className="font-medium text-primary">+3,000P</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">페르소나 완료 보너스</span>
-                <span className="font-medium text-pink-600">+2,000P</span>
+                <span className="font-medium text-primary">+2,000P</span>
               </div>
               <hr className="my-2" />
               <div className="flex justify-between text-base font-bold">
                 <span className="text-gray-900">총 적립</span>
-                <span className="text-pink-600">{totalPoints.toLocaleString()}P</span>
+                <span className="text-primary">{totalPoints.toLocaleString()}P</span>
               </div>
             </div>
           </div>
@@ -126,7 +126,7 @@ export default function SignupCompletePage() {
           {/* CTA */}
           <Button
             onClick={() => router.push(`/${locale}/creator/dashboard`)}
-            className="w-full bg-pink-500 hover:bg-pink-600"
+            className="w-full bg-primary hover:bg-primary/90"
             size="lg"
           >
             내 샵 바로가기

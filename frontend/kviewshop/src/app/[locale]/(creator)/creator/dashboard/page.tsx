@@ -164,7 +164,7 @@ export default function CreatorDashboardPage() {
               <Coins className="h-6 w-6 text-primary shrink-0" />
               <div>
                 <p className="text-xs text-muted-foreground">포인트 잔액</p>
-                <p className="text-lg font-bold">{formatCurrency(pointBalance, locale)}</p>
+                <p className="text-lg font-bold">{formatCurrency(pointBalance, 'KRW')}</p>
               </div>
             </CardContent>
           </Card>

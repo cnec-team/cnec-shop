@@ -129,7 +129,7 @@ export default function CreatorPointsPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">포인트 잔액</p>
-                <p className="text-3xl font-bold">{formatCurrency(balance, locale)}</p>
+                <p className="text-3xl font-bold">{formatCurrency(balance, 'KRW')}</p>
               </div>
             </div>
             <Button
@@ -195,9 +195,9 @@ export default function CreatorPointsPage() {
                   </div>
                   <div className="text-right">
                     <p className={`text-sm font-semibold ${point.amount > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {point.amount > 0 ? '+' : ''}{formatCurrency(point.amount, locale)}
+                      {point.amount > 0 ? '+' : ''}{formatCurrency(point.amount, 'KRW')}
                     </p>
-                    <p className="text-xs text-muted-foreground">잔액 {formatCurrency(point.balanceAfter, locale)}</p>
+                    <p className="text-xs text-muted-foreground">잔액 {formatCurrency(point.balanceAfter, 'KRW')}</p>
                   </div>
                 </div>
               ))}

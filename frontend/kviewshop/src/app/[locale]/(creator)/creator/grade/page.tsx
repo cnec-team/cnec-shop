@@ -131,7 +131,7 @@ export default function CreatorGradePage() {
             </div>
             <div className="text-right">
               <p className="text-sm text-muted-foreground">이번 달 판매액</p>
-              <p className="text-xl font-bold">{formatCurrency(gradeData?.monthlySales ?? 0, locale)}</p>
+              <p className="text-xl font-bold">{formatCurrency(gradeData?.monthlySales ?? 0, 'KRW')}</p>
             </div>
           </div>
 
@@ -140,7 +140,7 @@ export default function CreatorGradePage() {
             <div className="mt-6">
               <div className="flex justify-between text-sm mb-2">
                 <span>{GRADE_LABELS[grade]}</span>
-                <span>{GRADE_LABELS[gradeData.nextGrade]}까지 {formatCurrency(gradeData.amountToNext, locale)}</span>
+                <span>{GRADE_LABELS[gradeData.nextGrade]}까지 {formatCurrency(gradeData.amountToNext, 'KRW')}</span>
               </div>
               <div className="w-full bg-white/60 rounded-full h-3">
                 <div
@@ -172,7 +172,7 @@ export default function CreatorGradePage() {
                 >
                   <p className="font-semibold text-sm">{GRADE_LABELS[g]}</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {g === 'ROOKIE' ? '기본' : `월 ${formatCurrency(GRADE_THRESHOLDS[g], locale)}+`}
+                    {g === 'ROOKIE' ? '기본' : `월 ${formatCurrency(GRADE_THRESHOLDS[g], 'KRW')}+`}
                   </p>
                   <p className="text-xs mt-2">
                     보너스: {g === 'ROOKIE' ? '-' : g === 'SILVER' ? '+1%' : g === 'GOLD' ? '+2%' : '+3%'}
@@ -225,7 +225,7 @@ export default function CreatorGradePage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{r.displayName}</p>
                   </div>
-                  <p className="text-sm font-semibold">{formatCurrency(r.totalSales, locale)}</p>
+                  <p className="text-sm font-semibold">{formatCurrency(r.totalSales, 'KRW')}</p>
                 </div>
               ))}
             </div>
