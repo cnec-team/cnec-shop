@@ -642,6 +642,7 @@
       "products": "Products",
       "creators": "Active Creators",
       "countries": "Shipping Countries",
+      "orders": "Total Orders",
       "brands": "Partner Brands"
     },
     "ctaTitle": "Get Started Now",

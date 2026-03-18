@@ -134,6 +134,78 @@ export async function deleteGuide(id: string) {
   return prisma.guide.delete({ where: { id } })
 }
 
+// ==================== System Settings ====================
+
+const SETTING_DEFAULTS: Record<string, string> = {
+  site_name: 'CNEC Shop',
+  site_url: 'https://cnecshop.netlify.app',
+  default_commission: '25',
+  min_commission: '20',
+  max_commission: '30',
+  mocra_threshold_warning: '800000',
+  mocra_threshold_danger: '1000000',
+  maintenance_mode: 'false',
+  allow_new_signups: 'true',
+  platform_fee_rate: '0.05',
+  min_settlement_amount: '1000',
+  settlement_day: '20',
+  referral_reward_inviter: '5000',
+  referral_reward_invitee: '3000',
+}
+
+export async function getAdminSettings() {
+  await requireAdmin()
+
+  const rows = await prisma.systemSetting.findMany()
+  const map: Record<string, string> = { ...SETTING_DEFAULTS }
+  for (const row of rows) {
+    map[row.key] = row.value
+  }
+  return map
+}
+
+export async function updateAdminSettings(settings: Record<string, string>) {
+  await requireAdmin()
+
+  const ops = Object.entries(settings).map(([key, value]) =>
+    prisma.systemSetting.upsert({
+      where: { key },
+      create: { key, value: String(value) },
+      update: { value: String(value) },
+    })
+  )
+
+  await prisma.$transaction(ops)
+  return { success: true }
+}
+
+// Public: get specific settings without auth (for landing page, etc.)
+export async function getPublicSettings(keys: string[]) {
+  const rows = await prisma.systemSetting.findMany({
+    where: { key: { in: keys } },
+  })
+  const map: Record<string, string> = {}
+  for (const key of keys) {
+    map[key] = SETTING_DEFAULTS[key] ?? ''
+  }
+  for (const row of rows) {
+    map[row.key] = row.value
+  }
+  return map
+}
+
+// Public: get platform stats for landing page
+export async function getPlatformStats() {
+  const [products, creators, brands, orders] = await Promise.all([
+    prisma.product.count({ where: { status: 'ACTIVE' } }),
+    prisma.creator.count({ where: { status: 'ACTIVE' } }),
+    prisma.brand.count(),
+    prisma.order.count(),
+  ])
+
+  return { products, creators, brands, orders }
+}
+
 // ==================== Settlements ====================
 
 export async function getAdminSettlements() {
