@@ -4,7 +4,7 @@
 @custom-variant dark (&:is(.dark *));
 
 /* CNEC Design System */
-/* Premium Minimalist — Black & White + 2 Point Colors */
+/* Premium Minimalist — Blue primary, neutral accent */
 
 @theme inline {
   --color-background: var(--background);
@@ -54,86 +54,46 @@
   --radius-4xl: calc(var(--radius) + 16px);
 }
 
-/* Dark-first: Creator & Public pages */
+/* Light-first: default for all pages */
 :root {
   --radius: 0.5rem;
-  /* True Black Base */
-  --background: #09090B;
-  --foreground: #FAFAFA;
-  /* Elevated Surface */
-  --card: #18181B;
-  --card-foreground: #FAFAFA;
-  --popover: #18181B;
-  --popover-foreground: #FAFAFA;
-  /* Point Color 1: Deep Blue */
-  --primary: #2563EB;
-  --primary-foreground: #FFFFFF;
-  /* Neutral Secondary */
-  --secondary: #27272A;
-  --secondary-foreground: #FAFAFA;
-  /* Muted Zinc */
-  --muted: #27272A;
-  --muted-foreground: #A1A1AA;
-  /* Point Color 2: Rose */
-  --accent: #F43F5E;
-  --accent-foreground: #FFFFFF;
-  --destructive: #EF4444;
-  --border: #27272A;
-  --input: #27272A;
-  --ring: #2563EB;
-  /* Legacy compat */
-  --gold: #2563EB;
-  --gold-foreground: #FFFFFF;
-  --bronze: #F43F5E;
-  --success: #22C55E;
-  --warning: #F59E0B;
-  /* Charts */
-  --chart-1: #2563EB;
-  --chart-2: #F43F5E;
-  --chart-3: #22C55E;
-  --chart-4: #F59E0B;
-  --chart-5: #8B5CF6;
-  /* Sidebar */
-  --sidebar: #09090B;
-  --sidebar-foreground: #A1A1AA;
-  --sidebar-primary: #2563EB;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #18181B;
-  --sidebar-accent-foreground: #FAFAFA;
-  --sidebar-border: #27272A;
-  --sidebar-ring: #2563EB;
-}
-
-/* Light mode: Brand & Admin pages */
-.light {
+  /* Light Base */
   --background: #FAFAFA;
   --foreground: #09090B;
+  /* Cards */
   --card: #FFFFFF;
   --card-foreground: #09090B;
   --popover: #FFFFFF;
   --popover-foreground: #09090B;
+  /* Point Color: Deep Blue */
   --primary: #2563EB;
   --primary-foreground: #FFFFFF;
+  /* Neutral Secondary */
   --secondary: #F4F4F5;
   --secondary-foreground: #09090B;
+  /* Muted */
   --muted: #F4F4F5;
   --muted-foreground: #71717A;
-  --accent: #F43F5E;
+  /* Accent: Slate (neutral, not rose) */
+  --accent: #6366F1;
   --accent-foreground: #FFFFFF;
   --destructive: #EF4444;
   --border: #E4E4E7;
   --input: #E4E4E7;
   --ring: #2563EB;
+  /* Legacy compat */
   --gold: #2563EB;
   --gold-foreground: #FFFFFF;
-  --bronze: #F43F5E;
+  --bronze: #6366F1;
   --success: #22C55E;
   --warning: #F59E0B;
+  /* Charts */
   --chart-1: #2563EB;
-  --chart-2: #F43F5E;
+  --chart-2: #6366F1;
   --chart-3: #22C55E;
   --chart-4: #F59E0B;
   --chart-5: #8B5CF6;
+  /* Sidebar */
   --sidebar: #FFFFFF;
   --sidebar-foreground: #71717A;
   --sidebar-primary: #2563EB;
@@ -142,6 +102,48 @@
   --sidebar-accent-foreground: #09090B;
   --sidebar-border: #E4E4E7;
   --sidebar-ring: #2563EB;
+}
+
+/* Dark mode */
+.dark {
+  --background: #030712;
+  --foreground: #F9FAFB;
+  /* Cards: neutral gray, NOT pink/red */
+  --card: #111827;
+  --card-foreground: #F9FAFB;
+  --popover: #111827;
+  --popover-foreground: #F9FAFB;
+  --primary: #3B82F6;
+  --primary-foreground: #FFFFFF;
+  --secondary: #1F2937;
+  --secondary-foreground: #F9FAFB;
+  --muted: #1F2937;
+  --muted-foreground: #9CA3AF;
+  /* Accent: Indigo (neutral, not rose) */
+  --accent: #818CF8;
+  --accent-foreground: #FFFFFF;
+  --destructive: #EF4444;
+  --border: #1F2937;
+  --input: #1F2937;
+  --ring: #3B82F6;
+  --gold: #3B82F6;
+  --gold-foreground: #FFFFFF;
+  --bronze: #818CF8;
+  --success: #22C55E;
+  --warning: #F59E0B;
+  --chart-1: #3B82F6;
+  --chart-2: #818CF8;
+  --chart-3: #22C55E;
+  --chart-4: #F59E0B;
+  --chart-5: #A78BFA;
+  --sidebar: #030712;
+  --sidebar-foreground: #9CA3AF;
+  --sidebar-primary: #3B82F6;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #111827;
+  --sidebar-accent-foreground: #F9FAFB;
+  --sidebar-border: #1F2937;
+  --sidebar-ring: #3B82F6;
 }
 
 @layer base {
@@ -170,9 +172,9 @@
   font-family: 'Inter', 'Montserrat', var(--font-geist-sans), sans-serif;
 }
 
-/* Logo gradient - blue to rose */
+/* Logo gradient - blue to indigo */
 .text-gold-gradient {
-  background: linear-gradient(135deg, #2563EB 0%, #7C3AED 50%, #F43F5E 100%);
+  background: linear-gradient(135deg, #2563EB 0%, #7C3AED 50%, #6366F1 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
