@@ -13,7 +13,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ExternalLink } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -33,6 +34,8 @@ interface CreatorParticipation {
     instagramHandle: string | null;
     youtubeHandle: string | null;
     tiktokHandle: string | null;
+    skinType: string | null;
+    skinConcerns: string[];
   };
   campaigns: {
     campaign: { id: string; title: string; type: string; status: string } | null;
@@ -170,9 +173,11 @@ export default function BrandCreatorsPage() {
                 <TableRow>
                   <TableHead>크리에이터</TableHead>
                   <TableHead>SNS</TableHead>
+                  <TableHead>뷰티 프로필</TableHead>
                   <TableHead>참여 캠페인</TableHead>
                   <TableHead className="text-right">주문수</TableHead>
                   <TableHead className="text-right">매출</TableHead>
+                  <TableHead>샵</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -180,7 +185,10 @@ export default function BrandCreatorsPage() {
                   <TableRow key={data.creator.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <Avatar className="h-8 w-8">
+                        <Avatar className="h-10 w-10">
+                          {data.creator.profileImageUrl && (
+                            <AvatarImage src={data.creator.profileImageUrl} alt={data.creator.displayName ?? ''} />
+                          )}
                           <AvatarFallback className="text-xs">
                             {(data.creator.displayName ?? '').slice(0, 2)}
                           </AvatarFallback>
@@ -198,9 +206,17 @@ export default function BrandCreatorsPage() {
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
                         {data.creator.instagramHandle && (
-                          <Badge variant="outline" className="text-xs">
-                            IG @{data.creator.instagramHandle}
-                          </Badge>
+                          <a
+                            href={`https://instagram.com/${data.creator.instagramHandle}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1"
+                          >
+                            <Badge variant="outline" className="text-xs">
+                              IG @{data.creator.instagramHandle}
+                            </Badge>
+                            <ExternalLink className="h-3 w-3 text-muted-foreground" />
+                          </a>
                         )}
                         {data.creator.youtubeHandle && (
                           <Badge variant="outline" className="text-xs">
@@ -219,6 +235,23 @@ export default function BrandCreatorsPage() {
                               -
                             </span>
                           )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {data.creator.skinType && (
+                          <Badge variant="outline" className="text-xs">
+                            {data.creator.skinType}
+                          </Badge>
+                        )}
+                        {data.creator.skinConcerns?.map((concern) => (
+                          <Badge key={concern} variant="outline" className="text-xs">
+                            {concern}
+                          </Badge>
+                        ))}
+                        {!data.creator.skinType && (!data.creator.skinConcerns || data.creator.skinConcerns.length === 0) && (
+                          <span className="text-xs text-muted-foreground">-</span>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -250,6 +283,21 @@ export default function BrandCreatorsPage() {
                     </TableCell>
                     <TableCell className="text-right font-medium">
                       {formatCurrency(data.totalSales)}
+                    </TableCell>
+                    <TableCell>
+                      {data.creator.shopId ? (
+                        <a
+                          href={`/shop/${data.creator.shopId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                        >
+                          샵 보기
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">-</span>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

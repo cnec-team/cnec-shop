@@ -363,6 +363,8 @@ export async function getBrandCreatorsData(brandId: string) {
       instagramHandle: true,
       youtubeHandle: true,
       tiktokHandle: true,
+      skinType: true,
+      skinConcerns: true,
     },
   })
 
@@ -1217,6 +1219,27 @@ export async function getBrandCampaignById(campaignId: string) {
     _sum: { totalPrice: true },
   })
 
+  // Fetch creator profiles for participations
+  const creatorIds = [...new Set(campaign.participations.map((p) => p.creatorId))]
+  const creators = creatorIds.length > 0
+    ? await prisma.creator.findMany({
+        where: { id: { in: creatorIds } },
+        select: {
+          id: true,
+          shopId: true,
+          displayName: true,
+          profileImageUrl: true,
+          instagramHandle: true,
+          youtubeHandle: true,
+          tiktokHandle: true,
+          skinType: true,
+          skinConcerns: true,
+          bio: true,
+        },
+      })
+    : []
+  const creatorMap = new Map(creators.map((c) => [c.id, c]))
+
   return {
     ...campaign,
     startAt: campaign.startAt?.toISOString() ?? null,
@@ -1227,6 +1250,7 @@ export async function getBrandCampaignById(campaignId: string) {
       ...p,
       appliedAt: p.appliedAt.toISOString(),
       approvedAt: p.approvedAt?.toISOString() ?? null,
+      creator: creatorMap.get(p.creatorId) ?? null,
     })),
     orderCount: orderStats._count,
     totalGMV: Number(orderStats._sum.totalPrice ?? 0),

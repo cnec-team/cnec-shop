@@ -27,6 +27,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ExternalLink } from 'lucide-react';
 
 function formatCurrency(num: number): string {
   return `${num.toLocaleString('ko-KR')}원`;
@@ -86,6 +88,18 @@ interface CampaignDetail {
     message: string | null;
     appliedAt: string;
     approvedAt: string | null;
+    creator: {
+      id: string;
+      shopId: string | null;
+      displayName: string | null;
+      profileImageUrl: string | null;
+      instagramHandle: string | null;
+      youtubeHandle: string | null;
+      tiktokHandle: string | null;
+      skinType: string | null;
+      skinConcerns: string[];
+      bio: string | null;
+    } | null;
   }>;
   orderCount: number;
   totalGMV: number;
@@ -413,7 +427,9 @@ export default function CampaignDetailPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>크리에이터 ID</TableHead>
+                  <TableHead>크리에이터</TableHead>
+                  <TableHead>SNS</TableHead>
+                  <TableHead>뷰티 프로필</TableHead>
                   <TableHead>메시지</TableHead>
                   <TableHead>신청일</TableHead>
                   <TableHead className="text-right">관리</TableHead>
@@ -422,8 +438,72 @@ export default function CampaignDetailPage() {
               <TableBody>
                 {pendingParticipations.map((p) => (
                   <TableRow key={p.id}>
-                    <TableCell className="font-mono text-sm">
-                      {p.creatorId.slice(0, 8)}...
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-10 w-10">
+                          {p.creator?.profileImageUrl && (
+                            <AvatarImage src={p.creator.profileImageUrl} alt={p.creator.displayName ?? ''} />
+                          )}
+                          <AvatarFallback className="text-xs">
+                            {(p.creator?.displayName ?? p.creatorId.slice(0, 2)).slice(0, 2)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium">
+                            {p.creator?.displayName ?? p.creatorId.slice(0, 8)}
+                          </p>
+                          {p.creator?.shopId && (
+                            <p className="text-xs text-muted-foreground">@{p.creator.shopId}</p>
+                          )}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col gap-1">
+                        {p.creator?.instagramHandle && (
+                          <a
+                            href={`https://instagram.com/${p.creator.instagramHandle}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                          >
+                            <Badge variant="outline" className="text-xs">
+                              IG @{p.creator.instagramHandle}
+                            </Badge>
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        )}
+                        {p.creator?.youtubeHandle && (
+                          <Badge variant="outline" className="text-xs">
+                            YT @{p.creator.youtubeHandle}
+                          </Badge>
+                        )}
+                        {p.creator?.tiktokHandle && (
+                          <Badge variant="outline" className="text-xs">
+                            TT @{p.creator.tiktokHandle}
+                          </Badge>
+                        )}
+                        {!p.creator?.instagramHandle && !p.creator?.youtubeHandle && !p.creator?.tiktokHandle && (
+                          <span className="text-xs text-muted-foreground">-</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {p.creator?.skinType && (
+                          <Badge variant="outline" className="text-xs">
+                            {p.creator.skinType}
+                          </Badge>
+                        )}
+                        {p.creator?.skinConcerns?.map((concern) => (
+                          <Badge key={concern} variant="outline" className="text-xs">
+                            {concern}
+                          </Badge>
+                        ))}
+                        {!p.creator?.skinType && (!p.creator?.skinConcerns || p.creator.skinConcerns.length === 0) && (
+                          <span className="text-xs text-muted-foreground">-</span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="max-w-[200px] truncate">
                       {p.message || '-'}
@@ -473,18 +553,92 @@ export default function CampaignDetailPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>크리에이터 ID</TableHead>
+                  <TableHead>크리에이터</TableHead>
+                  <TableHead>SNS</TableHead>
+                  <TableHead>뷰티 프로필</TableHead>
                   <TableHead>승인일</TableHead>
+                  <TableHead>샵</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {approvedParticipations.map((p) => (
                   <TableRow key={p.id}>
-                    <TableCell className="font-mono text-sm">
-                      {p.creatorId.slice(0, 8)}...
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-10 w-10">
+                          {p.creator?.profileImageUrl && (
+                            <AvatarImage src={p.creator.profileImageUrl} alt={p.creator.displayName ?? ''} />
+                          )}
+                          <AvatarFallback className="text-xs">
+                            {(p.creator?.displayName ?? p.creatorId.slice(0, 2)).slice(0, 2)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium">
+                            {p.creator?.displayName ?? p.creatorId.slice(0, 8)}
+                          </p>
+                          {p.creator?.shopId && (
+                            <p className="text-xs text-muted-foreground">@{p.creator.shopId}</p>
+                          )}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {p.creator?.instagramHandle && (
+                          <a
+                            href={`https://instagram.com/${p.creator.instagramHandle}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1"
+                          >
+                            <Badge variant="outline" className="text-xs">
+                              IG @{p.creator.instagramHandle}
+                            </Badge>
+                            <ExternalLink className="h-3 w-3 text-muted-foreground" />
+                          </a>
+                        )}
+                        {p.creator?.youtubeHandle && (
+                          <Badge variant="outline" className="text-xs">YT @{p.creator.youtubeHandle}</Badge>
+                        )}
+                        {p.creator?.tiktokHandle && (
+                          <Badge variant="outline" className="text-xs">TT @{p.creator.tiktokHandle}</Badge>
+                        )}
+                        {!p.creator?.instagramHandle && !p.creator?.youtubeHandle && !p.creator?.tiktokHandle && (
+                          <span className="text-xs text-muted-foreground">-</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {p.creator?.skinType && (
+                          <Badge variant="outline" className="text-xs">{p.creator.skinType}</Badge>
+                        )}
+                        {p.creator?.skinConcerns?.map((concern) => (
+                          <Badge key={concern} variant="outline" className="text-xs">{concern}</Badge>
+                        ))}
+                        {!p.creator?.skinType && (!p.creator?.skinConcerns || p.creator.skinConcerns.length === 0) && (
+                          <span className="text-xs text-muted-foreground">-</span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-sm">
                       {p.approvedAt ? formatDate(p.approvedAt) : '-'}
+                    </TableCell>
+                    <TableCell>
+                      {p.creator?.shopId ? (
+                        <a
+                          href={`/shop/${p.creator.shopId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                        >
+                          샵 보기
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">-</span>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
