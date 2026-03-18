@@ -215,7 +215,7 @@ export default function BrandProductsPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      {product.defaultCommissionRate}%
+                      {Number(product.defaultCommissionRate) * 100}%
                     </TableCell>
                     <TableCell className="text-right">
                       <Link href={`products/${product.id}`}>

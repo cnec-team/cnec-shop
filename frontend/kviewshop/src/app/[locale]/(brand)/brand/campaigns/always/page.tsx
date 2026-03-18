@@ -170,7 +170,7 @@ export default function AlwaysCampaignsPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      {campaign.commissionRate}%
+                      {Number(campaign.commissionRate) * 100}%
                     </TableCell>
                     <TableCell className="text-right">
                       {campaign.soldCount.toLocaleString('ko-KR')}
