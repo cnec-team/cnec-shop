@@ -3,7 +3,6 @@ import { prisma } from '@/lib/db';
 import { CreatorShopPage } from '@/components/shop/creator-shop';
 import { OrganizationJsonLd } from '@/components/seo/JsonLd';
 import type { Metadata } from 'next';
-import type { Creator, CreatorShopItem, Collection } from '@/types/database';
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://shop.cnec.kr';
 
@@ -53,7 +52,37 @@ async function getShopItems(creatorId: string) {
       },
     });
 
-    return items;
+    // Fetch campaign product prices for GONGGU items
+    const campaignProductIds = items
+      .filter((item) => item.campaignId && item.type === 'GONGGU')
+      .map((item) => ({ campaignId: item.campaignId!, productId: item.productId }));
+
+    let campaignProductMap: Record<string, { campaignPrice: number | null }> = {};
+
+    if (campaignProductIds.length > 0) {
+      const campaignProducts = await prisma.campaignProduct.findMany({
+        where: {
+          OR: campaignProductIds.map((cp) => ({
+            campaignId: cp.campaignId,
+            productId: cp.productId,
+          })),
+        },
+      });
+
+      for (const cp of campaignProducts) {
+        campaignProductMap[`${cp.campaignId}-${cp.productId}`] = {
+          campaignPrice: cp.campaignPrice ? Number(cp.campaignPrice) : null,
+        };
+      }
+    }
+
+    // Attach campaignProduct data to each item
+    return items.map((item) => ({
+      ...item,
+      campaignProduct: item.campaignId
+        ? campaignProductMap[`${item.campaignId}-${item.productId}`] ?? null
+        : null,
+    }));
   } catch (error) {
     console.error('Error fetching shop items:', error);
     return [];
@@ -147,9 +176,9 @@ export default async function ShopPage({ params }: ShopPageProps) {
         description={creator.bio || undefined}
       />
       <CreatorShopPage
-        creator={creator as unknown as Creator}
-        shopItems={shopItems as unknown as CreatorShopItem[]}
-        collections={collections as unknown as Collection[]}
+        creator={creator as any}
+        shopItems={shopItems as any}
+        collections={collections as any}
         locale={locale}
       />
     </>
