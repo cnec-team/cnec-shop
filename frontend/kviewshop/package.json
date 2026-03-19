@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed": "tsx scripts/seed-users.ts"
+    "seed": "tsx scripts/seed-users.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
