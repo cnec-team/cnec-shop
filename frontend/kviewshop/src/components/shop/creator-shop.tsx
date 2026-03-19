@@ -9,26 +9,91 @@ import { Separator } from '@/components/ui/separator';
 import { Instagram, Share2 } from 'lucide-react';
 import { ShareSheet } from '@/components/shop/ShareSheet';
 import { VisitTracker } from '@/components/shop/VisitTracker';
-import type {
-  Creator,
-  CreatorShopItem,
-  Collection,
-  SkinType,
-  PersonalColor,
-} from '@/types/database';
 import {
   SKIN_TYPE_LABELS,
   PERSONAL_COLOR_LABELS,
 } from '@/types/database';
+import type {
+  SkinType,
+  PersonalColor,
+} from '@/types/database';
+
+// =============================================
+// Types matching Prisma camelCase output
+// =============================================
+
+interface ShopCreator {
+  id: string;
+  shopId?: string | null;
+  displayName?: string | null;
+  bio?: string | null;
+  profileImageUrl?: string | null;
+  coverImageUrl?: string | null;
+  bannerImageUrl?: string | null;
+  bannerLink?: string | null;
+  instagramHandle?: string | null;
+  youtubeHandle?: string | null;
+  tiktokHandle?: string | null;
+  skinType?: string | null;
+  personalColor?: string | null;
+  skinConcerns?: string[];
+  scalpConcerns?: string[];
+}
+
+interface ShopProduct {
+  id: string;
+  name?: string | null;
+  nameKo?: string | null;
+  nameEn?: string | null;
+  originalPrice?: number | null;
+  salePrice?: number | null;
+  images?: string[];
+  imageUrl?: string | null;
+  brand?: { id: string; brandName?: string | null; logoUrl?: string | null } | null;
+}
+
+interface ShopCampaign {
+  id: string;
+  title?: string | null;
+  status?: string;
+  endAt?: Date | string | null;
+  commissionRate?: number | null;
+}
+
+interface ShopCampaignProduct {
+  campaignPrice?: number | null;
+}
+
+interface ShopItem {
+  id: string;
+  creatorId: string;
+  productId: string;
+  campaignId?: string | null;
+  type: string;
+  collectionId?: string | null;
+  displayOrder: number;
+  isVisible: boolean;
+  product?: ShopProduct | null;
+  campaign?: ShopCampaign | null;
+  campaignProduct?: ShopCampaignProduct | null;
+}
+
+interface ShopCollection {
+  id: string;
+  name: string;
+  description?: string | null;
+  isVisible: boolean;
+  displayOrder: number;
+}
 
 // =============================================
 // Props
 // =============================================
 
 interface CreatorShopPageProps {
-  creator: Creator;
-  shopItems: CreatorShopItem[];
-  collections: Collection[];
+  creator: ShopCreator;
+  shopItems: ShopItem[];
+  collections: ShopCollection[];
   locale: string;
 }
 
@@ -45,7 +110,7 @@ function formatKRW(amount: number): string {
   }).format(amount);
 }
 
-function calculateDDay(endAt: string | undefined): string {
+function calculateDDay(endAt: string | Date | undefined | null): string {
   if (!endAt) return '';
   const now = new Date();
   const end = new Date(endAt);
@@ -88,11 +153,11 @@ export function CreatorShopPage({
 
   // Group pick items by collection
   const collectionGroups = useMemo(() => {
-    const groups: { collection: Collection | null; items: CreatorShopItem[] }[] = [];
+    const groups: { collection: ShopCollection | null; items: ShopItem[] }[] = [];
 
     // Items in named collections
     for (const col of collections) {
-      const colItems = pickItems.filter((item) => item.collection_id === col.id);
+      const colItems = pickItems.filter((item) => item.collectionId === col.id);
       if (colItems.length > 0) {
         groups.push({ collection: col, items: colItems });
       }
@@ -101,7 +166,7 @@ export function CreatorShopPage({
     // Items not in any collection
     const collectionIds = new Set(collections.map((c) => c.id));
     const uncategorized = pickItems.filter(
-      (item) => !item.collection_id || !collectionIds.has(item.collection_id)
+      (item) => !item.collectionId || !collectionIds.has(item.collectionId)
     );
     if (uncategorized.length > 0) {
       groups.push({ collection: null, items: uncategorized });
@@ -189,10 +254,10 @@ export function CreatorShopPage({
       </div>
 
       {/* Banner Section */}
-      {creator.banner_image_url && (
+      {creator.bannerImageUrl && (
         <BannerSection
-          bannerImageUrl={creator.banner_image_url}
-          bannerLink={creator.banner_link}
+          bannerImageUrl={creator.bannerImageUrl}
+          bannerLink={creator.bannerLink ?? undefined}
         />
       )}
 
@@ -215,16 +280,16 @@ export { CreatorShopPage as CreatorShop };
 // Sub-components
 // =============================================
 
-function ShopHeader({ creator, shopUrl }: { creator: Creator; shopUrl: string }) {
+function ShopHeader({ creator, shopUrl }: { creator: ShopCreator; shopUrl: string }) {
   const shopDesc = creator.bio || 'K-뷰티 크리에이터 셀렉트샵';
 
   return (
     <div className="relative">
       {/* Cover Image */}
       <div className="h-44 sm:h-56 bg-secondary relative overflow-hidden">
-        {creator.cover_image_url ? (
+        {creator.coverImageUrl ? (
           <img
-            src={creator.cover_image_url}
+            src={creator.coverImageUrl}
             alt="Cover"
             className="w-full h-full object-cover"
           />
@@ -238,15 +303,15 @@ function ShopHeader({ creator, shopUrl }: { creator: Creator; shopUrl: string })
         {/* Profile Image */}
         <div className="absolute -top-12 left-4">
           <div className="w-24 h-24 rounded-full border-4 border-background overflow-hidden bg-secondary">
-            {creator.profile_image_url ? (
+            {creator.profileImageUrl ? (
               <img
-                src={creator.profile_image_url}
-                alt={creator.display_name}
+                src={creator.profileImageUrl}
+                alt={creator.displayName ?? ''}
                 className="w-full h-full object-cover"
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-2xl font-bold text-muted-foreground">
-                {creator.display_name?.charAt(0) || '?'}
+                {creator.displayName?.charAt(0) || '?'}
               </div>
             )}
           </div>
@@ -256,9 +321,9 @@ function ShopHeader({ creator, shopUrl }: { creator: Creator; shopUrl: string })
         <div className="absolute -top-12 right-4">
           <ShareSheet
             url={shopUrl}
-            title={`${creator.display_name}의 셀렉트샵`}
+            title={`${creator.displayName}의 셀렉트샵`}
             description={shopDesc}
-            imageUrl={creator.profile_image_url || undefined}
+            imageUrl={creator.profileImageUrl || undefined}
             trigger={
               <button className="flex h-9 w-9 items-center justify-center rounded-full bg-background/80 backdrop-blur-sm shadow-sm hover:bg-background transition-colors">
                 <Share2 className="h-4 w-4" />
@@ -270,7 +335,7 @@ function ShopHeader({ creator, shopUrl }: { creator: Creator; shopUrl: string })
         {/* Name & Bio */}
         <div className="pt-16 pb-4">
           <h1 className="text-xl font-bold text-foreground">
-            {creator.display_name}
+            {creator.displayName}
           </h1>
           {creator.bio && (
             <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
@@ -283,25 +348,25 @@ function ShopHeader({ creator, shopUrl }: { creator: Creator; shopUrl: string })
   );
 }
 
-function BeautyProfile({ creator }: { creator: Creator }) {
+function BeautyProfile({ creator }: { creator: ShopCreator }) {
   const tags: { label: string; variant: 'outline' | 'secondary' }[] = [];
 
-  if (creator.skin_type) {
-    tags.push({
-      label: SKIN_TYPE_LABELS[creator.skin_type],
-      variant: 'secondary',
-    });
+  if (creator.skinType) {
+    const label = SKIN_TYPE_LABELS[creator.skinType as SkinType];
+    if (label) {
+      tags.push({ label, variant: 'secondary' });
+    }
   }
 
-  if (creator.personal_color) {
-    tags.push({
-      label: PERSONAL_COLOR_LABELS[creator.personal_color],
-      variant: 'secondary',
-    });
+  if (creator.personalColor) {
+    const label = PERSONAL_COLOR_LABELS[creator.personalColor as PersonalColor];
+    if (label) {
+      tags.push({ label, variant: 'secondary' });
+    }
   }
 
-  if (creator.skin_concerns && creator.skin_concerns.length > 0) {
-    creator.skin_concerns.forEach((concern) => {
+  if (creator.skinConcerns && creator.skinConcerns.length > 0) {
+    creator.skinConcerns.forEach((concern) => {
       tags.push({ label: concern, variant: 'outline' });
     });
   }
@@ -321,21 +386,21 @@ function BeautyProfile({ creator }: { creator: Creator }) {
   );
 }
 
-function SocialLinks({ creator }: { creator: Creator }) {
-  if (!creator.instagram_handle) return null;
+function SocialLinks({ creator }: { creator: ShopCreator }) {
+  if (!creator.instagramHandle) return null;
 
   return (
     <div className="max-w-lg mx-auto px-4 pb-4">
       <div className="flex gap-3">
-        {creator.instagram_handle && (
+        {creator.instagramHandle && (
           <a
-            href={`https://instagram.com/${creator.instagram_handle}`}
+            href={`https://instagram.com/${creator.instagramHandle}`}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <Instagram className="w-4 h-4" />
-            <span>@{creator.instagram_handle}</span>
+            <span>@{creator.instagramHandle}</span>
           </a>
         )}
       </div>
@@ -348,25 +413,27 @@ function GongguCard({
   username,
   locale,
 }: {
-  item: CreatorShopItem;
+  item: ShopItem;
   username: string;
   locale: string;
 }) {
   const product = item.product;
   const campaign = item.campaign;
-  const campaignProduct = item.campaign_product;
+  const campaignProduct = item.campaignProduct;
 
   if (!product) return null;
 
-  const effectivePrice = campaignProduct?.campaign_price ?? product.sale_price;
-  const discountPercent = calculateDiscountPercent(product.original_price, effectivePrice);
-  const dDay = campaign?.end_at ? calculateDDay(campaign.end_at) : '';
-  const brandName = product.brand?.brand_name || '';
+  const productSalePrice = Number(product.salePrice ?? 0);
+  const productOriginalPrice = Number(product.originalPrice ?? 0);
+  const effectivePrice = Number(campaignProduct?.campaignPrice ?? productSalePrice);
+  const discountPercent = calculateDiscountPercent(productOriginalPrice, effectivePrice);
+  const dDay = campaign?.endAt ? calculateDDay(campaign.endAt) : '';
+  const brandName = product.brand?.brandName || '';
   const isActive = campaign?.status === 'ACTIVE';
 
   return (
     <Link
-      href={`/${locale}/${username}/product/${product.id}${item.campaign_id ? `?campaign=${item.campaign_id}` : ''}`}
+      href={`/${locale}/${username}/product/${product.id}${item.campaignId ? `?campaign=${item.campaignId}` : ''}`}
       className="block"
     >
       <div className="flex gap-3 p-3 rounded-xl bg-card border border-border card-hover group">
@@ -375,7 +442,7 @@ function GongguCard({
           {product.images?.[0] ? (
             <img
               src={product.images[0]}
-              alt={product.name}
+              alt={product.name ?? ''}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
           ) : (
@@ -426,7 +493,7 @@ function GongguCard({
               </span>
               {discountPercent > 0 && (
                 <span className="text-xs text-muted-foreground line-through">
-                  {formatKRW(product.original_price)}
+                  {formatKRW(productOriginalPrice)}
                 </span>
               )}
             </div>
@@ -443,8 +510,8 @@ function CollectionSection({
   username,
   locale,
 }: {
-  collection: Collection | null;
-  items: CreatorShopItem[];
+  collection: ShopCollection | null;
+  items: ShopItem[];
   username: string;
   locale: string;
 }) {
@@ -484,20 +551,22 @@ function PickProductCard({
   username,
   locale,
 }: {
-  item: CreatorShopItem;
+  item: ShopItem;
   username: string;
   locale: string;
 }) {
   const product = item.product;
   if (!product) return null;
 
-  const effectivePrice = item.campaign_product?.campaign_price ?? product.sale_price;
-  const discountPercent = calculateDiscountPercent(product.original_price, effectivePrice);
-  const brandName = product.brand?.brand_name || '';
+  const productSalePrice = Number(product.salePrice ?? 0);
+  const productOriginalPrice = Number(product.originalPrice ?? 0);
+  const effectivePrice = Number(item.campaignProduct?.campaignPrice ?? productSalePrice);
+  const discountPercent = calculateDiscountPercent(productOriginalPrice, effectivePrice);
+  const brandName = product.brand?.brandName || '';
 
   return (
     <Link
-      href={`/${locale}/${username}/product/${product.id}${item.campaign_id ? `?campaign=${item.campaign_id}` : ''}`}
+      href={`/${locale}/${username}/product/${product.id}${item.campaignId ? `?campaign=${item.campaignId}` : ''}`}
       className="flex-shrink-0 w-36"
     >
       <div className="group">
@@ -506,7 +575,7 @@ function PickProductCard({
           {product.images?.[0] ? (
             <img
               src={product.images[0]}
-              alt={product.name}
+              alt={product.name ?? ''}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
           ) : (
@@ -538,7 +607,7 @@ function PickProductCard({
           </div>
           {discountPercent > 0 && (
             <span className="text-[11px] text-muted-foreground line-through">
-              {formatKRW(product.original_price)}
+              {formatKRW(productOriginalPrice)}
             </span>
           )}
         </div>
