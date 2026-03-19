@@ -53,36 +53,70 @@ async function getShopItems(creatorId: string) {
     });
 
     // Fetch campaign product prices for GONGGU items
-    const campaignProductIds = items
-      .filter((item) => item.campaignId && item.type === 'GONGGU')
-      .map((item) => ({ campaignId: item.campaignId!, productId: item.productId }));
+    const gongguItems = items.filter((item) => item.campaignId && item.type === 'GONGGU');
 
-    let campaignProductMap: Record<string, { campaignPrice: number | null }> = {};
+    let campaignProductMap: Record<string, number | null> = {};
 
-    if (campaignProductIds.length > 0) {
+    if (gongguItems.length > 0) {
       const campaignProducts = await prisma.campaignProduct.findMany({
         where: {
-          OR: campaignProductIds.map((cp) => ({
-            campaignId: cp.campaignId,
-            productId: cp.productId,
+          OR: gongguItems.map((item) => ({
+            campaignId: item.campaignId!,
+            productId: item.productId,
           })),
         },
       });
 
       for (const cp of campaignProducts) {
-        campaignProductMap[`${cp.campaignId}-${cp.productId}`] = {
-          campaignPrice: cp.campaignPrice ? Number(cp.campaignPrice) : null,
-        };
+        campaignProductMap[`${cp.campaignId}-${cp.productId}`] = cp.campaignPrice
+          ? Number(cp.campaignPrice)
+          : null;
       }
     }
 
-    // Attach campaignProduct data to each item
-    return items.map((item) => ({
-      ...item,
-      campaignProduct: item.campaignId
-        ? campaignProductMap[`${item.campaignId}-${item.productId}`] ?? null
-        : null,
-    }));
+    // Serialize: convert Decimal→number, Date→string for client component
+    return items.map((item) => {
+      const product = item.product;
+      const campaign = item.campaign;
+
+      return {
+        id: item.id,
+        creatorId: item.creatorId,
+        productId: item.productId,
+        campaignId: item.campaignId,
+        type: item.type,
+        collectionId: item.collectionId,
+        displayOrder: item.displayOrder,
+        isVisible: item.isVisible,
+        product: product
+          ? {
+              id: product.id,
+              name: product.name,
+              nameKo: product.nameKo,
+              nameEn: product.nameEn,
+              originalPrice: product.originalPrice ? Number(product.originalPrice) : null,
+              salePrice: product.salePrice ? Number(product.salePrice) : null,
+              images: product.images,
+              imageUrl: product.imageUrl,
+              brand: product.brand
+                ? { id: product.brand.id, brandName: product.brand.brandName, logoUrl: product.brand.logoUrl }
+                : null,
+            }
+          : null,
+        campaign: campaign
+          ? {
+              id: campaign.id,
+              title: campaign.title,
+              status: campaign.status,
+              endAt: campaign.endAt?.toISOString() ?? null,
+              commissionRate: Number(campaign.commissionRate),
+            }
+          : null,
+        campaignProduct: item.campaignId
+          ? { campaignPrice: campaignProductMap[`${item.campaignId}-${item.productId}`] ?? null }
+          : null,
+      };
+    });
   } catch (error) {
     console.error('Error fetching shop items:', error);
     return [];
@@ -101,7 +135,14 @@ async function getCollections(creatorId: string) {
       },
     });
 
-    return collections;
+    // Serialize: strip Date fields for client component
+    return collections.map((col) => ({
+      id: col.id,
+      name: col.name,
+      description: col.description,
+      isVisible: col.isVisible,
+      displayOrder: col.displayOrder,
+    }));
   } catch (error) {
     console.error('Error fetching collections:', error);
     return [];
@@ -167,6 +208,25 @@ export default async function ShopPage({ params }: ShopPageProps) {
 
   const shopUrl = `${BASE_URL}/${username}`;
 
+  // Serialize creator: convert Decimal/Date to plain types for client component
+  const serializedCreator = {
+    id: creator.id,
+    shopId: creator.shopId,
+    displayName: creator.displayName,
+    bio: creator.bio,
+    profileImageUrl: creator.profileImageUrl,
+    coverImageUrl: creator.coverImageUrl,
+    bannerImageUrl: creator.bannerImageUrl,
+    bannerLink: creator.bannerLink,
+    instagramHandle: creator.instagramHandle,
+    youtubeHandle: creator.youtubeHandle,
+    tiktokHandle: creator.tiktokHandle,
+    skinType: creator.skinType,
+    personalColor: creator.personalColor,
+    skinConcerns: creator.skinConcerns,
+    scalpConcerns: creator.scalpConcerns,
+  };
+
   return (
     <>
       <OrganizationJsonLd
@@ -176,9 +236,9 @@ export default async function ShopPage({ params }: ShopPageProps) {
         description={creator.bio || undefined}
       />
       <CreatorShopPage
-        creator={creator as any}
-        shopItems={shopItems as any}
-        collections={collections as any}
+        creator={serializedCreator}
+        shopItems={shopItems}
+        collections={collections}
         locale={locale}
       />
     </>
