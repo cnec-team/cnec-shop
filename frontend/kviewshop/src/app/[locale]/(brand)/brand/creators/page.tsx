@@ -14,16 +14,15 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ExternalLink } from 'lucide-react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  ExternalLink,
+  Users,
+  UserCheck,
+  TrendingUp,
+  ArrowRight,
+  Instagram,
+} from 'lucide-react';
 
 interface CreatorParticipation {
   creator: {
@@ -50,17 +49,6 @@ function formatCurrency(num: number): string {
   return `${num.toLocaleString('ko-KR')}원`;
 }
 
-function TableSkeleton() {
-  return (
-    <div className="space-y-3">
-      <Skeleton className="h-10 w-full" />
-      {Array.from({ length: 6 }).map((_, i) => (
-        <Skeleton key={i} className="h-14 w-full" />
-      ))}
-    </div>
-  );
-}
-
 export default function BrandCreatorsPage() {
   const [brand, setBrand] = useState<{ id: string } | null>(null);
   const [creatorData, setCreatorData] = useState<CreatorParticipation[]>([]);
@@ -78,14 +66,11 @@ export default function BrandCreatorsPage() {
 
   useEffect(() => {
     if (!brand?.id) return;
-
     async function fetchCreatorData() {
       try {
         const result = await getBrandCreatorsData(brand!.id);
         setCreatorData(
-          (result.creators as CreatorParticipation[]).sort(
-            (a, b) => b.totalSales - a.totalSales
-          )
+          (result.creators as CreatorParticipation[]).sort((a, b) => b.totalSales - a.totalSales)
         );
         setPendingCount(result.pendingCount);
       } catch (error) {
@@ -94,218 +79,184 @@ export default function BrandCreatorsPage() {
         setIsLoading(false);
       }
     }
-
     fetchCreatorData();
   }, [brand?.id]);
 
+  const totalRevenue = creatorData.reduce((sum, c) => sum + c.totalSales, 0);
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">크리에이터 관리</h1>
-          <p className="text-sm text-muted-foreground">
-            캠페인에 참여 중인 크리에이터를 관리합니다.
-          </p>
+          <h1 className="text-2xl font-bold tracking-tight">크리에이터 관리</h1>
+          <p className="text-sm text-muted-foreground mt-1">캠페인에 참여 중인 크리에이터를 관리합니다</p>
         </div>
         <div className="flex gap-2">
           <Link href="creators/performance">
-            <Button variant="outline">크리에이터 성과</Button>
+            <Button variant="outline" size="sm" className="h-9">
+              <TrendingUp className="h-4 w-4 mr-1.5" />
+              성과 분석
+            </Button>
           </Link>
           {pendingCount > 0 && (
             <Link href="creators/pending">
-              <Button variant="outline">
-                승인 대기{' '}
-                <Badge variant="destructive" className="ml-2">
-                  {pendingCount}
-                </Badge>
+              <Button size="sm" className="h-9">
+                <UserCheck className="h-4 w-4 mr-1.5" />
+                승인 대기
+                <Badge variant="destructive" className="ml-1.5 text-[10px] px-1.5 py-0">{pendingCount}</Badge>
               </Button>
             </Link>
           )}
         </div>
       </div>
 
-      {/* Summary cards */}
+      {/* Summary */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">전체 크리에이터</p>
+        <Card className="bg-white rounded-xl border shadow-sm">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm text-muted-foreground font-medium">전체 크리에이터</p>
+              <Users className="h-4 w-4 text-blue-500" />
+            </div>
             <p className="text-2xl font-bold">{creatorData.length}명</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">승인 대기</p>
+        <Card className="bg-white rounded-xl border shadow-sm">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm text-muted-foreground font-medium">승인 대기</p>
+              <UserCheck className="h-4 w-4 text-orange-500" />
+            </div>
             <p className="text-2xl font-bold">{pendingCount}명</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">총 크리에이터 매출</p>
-            <p className="text-2xl font-bold">
-              {formatCurrency(
-                creatorData.reduce((sum, c) => sum + c.totalSales, 0)
-              )}
-            </p>
+        <Card className="bg-white rounded-xl border shadow-sm">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm text-muted-foreground font-medium">총 크리에이터 매출</p>
+              <TrendingUp className="h-4 w-4 text-green-500" />
+            </div>
+            <p className="text-2xl font-bold">{formatCurrency(totalRevenue)}</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Creator list */}
-      <Card>
-        <CardHeader>
-          <CardTitle>참여 크리에이터</CardTitle>
-          <CardDescription>
-            캠페인에 참여(승인됨/대기 중) 크리에이터 목록입니다.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <TableSkeleton />
-          ) : creatorData.length === 0 ? (
-            <div className="flex items-center justify-center py-12">
-              <p className="text-muted-foreground">
-                아직 참여 크리에이터가 없습니다.
-              </p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>크리에이터</TableHead>
-                  <TableHead>SNS</TableHead>
-                  <TableHead>뷰티 프로필</TableHead>
-                  <TableHead>참여 캠페인</TableHead>
-                  <TableHead className="text-right">주문수</TableHead>
-                  <TableHead className="text-right">매출</TableHead>
-                  <TableHead>샵</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {creatorData.map((data) => (
-                  <TableRow key={data.creator.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-10 w-10">
-                          {data.creator.profileImageUrl && (
-                            <AvatarImage src={data.creator.profileImageUrl} alt={data.creator.displayName ?? ''} />
-                          )}
-                          <AvatarFallback className="text-xs">
-                            {(data.creator.displayName ?? '').slice(0, 2)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">
-                            {data.creator.displayName}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            @{data.creator.shopId}
-                          </p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {data.creator.instagramHandle && (
-                          <a
-                            href={`https://instagram.com/${data.creator.instagramHandle}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1"
-                          >
-                            <Badge variant="outline" className="text-xs">
-                              IG @{data.creator.instagramHandle}
-                            </Badge>
-                            <ExternalLink className="h-3 w-3 text-muted-foreground" />
-                          </a>
-                        )}
-                        {data.creator.youtubeHandle && (
-                          <Badge variant="outline" className="text-xs">
-                            YT @{data.creator.youtubeHandle}
-                          </Badge>
-                        )}
-                        {data.creator.tiktokHandle && (
-                          <Badge variant="outline" className="text-xs">
-                            TT @{data.creator.tiktokHandle}
-                          </Badge>
-                        )}
-                        {!data.creator.instagramHandle &&
-                          !data.creator.youtubeHandle &&
-                          !data.creator.tiktokHandle && (
-                            <span className="text-xs text-muted-foreground">
-                              -
-                            </span>
-                          )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {data.creator.skinType && (
-                          <Badge variant="outline" className="text-xs">
-                            {data.creator.skinType}
-                          </Badge>
-                        )}
-                        {data.creator.skinConcerns?.map((concern) => (
-                          <Badge key={concern} variant="outline" className="text-xs">
-                            {concern}
-                          </Badge>
-                        ))}
-                        {!data.creator.skinType && (!data.creator.skinConcerns || data.creator.skinConcerns.length === 0) && (
-                          <span className="text-xs text-muted-foreground">-</span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {data.campaigns.slice(0, 2).map((cp, index) => (
-                          <Badge
-                            key={index}
-                            variant={
-                              cp.status === 'APPROVED'
-                                ? 'default'
-                                : cp.status === 'PENDING'
-                                  ? 'secondary'
-                                  : 'destructive'
-                            }
-                            className="text-xs"
-                          >
-                            {cp.campaign?.title?.slice(0, 15) ?? '캠페인'}
-                          </Badge>
-                        ))}
-                        {data.campaigns.length > 2 && (
-                          <span className="text-xs text-muted-foreground">
-                            +{data.campaigns.length - 2}
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {data.totalOrders.toLocaleString('ko-KR')}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {formatCurrency(data.totalSales)}
-                    </TableCell>
-                    <TableCell>
-                      {data.creator.shopId ? (
-                        <a
-                          href={`/shop/${data.creator.shopId}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                        >
-                          샵 보기
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      {/* Creator cards */}
+      {isLoading ? (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Card key={i} className="bg-white rounded-xl">
+              <CardContent className="p-5 space-y-3">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="h-12 w-12 rounded-full" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-28" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                </div>
+                <Skeleton className="h-16 w-full" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : creatorData.length === 0 ? (
+        <Card className="bg-white rounded-xl border shadow-sm">
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <Users className="h-16 w-16 text-muted-foreground/20 mb-4" />
+            <p className="text-lg font-medium mb-1">아직 참여 크리에이터가 없습니다</p>
+            <p className="text-sm text-muted-foreground">
+              캠페인을 생성하면 크리에이터가 참여 신청할 수 있어요
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {creatorData.map((data) => (
+            <Card key={data.creator.id} className="bg-white rounded-xl border shadow-sm hover:shadow-md transition-shadow">
+              <CardContent className="p-5 space-y-4">
+                {/* Profile */}
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-12 w-12">
+                    {data.creator.profileImageUrl && (
+                      <AvatarImage src={data.creator.profileImageUrl} alt={data.creator.displayName ?? ''} />
+                    )}
+                    <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
+                      {(data.creator.displayName ?? '').slice(0, 2)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold truncate">{data.creator.displayName}</p>
+                    <p className="text-xs text-muted-foreground">@{data.creator.shopId}</p>
+                  </div>
+                  {data.creator.instagramHandle && (
+                    <a
+                      href={`https://instagram.com/${data.creator.instagramHandle}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-accent transition-colors"
+                    >
+                      <Instagram className="h-4 w-4 text-pink-500" />
+                    </a>
+                  )}
+                </div>
+
+                {/* Beauty profile */}
+                {(data.creator.skinType || (data.creator.skinConcerns && data.creator.skinConcerns.length > 0)) && (
+                  <div className="flex flex-wrap gap-1">
+                    {data.creator.skinType && (
+                      <Badge variant="secondary" className="text-[10px]">{data.creator.skinType}</Badge>
+                    )}
+                    {data.creator.skinConcerns?.map((c) => (
+                      <Badge key={c} variant="outline" className="text-[10px]">{c}</Badge>
+                    ))}
+                  </div>
+                )}
+
+                {/* Stats */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="rounded-lg bg-gray-50 p-2 text-center">
+                    <p className="text-[10px] text-muted-foreground">캠페인</p>
+                    <p className="text-sm font-bold">{data.campaigns.length}</p>
+                  </div>
+                  <div className="rounded-lg bg-gray-50 p-2 text-center">
+                    <p className="text-[10px] text-muted-foreground">주문</p>
+                    <p className="text-sm font-bold">{data.totalOrders}</p>
+                  </div>
+                  <div className="rounded-lg bg-gray-50 p-2 text-center">
+                    <p className="text-[10px] text-muted-foreground">매출</p>
+                    <p className="text-sm font-bold">{data.totalSales >= 10000 ? `${(data.totalSales / 10000).toFixed(0)}만` : data.totalSales.toLocaleString('ko-KR')}</p>
+                  </div>
+                </div>
+
+                {/* Campaigns */}
+                {data.campaigns.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {data.campaigns.slice(0, 2).map((cp, i) => (
+                      <Badge key={i} variant={cp.status === 'APPROVED' ? 'default' : cp.status === 'PENDING' ? 'secondary' : 'destructive'} className="text-[10px]">
+                        {cp.campaign?.title?.slice(0, 12) ?? '캠페인'}
+                      </Badge>
+                    ))}
+                    {data.campaigns.length > 2 && (
+                      <Badge variant="outline" className="text-[10px]">+{data.campaigns.length - 2}</Badge>
+                    )}
+                  </div>
+                )}
+
+                {/* Shop link */}
+                {data.creator.shopId && (
+                  <div className="pt-2 border-t">
+                    <a href={`/shop/${data.creator.shopId}`} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                      샵 보기 <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
