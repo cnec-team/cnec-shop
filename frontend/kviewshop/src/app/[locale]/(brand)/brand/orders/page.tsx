@@ -18,10 +18,10 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -32,17 +32,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
-import { Download } from 'lucide-react';
+import {
+  Download,
+  ChevronDown,
+  ChevronUp,
+  Package,
+  Truck,
+  CheckCircle,
+  XCircle,
+  Clock,
+  ShoppingCart,
+} from 'lucide-react';
 
 const COURIERS = [
   { code: 'cj', name: 'CJ대한통운' },
@@ -74,7 +76,7 @@ interface OrderWithDetails {
   shippingDetail?: string | null;
   shippingZipcode?: string | null;
   createdAt: string;
-  items?: { id: string; quantity: number; totalPrice: number; product?: { name: string } | null }[];
+  items?: { id: string; quantity: number; totalPrice: number; product?: { name: string; thumbnailUrl?: string | null } | null }[];
   creator?: { displayName: string | null } | null;
 }
 
@@ -84,7 +86,6 @@ function formatCurrency(num: number): string {
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('ko-KR', {
-    year: 'numeric',
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
@@ -92,26 +93,29 @@ function formatDate(dateStr: string): string {
   });
 }
 
-function getStatusVariant(
-  status: OrderStatus
-): 'default' | 'secondary' | 'destructive' | 'outline' {
+function getStatusColor(status: OrderStatus): string {
   switch (status) {
-    case 'PAID':
-      return 'default';
-    case 'PREPARING':
-      return 'default';
-    case 'SHIPPING':
-      return 'secondary';
-    case 'DELIVERED':
-      return 'secondary';
-    case 'CONFIRMED':
-      return 'outline';
-    case 'CANCELLED':
-      return 'destructive';
-    case 'REFUNDED':
-      return 'destructive';
-    default:
-      return 'outline';
+    case 'PAID': return 'bg-blue-500/10 text-blue-600 border-blue-200';
+    case 'PREPARING': return 'bg-yellow-500/10 text-yellow-600 border-yellow-200';
+    case 'SHIPPING': return 'bg-purple-500/10 text-purple-600 border-purple-200';
+    case 'DELIVERED': return 'bg-green-500/10 text-green-600 border-green-200';
+    case 'CONFIRMED': return 'bg-gray-500/10 text-gray-600 border-gray-200';
+    case 'CANCELLED': return 'bg-red-500/10 text-red-600 border-red-200';
+    case 'REFUNDED': return 'bg-red-500/10 text-red-600 border-red-200';
+    default: return '';
+  }
+}
+
+function getStatusIcon(status: OrderStatus) {
+  switch (status) {
+    case 'PAID': return <Clock className="h-4 w-4" />;
+    case 'PREPARING': return <Package className="h-4 w-4" />;
+    case 'SHIPPING': return <Truck className="h-4 w-4" />;
+    case 'DELIVERED': return <CheckCircle className="h-4 w-4" />;
+    case 'CONFIRMED': return <CheckCircle className="h-4 w-4" />;
+    case 'CANCELLED': return <XCircle className="h-4 w-4" />;
+    case 'REFUNDED': return <XCircle className="h-4 w-4" />;
+    default: return null;
   }
 }
 
@@ -129,27 +133,14 @@ const NEXT_STATUS_LABEL: Partial<Record<OrderStatus, string>> = {
   DELIVERED: '구매확정 처리',
 };
 
-// Status filter tabs for quick filtering
-const STATUS_FILTER_TABS: { value: string; label: string }[] = [
+const STATUS_TABS: { value: string; label: string }[] = [
   { value: 'ALL', label: '전체' },
-  { value: 'PAID', label: '결제완료' },
+  { value: 'PAID', label: '신규주문' },
   { value: 'PREPARING', label: '배송준비' },
   { value: 'SHIPPING', label: '배송중' },
   { value: 'DELIVERED', label: '배송완료' },
-  { value: 'CONFIRMED', label: '구매확정' },
-  { value: 'CANCELLED', label: '취소' },
+  { value: 'CANCELLED', label: '취소/환불' },
 ];
-
-function TableSkeleton() {
-  return (
-    <div className="space-y-3">
-      <Skeleton className="h-10 w-full" />
-      {Array.from({ length: 6 }).map((_, i) => (
-        <Skeleton key={i} className="h-14 w-full" />
-      ))}
-    </div>
-  );
-}
 
 export default function BrandOrdersPage() {
   const [brand, setBrand] = useState<{ id: string } | null>(null);
@@ -157,18 +148,10 @@ export default function BrandOrdersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
-  const [trackingInputs, setTrackingInputs] = useState<
-    Record<string, string>
-  >({});
-  const [courierInputs, setCourierInputs] = useState<
-    Record<string, string>
-  >({});
-  const [cancelReasonInputs, setCancelReasonInputs] = useState<
-    Record<string, string>
-  >({});
-  const [showCancelForm, setShowCancelForm] = useState<
-    Record<string, boolean>
-  >({});
+  const [trackingInputs, setTrackingInputs] = useState<Record<string, string>>({});
+  const [courierInputs, setCourierInputs] = useState<Record<string, string>>({});
+  const [cancelReasonInputs, setCancelReasonInputs] = useState<Record<string, string>>({});
+  const [showCancelForm, setShowCancelForm] = useState<Record<string, boolean>>({});
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -182,7 +165,6 @@ export default function BrandOrdersPage() {
 
   useEffect(() => {
     if (!brand?.id) return;
-
     async function fetchOrders() {
       try {
         const data = await getBrandOrders(brand!.id, statusFilter);
@@ -199,7 +181,6 @@ export default function BrandOrdersPage() {
       }
       setIsLoading(false);
     }
-
     setIsLoading(true);
     fetchOrders();
   }, [brand?.id, statusFilter]);
@@ -210,74 +191,33 @@ export default function BrandOrdersPage() {
       const trackingNumber = newStatus === 'SHIPPING' ? trackingInputs[orderId] : undefined;
       const courierCode = newStatus === 'SHIPPING' ? courierInputs[orderId] : undefined;
       await updateOrderStatus(orderId, newStatus, trackingNumber, courierCode);
-      setOrders(
-        orders.map((o) =>
-          o.id === orderId
-            ? {
-                ...o,
-                status: newStatus,
-                ...(trackingNumber ? { trackingNumber } : {}),
-                ...(courierCode ? { courierCode } : {}),
-              }
-            : o
-        )
-      );
-    } catch (error) {
-      console.error('Failed to update order status:', error);
-    }
+      setOrders(orders.map((o) => o.id === orderId ? { ...o, status: newStatus, ...(trackingNumber ? { trackingNumber } : {}), ...(courierCode ? { courierCode } : {}) } : o));
+    } catch (error) { console.error('Failed to update order status:', error); }
     setUpdatingId(null);
   }
 
   async function handleCancelOrder(orderId: string) {
     const reason = cancelReasonInputs[orderId]?.trim();
     if (!reason) return;
-
     setUpdatingId(orderId);
     try {
       await cancelOrderAction(orderId, reason);
-      setOrders(
-        orders.map((o) =>
-          o.id === orderId
-            ? {
-                ...o,
-                status: 'CANCELLED' as OrderStatus,
-                cancelReason: reason,
-              }
-            : o
-        )
-      );
+      setOrders(orders.map((o) => o.id === orderId ? { ...o, status: 'CANCELLED' as OrderStatus, cancelReason: reason } : o));
       setShowCancelForm({ ...showCancelForm, [orderId]: false });
       setCancelReasonInputs({ ...cancelReasonInputs, [orderId]: '' });
-    } catch (error) {
-      console.error('Failed to cancel order:', error);
-    }
+    } catch (error) { console.error('Failed to cancel order:', error); }
     setUpdatingId(null);
   }
 
   async function handleShippingStart(orderId: string) {
     const trackingNumber = trackingInputs[orderId];
     const courierCode = courierInputs[orderId];
-
     if (!trackingNumber?.trim()) return;
-
     setUpdatingId(orderId);
     try {
       await shippingStartAction(orderId, trackingNumber, courierCode);
-      setOrders(
-        orders.map((o) =>
-          o.id === orderId
-            ? {
-                ...o,
-                status: 'SHIPPING' as OrderStatus,
-                trackingNumber: trackingNumber.trim(),
-                ...(courierCode ? { courierCode } : {}),
-              }
-            : o
-        )
-      );
-    } catch (error) {
-      console.error('Failed to start shipping:', error);
-    }
+      setOrders(orders.map((o) => o.id === orderId ? { ...o, status: 'SHIPPING' as OrderStatus, trackingNumber: trackingNumber.trim(), ...(courierCode ? { courierCode } : {}) } : o));
+    } catch (error) { console.error('Failed to start shipping:', error); }
     setUpdatingId(null);
   }
 
@@ -285,47 +225,22 @@ export default function BrandOrdersPage() {
     const trackingNumber = trackingInputs[orderId];
     const courierCode = courierInputs[orderId];
     if (!trackingNumber) return;
-
     try {
       await updateTrackingInfo(orderId, trackingNumber, courierCode);
-      setOrders(
-        orders.map((o) =>
-          o.id === orderId
-            ? {
-                ...o,
-                trackingNumber,
-                ...(courierCode ? { courierCode } : {}),
-              }
-            : o
-        )
-      );
-    } catch (error) {
-      console.error('Failed to save tracking info:', error);
-    }
+      setOrders(orders.map((o) => o.id === orderId ? { ...o, trackingNumber, ...(courierCode ? { courierCode } : {}) } : o));
+    } catch (error) { console.error('Failed to save tracking info:', error); }
   }
 
-  function toggleExpand(orderId: string) {
-    setExpandedOrderId(expandedOrderId === orderId ? null : orderId);
-  }
-
-  // Count by status (from all orders when filter is ALL, otherwise from fetched)
-  const statusCounts = orders.reduce(
-    (acc, o) => {
-      acc[o.status] = (acc[o.status] || 0) + 1;
-      return acc;
-    },
-    {} as Record<string, number>
-  );
+  const statusCounts = orders.reduce((acc, o) => {
+    acc[o.status] = (acc[o.status] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
 
   function handleDownloadExcel() {
     if (orders.length === 0) return;
-
     const rows = orders.map((order) => {
       const totalQuantity = (order.items ?? []).reduce((sum, item) => sum + item.quantity, 0);
-      const productNames = (order.items ?? [])
-        .map((item) => item.product?.name ?? '상품')
-        .join(', ');
-
+      const productNames = (order.items ?? []).map((item) => item.product?.name ?? '상품').join(', ');
       return {
         '주문번호': order.orderNumber,
         '주문일시': new Date(order.createdAt).toLocaleString('ko-KR'),
@@ -338,7 +253,6 @@ export default function BrandOrdersPage() {
         '크리에이터명': order.creator?.displayName ?? '-',
       };
     });
-
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, '주문목록');
@@ -347,502 +261,271 @@ export default function BrandOrdersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">주문 관리</h1>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleDownloadExcel}
-          disabled={orders.length === 0}
-        >
-          <Download className="h-4 w-4 mr-2" />
+      {/* Header */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">주문 관리</h1>
+          <p className="text-sm text-muted-foreground mt-1">주문 {orders.length}건</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={handleDownloadExcel} disabled={orders.length === 0} className="h-9">
+          <Download className="h-4 w-4 mr-1.5" />
           엑셀 다운로드
         </Button>
       </div>
 
-      {/* Status summary cards */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        {Object.entries(ORDER_STATUS_LABELS).map(([status, label]) => (
-          <Card key={status}>
-            <CardContent className="p-4">
-              <p className="text-sm text-muted-foreground">{label}</p>
-              <p className="text-xl font-bold">
-                {statusCounts[status] ?? 0}
-              </p>
-            </CardContent>
-          </Card>
-        ))}
+      {/* Status tabs */}
+      <div className="flex flex-wrap gap-2">
+        {STATUS_TABS.map((tab) => {
+          const count = tab.value === 'ALL' ? orders.length :
+            tab.value === 'CANCELLED' ? (statusCounts['CANCELLED'] ?? 0) + (statusCounts['REFUNDED'] ?? 0) :
+            statusCounts[tab.value] ?? 0;
+          return (
+            <button
+              key={tab.value}
+              onClick={() => setStatusFilter(tab.value)}
+              className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                statusFilter === tab.value
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'bg-white border text-muted-foreground hover:bg-gray-50'
+              }`}
+            >
+              {tab.label}
+              {count > 0 && (
+                <span className={`inline-flex min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold ${
+                  statusFilter === tab.value ? 'bg-white/20 text-primary-foreground' :
+                  tab.value === 'PAID' ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-600'
+                }`}>
+                  {count}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Status filter tabs */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-wrap items-center gap-2">
-            {STATUS_FILTER_TABS.map((tab) => (
-              <Button
-                key={tab.value}
-                variant={statusFilter === tab.value ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setStatusFilter(tab.value)}
-              >
-                {tab.label}
-                {statusFilter === 'ALL' && tab.value !== 'ALL' && statusCounts[tab.value]
-                  ? ` (${statusCounts[tab.value]})`
-                  : ''}
-              </Button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      {/* Orders list */}
+      {isLoading ? (
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-20 w-full rounded-xl" />
+          ))}
+        </div>
+      ) : orders.length === 0 ? (
+        <Card className="bg-white rounded-xl border shadow-sm">
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <ShoppingCart className="h-16 w-16 text-muted-foreground/20 mb-4" />
+            <p className="text-lg font-medium mb-1">아직 주문이 없어요</p>
+            <p className="text-sm text-muted-foreground">
+              캠페인을 시작하면 주문이 들어와요
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {orders.map((order) => {
+            const isExpanded = expandedOrderId === order.id;
+            const totalQuantity = (order.items ?? []).reduce((sum, item) => sum + item.quantity, 0);
 
-      {/* Orders Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            주문 목록{' '}
-            <span className="text-sm font-normal text-muted-foreground">
-              ({orders.length}건)
-            </span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <TableSkeleton />
-          ) : orders.length === 0 ? (
-            <div className="flex items-center justify-center py-12">
-              <p className="text-muted-foreground">주문이 없습니다.</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {/* Table header */}
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>주문번호</TableHead>
-                    <TableHead>주문일시</TableHead>
-                    <TableHead>상품</TableHead>
-                    <TableHead>구매자</TableHead>
-                    <TableHead>크리에이터</TableHead>
-                    <TableHead className="text-right">금액</TableHead>
-                    <TableHead>상태</TableHead>
-                    <TableHead>액션</TableHead>
-                    <TableHead className="w-8" />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {orders.map((order) => {
-                    const isExpanded = expandedOrderId === order.id;
-                    const totalQuantity = (order.items ?? []).reduce(
-                      (sum, item) => sum + item.quantity,
-                      0
-                    );
-                    return (
-                      <>
-                        <TableRow
-                          key={order.id}
-                          className="cursor-pointer"
-                          onClick={() => toggleExpand(order.id)}
-                        >
-                          <TableCell className="font-mono text-sm">
-                            {order.orderNumber}
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {formatDate(order.createdAt)}
-                          </TableCell>
-                          <TableCell>
-                            {order.items && order.items.length > 0 ? (
-                              <div>
-                                <span className="text-sm">
-                                  {order.items[0].product?.name ?? '상품'}
-                                </span>
-                                {order.items.length > 1 && (
-                                  <span className="text-xs text-muted-foreground ml-1">
-                                    외 {order.items.length - 1}건
-                                  </span>
-                                )}
-                                <p className="text-xs text-muted-foreground">
-                                  수량: {totalQuantity}개
-                                </p>
-                              </div>
-                            ) : (
-                              '-'
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <div className="text-sm">{order.buyerName}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {order.buyerPhone}
+            return (
+              <Card key={order.id} className="bg-white rounded-xl border shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+                {/* Order row */}
+                <div
+                  className="flex items-center gap-4 p-4 cursor-pointer"
+                  onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}
+                >
+                  {/* Product thumbnail */}
+                  <div className="hidden sm:block h-12 w-12 rounded-lg bg-gray-100 shrink-0 overflow-hidden">
+                    {order.items?.[0]?.product?.thumbnailUrl ? (
+                      <img src={order.items[0].product.thumbnailUrl} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <Package className="h-5 w-5 text-muted-foreground/30" />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-mono text-muted-foreground">{order.orderNumber}</span>
+                      <Badge variant="outline" className={getStatusColor(order.status)}>
+                        {ORDER_STATUS_LABELS[order.status]}
+                      </Badge>
+                    </div>
+                    <p className="text-sm font-medium truncate">
+                      {order.items?.[0]?.product?.name ?? '상품'}
+                      {(order.items?.length ?? 0) > 1 && (
+                        <span className="text-muted-foreground"> 외 {(order.items?.length ?? 1) - 1}건</span>
+                      )}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {order.buyerName} · {formatDate(order.createdAt)}
+                    </p>
+                  </div>
+
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-bold">{formatCurrency(order.totalAmount)}</p>
+                    <p className="text-xs text-muted-foreground">{totalQuantity}개</p>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    {/* Quick action buttons */}
+                    {order.status === 'PREPARING' && (
+                      <Button size="sm" variant="default" className="h-8 text-xs hidden sm:flex"
+                        disabled={updatingId === order.id}
+                        onClick={() => setExpandedOrderId(order.id)}
+                      >
+                        송장입력
+                      </Button>
+                    )}
+                    {order.status === 'PAID' && (
+                      <Button size="sm" variant="outline" className="h-8 text-xs hidden sm:flex"
+                        disabled={updatingId === order.id}
+                        onClick={() => handleStatusChange(order.id, 'PREPARING')}
+                      >
+                        배송준비
+                      </Button>
+                    )}
+                    {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                  </div>
+                </div>
+
+                {/* Expanded detail */}
+                {isExpanded && (
+                  <div className="border-t bg-gray-50/50 p-4 space-y-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div>
+                        <p className="text-sm font-medium mb-2">배송지 정보</p>
+                        <div className="rounded-lg bg-white border p-3 text-sm text-muted-foreground space-y-0.5">
+                          <p className="font-medium text-foreground">{order.buyerName} ({order.buyerPhone})</p>
+                          <p>{order.shippingAddress}</p>
+                          {order.shippingDetail && <p>{order.shippingDetail}</p>}
+                          {order.shippingZipcode && <p>우편번호: {order.shippingZipcode}</p>}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium mb-2">주문 상품</p>
+                        <div className="rounded-lg bg-white border p-3 space-y-2">
+                          {(order.items ?? []).map((item) => (
+                            <div key={item.id} className="flex justify-between text-sm">
+                              <span>{item.product?.name ?? '상품'} x {item.quantity}</span>
+                              <span className="text-muted-foreground">{formatCurrency(item.totalPrice)}</span>
                             </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="text-sm">
-                              {order.creator?.displayName ?? '-'}
-                            </div>
-                            {order.creator && (
-                              <div className="text-xs text-muted-foreground">
-                                판매 경유
-                              </div>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            {formatCurrency(order.totalAmount)}
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={getStatusVariant(order.status)}
+                          ))}
+                          <Separator />
+                          <div className="flex justify-between text-sm">
+                            <span>배송비</span><span>{formatCurrency(order.shippingFee)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm font-semibold">
+                            <span>총 결제금액</span><span>{formatCurrency(order.totalAmount)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Tracking info */}
+                    {order.trackingNumber && (
+                      <div className="rounded-lg bg-white border p-3">
+                        <p className="text-sm font-medium mb-1">배송 추적 정보</p>
+                        <div className="text-sm text-muted-foreground space-y-0.5">
+                          {order.courierCode && <p>택배사: {COURIER_MAP[order.courierCode] ?? order.courierCode}</p>}
+                          <p>송장번호: {order.trackingNumber}</p>
+                          {order.shippedAt && <p>발송일시: {formatDate(order.shippedAt)}</p>}
+                          {order.deliveredAt && <p>배송완료: {formatDate(order.deliveredAt)}</p>}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Cancel reason */}
+                    {order.status === 'CANCELLED' && order.cancelReason && (
+                      <div className="rounded-lg bg-red-50 border border-red-100 p-3">
+                        <p className="text-sm font-medium text-red-600 mb-1">취소 사유</p>
+                        <p className="text-sm text-red-500">{order.cancelReason}</p>
+                      </div>
+                    )}
+
+                    {/* Shipping actions */}
+                    {order.status !== 'CANCELLED' && order.status !== 'CONFIRMED' && order.status !== 'REFUNDED' && (
+                      <div className="rounded-lg bg-white border p-3 space-y-3">
+                        <p className="text-sm font-medium">배송 처리</p>
+                        <div className="flex flex-wrap items-end gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs">택배사</Label>
+                            <Select
+                              value={courierInputs[order.id] ?? order.courierCode ?? ''}
+                              onValueChange={(value) => setCourierInputs({ ...courierInputs, [order.id]: value })}
                             >
-                              {ORDER_STATUS_LABELS[order.status]}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div
-                              className="flex gap-1"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {(order.status === 'PAID' || order.status === 'PREPARING') && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  disabled={updatingId === order.id}
-                                  onClick={() =>
-                                    handleStatusChange(
-                                      order.id,
-                                      NEXT_STATUS[order.status]!
-                                    )
-                                  }
-                                >
-                                  {NEXT_STATUS_LABEL[order.status]}
-                                </Button>
-                              )}
-                              {order.status === 'PAID' && (
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  disabled={updatingId === order.id}
-                                  onClick={() =>
-                                    setShowCancelForm({
-                                      ...showCancelForm,
-                                      [order.id]: true,
-                                    })
-                                  }
-                                >
-                                  취소
-                                </Button>
-                              )}
+                              <SelectTrigger className="w-40 h-9"><SelectValue placeholder="택배사 선택" /></SelectTrigger>
+                              <SelectContent>
+                                {COURIERS.map((c) => (<SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">송장번호</Label>
+                            <Input
+                              value={trackingInputs[order.id] ?? order.trackingNumber ?? ''}
+                              onChange={(e) => setTrackingInputs({ ...trackingInputs, [order.id]: e.target.value })}
+                              placeholder="송장번호 입력"
+                              className="w-52 h-9"
+                            />
+                          </div>
+                          {(order.status === 'SHIPPING' || order.status === 'DELIVERED') && (
+                            <Button variant="outline" size="sm" className="h-9" onClick={() => handleTrackingSave(order.id)}>송장 저장</Button>
+                          )}
+                          {order.status === 'PREPARING' && (
+                            <Button size="sm" className="h-9" disabled={updatingId === order.id || !trackingInputs[order.id]?.trim()}
+                              onClick={() => handleShippingStart(order.id)}>
+                              {updatingId === order.id ? '처리 중...' : '배송 시작'}
+                            </Button>
+                          )}
+                          {NEXT_STATUS[order.status] && order.status !== 'PREPARING' && (
+                            <Button size="sm" className="h-9" disabled={updatingId === order.id}
+                              onClick={() => handleStatusChange(order.id, NEXT_STATUS[order.status]!)}>
+                              {updatingId === order.id ? '처리 중...' : NEXT_STATUS_LABEL[order.status]}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Cancel form */}
+                    {order.status === 'PAID' && (
+                      <div>
+                        {!showCancelForm[order.id] ? (
+                          <Button variant="destructive" size="sm" disabled={updatingId === order.id}
+                            onClick={() => setShowCancelForm({ ...showCancelForm, [order.id]: true })}>
+                            주문 취소
+                          </Button>
+                        ) : (
+                          <div className="rounded-lg border border-red-200 bg-red-50 p-3 space-y-2">
+                            <p className="text-sm font-medium text-red-600">주문 취소</p>
+                            <Textarea
+                              value={cancelReasonInputs[order.id] ?? ''}
+                              onChange={(e) => setCancelReasonInputs({ ...cancelReasonInputs, [order.id]: e.target.value })}
+                              placeholder="취소 사유를 입력하세요"
+                              rows={2}
+                            />
+                            <div className="flex gap-2">
+                              <Button variant="destructive" size="sm" disabled={updatingId === order.id || !cancelReasonInputs[order.id]?.trim()}
+                                onClick={() => handleCancelOrder(order.id)}>
+                                {updatingId === order.id ? '처리 중...' : '취소 확인'}
+                              </Button>
+                              <Button variant="outline" size="sm"
+                                onClick={() => setShowCancelForm({ ...showCancelForm, [order.id]: false })}>
+                                닫기
+                              </Button>
                             </div>
-                          </TableCell>
-                          <TableCell>
-                            <span className="text-xs text-muted-foreground">
-                              {isExpanded ? '▲' : '▼'}
-                            </span>
-                          </TableCell>
-                        </TableRow>
-
-                        {/* Expanded detail row */}
-                        {isExpanded && (
-                          <TableRow key={`${order.id}-detail`}>
-                            <TableCell colSpan={9} className="bg-muted/30">
-                              <div className="space-y-4 p-4">
-                                {/* Shipping address & Order items */}
-                                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                  <div>
-                                    <p className="text-sm font-medium">
-                                      배송지 정보
-                                    </p>
-                                    <div className="mt-1 text-sm text-muted-foreground space-y-0.5">
-                                      <p>
-                                        {order.buyerName} ({order.buyerPhone})
-                                      </p>
-                                      <p>{order.shippingAddress}</p>
-                                      {order.shippingDetail && (
-                                        <p>{order.shippingDetail}</p>
-                                      )}
-                                      {order.shippingZipcode && (
-                                        <p>우편번호: {order.shippingZipcode}</p>
-                                      )}
-                                      <p>이메일: {order.buyerEmail}</p>
-                                    </div>
-                                  </div>
-
-                                  <div>
-                                    <p className="text-sm font-medium">
-                                      주문 상품
-                                    </p>
-                                    <div className="mt-1 space-y-1">
-                                      {(order.items ?? []).map((item) => (
-                                        <div
-                                          key={item.id}
-                                          className="flex justify-between text-sm"
-                                        >
-                                          <span>
-                                            {item.product?.name ?? '상품'} x{' '}
-                                            {item.quantity}
-                                          </span>
-                                          <span className="text-muted-foreground">
-                                            {formatCurrency(item.totalPrice)}
-                                          </span>
-                                        </div>
-                                      ))}
-                                      <Separator className="my-1" />
-                                      <div className="flex justify-between text-sm">
-                                        <span>배송비</span>
-                                        <span>
-                                          {formatCurrency(order.shippingFee)}
-                                        </span>
-                                      </div>
-                                      <div className="flex justify-between text-sm font-medium">
-                                        <span>총 결제금액</span>
-                                        <span>
-                                          {formatCurrency(order.totalAmount)}
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Tracking info display (when tracking_number exists) */}
-                                {order.trackingNumber && (
-                                  <>
-                                    <Separator />
-                                    <div>
-                                      <p className="text-sm font-medium mb-1">
-                                        배송 추적 정보
-                                      </p>
-                                      <div className="text-sm text-muted-foreground space-y-0.5">
-                                        {order.courierCode && (
-                                          <p>
-                                            택배사:{' '}
-                                            {COURIER_MAP[order.courierCode] ?? order.courierCode}
-                                          </p>
-                                        )}
-                                        <p>송장번호: {order.trackingNumber}</p>
-                                        {order.shippedAt && (
-                                          <p>발송일시: {formatDate(order.shippedAt)}</p>
-                                        )}
-                                        {order.deliveredAt && (
-                                          <p>배송완료: {formatDate(order.deliveredAt)}</p>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </>
-                                )}
-
-                                {/* Cancel reason display */}
-                                {order.status === 'CANCELLED' && order.cancelReason && (
-                                  <>
-                                    <Separator />
-                                    <div>
-                                      <p className="text-sm font-medium mb-1 text-destructive">
-                                        취소 사유
-                                      </p>
-                                      <p className="text-sm text-muted-foreground">
-                                        {order.cancelReason}
-                                      </p>
-                                    </div>
-                                  </>
-                                )}
-
-                                <Separator />
-
-                                {/* Courier, Tracking & Shipping Actions */}
-                                {order.status !== 'CANCELLED' &&
-                                  order.status !== 'CONFIRMED' &&
-                                  order.status !== 'REFUNDED' && (
-                                    <div className="space-y-3">
-                                      <p className="text-sm font-medium">배송 처리</p>
-                                      <div className="flex flex-wrap items-end gap-3">
-                                        <div className="space-y-1">
-                                          <Label className="text-xs">택배사</Label>
-                                          <Select
-                                            value={
-                                              courierInputs[order.id] ??
-                                              order.courierCode ??
-                                              ''
-                                            }
-                                            onValueChange={(value) =>
-                                              setCourierInputs({
-                                                ...courierInputs,
-                                                [order.id]: value,
-                                              })
-                                            }
-                                          >
-                                            <SelectTrigger
-                                              className="w-44"
-                                              onClick={(e) => e.stopPropagation()}
-                                            >
-                                              <SelectValue placeholder="택배사 선택" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                              {COURIERS.map((c) => (
-                                                <SelectItem key={c.code} value={c.code}>
-                                                  {c.name}
-                                                </SelectItem>
-                                              ))}
-                                            </SelectContent>
-                                          </Select>
-                                        </div>
-                                        <div className="space-y-1">
-                                          <Label className="text-xs">송장번호</Label>
-                                          <Input
-                                            value={
-                                              trackingInputs[order.id] ??
-                                              order.trackingNumber ??
-                                              ''
-                                            }
-                                            onChange={(e) =>
-                                              setTrackingInputs({
-                                                ...trackingInputs,
-                                                [order.id]: e.target.value,
-                                              })
-                                            }
-                                            placeholder="송장번호 입력"
-                                            className="w-56"
-                                            onClick={(e) => e.stopPropagation()}
-                                          />
-                                        </div>
-
-                                        {/* Save tracking info button (for already-shipped orders) */}
-                                        {(order.status === 'SHIPPING' || order.status === 'DELIVERED') && (
-                                          <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleTrackingSave(order.id);
-                                            }}
-                                          >
-                                            송장 저장
-                                          </Button>
-                                        )}
-
-                                        {/* "배송 시작" button: for PREPARING status, sets to SHIPPING with courier + tracking */}
-                                        {order.status === 'PREPARING' && (
-                                          <Button
-                                            size="sm"
-                                            disabled={
-                                              updatingId === order.id ||
-                                              !trackingInputs[order.id]?.trim()
-                                            }
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleShippingStart(order.id);
-                                            }}
-                                          >
-                                            {updatingId === order.id
-                                              ? '처리 중...'
-                                              : '배송 시작'}
-                                          </Button>
-                                        )}
-
-                                        {/* Status progression for other statuses */}
-                                        {NEXT_STATUS[order.status] &&
-                                          order.status !== 'PREPARING' && (
-                                            <Button
-                                              size="sm"
-                                              disabled={updatingId === order.id}
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleStatusChange(
-                                                  order.id,
-                                                  NEXT_STATUS[order.status]!
-                                                );
-                                              }}
-                                            >
-                                              {updatingId === order.id
-                                                ? '처리 중...'
-                                                : NEXT_STATUS_LABEL[order.status]}
-                                            </Button>
-                                          )}
-                                      </div>
-                                    </div>
-                                  )}
-
-                                {/* Cancel order form (for PAID status only) */}
-                                {order.status === 'PAID' && (
-                                  <>
-                                    <Separator />
-                                    <div className="space-y-3">
-                                      {!showCancelForm[order.id] ? (
-                                        <Button
-                                          variant="destructive"
-                                          size="sm"
-                                          disabled={updatingId === order.id}
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setShowCancelForm({
-                                              ...showCancelForm,
-                                              [order.id]: true,
-                                            });
-                                          }}
-                                        >
-                                          주문 취소
-                                        </Button>
-                                      ) : (
-                                        <div
-                                          className="space-y-2 rounded-md border border-destructive/30 bg-destructive/5 p-3"
-                                          onClick={(e) => e.stopPropagation()}
-                                        >
-                                          <p className="text-sm font-medium text-destructive">
-                                            주문 취소
-                                          </p>
-                                          <Textarea
-                                            value={cancelReasonInputs[order.id] ?? ''}
-                                            onChange={(e) =>
-                                              setCancelReasonInputs({
-                                                ...cancelReasonInputs,
-                                                [order.id]: e.target.value,
-                                              })
-                                            }
-                                            placeholder="취소 사유를 입력하세요"
-                                            rows={2}
-                                          />
-                                          <div className="flex gap-2">
-                                            <Button
-                                              variant="destructive"
-                                              size="sm"
-                                              disabled={
-                                                updatingId === order.id ||
-                                                !cancelReasonInputs[order.id]?.trim()
-                                              }
-                                              onClick={() =>
-                                                handleCancelOrder(order.id)
-                                              }
-                                            >
-                                              {updatingId === order.id
-                                                ? '처리 중...'
-                                                : '취소 확인'}
-                                            </Button>
-                                            <Button
-                                              variant="outline"
-                                              size="sm"
-                                              onClick={() =>
-                                                setShowCancelForm({
-                                                  ...showCancelForm,
-                                                  [order.id]: false,
-                                                })
-                                              }
-                                            >
-                                              닫기
-                                            </Button>
-                                          </div>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </>
-                                )}
-                              </div>
-                            </TableCell>
-                          </TableRow>
+                          </div>
                         )}
-                      </>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
