@@ -53,8 +53,12 @@ async function getCreators() {
     countMap[item.creatorId] = (countMap[item.creatorId] || 0) + 1;
   });
 
+  // Serialize Decimal fields before passing to client component
   return creators.map((c) => ({
     ...c,
+    totalSales: Number(c.totalSales),
+    totalEarnings: Number(c.totalEarnings),
+    totalRevenue: Number(c.totalRevenue),
     product_count: countMap[c.id] || 0,
   }));
 }
