@@ -225,10 +225,11 @@ function GongguCard({ campaign, locale }: { campaign: any; locale: string }) {
     }
   }
 
-  const effectivePrice = campaignProduct?.campaignPrice ?? product.salePrice;
+  const effectivePrice = Number(campaignProduct?.campaignPrice ?? product.salePrice ?? 0);
+  const originalPrice = Number(product.originalPrice ?? 0);
   const discount =
-    product.originalPrice > 0
-      ? Math.round(((product.originalPrice - effectivePrice) / product.originalPrice) * 100)
+    originalPrice > 0
+      ? Math.round(((originalPrice - effectivePrice) / originalPrice) * 100)
       : 0;
 
   const imageUrl = product.thumbnailUrl || product.images?.[0];
@@ -263,7 +264,7 @@ function GongguCard({ campaign, locale }: { campaign: any; locale: string }) {
           <div className="flex items-baseline gap-1.5">
             {discount > 0 && (
               <span className="text-xs text-muted-foreground line-through">
-                {new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', minimumFractionDigits: 0 }).format(product.originalPrice)}
+                {new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', minimumFractionDigits: 0 }).format(originalPrice)}
               </span>
             )}
             <span className="text-sm font-bold">
