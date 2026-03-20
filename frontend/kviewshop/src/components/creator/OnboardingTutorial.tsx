@@ -22,6 +22,7 @@ import {
 import { toast } from 'sonner';
 import { useOnboardingStore } from '@/lib/store/onboarding';
 import { formatCurrency } from '@/lib/i18n/config';
+import { getShopUrl } from '@/lib/utils/beauty-labels';
 import {
   getCreatorSession,
   getPickableProducts,
@@ -39,11 +40,11 @@ interface RecommendedProduct {
 }
 
 const STEPS = [
-  { icon: PartyPopper, title: '환영해요!', color: 'text-yellow-500' },
+  { icon: PartyPopper, title: '부담 없이 시작하세요!', color: 'text-yellow-500' },
   { icon: Store, title: '내 샵을 꾸며보세요', color: 'text-blue-500' },
-  { icon: ShoppingBag, title: '상품을 추가해보세요', color: 'text-green-500' },
+  { icon: ShoppingBag, title: '상품을 추가하면 바로 판매 시작!', color: 'text-green-500' },
   { icon: Share2, title: 'SNS에 공유하세요', color: 'text-purple-500' },
-  { icon: Rocket, title: '첫 판매를 기다려요!', color: 'text-primary' },
+  { icon: Rocket, title: 'CS 걱정 제로!', color: 'text-primary' },
 ];
 
 export function OnboardingTutorial() {
@@ -81,7 +82,7 @@ export function OnboardingTutorial() {
         if (!creator) return;
 
         const c = creator as Record<string, any>;
-        setShopUrl(c.shopId ? `https://shop.cnec.kr/${c.shopId}` : '');
+        setShopUrl(c.shopId ? getShopUrl(c.shopId) : '');
 
         // Fetch products for step 3
         const data = await getPickableProducts(c.id);
@@ -213,9 +214,8 @@ export function OnboardingTutorial() {
           {currentStep === 0 && (
             <div className="text-center">
               <p className="text-sm text-muted-foreground leading-relaxed">
-                크넥 셀렉트샵에 오신 것을 환영합니다!<br />
-                내 취향의 뷰티 상품을 골라 나만의 샵을 만들고,<br />
-                판매할 때마다 수익을 받아보세요.
+                써보고 좋으면 스토리 올리고,<br />
+                반응 좋으면 공구 도전!
               </p>
             </div>
           )}
@@ -323,8 +323,8 @@ export function OnboardingTutorial() {
           {currentStep === 4 && (
             <div className="text-center space-y-4">
               <p className="text-sm text-muted-foreground">
-                모든 준비가 완료되었어요!<br />
-                상품이 판매될 때마다 수익이 쌓여요.
+                배송·교환·환불은 브랜드가,<br />
+                크넥이 관리. CS 걱정 제로!
               </p>
               {addedIds.size > 0 && (
                 <div className="p-4 bg-primary/5 rounded-xl border border-primary/20">
