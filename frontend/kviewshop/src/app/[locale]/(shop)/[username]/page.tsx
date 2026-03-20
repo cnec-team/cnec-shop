@@ -76,9 +76,28 @@ async function getShopItems(creatorId: string) {
       }
     }
 
-    // Attach campaignProduct data to each item
+    // Serialize Decimal fields to numbers and attach campaignProduct data
     return items.map((item) => ({
       ...item,
+      product: item.product
+        ? {
+            ...item.product,
+            price: item.product.price ? Number(item.product.price) : null,
+            originalPrice: item.product.originalPrice ? Number(item.product.originalPrice) : null,
+            salePrice: item.product.salePrice ? Number(item.product.salePrice) : null,
+            defaultCommissionRate: Number(item.product.defaultCommissionRate),
+            shippingFee: Number(item.product.shippingFee),
+            freeShippingThreshold: item.product.freeShippingThreshold
+              ? Number(item.product.freeShippingThreshold)
+              : null,
+          }
+        : null,
+      campaign: item.campaign
+        ? {
+            ...item.campaign,
+            commissionRate: Number(item.campaign.commissionRate),
+          }
+        : null,
       campaignProduct: item.campaignId
         ? campaignProductMap[`${item.campaignId}-${item.productId}`] ?? null
         : null,
@@ -165,6 +184,14 @@ export default async function ShopPage({ params }: ShopPageProps) {
     getCollections(creator.id),
   ]);
 
+  // Serialize Decimal fields on creator before passing to client component
+  const serializedCreator = {
+    ...creator,
+    totalSales: Number(creator.totalSales),
+    totalEarnings: Number(creator.totalEarnings),
+    totalRevenue: Number(creator.totalRevenue),
+  };
+
   const shopUrl = `${BASE_URL}/${username}`;
 
   return (
@@ -176,7 +203,7 @@ export default async function ShopPage({ params }: ShopPageProps) {
         description={creator.bio || undefined}
       />
       <CreatorShopPage
-        creator={creator as any}
+        creator={serializedCreator as any}
         shopItems={shopItems as any}
         collections={collections as any}
         locale={locale}

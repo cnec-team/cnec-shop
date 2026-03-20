@@ -157,15 +157,48 @@ export default async function ProductPage({ params, searchParams }: ProductPageP
     campaignProduct = await getCampaignProduct(productId, campaignId);
   }
 
+  // Serialize Decimal fields before passing to client components
+  const serializedProduct = {
+    ...product,
+    price: product.price ? Number(product.price) : null,
+    originalPrice: product.originalPrice ? Number(product.originalPrice) : null,
+    salePrice: product.salePrice ? Number(product.salePrice) : null,
+    defaultCommissionRate: Number(product.defaultCommissionRate),
+    shippingFee: Number(product.shippingFee),
+    freeShippingThreshold: product.freeShippingThreshold
+      ? Number(product.freeShippingThreshold)
+      : null,
+  };
+
+  const serializedCreator = {
+    ...creator,
+    totalSales: Number(creator.totalSales),
+    totalEarnings: Number(creator.totalEarnings),
+    totalRevenue: Number(creator.totalRevenue),
+  };
+
+  const serializedCampaignProduct = campaignProduct
+    ? {
+        ...campaignProduct,
+        campaignPrice: Number(campaignProduct.campaignPrice),
+        campaign: campaignProduct.campaign
+          ? {
+              ...campaignProduct.campaign,
+              commissionRate: Number(campaignProduct.campaign.commissionRate),
+            }
+          : undefined,
+      }
+    : null;
+
   const productUrl = `${BASE_URL}/${username}/product/${productId}`;
 
   return (
     <>
-      <ProductJsonLd product={product as unknown as Product} shopUrl={productUrl} />
+      <ProductJsonLd product={serializedProduct as unknown as Product} shopUrl={productUrl} />
       <ProductDetailPage
-        product={product as unknown as Product}
-        campaignProduct={campaignProduct as unknown as CampaignProduct | null}
-        creator={creator as unknown as Creator}
+        product={serializedProduct as unknown as Product}
+        campaignProduct={serializedCampaignProduct as unknown as CampaignProduct | null}
+        creator={serializedCreator as unknown as Creator}
         locale={locale}
         username={username}
       />

@@ -47,7 +47,18 @@ async function getProducts() {
     take: 200,
   });
 
-  return products;
+  // Serialize Decimal fields before passing to client component
+  return products.map((p) => ({
+    ...p,
+    price: p.price ? Number(p.price) : null,
+    originalPrice: p.originalPrice ? Number(p.originalPrice) : null,
+    salePrice: p.salePrice ? Number(p.salePrice) : null,
+    defaultCommissionRate: Number(p.defaultCommissionRate),
+    shippingFee: Number(p.shippingFee),
+    freeShippingThreshold: p.freeShippingThreshold
+      ? Number(p.freeShippingThreshold)
+      : null,
+  }));
 }
 
 async function getBrands() {
