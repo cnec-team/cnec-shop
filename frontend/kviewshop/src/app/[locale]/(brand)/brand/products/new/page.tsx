@@ -273,6 +273,14 @@ export default function NewProductPage() {
             할인율: {Math.round((1 - Number(salePrice) / Number(originalPrice)) * 100)}%
           </div>
         )}
+
+        {/* Exclusive composition tip */}
+        <div className="rounded-xl bg-amber-50 border border-amber-100 px-4 py-3">
+          <p className="text-xs font-semibold text-amber-800">공구 성공 팁</p>
+          <p className="text-xs text-amber-700 mt-1">
+            쿠팡/올리브영에 없는 구성(세트+증정)으로 등록하면 가격 비교 불가능 → 크리에이터가 자신 있게 홍보
+          </p>
+        </div>
       </Section>
 
       {/* 2. Images */}

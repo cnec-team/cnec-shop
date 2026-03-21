@@ -239,7 +239,7 @@ export function ProductDetailPage({
           {/* Price Section */}
           <div className="mt-3 flex items-baseline gap-2">
             {discountPercent > 0 && (
-              <span className="text-xl font-bold text-accent">
+              <span className="text-xl font-bold text-red-500">
                 {discountPercent}%
               </span>
             )}
@@ -303,7 +303,7 @@ export function ProductDetailPage({
         <div className="px-4 pb-4">
           <Button
             onClick={handleBuy}
-            className="w-full h-12 text-base font-semibold btn-gold rounded-xl"
+            className="w-full h-14 text-base font-semibold bg-gray-900 text-white hover:bg-gray-800 rounded-xl"
             disabled={product.stock === 0}
           >
             {product.stock === 0 ? '품절' : '구매하기'}
@@ -390,6 +390,13 @@ export function ProductDetailPage({
               )}
             </div>
           )}
+        </div>
+
+        {/* CS Notice */}
+        <div className="px-4 py-4">
+          <p className="text-xs text-center text-gray-400">
+            이 샵의 배송/CS는 브랜드가 직접 처리합니다
+          </p>
         </div>
 
         {/* Bottom Spacing */}

@@ -10,13 +10,10 @@ import { Instagram, Share2 } from 'lucide-react';
 import { ShareSheet } from '@/components/shop/ShareSheet';
 import { VisitTracker } from '@/components/shop/VisitTracker';
 import {
-  SKIN_TYPE_LABELS,
-  PERSONAL_COLOR_LABELS,
-} from '@/types/database';
-import type {
-  SkinType,
-  PersonalColor,
-} from '@/types/database';
+  getSkinTypeLabel,
+  getSkinConcernLabel,
+  getPersonalColorLabel,
+} from '@/lib/utils/beauty-labels';
 
 // =============================================
 // Types matching Prisma camelCase output
@@ -261,6 +258,13 @@ export function CreatorShopPage({
         />
       )}
 
+      {/* CS Notice */}
+      <div className="max-w-lg mx-auto px-4 py-4">
+        <p className="text-xs text-center text-gray-400">
+          이 샵의 배송/CS는 브랜드가 직접 처리합니다
+        </p>
+      </div>
+
       {/* Footer */}
       <footer className="border-t border-border py-6">
         <div className="max-w-lg mx-auto px-4 text-center">
@@ -352,22 +356,18 @@ function BeautyProfile({ creator }: { creator: ShopCreator }) {
   const tags: { label: string; variant: 'outline' | 'secondary' }[] = [];
 
   if (creator.skinType) {
-    const label = SKIN_TYPE_LABELS[creator.skinType as SkinType];
-    if (label) {
-      tags.push({ label, variant: 'secondary' });
-    }
+    const label = getSkinTypeLabel(creator.skinType);
+    tags.push({ label, variant: 'secondary' });
   }
 
   if (creator.personalColor) {
-    const label = PERSONAL_COLOR_LABELS[creator.personalColor as PersonalColor];
-    if (label) {
-      tags.push({ label, variant: 'secondary' });
-    }
+    const label = getPersonalColorLabel(creator.personalColor);
+    tags.push({ label, variant: 'secondary' });
   }
 
   if (creator.skinConcerns && creator.skinConcerns.length > 0) {
     creator.skinConcerns.forEach((concern) => {
-      tags.push({ label: concern, variant: 'outline' });
+      tags.push({ label: getSkinConcernLabel(concern), variant: 'outline' });
     });
   }
 
@@ -436,9 +436,9 @@ function GongguCard({
       href={`/${locale}/${username}/product/${product.id}${item.campaignId ? `?campaign=${item.campaignId}` : ''}`}
       className="block"
     >
-      <div className="flex gap-3 p-3 rounded-xl bg-card border border-border card-hover group">
+      <div className="flex gap-3 p-3 rounded-2xl bg-card border border-border card-hover group">
         {/* Product Image */}
-        <div className="relative w-28 h-28 rounded-lg overflow-hidden bg-secondary flex-shrink-0">
+        <div className="relative w-28 h-28 rounded-xl overflow-hidden bg-secondary flex-shrink-0">
           {product.images?.[0] ? (
             <img
               src={product.images[0]}
@@ -484,7 +484,7 @@ function GongguCard({
           <div className="flex items-end justify-between mt-2">
             <div className="flex items-baseline gap-2">
               {discountPercent > 0 && (
-                <span className="text-sm font-bold text-accent">
+                <span className="text-sm font-bold text-red-500">
                   {discountPercent}%
                 </span>
               )}
@@ -571,7 +571,7 @@ function PickProductCard({
     >
       <div className="group">
         {/* Image */}
-        <div className="w-36 h-36 rounded-lg overflow-hidden bg-secondary mb-2">
+        <div className="w-36 h-36 rounded-xl overflow-hidden bg-secondary mb-2">
           {product.images?.[0] ? (
             <img
               src={product.images[0]}
@@ -597,7 +597,7 @@ function PickProductCard({
           </h4>
           <div className="flex items-baseline gap-1 mt-1">
             {discountPercent > 0 && (
-              <span className="text-xs font-bold text-accent">
+              <span className="text-xs font-bold text-red-500">
                 {discountPercent}%
               </span>
             )}
