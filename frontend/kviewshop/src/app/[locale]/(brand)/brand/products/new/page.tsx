@@ -205,8 +205,8 @@ export default function NewProductPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">새 상품 등록</h1>
-          <p className="text-sm text-muted-foreground mt-1">상품 정보를 단계별로 입력하세요</p>
+          <h1 className="text-xl font-bold text-gray-900">새 상품 등록</h1>
+          <p className="text-sm text-gray-400 mt-0.5">상품 정보를 단계별로 입력하세요</p>
         </div>
         <Button variant="outline" onClick={() => router.back()} size="sm">
           취소
@@ -416,10 +416,10 @@ export default function NewProductPage() {
         </div>
       </Section>
 
-      {/* 5. Commission */}
+      {/* 5. Creator Earnings */}
       <Section
-        title="커미션 설정"
-        description="판매 상태 및 수수료율"
+        title="크리에이터 수익 설정"
+        description="판매 상태 및 크리에이터 수익률"
         icon={<Percent className="h-4 w-4" />}
         isComplete={true}
         defaultOpen
@@ -442,7 +442,7 @@ export default function NewProductPage() {
 
         <div className="space-y-4 rounded-lg border p-4">
           <div className="flex items-center justify-between">
-            <Label>기본 수수료율</Label>
+            <Label>크리에이터 수익률</Label>
             <span className="text-lg font-bold text-primary">{commissionRate}%</span>
           </div>
           <Slider
@@ -459,14 +459,14 @@ export default function NewProductPage() {
           </div>
 
           {salePrice && (
-            <div className="rounded-lg bg-blue-50 px-4 py-3 mt-2">
-              <p className="text-xs text-blue-600 mb-1">예상 수익 (판매가 기준)</p>
+            <div className="rounded-lg bg-emerald-50 px-4 py-3 mt-2">
+              <p className="text-xs text-emerald-600 mb-1">크리에이터가 1개 팔면</p>
               <div className="flex items-baseline gap-2">
-                <span className="text-lg font-bold text-blue-700">
-                  {Math.round(estimatedRevenue).toLocaleString('ko-KR')}원
+                <span className="text-lg font-bold text-emerald-700">
+                  ₩{Math.round(Number(salePrice) * commissionRate / 100).toLocaleString('ko-KR')} 수익
                 </span>
-                <span className="text-xs text-blue-500">
-                  / 판매가 {Number(salePrice).toLocaleString('ko-KR')}원
+                <span className="text-xs text-emerald-500">
+                  (판매가 {Number(salePrice).toLocaleString('ko-KR')}원의 {commissionRate}%)
                 </span>
               </div>
             </div>

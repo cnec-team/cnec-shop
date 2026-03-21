@@ -196,7 +196,7 @@ export default function GongguCampaignsPage() {
                         {campaign.endAt && ` ~ ${new Date(campaign.endAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}`}
                       </span>
                     )}
-                    <span>수수료 {Number(campaign.commissionRate) * 100}%</span>
+                    <span>크리에이터 수익 {Number(campaign.commissionRate) * 100}%</span>
                     <span>{campaign.recruitmentType === 'OPEN' ? '자동 승인' : '승인제'}</span>
                   </div>
 

@@ -325,7 +325,7 @@ export default function CampaignDetailPage() {
         <CardContent>
           <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-3">
             <div>
-              <span className="text-muted-foreground">수수료율</span>
+              <span className="text-muted-foreground">크리에이터 수익률</span>
               <p className="font-medium">{Number(campaign.commissionRate) * 100}%</p>
             </div>
             <div>

@@ -127,8 +127,8 @@ export default function BrandProductsPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">상품 관리</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <h1 className="text-xl font-bold text-gray-900">상품 관리</h1>
+          <p className="text-sm text-gray-400 mt-0.5">
             등록된 상품 {products.length}개
           </p>
         </div>
@@ -255,7 +255,7 @@ export default function BrandProductsPage() {
                   <TableHead className="font-medium text-sm text-gray-500 text-right">판매가</TableHead>
                   <TableHead className="font-medium text-sm text-gray-500 text-right">재고</TableHead>
                   <TableHead className="font-medium text-sm text-gray-500">상태</TableHead>
-                  <TableHead className="font-medium text-sm text-gray-500 text-right">수수료</TableHead>
+                  <TableHead className="font-medium text-sm text-gray-500 text-right">크리에이터 수익</TableHead>
                   <TableHead className="font-medium text-sm text-gray-500 text-right pr-4">관리</TableHead>
                 </TableRow>
               </TableHeader>
