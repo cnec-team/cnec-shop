@@ -108,9 +108,9 @@ export default function CreatorGradePage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">등급</h1>
-        <p className="text-sm text-muted-foreground">내 등급과 혜택을 확인하세요</p>
+      <div className="hidden md:block">
+        <h1 className="text-xl font-bold text-gray-900">등급</h1>
+        <p className="text-sm text-gray-400 mt-0.5">내 등급과 혜택을 확인하세요</p>
       </div>
 
       {/* Current Grade */}

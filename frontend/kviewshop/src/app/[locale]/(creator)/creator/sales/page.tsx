@@ -119,12 +119,12 @@ export default function CreatorSalesPage() {
     <div className="space-y-4">
       {/* Desktop Header */}
       <div className="hidden md:block">
-        <h1 className="text-2xl sm:text-3xl font-bold">판매 현황</h1>
-        <p className="text-sm text-muted-foreground">내 샵의 판매와 수익을 확인하세요</p>
+        <h1 className="text-xl font-bold text-gray-900">판매 현황</h1>
+        <p className="text-sm text-gray-400 mt-0.5">내 샵의 판매와 수익을 확인하세요</p>
       </div>
 
       {/* Period Tabs */}
-      <div className="flex rounded-lg bg-muted p-1 gap-1">
+      <div className="flex rounded-xl bg-gray-100 p-1 gap-1">
         {([
           { key: 'today' as PeriodTab, label: '오늘' },
           { key: 'week' as PeriodTab, label: '이번주' },
@@ -133,10 +133,10 @@ export default function CreatorSalesPage() {
           <button
             key={tab.key}
             onClick={() => setPeriodTab(tab.key)}
-            className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+            className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-colors ${
               periodTab === tab.key
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-500'
             }`}
           >
             {tab.label}
