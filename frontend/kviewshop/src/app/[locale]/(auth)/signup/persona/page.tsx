@@ -88,28 +88,28 @@ const PERSONAL_COLOR_OPTIONS: {
   {
     value: 'spring_warm',
     label: '봄웜톤',
-    sub: 'Spring Warm',
+    sub: '따뜻한 봄 컬러',
     icon: <Cherry className="h-6 w-6" />,
     chipColor: 'bg-gradient-to-br from-[#F4A460] to-[#FFB6C1]',
   },
   {
     value: 'summer_cool',
     label: '여름쿨톤',
-    sub: 'Summer Cool',
+    sub: '시원한 여름 컬러',
     icon: <Flower2 className="h-6 w-6" />,
     chipColor: 'bg-gradient-to-br from-[#87CEEB] to-[#DDA0DD]',
   },
   {
     value: 'autumn_warm',
     label: '가을웜톤',
-    sub: 'Autumn Warm',
+    sub: '깊은 가을 컬러',
     icon: <TreeDeciduous className="h-6 w-6" />,
     chipColor: 'bg-gradient-to-br from-[#CD853F] to-[#D2691E]',
   },
   {
     value: 'winter_cool',
     label: '겨울쿨톤',
-    sub: 'Winter Cool',
+    sub: '선명한 겨울 컬러',
     icon: <Snowflake className="h-6 w-6" />,
     chipColor: 'bg-gradient-to-br from-[#708090] to-[#4682B4]',
   },
@@ -260,7 +260,7 @@ export default function PersonaQuizPage() {
   // ─── Shared card style helper ──────────────────────────────────────────
 
   const cardClass = (selected: boolean) =>
-    `relative flex flex-col items-center gap-3 rounded-2xl border-2 px-3 py-5 transition-all duration-200 ${
+    `relative flex flex-col items-center gap-3 rounded-2xl border-2 px-3 py-5 min-h-[56px] transition-all duration-200 ${
       selected
         ? 'border-pink-400 bg-pink-50/80 shadow-md ring-2 ring-pink-400/30 ring-offset-2 scale-[1.03]'
         : 'border-gray-100 bg-white shadow-sm hover:border-pink-200 hover:shadow-md'
@@ -285,7 +285,7 @@ export default function PersonaQuizPage() {
       // Step 0: Skin Type
       case 0:
         return (
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {SKIN_TYPE_OPTIONS.map(({ value, label, icon }) => {
               const selected = skinType === value;
               return (
@@ -307,7 +307,7 @@ export default function PersonaQuizPage() {
       // Step 1: Age Range
       case 1:
         return (
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {AGE_RANGE_OPTIONS.map(({ value, label }) => {
               const selected = ageRange === value;
               return (
@@ -343,7 +343,7 @@ export default function PersonaQuizPage() {
                 </Badge>
               )}
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {SKIN_CONCERN_OPTIONS.map(({ value, label, icon }) => {
                 const selected = skinConcerns.includes(value);
                 return (
@@ -374,7 +374,7 @@ export default function PersonaQuizPage() {
                 </Badge>
               </div>
             )}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {BEAUTY_INTEREST_OPTIONS.map(({ value, label, icon }) => {
                 const selected = interests.includes(value);
                 return (

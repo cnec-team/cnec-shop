@@ -65,6 +65,35 @@ async function getCampaignProduct(productId: string, campaignId: string) {
   return campaignProduct;
 }
 
+async function getOtherProducts(creatorId: string, excludeProductId: string) {
+  try {
+    const shopItems = await prisma.creatorShopItem.findMany({
+      where: {
+        creatorId,
+        isVisible: true,
+        productId: { not: excludeProductId },
+      },
+      include: {
+        product: true,
+      },
+      take: 6,
+      orderBy: { displayOrder: 'asc' },
+    });
+
+    return shopItems
+      .filter((item) => item.product)
+      .map((item) => ({
+        id: item.product!.id,
+        name: item.product!.name || '',
+        images: item.product!.images,
+        salePrice: item.product!.salePrice ? Number(item.product!.salePrice) : 0,
+        originalPrice: item.product!.originalPrice ? Number(item.product!.originalPrice) : 0,
+      }));
+  } catch {
+    return [];
+  }
+}
+
 export async function generateMetadata({ params, searchParams }: ProductPageProps): Promise<Metadata> {
   const { productId, username } = await params;
   const { campaign: campaignId } = await searchParams;
@@ -74,7 +103,7 @@ export async function generateMetadata({ params, searchParams }: ProductPageProp
   ]);
 
   if (!product) {
-    return { title: 'Product Not Found' };
+    return { title: '상품을 찾을 수 없습니다' };
   }
 
   const brandName = product.brand?.brandName || '';
@@ -157,6 +186,9 @@ export default async function ProductPage({ params, searchParams }: ProductPageP
     campaignProduct = await getCampaignProduct(productId, campaignId);
   }
 
+  // Fetch other products from same creator
+  const otherProducts = await getOtherProducts(creator.id, productId);
+
   // Serialize Decimal fields before passing to client components
   const serializedProduct = {
     ...product,
@@ -201,6 +233,7 @@ export default async function ProductPage({ params, searchParams }: ProductPageP
         creator={serializedCreator as unknown as Creator}
         locale={locale}
         username={username}
+        otherProducts={otherProducts}
       />
     </>
   );

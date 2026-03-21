@@ -1,12 +1,7 @@
 import Link from 'next/link';
 import { prisma } from '@/lib/db';
-import { CreatorCard } from '@/components/shop/CreatorCard';
-import { ProductCard } from '@/components/shop/ProductCard';
-import { DiscoveryFilters } from './discovery-filters';
+import { ArrowRight, Users, Flame } from 'lucide-react';
 import type { Metadata } from 'next';
-import { ArrowRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 
 export const revalidate = 120;
 
@@ -66,7 +61,6 @@ async function getActiveGonggu() {
 }
 
 async function getTopCreators() {
-  // Try by total_sales first
   let creators = await prisma.creator.findMany({
     where: {
       totalSales: {
@@ -79,7 +73,6 @@ async function getTopCreators() {
     take: 10,
   });
 
-  // Fallback to newest creators
   if (creators.length === 0) {
     creators = await prisma.creator.findMany({
       orderBy: {
@@ -89,7 +82,6 @@ async function getTopCreators() {
     });
   }
 
-  // Get product counts
   const creatorIds = creators.map((c) => c.id);
   if (creatorIds.length === 0) return [];
 
@@ -115,7 +107,6 @@ async function getTopCreators() {
 }
 
 async function getTopProducts() {
-  // Try to get products with orders (popular)
   const orderItems = await prisma.orderItem.findMany({
     select: {
       productId: true,
@@ -155,7 +146,6 @@ async function getTopProducts() {
       });
 
       if (products.length > 0) {
-        // Sort by sales count
         const sorted = [...products].sort(
           (a, b) => (salesMap[b.id] || 0) - (salesMap[a.id] || 0)
         );
@@ -164,7 +154,6 @@ async function getTopProducts() {
     }
   }
 
-  // Fallback: newest products
   const products = await prisma.product.findMany({
     where: {
       status: 'ACTIVE',
@@ -187,30 +176,16 @@ async function getTopProducts() {
   return products;
 }
 
-async function getNewProducts() {
-  const products = await prisma.product.findMany({
-    where: {
-      status: 'ACTIVE',
-    },
-    include: {
-      brand: {
-        select: {
-          id: true,
-          brandName: true,
-          logoUrl: true,
-        },
-      },
-    },
-    orderBy: {
-      createdAt: 'desc',
-    },
-    take: 8,
-  });
-
-  return products;
+function formatKRW(amount: number): string {
+  return new Intl.NumberFormat('ko-KR', {
+    style: 'currency',
+    currency: 'KRW',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
 }
 
-function GongguCard({ campaign, locale }: { campaign: any; locale: string }) {
+function GongguCardServer({ campaign, locale }: { campaign: any; locale: string }) {
   const product = campaign.products?.[0]?.product;
   const campaignProduct = campaign.products?.[0];
   if (!product) return null;
@@ -235,216 +210,228 @@ function GongguCard({ campaign, locale }: { campaign: any; locale: string }) {
   const imageUrl = product.thumbnailUrl || product.images?.[0];
 
   return (
-    <div className="flex-shrink-0 w-64 snap-start">
-      <div className="rounded-xl border border-border bg-card overflow-hidden hover:border-primary/30 transition-colors">
-        <div className="relative aspect-square bg-muted overflow-hidden">
+    <div className="flex-shrink-0 w-56 snap-start">
+      <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
+        <div className="relative aspect-square bg-gray-100 overflow-hidden">
           {imageUrl ? (
             <img src={imageUrl} alt={product.name} className="object-cover w-full h-full" />
           ) : (
-            <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
-              No Image
+            <div className="flex h-full items-center justify-center text-gray-400 text-sm">
+              이미지 없음
             </div>
           )}
-          <div className="absolute top-2 left-2 flex gap-1">
-            {discount > 0 && (
-              <Badge className="bg-red-500 text-white text-[10px] px-1.5 py-0 font-bold">
-                {discount}%
-              </Badge>
-            )}
+          <div className="absolute top-2.5 left-2.5 flex gap-1">
             {dDayLabel && (
-              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-bold">
+              <span className="bg-red-500 text-white rounded-full px-2 py-0.5 text-xs font-bold">
                 {dDayLabel}
-              </Badge>
+              </span>
             )}
           </div>
         </div>
-        <div className="p-3 space-y-1">
-          <h3 className="text-sm font-medium line-clamp-1">{product.name}</h3>
-          <p className="text-xs text-muted-foreground">{campaign.title}</p>
-          <div className="flex items-baseline gap-1.5">
+        <div className="p-3">
+          <h3 className="text-sm font-medium text-gray-900 line-clamp-1">{product.name}</h3>
+          <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{campaign.title}</p>
+          <div className="flex items-baseline gap-1.5 mt-1.5">
             {discount > 0 && (
-              <span className="text-xs text-muted-foreground line-through">
-                {new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', minimumFractionDigits: 0 }).format(originalPrice)}
-              </span>
+              <span className="text-sm font-bold text-red-500">{discount}%</span>
             )}
-            <span className="text-sm font-bold">
-              {new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', minimumFractionDigits: 0 }).format(effectivePrice)}
+            <span className="text-sm font-bold text-gray-900">
+              {formatKRW(effectivePrice)}
             </span>
           </div>
+          {discount > 0 && (
+            <span className="text-xs text-gray-300 line-through">
+              {formatKRW(originalPrice)}
+            </span>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
+function ProductCardServer({ product, locale }: { product: any; locale: string }) {
+  const originalPrice = Number(product.originalPrice ?? 0);
+  const salePrice = Number(product.salePrice ?? 0);
+  const discount = originalPrice > 0 && salePrice < originalPrice
+    ? Math.round(((originalPrice - salePrice) / originalPrice) * 100)
+    : 0;
+  const imageUrl = product.thumbnailUrl || product.images?.[0];
+  const brandName = product.brand?.brandName || '';
+
+  return (
+    <Link
+      href={`/${locale}/products/${product.id}`}
+      className="block group"
+    >
+      <div className="aspect-square rounded-xl overflow-hidden bg-gray-100">
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt={product.name}
+            className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center text-gray-400 text-sm">
+            이미지 없음
+          </div>
+        )}
+      </div>
+      <div className="mt-2">
+        {brandName && (
+          <p className="text-xs text-gray-400 truncate">{brandName}</p>
+        )}
+        <h3 className="text-sm text-gray-900 line-clamp-2 leading-snug mt-0.5">{product.name}</h3>
+        <div className="flex items-baseline gap-1 mt-1">
+          {discount > 0 && (
+            <span className="text-sm font-bold text-red-500">{discount}%</span>
+          )}
+          <span className="text-base font-bold text-gray-900">{formatKRW(salePrice)}</span>
+        </div>
+        {discount > 0 && (
+          <span className="text-xs text-gray-300 line-through">{formatKRW(originalPrice)}</span>
+        )}
+      </div>
+    </Link>
+  );
+}
+
+function CreatorCardServer({ creator, locale }: { creator: any; locale: string }) {
+  const displayName = creator.displayName || creator.shopId || '';
+  const initials = displayName.slice(0, 1);
+  const productCount = creator.product_count || 0;
+
+  return (
+    <Link
+      href={`/${locale}/${creator.shopId}`}
+      className="flex-shrink-0 w-24 snap-start text-center group"
+    >
+      <div className="w-20 h-20 mx-auto rounded-full overflow-hidden bg-gray-100 ring-2 ring-gray-100 group-hover:ring-gray-300 transition-all">
+        {creator.profileImageUrl ? (
+          <img
+            src={creator.profileImageUrl}
+            alt={displayName}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-lg font-bold text-gray-400">
+            {initials}
+          </div>
+        )}
+      </div>
+      <p className="text-xs font-medium text-gray-900 mt-2 line-clamp-1">{displayName}</p>
+      <p className="text-[10px] text-gray-400">상품 {productCount}개</p>
+    </Link>
+  );
+}
+
 export default async function DiscoveryPage({ params }: PageProps) {
   const { locale } = await params;
-  const isKo = locale === 'ko';
 
-  const [gongguCampaigns, topCreators, topProducts, newProducts] = await Promise.all([
+  const [gongguCampaigns, topCreators, topProducts] = await Promise.all([
     getActiveGonggu(),
     getTopCreators(),
     getTopProducts(),
-    getNewProducts(),
   ]);
 
-  const t = {
-    heroTitle: isKo ? 'K-뷰티 크리에이터가 직접 고른 추천템' : 'K-Beauty picks handpicked by creators',
-    searchPlaceholder: isKo ? '상품명 또는 크리에이터명으로 검색' : 'Search products or creators',
-    activeGonggu: isKo ? '진행 중인 공구' : 'Active Group Buys',
-    topCreators: isKo ? '인기 크리에이터' : 'Top Creators',
-    topProducts: isKo ? '인기 상품 랭킹' : 'Popular Products',
-    newProducts: isKo ? '신규 입점 상품' : 'New Arrivals',
-    viewAll: isKo ? '전체보기' : 'View All',
-    productsCount: isKo ? '상품 {count}개' : '{count} products',
-    noCreators: isKo ? '등록된 크리에이터가 없습니다' : 'No creators found',
-    noProducts: isKo ? '등록된 상품이 없습니다' : 'No products found',
-    exploreCreators: isKo ? '크리에이터 탐색' : 'Explore Creators',
-    exploreProducts: isKo ? '상품 탐색' : 'Explore Products',
-    all: isKo ? '전체' : 'All',
-    catSkincare: isKo ? '스킨케어' : 'Skincare',
-    catMakeup: isKo ? '메이크업' : 'Makeup',
-    catBody: isKo ? '바디' : 'Body',
-    catHair: isKo ? '헤어' : 'Hair',
-    skinDry: isKo ? '건성' : 'Dry',
-    skinOily: isKo ? '지성' : 'Oily',
-    skinCombination: isKo ? '복합성' : 'Combination',
-    skinSensitive: isKo ? '민감성' : 'Sensitive',
-  };
-
-  const categories = [
-    { value: 'skincare', label: t.catSkincare },
-    { value: 'makeup', label: t.catMakeup },
-    { value: 'body', label: t.catBody },
-    { value: 'hair', label: t.catHair },
-  ];
-
-  const skinTypes = [
-    { value: 'dry', label: t.skinDry },
-    { value: 'oily', label: t.skinOily },
-    { value: 'combination', label: t.skinCombination },
-    { value: 'oily_sensitive', label: t.skinSensitive },
-  ];
+  const hasContent = gongguCampaigns.length > 0 || topCreators.length > 0 || topProducts.length > 0;
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Hero */}
-      <section className="border-b border-border/50 bg-card/30 px-4 py-12 md:py-16">
-        <div className="container mx-auto max-w-4xl text-center space-y-6">
-          <h1 className="text-2xl md:text-4xl font-bold tracking-tight">{t.heroTitle}</h1>
-          <div className="mx-auto max-w-lg">
-            <input
-              type="text"
-              placeholder={t.searchPlaceholder}
-              className="w-full rounded-full border border-border bg-background px-5 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
-          </div>
-          <div className="flex items-center justify-center gap-3">
-            <Link href={`/${locale}/creators`}>
-              <Button variant="outline" size="sm">
-                {t.exploreCreators}
-              </Button>
-            </Link>
-            <Link href={`/${locale}/products`}>
-              <Button variant="outline" size="sm">
-                {t.exploreProducts}
-              </Button>
-            </Link>
-          </div>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white border-b border-gray-100">
+        <div className="max-w-lg mx-auto px-4 h-12 flex items-center">
+          <h1 className="text-lg font-bold text-gray-900">CNEC</h1>
         </div>
-      </section>
+      </header>
 
-      {/* Active Gonggu */}
-      {gongguCampaigns.length > 0 && (
-        <section className="px-4 py-10">
-          <div className="container mx-auto">
-            <h2 className="text-xl font-bold mb-6">{t.activeGonggu}</h2>
-            <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4 -mx-4 px-4 scrollbar-hide">
-              {gongguCampaigns.map((campaign) => (
-                <GongguCard key={campaign.id} campaign={campaign} locale={locale} />
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
+      {!hasContent ? (
+        <div className="max-w-lg mx-auto px-4 py-20 text-center">
+          <Users className="h-10 w-10 mx-auto text-gray-300 mb-3" />
+          <p className="text-sm font-medium text-gray-500">아직 크리에이터가 없어요</p>
+          <p className="text-xs text-gray-400 mt-1 mb-6">첫 번째 크리에이터가 되어보세요</p>
+          <Link
+            href={`/${locale}/creators`}
+            className="inline-flex items-center justify-center h-11 px-6 bg-gray-900 text-white rounded-xl text-sm font-medium"
+          >
+            크리에이터 되기
+          </Link>
+        </div>
+      ) : (
+        <div className="max-w-lg mx-auto">
+          {/* Active Gonggu Section */}
+          {gongguCampaigns.length > 0 && (
+            <section className="py-6">
+              <div className="px-4 flex items-center gap-2 mb-4">
+                <Flame className="h-5 w-5 text-orange-500" />
+                <h2 className="text-lg font-bold text-gray-900">진행중인 공구</h2>
+              </div>
+              <div
+                className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-2 px-4"
+                style={{ scrollbarWidth: 'none' }}
+              >
+                {gongguCampaigns.map((campaign) => (
+                  <GongguCardServer key={campaign.id} campaign={campaign} locale={locale} />
+                ))}
+              </div>
+            </section>
+          )}
 
-      {/* Top Creators */}
-      <section className="px-4 py-10 bg-card/30 border-y border-border/50">
-        <div className="container mx-auto">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold">{t.topCreators}</h2>
-            <Link
-              href={`/${locale}/creators`}
-              className="text-sm text-primary flex items-center gap-1 hover:underline"
-            >
-              {t.viewAll} <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-          {topCreators.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {topCreators.map((creator) => (
-                <CreatorCard
-                  key={creator.id}
-                  creator={creator as any}
-                  locale={locale}
-                  productsLabel={t.productsCount}
-                />
-              ))}
-            </div>
-          ) : (
-            <p className="text-center text-muted-foreground py-8">{t.noCreators}</p>
+          {/* Top Creators Section */}
+          {topCreators.length > 0 && (
+            <section className="py-6 bg-white">
+              <div className="px-4 flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-gray-900">인기 크리에이터</h2>
+                <Link
+                  href={`/${locale}/creators`}
+                  className="text-xs text-gray-400 flex items-center gap-0.5 hover:text-gray-600"
+                >
+                  전체보기 <ArrowRight className="h-3 w-3" />
+                </Link>
+              </div>
+              <div
+                className="flex gap-4 overflow-x-auto px-4 pb-2"
+                style={{ scrollbarWidth: 'none' }}
+              >
+                {topCreators.map((creator) => (
+                  <CreatorCardServer
+                    key={creator.id}
+                    creator={creator}
+                    locale={locale}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Top Products Section */}
+          {topProducts.length > 0 && (
+            <section className="py-6">
+              <div className="px-4 flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-gray-900">전체 상품</h2>
+                <Link
+                  href={`/${locale}/products`}
+                  className="text-xs text-gray-400 flex items-center gap-0.5 hover:text-gray-600"
+                >
+                  전체보기 <ArrowRight className="h-3 w-3" />
+                </Link>
+              </div>
+              <div className="px-4 grid grid-cols-2 gap-3">
+                {topProducts.map((product) => (
+                  <ProductCardServer key={product.id} product={product} locale={locale} />
+                ))}
+              </div>
+            </section>
           )}
         </div>
-      </section>
-
-      {/* Top Products */}
-      <section className="px-4 py-10">
-        <div className="container mx-auto">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold">{t.topProducts}</h2>
-            <Link
-              href={`/${locale}/products`}
-              className="text-sm text-primary flex items-center gap-1 hover:underline"
-            >
-              {t.viewAll} <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-          {topProducts.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              {topProducts.map((product) => (
-                <ProductCard key={product.id} product={product as any} locale={locale} />
-              ))}
-            </div>
-          ) : (
-            <p className="text-center text-muted-foreground py-8">{t.noProducts}</p>
-          )}
-        </div>
-      </section>
-
-      {/* New Products */}
-      {newProducts.length > 0 && (
-        <section className="px-4 py-10 bg-card/30 border-y border-border/50">
-          <div className="container mx-auto">
-            <h2 className="text-xl font-bold mb-6">{t.newProducts}</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {newProducts.map((product) => (
-                <ProductCard key={product.id} product={product as any} locale={locale} />
-              ))}
-            </div>
-          </div>
-        </section>
       )}
 
-      {/* Filters */}
-      <section className="px-4 py-10">
-        <div className="container mx-auto">
-          <DiscoveryFilters
-            categories={categories}
-            skinTypes={skinTypes}
-            allLabel={t.all}
-          />
-        </div>
-      </section>
+      {/* Footer */}
+      <div className="max-w-lg mx-auto border-t border-gray-100 py-4 px-4 mt-4">
+        <p className="text-xs text-gray-400 text-center">
+          크넥이 안전하게 관리하는 K-뷰티 플랫폼
+        </p>
+      </div>
     </div>
   );
 }

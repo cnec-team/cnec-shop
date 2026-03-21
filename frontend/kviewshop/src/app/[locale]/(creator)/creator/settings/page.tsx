@@ -96,16 +96,16 @@ export default function CreatorSettingsPage() {
   };
 
   const countries = [
-    { code: 'US', name: 'United States', flag: '\u{1F1FA}\u{1F1F8}' },
-    { code: 'JP', name: 'Japan', flag: '\u{1F1EF}\u{1F1F5}' },
-    { code: 'KR', name: 'South Korea', flag: '\u{1F1F0}\u{1F1F7}' },
-    { code: 'CN', name: 'China', flag: '\u{1F1E8}\u{1F1F3}' },
-    { code: 'TW', name: 'Taiwan', flag: '\u{1F1F9}\u{1F1FC}' },
-    { code: 'TH', name: 'Thailand', flag: '\u{1F1F9}\u{1F1ED}' },
-    { code: 'VN', name: 'Vietnam', flag: '\u{1F1FB}\u{1F1F3}' },
-    { code: 'ID', name: 'Indonesia', flag: '\u{1F1EE}\u{1F1E9}' },
-    { code: 'MY', name: 'Malaysia', flag: '\u{1F1F2}\u{1F1FE}' },
-    { code: 'SG', name: 'Singapore', flag: '\u{1F1F8}\u{1F1EC}' },
+    { code: 'KR', name: '한국', flag: '\u{1F1F0}\u{1F1F7}' },
+    { code: 'US', name: '미국', flag: '\u{1F1FA}\u{1F1F8}' },
+    { code: 'JP', name: '일본', flag: '\u{1F1EF}\u{1F1F5}' },
+    { code: 'CN', name: '중국', flag: '\u{1F1E8}\u{1F1F3}' },
+    { code: 'TW', name: '대만', flag: '\u{1F1F9}\u{1F1FC}' },
+    { code: 'TH', name: '태국', flag: '\u{1F1F9}\u{1F1ED}' },
+    { code: 'VN', name: '베트남', flag: '\u{1F1FB}\u{1F1F3}' },
+    { code: 'ID', name: '인도네시아', flag: '\u{1F1EE}\u{1F1E9}' },
+    { code: 'MY', name: '말레이시아', flag: '\u{1F1F2}\u{1F1FE}' },
+    { code: 'SG', name: '싱가포르', flag: '\u{1F1F8}\u{1F1EC}' },
   ];
 
   if (isLoading) {
@@ -221,8 +221,8 @@ export default function CreatorSettingsPage() {
                 <Label>{t('paymentMethod')}</Label>
                 <div className="grid grid-cols-2 gap-2">
                   {[
-                    { value: 'paypal', label: 'PayPal' },
-                    { value: 'bank', label: t('bankTransfer') },
+                    { value: 'paypal', label: '페이팔' },
+                    { value: 'bank', label: '계좌이체' },
                   ].map((option) => (
                     <button
                       key={option.value}
@@ -263,7 +263,7 @@ export default function CreatorSettingsPage() {
                     <div className="space-y-2">
                       <Label>{t('bankNameLabel')}</Label>
                       <Input
-                        placeholder="Bank Name"
+                        placeholder="은행명"
                         value={settings.bankName}
                         onChange={(e) => setSettings({ ...settings, bankName: e.target.value })}
                       />
@@ -271,7 +271,7 @@ export default function CreatorSettingsPage() {
                     <div className="space-y-2">
                       <Label>SWIFT/BIC</Label>
                       <Input
-                        placeholder="XXXXXXXX"
+                        placeholder="SWIFT 코드"
                         value={settings.swiftCode}
                         onChange={(e) => setSettings({ ...settings, swiftCode: e.target.value })}
                       />
@@ -279,7 +279,7 @@ export default function CreatorSettingsPage() {
                     <div className="space-y-2 sm:col-span-2">
                       <Label>{t('accountNumberLabel')}</Label>
                       <Input
-                        placeholder="Account number / IBAN"
+                        placeholder="계좌번호"
                         value={settings.accountNumber}
                         onChange={(e) => setSettings({ ...settings, accountNumber: e.target.value })}
                       />
