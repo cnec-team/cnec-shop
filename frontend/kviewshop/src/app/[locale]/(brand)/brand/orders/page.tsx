@@ -264,8 +264,8 @@ export default function BrandOrdersPage() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">주문 관리</h1>
-          <p className="text-sm text-muted-foreground mt-1">주문 {orders.length}건</p>
+          <h1 className="text-xl font-bold text-gray-900">주문 관리</h1>
+          <p className="text-sm text-gray-400 mt-0.5">주문 {orders.length}건</p>
         </div>
         <Button variant="outline" size="sm" onClick={handleDownloadExcel} disabled={orders.length === 0} className="h-9">
           <Download className="h-4 w-4 mr-1.5" />
@@ -368,9 +368,9 @@ export default function BrandOrdersPage() {
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
-                    {/* Quick action buttons */}
+                    {/* Quick action buttons — visible on all screens */}
                     {order.status === 'PREPARING' && (
-                      <Button size="sm" variant="default" className="h-8 text-xs hidden sm:flex"
+                      <Button size="sm" variant="default" className="h-8 text-xs"
                         disabled={updatingId === order.id}
                         onClick={() => setExpandedOrderId(order.id)}
                       >
@@ -378,7 +378,7 @@ export default function BrandOrdersPage() {
                       </Button>
                     )}
                     {order.status === 'PAID' && (
-                      <Button size="sm" variant="outline" className="h-8 text-xs hidden sm:flex"
+                      <Button size="sm" variant="outline" className="h-8 text-xs"
                         disabled={updatingId === order.id}
                         onClick={() => handleStatusChange(order.id, 'PREPARING')}
                       >

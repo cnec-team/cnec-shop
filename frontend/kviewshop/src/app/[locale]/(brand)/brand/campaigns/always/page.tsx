@@ -160,7 +160,7 @@ export default function AlwaysCampaignsPage() {
                       <p className="text-sm font-bold">{campaign.soldCount.toLocaleString('ko-KR')}</p>
                     </div>
                     <div className="rounded-lg bg-gray-50 p-2.5 text-center">
-                      <p className="text-[10px] text-muted-foreground">수수료율</p>
+                      <p className="text-[10px] text-muted-foreground">크리에이터 수익률</p>
                       <p className="text-sm font-bold">{Number(campaign.commissionRate) * 100}%</p>
                     </div>
                     <div className="rounded-lg bg-gray-50 p-2.5 text-center">

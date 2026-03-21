@@ -482,16 +482,16 @@ export default function NewCampaignPage() {
       {currentStep === 2 && (
         <Card>
           <CardHeader>
-            <CardTitle>수수료 설정</CardTitle>
+            <CardTitle>크리에이터 수익 설정</CardTitle>
             <CardDescription>
-              크리에이터에게 지급할 수수료율을 설정하세요.
+              크리에이터에게 지급할 수익률을 설정하세요.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="commissionRate">수수료율 (%) *</Label>
+              <Label htmlFor="commissionRate">크리에이터 수익률 (%) *</Label>
               <p className="text-sm text-muted-foreground">
-                크리에이터가 판매를 성사시켰을 때 지급되는 수수료 비율입니다.
+                크리에이터가 판매를 성사시켰을 때 지급되는 수익 비율입니다.
               </p>
               <Input
                 id="commissionRate"

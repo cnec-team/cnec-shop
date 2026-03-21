@@ -55,6 +55,12 @@ export function BrandSidebar({ locale, brandName, brandStatus }: BrandSidebarPro
 
   const sections: NavSection[] = [
     {
+      label: '',
+      items: [
+        { title: '대시보드', href: `${base}/brand/dashboard`, icon: LayoutDashboard },
+      ],
+    },
+    {
       label: '상품 관리',
       items: [
         { title: '전체 상품', href: `${base}/brand/products`, icon: Package },
@@ -83,16 +89,15 @@ export function BrandSidebar({ locale, brandName, brandStatus }: BrandSidebarPro
       ],
     },
     {
-      label: '정산·분석',
+      label: '정산',
       items: [
         { title: '정산 관리', href: `${base}/brand/settlements`, icon: DollarSign },
-        { title: '대시보드', href: `${base}/brand/dashboard`, icon: BarChart3 },
       ],
     },
     {
-      label: '지원',
+      label: '설정',
       items: [
-        { title: '설정', href: `${base}/brand/settings`, icon: Settings },
+        { title: '브랜드 설정', href: `${base}/brand/settings`, icon: Settings },
         { title: '도움말', href: `${base}/brand/guides`, icon: HelpCircle },
       ],
     },
@@ -144,7 +149,7 @@ export function BrandSidebar({ locale, brandName, brandStatus }: BrandSidebarPro
         <div className="space-y-4">
           {sections.map((section) => (
             <div key={section.label}>
-              {(!collapsed || isMobile) && (
+              {(!collapsed || isMobile) && section.label && (
                 <p className="mb-1 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">
                   {section.label}
                 </p>
