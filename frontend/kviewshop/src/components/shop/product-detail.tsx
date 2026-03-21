@@ -3,9 +3,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { useCartStore } from '@/lib/store/auth';
 import {
   ArrowLeft,
@@ -17,6 +14,8 @@ import {
   Truck,
   RotateCcw,
   Share2,
+  ShoppingBag,
+  Flame,
 } from 'lucide-react';
 import { ShareSheet } from '@/components/shop/ShareSheet';
 import type {
@@ -36,6 +35,7 @@ interface ProductDetailPageProps {
   creator: Creator;
   locale: string;
   username: string;
+  otherProducts?: { id: string; name: string; images?: string[]; salePrice?: number; originalPrice?: number }[];
 }
 
 // =============================================
@@ -66,11 +66,13 @@ export function ProductDetailPage({
   creator,
   locale,
   username,
+  otherProducts,
 }: ProductDetailPageProps) {
   const router = useRouter();
   const { addItem } = useCartStore();
   const [quantity, setQuantity] = useState(1);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [descriptionOpen, setDescriptionOpen] = useState(false);
   const [shippingOpen, setShippingOpen] = useState(false);
   const [returnOpen, setReturnOpen] = useState(false);
 
@@ -84,15 +86,29 @@ export function ProductDetailPage({
   const ogTitle = `${product.name}${discountPercent > 0 ? ` ${discountPercent}% OFF` : ''}`;
   const ogDesc = `${brandName} | ${formatKRW(effectivePrice)}`;
 
+  // Gonggu progress
+  const totalStock = Number((campaign as any)?.total_stock ?? (campaign as any)?.totalStock ?? 0);
+  const soldCount = Number((campaign as any)?.sold_count ?? (campaign as any)?.soldCount ?? 0);
+  const progressPercent = totalStock > 0 ? Math.min(Math.round((soldCount / totalStock) * 100), 100) : 0;
+
+  // D-day calculation
+  const endAt = campaign?.end_at ?? (campaign as any)?.endAt;
+  const dDayNum = (() => {
+    if (!endAt) return -1;
+    const diff = new Date(endAt).getTime() - Date.now();
+    if (diff <= 0) return 0;
+    return Math.floor(diff / (1000 * 60 * 60 * 24));
+  })();
+
   // Countdown timer for gonggu
   const [countdown, setCountdown] = useState('');
 
   useEffect(() => {
-    if (!isGonggu || !campaign?.end_at) return;
+    if (!isGonggu || !endAt) return;
 
     const updateCountdown = () => {
       const now = new Date().getTime();
-      const end = new Date(campaign.end_at!).getTime();
+      const end = new Date(endAt).getTime();
       const diff = end - now;
 
       if (diff <= 0) {
@@ -114,7 +130,7 @@ export function ProductDetailPage({
     updateCountdown();
     const interval = setInterval(updateCountdown, 1000);
     return () => clearInterval(interval);
-  }, [isGonggu, campaign?.end_at]);
+  }, [isGonggu, endAt]);
 
   const handlePrevImage = useCallback(() => {
     setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
@@ -124,7 +140,7 @@ export function ProductDetailPage({
     setCurrentImageIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
   }, [images.length]);
 
-  const handleBuy = () => {
+  const handleAddToCart = () => {
     addItem({
       productId: product.id,
       campaignId: campaignProduct?.campaign_id,
@@ -132,17 +148,21 @@ export function ProductDetailPage({
       creatorId: creator.id,
       unitPrice: effectivePrice,
     });
+  };
+
+  const handleBuy = () => {
+    handleAddToCart();
     router.push(`/${locale}/${username}/checkout`);
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Top Navigation */}
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b border-border">
+    <div className="min-h-screen bg-gray-50 pb-20">
+      {/* Top Navigation - sticky */}
+      <header className="sticky top-0 z-10 bg-white/80 backdrop-blur">
         <div className="max-w-lg mx-auto flex items-center justify-between h-12 px-4">
           <Link
             href={`/${locale}/${username}`}
-            className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center gap-1 text-gray-500 hover:text-gray-900 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
             <span className="text-sm">돌아가기</span>
@@ -153,7 +173,7 @@ export function ProductDetailPage({
             description={ogDesc}
             imageUrl={product.thumbnail_url || images[0]}
             trigger={
-              <button className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors">
+              <button className="flex items-center gap-1 text-gray-500 hover:text-gray-900 transition-colors">
                 <Share2 className="w-5 h-5" />
               </button>
             }
@@ -162,9 +182,9 @@ export function ProductDetailPage({
       </header>
 
       <div className="max-w-lg mx-auto">
-        {/* Image Slider */}
-        {images.length > 0 && (
-          <div className="relative bg-secondary">
+        {/* Image Slider - full width */}
+        {images.length > 0 ? (
+          <div className="relative bg-white">
             <div className="aspect-square relative overflow-hidden">
               <img
                 src={images[currentImageIndex]}
@@ -172,25 +192,23 @@ export function ProductDetailPage({
                 className="w-full h-full object-cover"
               />
 
-              {/* Navigation Arrows */}
               {images.length > 1 && (
                 <>
                   <button
                     onClick={handlePrevImage}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-background/70 flex items-center justify-center hover:bg-background/90 transition-colors"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/70 flex items-center justify-center hover:bg-white/90 transition-colors"
                   >
-                    <ChevronLeft className="w-5 h-5" />
+                    <ChevronLeft className="w-5 h-5 text-gray-700" />
                   </button>
                   <button
                     onClick={handleNextImage}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-background/70 flex items-center justify-center hover:bg-background/90 transition-colors"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/70 flex items-center justify-center hover:bg-white/90 transition-colors"
                   >
-                    <ChevronRight className="w-5 h-5" />
+                    <ChevronRight className="w-5 h-5 text-gray-700" />
                   </button>
                 </>
               )}
 
-              {/* Dots Indicator */}
               {images.length > 1 && (
                 <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
                   {images.map((_, idx) => (
@@ -198,9 +216,7 @@ export function ProductDetailPage({
                       key={idx}
                       onClick={() => setCurrentImageIndex(idx)}
                       className={`w-2 h-2 rounded-full transition-colors ${
-                        idx === currentImageIndex
-                          ? 'bg-foreground'
-                          : 'bg-foreground/30'
+                        idx === currentImageIndex ? 'bg-gray-900' : 'bg-gray-900/30'
                       }`}
                     />
                   ))}
@@ -208,151 +224,155 @@ export function ProductDetailPage({
               )}
             </div>
           </div>
+        ) : (
+          <div className="aspect-square bg-gray-100 flex items-center justify-center text-gray-400 text-sm">
+            이미지 없음
+          </div>
         )}
 
-        {/* Product Info */}
-        <div className="px-4 pt-4 pb-3">
-          {/* Gonggu Countdown Banner */}
-          {isGonggu && countdown && (
-            <div className="mb-3 px-3 py-2 rounded-lg bg-accent/10 border border-accent/20">
-              <p className="text-sm font-medium text-accent">
-                🔥 공구 마감까지: {countdown}
-              </p>
-            </div>
-          )}
-
-          {/* Brand */}
+        {/* Product Info Section */}
+        <div className="bg-white px-4 pt-4 pb-5">
           {brandName && (
-            <p className="text-sm text-muted-foreground mb-1">{brandName}</p>
+            <p className="text-sm text-gray-400">{brandName}</p>
           )}
-
-          {/* Product Name */}
-          <h1 className="text-lg font-bold text-foreground leading-snug">
+          <h1 className="text-xl font-bold text-gray-900 leading-snug mt-1">
             {product.name}
           </h1>
 
-          {/* Volume */}
           {product.volume && (
-            <p className="text-sm text-muted-foreground mt-1">{product.volume}</p>
+            <p className="text-sm text-gray-400 mt-1">{product.volume}</p>
           )}
+        </div>
 
-          {/* Price Section */}
-          <div className="mt-3 flex items-baseline gap-2">
+        {/* Gonggu Banner */}
+        {isGonggu && (
+          <div className="bg-orange-50 border-y border-orange-100 px-4 py-4">
+            <div className="max-w-lg mx-auto">
+              <div className="flex items-center gap-2 mb-2">
+                <Flame className="h-4 w-4 text-orange-500" />
+                <span className="text-sm font-semibold text-gray-900">공구 진행중</span>
+                {dDayNum >= 0 && (
+                  <span className="bg-red-500 text-white rounded-full px-2 py-0.5 text-xs font-bold">
+                    D-{dDayNum} 남음
+                  </span>
+                )}
+              </div>
+              {totalStock > 0 && (
+                <>
+                  <p className="text-xs text-gray-500 mb-2">
+                    한정 {totalStock}개 중 {soldCount}개 판매
+                  </p>
+                  <div className="w-full h-2 bg-orange-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-orange-500 rounded-full transition-all"
+                      style={{ width: `${progressPercent}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1 text-right">{progressPercent}%</p>
+                </>
+              )}
+              {countdown && (
+                <p className="text-xs text-orange-600 mt-1">마감까지: {countdown}</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Price Section */}
+        <div className="bg-white px-4 py-4 mt-2">
+          <div className="flex items-baseline gap-2">
             {discountPercent > 0 && (
-              <span className="text-xl font-bold text-red-500">
+              <span className="text-2xl font-bold text-red-500">
                 {discountPercent}%
               </span>
             )}
-            <span className="text-xl font-bold text-foreground">
+            <span className="text-2xl font-bold text-gray-900">
               {formatKRW(effectivePrice)}
             </span>
           </div>
           {discountPercent > 0 && (
-            <p className="text-sm text-muted-foreground line-through mt-0.5">
+            <p className="text-sm text-gray-300 line-through mt-0.5">
               {formatKRW(product.original_price)}
             </p>
           )}
-
-          {/* Campaign Badge */}
-          {isGonggu && (
-            <div className="mt-2">
-              <Badge className="bg-accent text-accent-foreground text-xs">
-                🔥 공구 특가
-              </Badge>
-            </div>
-          )}
         </div>
 
-        <Separator />
-
         {/* Quantity Selector */}
-        <div className="px-4 py-4">
+        <div className="bg-white px-4 py-4 mt-2">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-foreground">수량</span>
+            <span className="text-sm font-medium text-gray-900">수량</span>
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                className="w-8 h-8 rounded-lg border border-border flex items-center justify-center hover:bg-secondary transition-colors"
+                className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors"
                 disabled={quantity <= 1}
               >
-                <Minus className="w-4 h-4" />
+                <Minus className="w-4 h-4 text-gray-600" />
               </button>
-              <span className="w-8 text-center font-medium text-foreground">
+              <span className="w-8 text-center font-medium text-gray-900">
                 {quantity}
               </span>
               <button
                 onClick={() => setQuantity((q) => Math.min(product.stock, q + 1))}
-                className="w-8 h-8 rounded-lg border border-border flex items-center justify-center hover:bg-secondary transition-colors"
+                className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors"
                 disabled={quantity >= product.stock}
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-4 h-4 text-gray-600" />
               </button>
             </div>
           </div>
-
-          {/* Total */}
-          <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
-            <span className="text-sm text-muted-foreground">총 상품금액</span>
-            <span className="text-lg font-bold text-primary">
-              {formatKRW(effectivePrice * quantity)}
-            </span>
-          </div>
         </div>
 
-        {/* Buy Button */}
-        <div className="px-4 pb-4">
-          <Button
-            onClick={handleBuy}
-            className="w-full h-14 text-base font-semibold bg-gray-900 text-white hover:bg-gray-800 rounded-xl"
-            disabled={product.stock === 0}
-          >
-            {product.stock === 0 ? '품절' : '구매하기'}
-          </Button>
-        </div>
-
-        <Separator />
-
-        {/* Product Description */}
+        {/* Product Description Accordion */}
         {product.description && (
-          <div className="px-4 py-6">
-            <h2 className="text-base font-semibold text-foreground mb-3">
-              상품 상세
-            </h2>
-            <div
-              className="text-sm text-muted-foreground leading-relaxed prose prose-sm prose-invert max-w-none"
-              dangerouslySetInnerHTML={{ __html: product.description }}
-            />
+          <div className="bg-white mt-2">
+            <button
+              onClick={() => setDescriptionOpen(!descriptionOpen)}
+              className="w-full px-4 py-4 flex items-center justify-between text-left"
+            >
+              <span className="text-sm font-medium text-gray-900">상품 상세</span>
+              <ChevronDown
+                className={`w-4 h-4 text-gray-400 transition-transform ${
+                  descriptionOpen ? 'rotate-180' : ''
+                }`}
+              />
+            </button>
+            {descriptionOpen && (
+              <div className="px-4 pb-4">
+                <div
+                  className="text-sm text-gray-600 leading-relaxed prose prose-sm max-w-none"
+                  dangerouslySetInnerHTML={{ __html: product.description }}
+                />
+              </div>
+            )}
           </div>
         )}
 
-        <Separator />
-
         {/* Shipping Info Accordion */}
-        <div className="border-b border-border">
+        <div className="bg-white mt-2">
           <button
             onClick={() => setShippingOpen(!shippingOpen)}
             className="w-full px-4 py-4 flex items-center justify-between text-left"
           >
             <div className="flex items-center gap-2">
-              <Truck className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm font-medium text-foreground">배송 안내</span>
+              <Truck className="w-4 h-4 text-gray-400" />
+              <span className="text-sm font-medium text-gray-900">배송 안내</span>
             </div>
             <ChevronDown
-              className={`w-4 h-4 text-muted-foreground transition-transform ${
+              className={`w-4 h-4 text-gray-400 transition-transform ${
                 shippingOpen ? 'rotate-180' : ''
               }`}
             />
           </button>
           {shippingOpen && (
-            <div className="px-4 pb-4 text-sm text-muted-foreground space-y-2">
+            <div className="px-4 pb-4 text-sm text-gray-500 space-y-2">
               {(product as any).shipping_info ? (
                 <p>{(product as any).shipping_info}</p>
               ) : (
                 <>
-                  <p>- 배송비: {(product as any).shipping_fee_type === 'FREE' ? '무료배송' : (product as any).shipping_fee_type === 'CONDITIONAL_FREE' ? `${formatKRW((product as any).free_shipping_threshold || 50000)} 이상 무료배송 (기본 ${formatKRW((product as any).shipping_fee || 3000)})` : `${formatKRW((product as any).shipping_fee || 3000)}`}</p>
-                  <p>- 배송기간: 결제 후 2~5일 이내 배송</p>
-                  <p>- 공구 상품의 경우 캠페인 종료 후 일괄 배송될 수 있습니다.</p>
-                  <p>- 제주/도서산간 지역은 추가 배송비가 발생할 수 있습니다.</p>
+                  <p>배송비: {(product as any).shipping_fee_type === 'FREE' ? '무료배송' : (product as any).shipping_fee_type === 'CONDITIONAL_FREE' ? `${formatKRW((product as any).free_shipping_threshold || 50000)} 이상 무료배송 (기본 ${formatKRW((product as any).shipping_fee || 3000)})` : `${formatKRW((product as any).shipping_fee || 3000)}`}</p>
+                  <p>배송기간: 결제 후 2~5일 이내 배송</p>
+                  <p>제주/도서산간 지역은 추가 배송비가 발생할 수 있습니다.</p>
                 </>
               )}
             </div>
@@ -360,47 +380,105 @@ export function ProductDetailPage({
         </div>
 
         {/* Return/Exchange Info Accordion */}
-        <div className="border-b border-border">
+        <div className="bg-white mt-2">
           <button
             onClick={() => setReturnOpen(!returnOpen)}
             className="w-full px-4 py-4 flex items-center justify-between text-left"
           >
             <div className="flex items-center gap-2">
-              <RotateCcw className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm font-medium text-foreground">교환/환불 안내</span>
+              <RotateCcw className="w-4 h-4 text-gray-400" />
+              <span className="text-sm font-medium text-gray-900">교환/환불 안내</span>
             </div>
             <ChevronDown
-              className={`w-4 h-4 text-muted-foreground transition-transform ${
+              className={`w-4 h-4 text-gray-400 transition-transform ${
                 returnOpen ? 'rotate-180' : ''
               }`}
             />
           </button>
           {returnOpen && (
-            <div className="px-4 pb-4 text-sm text-muted-foreground space-y-2">
+            <div className="px-4 pb-4 text-sm text-gray-500 space-y-2">
               {(product as any).return_policy ? (
                 <p>{(product as any).return_policy}</p>
               ) : (
                 <>
-                  <p>- 상품 수령 후 7일 이내 교환/환불 가능</p>
-                  <p>- 고객 변심에 의한 반품 시 왕복 배송비 부담</p>
-                  <p>- 상품 하자 시 배송비 포함 100% 환불</p>
-                  <p>- 사용 또는 개봉한 상품은 교환/환불이 불가합니다.</p>
-                  <p>- 공구 특가 상품은 교환/환불 정책이 다를 수 있습니다.</p>
+                  <p>수령 후 7일 이내 교환/환불 가능</p>
+                  <p>고객 변심에 의한 반품 시 왕복 배송비 부담</p>
+                  <p>상품 하자 시 배송비 포함 100% 환불</p>
+                  <p>사용 또는 개봉한 상품은 교환/환불이 불가합니다.</p>
                 </>
               )}
             </div>
           )}
         </div>
 
+        {/* Other Products from this Creator */}
+        {otherProducts && otherProducts.length > 0 && (
+          <div className="bg-white mt-2 py-5">
+            <h2 className="px-4 text-base font-semibold text-gray-900 mb-3">
+              이 크리에이터의 다른 상품
+            </h2>
+            <div
+              className="flex gap-3 overflow-x-auto px-4 pb-2"
+              style={{ scrollbarWidth: 'none' }}
+            >
+              {otherProducts.map((p) => (
+                <Link
+                  key={p.id}
+                  href={`/${locale}/${username}/product/${p.id}`}
+                  className="flex-shrink-0 w-32"
+                >
+                  <div className="w-32 h-32 rounded-xl overflow-hidden bg-gray-100">
+                    {p.images?.[0] ? (
+                      <img
+                        src={p.images[0]}
+                        alt={p.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
+                        이미지 없음
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-900 line-clamp-1 mt-1.5">{p.name}</p>
+                  <p className="text-sm font-bold text-gray-900 mt-0.5">
+                    {formatKRW(Number(p.salePrice ?? 0))}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* CS Notice */}
-        <div className="px-4 py-4">
+        <div className="py-4 px-4">
           <p className="text-xs text-center text-gray-400">
-            이 샵의 배송/CS는 브랜드가 직접 처리합니다
+            배송/CS는 브랜드가 직접 처리합니다 | 크넥이 안전하게 관리해요
           </p>
         </div>
+      </div>
 
-        {/* Bottom Spacing */}
-        <div className="h-6" />
+      {/* Fixed Bottom Bar */}
+      <div className="fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-gray-100 shadow-lg" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        <div className="max-w-lg mx-auto flex items-center gap-3 px-4 py-3">
+          <button
+            onClick={handleAddToCart}
+            className="w-14 h-14 flex items-center justify-center border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+          >
+            <ShoppingBag className="w-5 h-5 text-gray-600" />
+          </button>
+          <button
+            onClick={handleBuy}
+            disabled={product.stock === 0}
+            className={`flex-1 h-14 rounded-xl font-semibold text-lg text-white transition-colors ${
+              isGonggu
+                ? 'bg-orange-500 hover:bg-orange-600'
+                : 'bg-gray-900 hover:bg-gray-800'
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
+          >
+            {product.stock === 0 ? '품절' : `구매하기 ${formatKRW(effectivePrice * quantity)}`}
+          </button>
+        </div>
       </div>
     </div>
   );

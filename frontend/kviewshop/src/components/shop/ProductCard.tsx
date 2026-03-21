@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { Badge } from '@/components/ui/badge';
 import type { Product, Campaign } from '@/types/database';
 
 interface ProductCardProps {
@@ -47,9 +46,9 @@ export function ProductCard({ product, campaign, campaignPrice, locale, shopId }
   return (
     <Link
       href={href}
-      className="group flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-primary/30"
+      className="group block"
     >
-      <div className="relative aspect-square bg-muted overflow-hidden">
+      <div className="aspect-square rounded-xl overflow-hidden bg-gray-100 relative">
         {imageUrl ? (
           <Image
             src={imageUrl}
@@ -59,38 +58,34 @@ export function ProductCard({ product, campaign, campaignPrice, locale, shopId }
             sizes="(max-width: 768px) 50vw, 25vw"
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
-            No Image
+          <div className="flex h-full items-center justify-center text-gray-400 text-sm">
+            이미지 없음
           </div>
         )}
 
         <div className="absolute top-2 left-2 flex flex-wrap gap-1">
-          {discount > 0 && (
-            <Badge className="bg-red-500 text-white text-[10px] px-1.5 py-0 font-bold">
-              {discount}%
-            </Badge>
-          )}
           {dDay.active && (
-            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-bold">
+            <span className="bg-red-500 text-white rounded-full px-2 py-0.5 text-xs font-bold">
               {dDay.label}
-            </Badge>
+            </span>
           )}
         </div>
       </div>
 
-      <div className="flex flex-col gap-1 p-3">
+      <div className="mt-2">
         {product.brand && (
-          <span className="text-[11px] text-muted-foreground">{product.brand.brand_name}</span>
+          <span className="text-xs text-gray-400">{product.brand.brand_name}</span>
         )}
-        <h3 className="text-sm font-medium line-clamp-2 leading-snug">{product.name}</h3>
-        <div className="flex items-baseline gap-1.5 mt-auto">
+        <h3 className="text-sm text-gray-900 line-clamp-2 leading-snug mt-0.5">{product.name}</h3>
+        <div className="flex items-baseline gap-1 mt-1">
           {discount > 0 && (
-            <span className="text-xs text-muted-foreground line-through">
-              {formatKRW(product.original_price)}
-            </span>
+            <span className="text-sm font-bold text-red-500">{discount}%</span>
           )}
-          <span className="text-sm font-bold">{formatKRW(effectivePrice)}</span>
+          <span className="text-base font-bold text-gray-900">{formatKRW(effectivePrice)}</span>
         </div>
+        {discount > 0 && (
+          <span className="text-xs text-gray-300 line-through">{formatKRW(product.original_price)}</span>
+        )}
       </div>
     </Link>
   );

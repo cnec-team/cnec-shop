@@ -3,10 +3,7 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Instagram, Share2 } from 'lucide-react';
+import { Flame, Heart, Clock, ShoppingBag, Instagram, Share2 } from 'lucide-react';
 import { ShareSheet } from '@/components/shop/ShareSheet';
 import { VisitTracker } from '@/components/shop/VisitTracker';
 import {
@@ -46,6 +43,7 @@ interface ShopProduct {
   salePrice?: number | null;
   images?: string[];
   imageUrl?: string | null;
+  stock?: number | null;
   brand?: { id: string; brandName?: string | null; logoUrl?: string | null } | null;
 }
 
@@ -54,6 +52,8 @@ interface ShopCampaign {
   title?: string | null;
   status?: string;
   endAt?: Date | string | null;
+  totalStock?: number | null;
+  soldCount?: number | null;
   commissionRate?: number | null;
 }
 
@@ -107,13 +107,17 @@ function formatKRW(amount: number): string {
   }).format(amount);
 }
 
-function calculateDDay(endAt: string | Date | undefined | null): string {
-  if (!endAt) return '';
+function calculateDDay(endAt: string | Date | undefined | null): number {
+  if (!endAt) return -1;
   const now = new Date();
   const end = new Date(endAt);
   const diff = end.getTime() - now.getTime();
-  if (diff <= 0) return '마감';
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  if (diff <= 0) return 0;
+  return Math.floor(diff / (1000 * 60 * 60 * 24));
+}
+
+function getDDayLabel(days: number): string {
+  if (days < 0) return '';
   if (days === 0) return 'D-Day';
   return `D-${days}`;
 }
@@ -148,73 +152,62 @@ export function CreatorShopPage({
     [shopItems]
   );
 
-  // Group pick items by collection
-  const collectionGroups = useMemo(() => {
-    const groups: { collection: ShopCollection | null; items: ShopItem[] }[] = [];
-
-    // Items in named collections
-    for (const col of collections) {
-      const colItems = pickItems.filter((item) => item.collectionId === col.id);
-      if (colItems.length > 0) {
-        groups.push({ collection: col, items: colItems });
-      }
-    }
-
-    // Items not in any collection
-    const collectionIds = new Set(collections.map((c) => c.id));
-    const uncategorized = pickItems.filter(
-      (item) => !item.collectionId || !collectionIds.has(item.collectionId)
-    );
-    if (uncategorized.length > 0) {
-      groups.push({ collection: null, items: uncategorized });
-    }
-
-    return groups;
-  }, [pickItems, collections]);
-
   const defaultTab = gongguItems.length > 0 ? 'gonggu' : 'pick';
+  const [activeTab, setActiveTab] = useState(defaultTab);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gray-50">
       <VisitTracker creatorId={creator.id} />
 
       {/* Header / Profile Section */}
       <ShopHeader creator={creator} shopUrl={shopUrl} />
 
-      {/* Beauty Profile */}
-      <BeautyProfile creator={creator} />
+      {/* Tab Navigation */}
+      <div className="max-w-lg mx-auto bg-white border-b border-gray-100">
+        <div className="flex">
+          <button
+            onClick={() => setActiveTab('gonggu')}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-medium transition-colors relative ${
+              activeTab === 'gonggu'
+                ? 'text-gray-900'
+                : 'text-gray-400 hover:text-gray-600'
+            }`}
+          >
+            <Flame className={`h-4 w-4 ${activeTab === 'gonggu' ? 'text-orange-500' : ''}`} />
+            <span>공구</span>
+            {gongguItems.length > 0 && (
+              <span className="text-xs text-gray-400">({gongguItems.length})</span>
+            )}
+            {activeTab === 'gonggu' && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900" />
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('pick')}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-medium transition-colors relative ${
+              activeTab === 'pick'
+                ? 'text-gray-900'
+                : 'text-gray-400 hover:text-gray-600'
+            }`}
+          >
+            <Heart className={`h-4 w-4 ${activeTab === 'pick' ? 'text-purple-500' : ''}`} />
+            <span>크리에이터픽</span>
+            {pickItems.length > 0 && (
+              <span className="text-xs text-gray-400">({pickItems.length})</span>
+            )}
+            {activeTab === 'pick' && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900" />
+            )}
+          </button>
+        </div>
+      </div>
 
-      {/* Social Links */}
-      <SocialLinks creator={creator} />
-
-      <Separator className="my-0" />
-
-      {/* Tabs */}
-      <div className="max-w-lg mx-auto px-4 pt-4 pb-6">
-        <Tabs defaultValue={defaultTab} className="w-full">
-          <TabsList className="w-full grid grid-cols-2" variant="line">
-            <TabsTrigger value="gonggu" className="text-base">
-              <span className="mr-1">🔥</span> 공구
-              {gongguItems.length > 0 && (
-                <span className="ml-1 text-xs text-muted-foreground">
-                  ({gongguItems.length})
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="pick" className="text-base">
-              <span className="mr-1">💜</span> 크리에이터픽
-              {pickItems.length > 0 && (
-                <span className="ml-1 text-xs text-muted-foreground">
-                  ({pickItems.length})
-                </span>
-              )}
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Gonggu Tab Content */}
-          <TabsContent value="gonggu" className="mt-4">
+      {/* Tab Content */}
+      <div className="max-w-lg mx-auto px-4 pt-5 pb-8">
+        {activeTab === 'gonggu' && (
+          <>
             {gongguItems.length === 0 ? (
-              <EmptyState message="현재 진행 중인 공구가 없습니다." />
+              <EmptyGonggu />
             ) : (
               <div className="space-y-4">
                 {gongguItems.map((item) => (
@@ -227,27 +220,27 @@ export function CreatorShopPage({
                 ))}
               </div>
             )}
-          </TabsContent>
+          </>
+        )}
 
-          {/* Creator Pick Tab Content */}
-          <TabsContent value="pick" className="mt-4">
+        {activeTab === 'pick' && (
+          <>
             {pickItems.length === 0 ? (
-              <EmptyState message="아직 추천 상품이 없습니다." />
+              <EmptyPick />
             ) : (
-              <div className="space-y-8">
-                {collectionGroups.map((group) => (
-                  <CollectionSection
-                    key={group.collection?.id || 'all'}
-                    collection={group.collection}
-                    items={group.items}
+              <div className="grid grid-cols-2 gap-3">
+                {pickItems.map((item) => (
+                  <PickProductCard
+                    key={item.id}
+                    item={item}
                     username={username}
                     locale={locale}
                   />
                 ))}
               </div>
             )}
-          </TabsContent>
-        </Tabs>
+          </>
+        )}
       </div>
 
       {/* Banner Section */}
@@ -258,21 +251,12 @@ export function CreatorShopPage({
         />
       )}
 
-      {/* CS Notice */}
-      <div className="max-w-lg mx-auto px-4 py-4">
-        <p className="text-xs text-center text-gray-400">
-          이 샵의 배송/CS는 브랜드가 직접 처리합니다
+      {/* Footer */}
+      <div className="max-w-lg mx-auto border-t border-gray-100 py-3 px-4">
+        <p className="text-xs text-gray-400 text-center">
+          배송/CS는 브랜드가 직접 처리합니다 | 크넥이 안전하게 관리해요
         </p>
       </div>
-
-      {/* Footer */}
-      <footer className="border-t border-border py-6">
-        <div className="max-w-lg mx-auto px-4 text-center">
-          <p className="text-xs text-muted-foreground">
-            Powered by CNEC Commerce
-          </p>
-        </div>
-      </footer>
     </div>
   );
 }
@@ -287,26 +271,31 @@ export { CreatorShopPage as CreatorShop };
 function ShopHeader({ creator, shopUrl }: { creator: ShopCreator; shopUrl: string }) {
   const shopDesc = creator.bio || 'K-뷰티 크리에이터 셀렉트샵';
 
+  // Collect beauty tags
+  const beautyTags: string[] = [];
+  if (creator.skinType) beautyTags.push(getSkinTypeLabel(creator.skinType));
+  if (creator.personalColor) beautyTags.push(getPersonalColorLabel(creator.personalColor));
+
   return (
-    <div className="relative">
+    <div className="relative bg-white">
       {/* Cover Image */}
-      <div className="h-44 sm:h-56 bg-secondary relative overflow-hidden">
+      <div className="h-48 relative overflow-hidden">
         {creator.coverImageUrl ? (
           <img
             src={creator.coverImageUrl}
-            alt="Cover"
+            alt=""
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-primary/20 via-secondary to-accent/20" />
+          <div className="w-full h-full bg-gradient-to-r from-blue-100 to-purple-100" />
         )}
       </div>
 
       {/* Profile Section */}
       <div className="max-w-lg mx-auto px-4 relative">
         {/* Profile Image */}
-        <div className="absolute -top-12 left-4">
-          <div className="w-24 h-24 rounded-full border-4 border-background overflow-hidden bg-secondary">
+        <div className="absolute -top-10 left-4">
+          <div className="w-20 h-20 rounded-full border-4 border-white overflow-hidden bg-gray-200 shadow-sm">
             {creator.profileImageUrl ? (
               <img
                 src={creator.profileImageUrl}
@@ -314,7 +303,7 @@ function ShopHeader({ creator, shopUrl }: { creator: ShopCreator; shopUrl: strin
                 className="w-full h-full object-cover"
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-2xl font-bold text-muted-foreground">
+              <div className="w-full h-full flex items-center justify-center text-xl font-bold text-gray-400">
                 {creator.displayName?.charAt(0) || '?'}
               </div>
             )}
@@ -322,87 +311,66 @@ function ShopHeader({ creator, shopUrl }: { creator: ShopCreator; shopUrl: strin
         </div>
 
         {/* Share Button */}
-        <div className="absolute -top-12 right-4">
+        <div className="absolute -top-10 right-4">
           <ShareSheet
             url={shopUrl}
             title={`${creator.displayName}의 셀렉트샵`}
             description={shopDesc}
             imageUrl={creator.profileImageUrl || undefined}
             trigger={
-              <button className="flex h-9 w-9 items-center justify-center rounded-full bg-background/80 backdrop-blur-sm shadow-sm hover:bg-background transition-colors">
-                <Share2 className="h-4 w-4" />
+              <button className="flex h-9 w-9 items-center justify-center rounded-full bg-white/80 backdrop-blur-sm shadow-sm hover:bg-white transition-colors">
+                <Share2 className="h-4 w-4 text-gray-600" />
               </button>
             }
           />
         </div>
 
-        {/* Name & Bio */}
-        <div className="pt-16 pb-4">
-          <h1 className="text-xl font-bold text-foreground">
-            {creator.displayName}
+        {/* Name & Info */}
+        <div className="pt-14 pb-4">
+          <h1 className="text-xl font-bold text-gray-900">
+            {creator.displayName}의 샵
           </h1>
-          {creator.bio && (
-            <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
-              {creator.bio}
-            </p>
+
+          {/* Beauty Tags */}
+          {beautyTags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {beautyTags.map((tag, idx) => (
+                <span
+                  key={idx}
+                  className="bg-gray-100 rounded-full px-3 py-1 text-xs text-gray-600"
+                >
+                  {tag}
+                </span>
+              ))}
+              {creator.skinConcerns?.map((concern, idx) => (
+                <span
+                  key={`concern-${idx}`}
+                  className="bg-gray-100 rounded-full px-3 py-1 text-xs text-gray-600"
+                >
+                  {getSkinConcernLabel(concern)}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Instagram */}
+          {creator.instagramHandle && (
+            <a
+              href={`https://instagram.com/${creator.instagramHandle}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 mt-2 text-sm text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <Instagram className="w-3.5 h-3.5" />
+              <span>@{creator.instagramHandle}</span>
+            </a>
           )}
         </div>
       </div>
-    </div>
-  );
-}
 
-function BeautyProfile({ creator }: { creator: ShopCreator }) {
-  const tags: { label: string; variant: 'outline' | 'secondary' }[] = [];
-
-  if (creator.skinType) {
-    const label = getSkinTypeLabel(creator.skinType);
-    tags.push({ label, variant: 'secondary' });
-  }
-
-  if (creator.personalColor) {
-    const label = getPersonalColorLabel(creator.personalColor);
-    tags.push({ label, variant: 'secondary' });
-  }
-
-  if (creator.skinConcerns && creator.skinConcerns.length > 0) {
-    creator.skinConcerns.forEach((concern) => {
-      tags.push({ label: getSkinConcernLabel(concern), variant: 'outline' });
-    });
-  }
-
-  if (tags.length === 0) return null;
-
-  return (
-    <div className="max-w-lg mx-auto px-4 pb-3">
-      <div className="flex flex-wrap gap-1.5">
-        {tags.map((tag, idx) => (
-          <Badge key={idx} variant={tag.variant} className="text-xs">
-            {tag.label}
-          </Badge>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function SocialLinks({ creator }: { creator: ShopCreator }) {
-  if (!creator.instagramHandle) return null;
-
-  return (
-    <div className="max-w-lg mx-auto px-4 pb-4">
-      <div className="flex gap-3">
-        {creator.instagramHandle && (
-          <a
-            href={`https://instagram.com/${creator.instagramHandle}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <Instagram className="w-4 h-4" />
-            <span>@{creator.instagramHandle}</span>
-          </a>
-        )}
+      {/* Separator */}
+      <div className="max-w-lg mx-auto">
+        <div className="h-px bg-gray-100" />
       </div>
     </div>
   );
@@ -427,122 +395,104 @@ function GongguCard({
   const productOriginalPrice = Number(product.originalPrice ?? 0);
   const effectivePrice = Number(campaignProduct?.campaignPrice ?? productSalePrice);
   const discountPercent = calculateDiscountPercent(productOriginalPrice, effectivePrice);
-  const dDay = campaign?.endAt ? calculateDDay(campaign.endAt) : '';
+  const dDayNum = campaign?.endAt ? calculateDDay(campaign.endAt) : -1;
+  const dDayLabel = getDDayLabel(dDayNum);
   const brandName = product.brand?.brandName || '';
   const isActive = campaign?.status === 'ACTIVE';
+  const isUrgent = dDayNum >= 0 && dDayNum <= 1;
+
+  // Progress bar
+  const totalStock = Number(campaign?.totalStock ?? 0);
+  const soldCount = Number(campaign?.soldCount ?? 0);
+  const progressPercent = totalStock > 0 ? Math.min(Math.round((soldCount / totalStock) * 100), 100) : 0;
 
   return (
     <Link
       href={`/${locale}/${username}/product/${product.id}${item.campaignId ? `?campaign=${item.campaignId}` : ''}`}
       className="block"
     >
-      <div className="flex gap-3 p-3 rounded-2xl bg-card border border-border card-hover group">
+      <div className={`bg-white rounded-2xl overflow-hidden shadow-sm ${isUrgent ? 'ring-2 ring-red-200' : ''}`}>
         {/* Product Image */}
-        <div className="relative w-28 h-28 rounded-xl overflow-hidden bg-secondary flex-shrink-0">
+        <div className="relative aspect-square overflow-hidden">
           {product.images?.[0] ? (
             <img
               src={product.images[0]}
               alt={product.name ?? ''}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              className="w-full h-full object-cover"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
-              No Image
+            <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400 text-sm">
+              이미지 없음
             </div>
           )}
-          {/* Fire Badge + D-Day */}
-          <div className="absolute top-1.5 left-1.5 flex gap-1">
-            <Badge className="bg-accent text-accent-foreground text-[10px] px-1.5 py-0.5">
-              🔥 공구
-            </Badge>
-            {dDay && isActive && (
-              <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5">
-                {dDay}
-              </Badge>
+          {/* Badges */}
+          <div className="absolute top-3 left-3 flex gap-1.5">
+            {dDayLabel && isActive && (
+              <span className="bg-red-500 text-white rounded-full px-2 py-0.5 text-xs font-bold">
+                {dDayLabel} 남음
+              </span>
+            )}
+            {isUrgent && (
+              <span className="bg-red-500 text-white rounded-full px-2 py-0.5 text-xs font-bold animate-pulse">
+                마감 임박
+              </span>
             )}
           </div>
+          {totalStock > 0 && (
+            <div className="absolute top-3 right-3">
+              <span className="bg-black/50 text-white rounded-full px-2 py-0.5 text-xs">
+                한정 {totalStock}개
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Product Info */}
-        <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
-          <div>
-            {brandName && (
-              <p className="text-xs text-muted-foreground mb-0.5 truncate">
-                {brandName}
-              </p>
-            )}
-            <h3 className="text-sm font-medium text-foreground line-clamp-2 leading-snug">
-              {product.name}
-            </h3>
-            {campaign?.title && (
-              <p className="text-xs text-muted-foreground mt-1 truncate">
-                {campaign.title}
-              </p>
-            )}
-          </div>
+        <div className="p-4">
+          <h3 className="font-medium text-gray-900 line-clamp-1">
+            {product.name}
+          </h3>
+          {brandName && (
+            <p className="text-xs text-gray-400 mt-0.5">{brandName}</p>
+          )}
 
-          <div className="flex items-end justify-between mt-2">
-            <div className="flex items-baseline gap-2">
-              {discountPercent > 0 && (
-                <span className="text-sm font-bold text-red-500">
-                  {discountPercent}%
-                </span>
-              )}
-              <span className="text-base font-bold text-foreground">
-                {formatKRW(effectivePrice)}
+          {/* Price */}
+          <div className="flex items-baseline gap-2 mt-2">
+            {discountPercent > 0 && (
+              <span className="text-lg font-bold text-red-500">
+                {discountPercent}%
               </span>
-              {discountPercent > 0 && (
-                <span className="text-xs text-muted-foreground line-through">
-                  {formatKRW(productOriginalPrice)}
-                </span>
-              )}
-            </div>
+            )}
+            <span className="text-lg font-bold text-gray-900">
+              {formatKRW(effectivePrice)}
+            </span>
           </div>
+          {discountPercent > 0 && (
+            <span className="text-xs text-gray-300 line-through">
+              {formatKRW(productOriginalPrice)}
+            </span>
+          )}
+
+          {/* Progress Bar */}
+          {totalStock > 0 && (
+            <div className="mt-3">
+              <div className="w-full h-2 bg-orange-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-orange-500 rounded-full transition-all"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+              <p className="text-xs text-gray-400 mt-1">{progressPercent}% 판매</p>
+            </div>
+          )}
+
+          {/* Buy Button */}
+          <button className="w-full mt-3 bg-orange-500 text-white rounded-xl h-12 font-semibold text-sm hover:bg-orange-600 transition-colors">
+            구매하기
+          </button>
         </div>
       </div>
     </Link>
-  );
-}
-
-function CollectionSection({
-  collection,
-  items,
-  username,
-  locale,
-}: {
-  collection: ShopCollection | null;
-  items: ShopItem[];
-  username: string;
-  locale: string;
-}) {
-  const title = collection?.name || '전체 상품';
-  const description = collection?.description;
-
-  return (
-    <div>
-      {/* Section Header */}
-      <div className="mb-3">
-        <h3 className="text-base font-semibold text-foreground">{title}</h3>
-        {description && (
-          <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
-        )}
-      </div>
-
-      {/* Horizontal Scroll Product Cards */}
-      <div
-        className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4"
-        style={{ scrollbarWidth: 'none' }}
-      >
-        {items.map((item) => (
-          <PickProductCard
-            key={item.id}
-            item={item}
-            username={username}
-            locale={locale}
-          />
-        ))}
-      </div>
-    </div>
   );
 }
 
@@ -567,11 +517,11 @@ function PickProductCard({
   return (
     <Link
       href={`/${locale}/${username}/product/${product.id}${item.campaignId ? `?campaign=${item.campaignId}` : ''}`}
-      className="flex-shrink-0 w-36"
+      className="block"
     >
       <div className="group">
         {/* Image */}
-        <div className="w-36 h-36 rounded-xl overflow-hidden bg-secondary mb-2">
+        <div className="aspect-square rounded-xl overflow-hidden bg-gray-100">
           {product.images?.[0] ? (
             <img
               src={product.images[0]}
@@ -579,34 +529,32 @@ function PickProductCard({
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
-              No Image
+            <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
+              이미지 없음
             </div>
           )}
         </div>
 
         {/* Info */}
-        <div>
+        <div className="mt-2">
           {brandName && (
-            <p className="text-[11px] text-muted-foreground truncate">
-              {brandName}
-            </p>
+            <p className="text-xs text-gray-400 truncate">{brandName}</p>
           )}
-          <h4 className="text-xs font-medium text-foreground line-clamp-2 leading-snug mt-0.5">
+          <h4 className="text-sm text-gray-900 line-clamp-2 leading-snug mt-0.5">
             {product.name}
           </h4>
-          <div className="flex items-baseline gap-1 mt-1">
+          <div className="flex items-baseline gap-1 mt-1.5">
             {discountPercent > 0 && (
-              <span className="text-xs font-bold text-red-500">
+              <span className="text-sm font-bold text-red-500">
                 {discountPercent}%
               </span>
             )}
-            <span className="text-sm font-bold text-foreground">
+            <span className="text-base font-bold text-gray-900">
               {formatKRW(effectivePrice)}
             </span>
           </div>
           {discountPercent > 0 && (
-            <span className="text-[11px] text-muted-foreground line-through">
+            <span className="text-xs text-gray-300 line-through">
               {formatKRW(productOriginalPrice)}
             </span>
           )}
@@ -624,11 +572,11 @@ function BannerSection({
   bannerLink?: string;
 }) {
   const content = (
-    <div className="max-w-lg mx-auto px-4 py-6">
+    <div className="max-w-lg mx-auto px-4 py-4">
       <div className="rounded-xl overflow-hidden">
         <img
           src={bannerImageUrl}
-          alt="Banner"
+          alt=""
           className="w-full h-auto object-cover"
         />
       </div>
@@ -646,10 +594,30 @@ function BannerSection({
   return content;
 }
 
-function EmptyState({ message }: { message: string }) {
+function EmptyGonggu() {
   return (
-    <div className="py-16 text-center">
-      <p className="text-sm text-muted-foreground">{message}</p>
+    <div className="py-20 text-center">
+      <Clock className="h-10 w-10 mx-auto text-gray-300 mb-3" />
+      <p className="text-sm font-medium text-gray-500">
+        아직 진행 중인 공구가 없어요
+      </p>
+      <p className="text-xs text-gray-400 mt-1">
+        새 공구가 시작되면 알려드릴게요
+      </p>
+    </div>
+  );
+}
+
+function EmptyPick() {
+  return (
+    <div className="py-20 text-center">
+      <ShoppingBag className="h-10 w-10 mx-auto text-gray-300 mb-3" />
+      <p className="text-sm font-medium text-gray-500">
+        아직 추천 상품이 없어요
+      </p>
+      <p className="text-xs text-gray-400 mt-1">
+        곧 멋진 상품이 추가될 거예요
+      </p>
     </div>
   );
 }
