@@ -133,7 +133,7 @@ export default function CheckoutPage() {
   }, [username, items, locale, router]);
 
   const productAmount = cartItems.reduce((total, item) => {
-    return total + item.unitPrice * item.quantity;
+    return total + Number(item.unitPrice) * item.quantity;
   }, 0);
 
   const shippingFee = (() => {
@@ -207,7 +207,7 @@ export default function CheckoutPage() {
             productId: item.productId,
             campaignId: item.campaignId || undefined,
             quantity: item.quantity,
-            unitPrice: item.unitPrice,
+            unitPrice: Number(item.unitPrice),
           })),
           creatorId: creator.id,
           buyer: {
@@ -473,7 +473,7 @@ export default function CheckoutPage() {
                       수량: {item.quantity}
                     </span>
                     <span className="text-sm font-bold text-gray-900">
-                      {formatKRW(item.unitPrice * item.quantity)}
+                      {formatKRW(Number(item.unitPrice) * item.quantity)}
                     </span>
                   </div>
                 </div>
