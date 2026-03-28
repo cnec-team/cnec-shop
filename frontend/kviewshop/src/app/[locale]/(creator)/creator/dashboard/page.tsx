@@ -22,7 +22,6 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/i18n/config';
-import { MissionWidget } from '@/components/creator/MissionWidget';
 import { BrandBadge } from '@/components/common/BrandBadge';
 import { SafeImage } from '@/components/common/SafeImage';
 import { useCountUp } from '@/lib/hooks/use-count-up';
@@ -226,9 +225,6 @@ export default function CreatorDashboardPage() {
           </p>
         </div>
       </div>
-
-      {/* Mission Widget */}
-      <MissionWidget />
 
       {/* Recommended Products — horizontal scroll */}
       {recommendedProducts.length > 0 && (

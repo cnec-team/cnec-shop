@@ -18,8 +18,6 @@ import {
   UserCheck,
   TrendingUp,
   Palette,
-  FolderHeart,
-  Sparkles,
   ImageIcon,
   Bell,
   Coins,
@@ -107,8 +105,6 @@ export function Sidebar({ role, locale }: SidebarProps) {
             label: '내 셀렉트샵',
             items: [
               { title: '샵 정보', href: `${base}/creator/shop`, icon: Palette },
-              { title: '컬렉션 관리', href: `${base}/creator/collections`, icon: FolderHeart },
-              { title: '뷰티 루틴', href: `${base}/creator/routines`, icon: Sparkles },
               { title: '배너 관리', href: `${base}/creator/banners`, icon: ImageIcon },
             ],
           },

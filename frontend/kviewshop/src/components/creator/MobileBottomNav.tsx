@@ -10,8 +10,6 @@ import {
   Store,
   Megaphone,
   MoreHorizontal,
-  FolderHeart,
-  Sparkles,
   ImageIcon,
   TrendingUp,
   ShoppingCart,
@@ -64,8 +62,6 @@ export function MobileBottomNav() {
     {
       label: '내 셀렉트샵',
       items: [
-        { title: '컬렉션 관리', description: '상품을 컬렉션으로 묶어 관리', href: `${base}/collections`, icon: FolderHeart },
-        { title: '뷰티 루틴', description: '스킨케어 루틴 소개', href: `${base}/routines`, icon: Sparkles },
         { title: '배너 관리', description: '샵 배너 이미지 설정', href: `${base}/banners`, icon: ImageIcon },
       ],
     },
