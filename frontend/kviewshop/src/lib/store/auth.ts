@@ -87,7 +87,7 @@ export const useCartStore = create<CartState>()(
         set({ items });
       },
       clearCart: () => set({ items: [] }),
-      getTotal: () => get().items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0),
+      getTotal: () => get().items.reduce((sum, i) => sum + Number(i.unitPrice) * i.quantity, 0),
     }),
     {
       name: 'cnec-cart',
