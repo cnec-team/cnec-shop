@@ -132,7 +132,7 @@ export function Sidebar({ role, locale }: SidebarProps) {
           {
             items: [
               { title: '판매 현황', href: `${base}/creator/sales`, icon: TrendingUp },
-              { title: '정산 관리', href: `${base}/creator/settlements`, icon: DollarSign },
+              { title: '내 정산', href: `${base}/creator/settlements`, icon: DollarSign },
               { title: '알림', href: `${base}/creator/notifications`, icon: Bell },
               { title: '설정', href: `${base}/creator/settings`, icon: Settings },
             ],

@@ -23,6 +23,7 @@ import {
   Youtube,
   Music2,
   ExternalLink,
+  Copy,
   Camera,
   Store,
 } from 'lucide-react';
@@ -143,7 +144,7 @@ export default function CreatorShopPage() {
         bannerImageUrl: form.bannerImageUrl || undefined,
         bannerLink: form.bannerLink || undefined,
       });
-      toast.success('저장되었습니다');
+      toast.success('저장했어요!');
       if (updated) setCreator(updated as Record<string, any>);
     } catch {
       toast.error('저장에 실패했습니다');
@@ -235,15 +236,33 @@ export default function CreatorShopPage() {
             />
           </div>
 
-          {/* Shop URL */}
+          {/* Quick Actions */}
           {shopUrl && (
-            <div className="mt-4">
-              <Button variant="outline" asChild className="w-full h-12 rounded-xl border-gray-200 text-gray-700">
-                <a href={shopUrl} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  내 샵 보기
-                </a>
-              </Button>
+            <div className="mt-4 grid grid-cols-3 gap-2">
+              <button
+                className="bg-gray-50 hover:bg-gray-100 rounded-xl p-3 text-center transition-colors"
+                onClick={() => window.open(shopUrl, '_blank')}
+              >
+                <ExternalLink className="h-4 w-4 mx-auto text-gray-500" />
+                <p className="text-[11px] text-gray-500 mt-1">내 샵 보기</p>
+              </button>
+              <button
+                className="bg-gray-50 hover:bg-gray-100 rounded-xl p-3 text-center transition-colors"
+                onClick={() => {
+                  navigator.clipboard.writeText(shopUrl);
+                  toast('링크가 복사되었습니다');
+                }}
+              >
+                <Copy className="h-4 w-4 mx-auto text-gray-500" />
+                <p className="text-[11px] text-gray-500 mt-1">URL 복사</p>
+              </button>
+              <button
+                className="bg-gray-50 hover:bg-gray-100 rounded-xl p-3 text-center transition-colors"
+                onClick={() => window.open('https://www.instagram.com/', '_blank')}
+              >
+                <Instagram className="h-4 w-4 mx-auto text-gray-500" />
+                <p className="text-[11px] text-gray-500 mt-1">인스타에 공유</p>
+              </button>
             </div>
           )}
         </div>
@@ -284,6 +303,11 @@ export default function CreatorShopPage() {
               onChange={(e) => setForm({ ...form, instagramHandle: e.target.value })}
               className="rounded-xl"
             />
+            {form.instagramHandle ? (
+              <span className="text-[10px] text-green-600 font-medium">연결됨</span>
+            ) : (
+              <span className="text-[10px] text-gray-400">미연결</span>
+            )}
           </div>
           <div className="flex items-center gap-3">
             <Youtube className="h-4 w-4 text-gray-400 shrink-0" />
@@ -293,6 +317,11 @@ export default function CreatorShopPage() {
               onChange={(e) => setForm({ ...form, youtubeHandle: e.target.value })}
               className="rounded-xl"
             />
+            {form.youtubeHandle ? (
+              <span className="text-[10px] text-green-600 font-medium">연결됨</span>
+            ) : (
+              <span className="text-[10px] text-gray-400">미연결</span>
+            )}
           </div>
           <div className="flex items-center gap-3">
             <Music2 className="h-4 w-4 text-gray-400 shrink-0" />
@@ -302,6 +331,11 @@ export default function CreatorShopPage() {
               onChange={(e) => setForm({ ...form, tiktokHandle: e.target.value })}
               className="rounded-xl"
             />
+            {form.tiktokHandle ? (
+              <span className="text-[10px] text-green-600 font-medium">연결됨</span>
+            ) : (
+              <span className="text-[10px] text-gray-400">미연결</span>
+            )}
           </div>
         </div>
       </div>

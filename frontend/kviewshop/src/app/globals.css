@@ -45,6 +45,8 @@
   --color-bronze: var(--bronze);
   --color-success: var(--success);
   --color-warning: var(--warning);
+  --color-earnings: var(--earnings);
+  --color-earnings-foreground: var(--earnings-foreground);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -87,6 +89,9 @@
   --bronze: #6366F1;
   --success: #22C55E;
   --warning: #F59E0B;
+  /* Earnings accent (purple) */
+  --earnings: #7C3AED;
+  --earnings-foreground: #FFFFFF;
   /* Charts */
   --chart-1: #2563EB;
   --chart-2: #6366F1;
@@ -131,6 +136,8 @@
   --bronze: #818CF8;
   --success: #22C55E;
   --warning: #F59E0B;
+  --earnings: #A78BFA;
+  --earnings-foreground: #FFFFFF;
   --chart-1: #3B82F6;
   --chart-2: #818CF8;
   --chart-3: #22C55E;

@@ -93,15 +93,6 @@ interface CreatorShopPageProps {
 // Helpers
 // =============================================
 
-function formatKRW(amount: number): string {
-  return new Intl.NumberFormat('ko-KR', {
-    style: 'currency',
-    currency: 'KRW',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
-
 function calculateDDay(endAt: string | Date | undefined | null): number {
   if (!endAt) return -1;
   const now = new Date();
@@ -245,7 +236,7 @@ export function CreatorShopPage({
       {/* Footer */}
       <div className="max-w-lg mx-auto border-t border-gray-100 py-3 px-4">
         <p className="text-xs text-gray-400 text-center">
-          배송/CS는 브랜드가 직접 처리합니다 | 크넥이 안전하게 관리해요
+          추천만 하세요. 배송·CS는 크넥이 관리합니다
         </p>
       </div>
     </div>

@@ -6,9 +6,9 @@ import { useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Eye,
+  Wallet,
   ShoppingCart,
-  TrendingUp,
+  Banknote,
   Package,
   Plus,
   ChevronRight,
@@ -18,10 +18,13 @@ import {
   ExternalLink,
   Copy,
   Store,
+  ShieldCheck,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/i18n/config';
 import { MissionWidget } from '@/components/creator/MissionWidget';
+import { BrandBadge } from '@/components/common/BrandBadge';
+import { useCountUp } from '@/lib/hooks/use-count-up';
 import { getShopUrl, formatEarnings } from '@/lib/utils/beauty-labels';
 import {
   getCreatorSession,
@@ -114,7 +117,7 @@ export default function CreatorDashboardPage() {
         toast.error('이미 추가된 상품입니다');
         setRecommendedProducts((prev) => prev.filter((p) => p.id !== product.id));
       } else {
-        toast.error('추가에 실패했습니다');
+        toast.error('추가하지 못했어요');
       }
     } finally {
       setAddingId(null);
@@ -153,9 +156,13 @@ export default function CreatorDashboardPage() {
   }
 
   const monthlyEarnings = stats?.totalEarnings ?? 0;
-  const todayVisits = stats?.totalVisits ?? 0;
+  const todayEarnings = (stats as any)?.todayEarnings ?? 0;
   const monthlyOrders = stats?.totalOrders ?? 0;
-  const conversionRate = stats?.conversionRate ?? 0;
+  const pendingSettlement = stats?.pendingSettlement ?? 0;
+  const nextSettlementDate = (stats as any)?.nextSettlementDate ?? null;
+
+  const animatedMonthly = useCountUp(monthlyEarnings, 800);
+  const animatedToday = useCountUp(todayEarnings, 600);
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -170,8 +177,8 @@ export default function CreatorDashboardPage() {
       {/* Hero: This month's earnings — one big number */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
         <p className="text-sm text-gray-500">이번 달 수익</p>
-        <p className="text-3xl font-bold text-gray-900 mt-1">
-          {formatCurrency(monthlyEarnings, 'KRW')}
+        <p className="text-4xl font-bold text-gray-900 mt-1">
+          {formatCurrency(animatedMonthly, 'KRW')}
         </p>
 
         {/* Shop URL inline */}
@@ -198,12 +205,12 @@ export default function CreatorDashboardPage() {
         )}
       </div>
 
-      {/* 3 Small Metrics */}
+      {/* 3 Small Metrics — earnings focused */}
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 text-center">
-          <Eye className="h-4 w-4 text-gray-400 mx-auto mb-1" />
-          <p className="text-lg font-bold text-gray-900">{todayVisits.toLocaleString()}</p>
-          <p className="text-[11px] text-gray-400">오늘 방문</p>
+          <Wallet className="h-4 w-4 text-earnings mx-auto mb-1" />
+          <p className="text-lg font-bold text-earnings">{formatCurrency(animatedToday, 'KRW')}</p>
+          <p className="text-[11px] text-gray-400">오늘 수익</p>
         </div>
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 text-center">
           <ShoppingCart className="h-4 w-4 text-gray-400 mx-auto mb-1" />
@@ -211,9 +218,11 @@ export default function CreatorDashboardPage() {
           <p className="text-[11px] text-gray-400">이번 달 주문</p>
         </div>
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 text-center">
-          <TrendingUp className="h-4 w-4 text-gray-400 mx-auto mb-1" />
-          <p className="text-lg font-bold text-gray-900">{conversionRate.toFixed(1)}%</p>
-          <p className="text-[11px] text-gray-400">전환율</p>
+          <Banknote className="h-4 w-4 text-green-500 mx-auto mb-1" />
+          <p className="text-lg font-bold text-gray-900">{formatCurrency(pendingSettlement, 'KRW')}</p>
+          <p className="text-[11px] text-gray-400">
+            {nextSettlementDate ? `${nextSettlementDate} 입금` : '정산 예정'}
+          </p>
         </div>
       </div>
 
@@ -249,11 +258,11 @@ export default function CreatorDashboardPage() {
                     </div>
                     <div className="p-3">
                       {product.brand && (
-                        <p className="text-[10px] text-gray-400 truncate">{product.brand.brandName}</p>
+                        <BrandBadge brandName={product.brand.brandName} size="sm" />
                       )}
                       <p className="text-xs font-medium text-gray-900 line-clamp-2 mt-0.5 leading-tight min-h-[32px]">{product.name}</p>
                       <p className="text-sm font-bold text-gray-900 mt-1">{formatCurrency(Number(product.salePrice), 'KRW')}</p>
-                      <p className="text-xs text-emerald-600 font-semibold mt-0.5">
+                      <p className="text-xs text-earnings font-semibold mt-0.5">
                         팔면 ₩{earnings.toLocaleString()}
                       </p>
                       <Button
@@ -281,17 +290,24 @@ export default function CreatorDashboardPage() {
 
       {/* CS Zero Banner */}
       {showCsBanner && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 relative">
+        <div className="bg-blue-50 rounded-2xl border border-blue-100 p-5 relative">
           <button
             onClick={dismissCsBanner}
             className="absolute top-3 right-3 text-gray-300 hover:text-gray-500 transition-colors"
           >
             <X className="h-4 w-4" />
           </button>
-          <p className="text-sm font-semibold text-gray-900">CS 걱정 제로</p>
-          <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-            크넥에서 판매하면 CS 걱정 제로 — 배송·교환·환불 모두 브랜드가 처리해요
-          </p>
+          <div className="flex items-start gap-3">
+            <div className="bg-blue-100 rounded-xl p-2 shrink-0">
+              <ShieldCheck className="h-5 w-5 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-900">추천만 하세요. CS는 크넥이 관리합니다</p>
+              <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                배송·교환·환불 모두 브랜드가 직접 처리해요. 크리에이터님은 추천에만 집중하세요.
+              </p>
+            </div>
+          </div>
         </div>
       )}
     </div>

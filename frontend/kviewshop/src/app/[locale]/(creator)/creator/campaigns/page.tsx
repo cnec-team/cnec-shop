@@ -18,13 +18,13 @@ import {
 import {
   Megaphone,
   Users,
-  Percent,
   Loader2,
   ArrowRight,
   Clock,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/i18n/config';
+import { BrandBadge } from '@/components/common/BrandBadge';
 import {
   getCreatorSession,
   getAvailableCampaigns,
@@ -170,11 +170,11 @@ export default function CreatorCampaignsPage() {
         status: 'PENDING',
         message: applyMessage.trim() || undefined,
       });
-      toast.success('참여 신청이 완료되었습니다');
+      toast.success('공구 참여 신청이 완료되었습니다. 내 샵에 자동 추가됩니다');
       setApplyOpen(false);
     } catch (error: any) {
-      if (error?.message?.includes('Unique')) toast.error('이미 참여 신청한 캠페인입니다');
-      else toast.error('신청에 실패했습니다');
+      if (error?.message?.includes('Unique')) toast.error('이미 공구 참여한 캠페인입니다');
+      else toast.error('참여에 실패했습니다');
     } finally {
       setSubmitting(false);
     }
@@ -187,7 +187,7 @@ export default function CreatorCampaignsPage() {
       await applyCampaignParticipation({ campaignId: campaign.id, status: 'APPROVED' });
       const productIds = (campaign.products ?? []).map((cp) => cp.productId);
       if (productIds.length > 0) await addCampaignShopItems(campaign.id, productIds);
-      toast.success('캠페인 참여가 완료되었습니다');
+      toast.success('공구 참여가 완료되었습니다. 내 샵에 자동 추가됩니다');
     } catch (error: any) {
       if (error?.message?.includes('Unique')) toast.error('이미 참여 중인 캠페인입니다');
       else toast.error('참여에 실패했습니다');
@@ -272,17 +272,13 @@ export default function CreatorCampaignsPage() {
                   {/* Title */}
                   <h3 className="font-semibold text-sm text-gray-900 line-clamp-2 mb-1">{campaign.title}</h3>
                   {campaign.brand && (
-                    <p className="text-xs text-gray-400">{campaign.brand.brandName}</p>
+                    <BrandBadge brandName={campaign.brand.brandName} />
                   )}
 
                   {/* Stats */}
                   <div className="flex items-center gap-3 mt-3 text-xs">
-                    <span className="text-emerald-600 font-semibold flex items-center gap-0.5">
-                      <Percent className="h-3 w-3" />
-                      {(Number(campaign.commissionRate) * 100).toFixed(0)}%
-                    </span>
                     {earnings > 0 && (
-                      <span className="text-emerald-600 font-semibold">
+                      <span className="text-earnings font-semibold">
                         팔면 ₩{earnings.toLocaleString()}
                       </span>
                     )}
@@ -351,10 +347,10 @@ export default function CreatorCampaignsPage() {
                       {dDay && <span className="text-[10px] text-gray-400">{dDay}</span>}
                     </div>
                     <p className="text-sm font-medium text-gray-900 truncate">{campaign.title}</p>
-                    {campaign.brand && <p className="text-xs text-gray-400">{campaign.brand.brandName}</p>}
+                    {campaign.brand && <BrandBadge brandName={campaign.brand.brandName} />}
                   </div>
-                  <span className="text-xs text-emerald-600 font-semibold whitespace-nowrap">
-                    {(Number(campaign.commissionRate) * 100).toFixed(0)}%
+                  <span className="text-xs text-earnings font-semibold whitespace-nowrap">
+                    팔면 ₩{getEstimatedEarnings(campaign).toLocaleString()}
                   </span>
                 </div>
               );
@@ -367,12 +363,12 @@ export default function CreatorCampaignsPage() {
       <Dialog open={applyOpen} onOpenChange={setApplyOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>캠페인 참여 신청</DialogTitle>
+            <DialogTitle>공구 참여</DialogTitle>
             <DialogDescription>{applyingCampaign?.title}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>참여 신청 메시지 (선택)</Label>
+              <Label>참여 메시지 (선택)</Label>
               <Textarea
                 placeholder="브랜드에 전달할 메시지를 입력하세요"
                 value={applyMessage}
@@ -392,7 +388,7 @@ export default function CreatorCampaignsPage() {
               취소
             </Button>
             <Button onClick={handleSubmitApply} disabled={submitting} className="flex-1 bg-gray-900 text-white hover:bg-gray-800 rounded-xl h-12">
-              {submitting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />신청 중...</> : '신청하기'}
+              {submitting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />참여 중...</> : '공구 참여하기'}
             </Button>
           </DialogFooter>
         </DialogContent>
