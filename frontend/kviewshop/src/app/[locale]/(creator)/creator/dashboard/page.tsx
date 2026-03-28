@@ -140,6 +140,15 @@ export default function CreatorDashboardPage() {
   const today = new Date();
   const dateStr = `${today.getMonth() + 1}월 ${today.getDate()}일`;
 
+  const monthlyEarnings = stats?.totalEarnings ?? 0;
+  const todayEarnings = (stats as any)?.todayEarnings ?? 0;
+  const monthlyOrders = stats?.totalOrders ?? 0;
+  const pendingSettlement = stats?.pendingSettlement ?? 0;
+  const nextSettlementDate = (stats as any)?.nextSettlementDate ?? null;
+
+  const animatedMonthly = useCountUp(monthlyEarnings, 800);
+  const animatedToday = useCountUp(todayEarnings, 600);
+
   if (loading) {
     return (
       <div className="space-y-6 max-w-2xl">
@@ -154,15 +163,6 @@ export default function CreatorDashboardPage() {
       </div>
     );
   }
-
-  const monthlyEarnings = stats?.totalEarnings ?? 0;
-  const todayEarnings = (stats as any)?.todayEarnings ?? 0;
-  const monthlyOrders = stats?.totalOrders ?? 0;
-  const pendingSettlement = stats?.pendingSettlement ?? 0;
-  const nextSettlementDate = (stats as any)?.nextSettlementDate ?? null;
-
-  const animatedMonthly = useCountUp(monthlyEarnings, 800);
-  const animatedToday = useCountUp(todayEarnings, 600);
 
   return (
     <div className="space-y-6 max-w-2xl">
