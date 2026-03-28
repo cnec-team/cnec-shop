@@ -115,10 +115,16 @@ export default function CheckoutPage() {
         const productIds = creatorItems.map((item) => item.productId);
         const products = await getCheckoutProducts(productIds);
 
-        const itemsWithProducts: CartItemWithProduct[] = creatorItems.map((item) => ({
-          ...item,
-          product: products?.find((p: any) => p.id === item.productId),
-        }));
+        const itemsWithProducts: CartItemWithProduct[] = creatorItems.map((item) => {
+          const product = products?.find((p: any) => p.id === item.productId);
+          const cartPrice = Number(item.unitPrice);
+          const dbPrice = Number(product?.salePrice ?? 0);
+          return {
+            ...item,
+            unitPrice: isNaN(cartPrice) || cartPrice <= 0 ? dbPrice : cartPrice,
+            product,
+          };
+        });
 
         setCartItems(itemsWithProducts);
       } catch (error) {
