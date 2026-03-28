@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { BrandBadge } from '@/components/common/BrandBadge';
+import { SafeImage } from '@/components/common/SafeImage';
 import { formatCurrency } from '@/lib/i18n/config';
 import { PRODUCT_CATEGORY_LABELS } from '@/types/database';
 import { formatEarnings } from '@/lib/utils/beauty-labels';
@@ -266,18 +267,35 @@ export default function CreatorProductsPage() {
         </Button>
       </div>
 
-      <div className={`flex flex-col sm:flex-row gap-2 ${showFilters ? 'block' : 'hidden md:flex'}`}>
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-full sm:w-[160px] h-9 rounded-xl">
-            <SelectValue placeholder="카테고리" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">전체 카테고리</SelectItem>
-            {Object.entries(PRODUCT_CATEGORY_LABELS).map(([value, label]) => (
-              <SelectItem key={value} value={value}>{label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      {/* Category Pills — horizontal scroll */}
+      <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 md:mx-0 md:px-0 scrollbar-hide">
+        <button
+          onClick={() => setCategoryFilter('all')}
+          className={`shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+            categoryFilter === 'all'
+              ? 'bg-gray-900 text-white'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          전체
+        </button>
+        {Object.entries(PRODUCT_CATEGORY_LABELS).map(([value, label]) => (
+          <button
+            key={value}
+            onClick={() => setCategoryFilter(value)}
+            className={`shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              categoryFilter === value
+                ? 'bg-gray-900 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Sort — desktop only or when filters shown */}
+      <div className={`${showFilters ? 'block' : 'hidden md:block'}`}>
         <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
           <SelectTrigger className="w-full sm:w-[180px] h-9 rounded-xl">
             <ArrowUpDown className="h-3.5 w-3.5 mr-2" />
@@ -314,13 +332,14 @@ export default function CreatorProductsPage() {
             return (
               <div key={product.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
                 <div className="aspect-square bg-gray-50 relative overflow-hidden">
-                  {product.images?.[0] ? (
-                    <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Package className="h-10 w-10 text-gray-200" />
-                    </div>
-                  )}
+                  <SafeImage
+                    src={product.images?.[0] || product.imageUrl}
+                    alt={product.name}
+                    fill
+                    className="object-cover"
+                    fallbackClassName="w-full h-full"
+                    sizes="(max-width: 768px) 50vw, 25vw"
+                  />
                   {isGonggu && (
                     <span className="absolute top-2 left-2 bg-blue-50 text-blue-700 text-[10px] font-medium px-2 py-0.5 rounded-full">
                       공구

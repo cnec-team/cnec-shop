@@ -24,6 +24,7 @@ import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/i18n/config';
 import { MissionWidget } from '@/components/creator/MissionWidget';
 import { BrandBadge } from '@/components/common/BrandBadge';
+import { SafeImage } from '@/components/common/SafeImage';
 import { useCountUp } from '@/lib/hooks/use-count-up';
 import { getShopUrl, formatEarnings } from '@/lib/utils/beauty-labels';
 import {
@@ -247,14 +248,15 @@ export default function CreatorDashboardPage() {
               return (
                 <div key={product.id} className="flex-shrink-0 w-[160px] md:w-auto">
                   <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                    <div className="aspect-square bg-gray-50 relative">
-                      {product.images?.[0] ? (
-                        <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Package className="h-8 w-8 text-gray-200" />
-                        </div>
-                      )}
+                    <div className="aspect-square bg-gray-50 relative overflow-hidden">
+                      <SafeImage
+                        src={product.images?.[0]}
+                        alt={product.name}
+                        fill
+                        className="object-cover"
+                        fallbackClassName="w-full h-full"
+                        sizes="160px"
+                      />
                     </div>
                     <div className="p-3">
                       {product.brand && (
