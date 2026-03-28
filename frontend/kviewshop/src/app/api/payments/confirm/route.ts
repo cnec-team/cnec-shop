@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { auth } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,7 +12,7 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-    const { orderId, paymentKey, amount } = await request.json();
+    const { orderId, paymentKey, amount, guestEmail, guestPhone } = await request.json();
 
     if (!orderId || !paymentKey || !amount) {
       return NextResponse.json(
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
     // Verify payment amount matches order total
     const existingOrder = await prisma.order.findFirst({
       where: { orderNumber: orderId },
-      select: { orderNumber: true, totalAmount: true, status: true },
+      select: { orderNumber: true, totalAmount: true, status: true, buyerId: true, buyerEmail: true, buyerPhone: true },
     });
 
     if (!existingOrder) {
@@ -60,6 +61,21 @@ export async function POST(request: NextRequest) {
         { success: false, message: 'Order not found' },
         { status: 404 }
       );
+    }
+
+    // Verify order ownership
+    const session = await auth();
+    if (session?.user) {
+      if (existingOrder.buyerId && existingOrder.buyerId !== session.user.id) {
+        return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 });
+      }
+    } else {
+      if (!guestEmail || !guestPhone) {
+        return NextResponse.json({ success: false, message: 'Guest verification required' }, { status: 401 });
+      }
+      if (existingOrder.buyerEmail !== guestEmail || existingOrder.buyerPhone !== guestPhone) {
+        return NextResponse.json({ success: false, message: 'Forbidden' }, { status: 403 });
+      }
     }
 
     if (Number(result.totalAmount) !== Number(existingOrder.totalAmount)) {
