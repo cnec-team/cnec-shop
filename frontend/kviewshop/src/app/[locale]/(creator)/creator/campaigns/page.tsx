@@ -276,15 +276,21 @@ export default function CreatorCampaignsPage() {
                   )}
 
                   {/* Stats */}
-                  <div className="flex items-center gap-3 mt-3 text-xs">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-3 text-xs">
                     {earnings > 0 && (
                       <span className="text-earnings font-semibold">
                         팔면 ₩{earnings.toLocaleString()}
                       </span>
                     )}
+                    {campaign.endAt && (
+                      <span className="text-gray-400 flex items-center gap-0.5">
+                        <Clock className="h-3 w-3" />
+                        {new Date(campaign.endAt).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })}까지
+                      </span>
+                    )}
                     <span className="text-gray-400 flex items-center gap-0.5 ml-auto">
                       <Users className="h-3 w-3" />
-                      {campaign.participantCount ?? 0}명
+                      {campaign.participantCount ?? 0}{campaign.targetParticipants ? `/${campaign.targetParticipants}` : ''}명
                     </span>
                   </div>
 
