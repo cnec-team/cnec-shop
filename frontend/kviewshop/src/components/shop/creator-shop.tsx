@@ -3,15 +3,9 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { Flame, Heart, Clock, ShoppingBag, Instagram, Share2 } from 'lucide-react';
+import { Clock, ShoppingBag, Instagram, Share2 } from 'lucide-react';
 import { ShareSheet } from '@/components/shop/ShareSheet';
-import { BrandBadge } from '@/components/common/BrandBadge';
 import { VisitTracker } from '@/components/shop/VisitTracker';
-import {
-  getSkinTypeLabel,
-  getSkinConcernLabel,
-  getPersonalColorLabel,
-} from '@/lib/utils/beauty-labels';
 
 // =============================================
 // Types matching Prisma camelCase output
@@ -99,15 +93,6 @@ interface CreatorShopPageProps {
 // Helpers
 // =============================================
 
-function formatKRW(amount: number): string {
-  return new Intl.NumberFormat('ko-KR', {
-    style: 'currency',
-    currency: 'KRW',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
-
 function calculateDDay(endAt: string | Date | undefined | null): number {
   if (!endAt) return -1;
   const now = new Date();
@@ -126,6 +111,10 @@ function getDDayLabel(days: number): string {
 function calculateDiscountPercent(original: number, sale: number): number {
   if (original <= 0) return 0;
   return Math.round(((original - sale) / original) * 100);
+}
+
+function formatWon(amount: number): string {
+  return new Intl.NumberFormat('ko-KR').format(amount) + '원';
 }
 
 // =============================================
@@ -168,34 +157,26 @@ export function CreatorShopPage({
         <div className="flex">
           <button
             onClick={() => setActiveTab('gonggu')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-medium transition-colors relative ${
+            className={`flex-1 py-3 text-sm font-medium text-center transition-colors relative ${
               activeTab === 'gonggu'
                 ? 'text-gray-900'
                 : 'text-gray-400 hover:text-gray-600'
             }`}
           >
-            <Flame className={`h-4 w-4 ${activeTab === 'gonggu' ? 'text-orange-500' : ''}`} />
-            <span>공구</span>
-            {gongguItems.length > 0 && (
-              <span className="text-xs text-gray-400">({gongguItems.length})</span>
-            )}
+            공구 {gongguItems.length}
             {activeTab === 'gonggu' && (
               <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900" />
             )}
           </button>
           <button
             onClick={() => setActiveTab('pick')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-medium transition-colors relative ${
+            className={`flex-1 py-3 text-sm font-medium text-center transition-colors relative ${
               activeTab === 'pick'
                 ? 'text-gray-900'
                 : 'text-gray-400 hover:text-gray-600'
             }`}
           >
-            <Heart className={`h-4 w-4 ${activeTab === 'pick' ? 'text-purple-500' : ''}`} />
-            <span>크리에이터픽</span>
-            {pickItems.length > 0 && (
-              <span className="text-xs text-gray-400">({pickItems.length})</span>
-            )}
+            추천 {pickItems.length}
             {activeTab === 'pick' && (
               <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900" />
             )}
@@ -210,7 +191,7 @@ export function CreatorShopPage({
             {gongguItems.length === 0 ? (
               <EmptyGonggu />
             ) : (
-              <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
                 {gongguItems.map((item) => (
                   <GongguCard
                     key={item.id}
@@ -272,95 +253,50 @@ export { CreatorShopPage as CreatorShop };
 function ShopHeader({ creator, shopUrl }: { creator: ShopCreator; shopUrl: string }) {
   const shopDesc = creator.bio || 'K-뷰티 크리에이터 셀렉트샵';
 
-  // Collect beauty tags
-  const beautyTags: string[] = [];
-  if (creator.skinType) beautyTags.push(getSkinTypeLabel(creator.skinType));
-  if (creator.personalColor) beautyTags.push(getPersonalColorLabel(creator.personalColor));
-
   return (
-    <div className="relative bg-white">
-      {/* Cover Image */}
-      <div className="h-48 relative overflow-hidden">
-        {creator.coverImageUrl ? (
-          <img
-            src={creator.coverImageUrl}
-            alt=""
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-r from-blue-100 to-purple-100" />
-        )}
+    <div className="bg-white">
+      {/* Top bar: page title + share */}
+      <div className="max-w-lg mx-auto px-4 pt-4 pb-2 flex items-center justify-between">
+        <h1 className="text-lg font-bold text-gray-900">
+          {creator.displayName}
+        </h1>
+        <ShareSheet
+          url={shopUrl}
+          title={`${creator.displayName}의 셀렉트샵`}
+          description={shopDesc}
+          imageUrl={creator.profileImageUrl || undefined}
+          trigger={
+            <button className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
+              <Share2 className="h-4 w-4 text-gray-500" />
+            </button>
+          }
+        />
       </div>
 
-      {/* Profile Section */}
-      <div className="max-w-lg mx-auto px-4 relative">
-        {/* Profile Image */}
-        <div className="absolute -top-10 left-4">
-          <div className="w-20 h-20 rounded-full border-4 border-white overflow-hidden bg-gray-200 shadow-sm">
-            {creator.profileImageUrl ? (
-              <img
-                src={creator.profileImageUrl}
-                alt={creator.displayName ?? ''}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-xl font-bold text-gray-400">
-                {creator.displayName?.charAt(0) || '?'}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Share Button */}
-        <div className="absolute -top-10 right-4">
-          <ShareSheet
-            url={shopUrl}
-            title={`${creator.displayName}의 셀렉트샵`}
-            description={shopDesc}
-            imageUrl={creator.profileImageUrl || undefined}
-            trigger={
-              <button className="flex h-9 w-9 items-center justify-center rounded-full bg-white/80 backdrop-blur-sm shadow-sm hover:bg-white transition-colors">
-                <Share2 className="h-4 w-4 text-gray-600" />
-              </button>
-            }
-          />
-        </div>
-
-        {/* Name & Info */}
-        <div className="pt-14 pb-4">
-          <h1 className="text-xl font-bold text-gray-900">
-            {creator.displayName}의 샵
-          </h1>
-
-          {/* Beauty Tags */}
-          {beautyTags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              {beautyTags.map((tag, idx) => (
-                <span
-                  key={idx}
-                  className="bg-gray-100 rounded-full px-3 py-1 text-xs text-gray-600"
-                >
-                  {tag}
-                </span>
-              ))}
-              {creator.skinConcerns?.map((concern, idx) => (
-                <span
-                  key={`concern-${idx}`}
-                  className="bg-gray-100 rounded-full px-3 py-1 text-xs text-gray-600"
-                >
-                  {getSkinConcernLabel(concern)}
-                </span>
-              ))}
+      {/* Horizontal profile: photo left + text right */}
+      <div className="max-w-lg mx-auto px-4 pb-4 flex items-start gap-3">
+        <div className="w-16 h-16 shrink-0 rounded-full overflow-hidden bg-gray-200">
+          {creator.profileImageUrl ? (
+            <img
+              src={creator.profileImageUrl}
+              alt={creator.displayName ?? ''}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-lg font-bold text-gray-400">
+              {creator.displayName?.charAt(0) || '?'}
             </div>
           )}
-
-          {/* Instagram */}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-gray-900">{creator.displayName}</p>
+          <p className="text-sm text-gray-500 mt-0.5 line-clamp-2">{shopDesc}</p>
           {creator.instagramHandle && (
             <a
               href={`https://instagram.com/${creator.instagramHandle}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 mt-2 text-sm text-gray-400 hover:text-gray-600 transition-colors"
+              className="inline-flex items-center gap-1 mt-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors"
             >
               <Instagram className="w-3.5 h-3.5" />
               <span>@{creator.instagramHandle}</span>
@@ -400,97 +336,64 @@ function GongguCard({
   const dDayLabel = getDDayLabel(dDayNum);
   const brandName = product.brand?.brandName || '';
   const isActive = campaign?.status === 'ACTIVE';
-  const isUrgent = dDayNum >= 0 && dDayNum <= 1;
-
-  // Progress bar
-  const totalStock = Number(campaign?.totalStock ?? 0);
   const soldCount = Number(campaign?.soldCount ?? 0);
-  const progressPercent = totalStock > 0 ? Math.min(Math.round((soldCount / totalStock) * 100), 100) : 0;
 
   return (
     <Link
       href={`/${locale}/${username}/product/${product.id}${item.campaignId ? `?campaign=${item.campaignId}` : ''}`}
       className="block"
     >
-      <div className={`bg-white rounded-2xl overflow-hidden shadow-sm ${isUrgent ? 'ring-2 ring-red-200' : ''}`}>
-        {/* Product Image */}
-        <div className="relative aspect-square overflow-hidden">
+      <div className="group">
+        {/* Image with badges */}
+        <div className="aspect-square rounded-xl overflow-hidden bg-gray-100 relative">
           {product.images?.[0] ? (
             <img
               src={product.images[0]}
               alt={product.name ?? ''}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400 text-sm">
+            <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
               이미지 없음
             </div>
           )}
-          {/* Badges */}
-          <div className="absolute top-3 left-3 flex gap-1.5">
-            {dDayLabel && isActive && (
-              <span className="bg-red-500 text-white rounded-full px-2 py-0.5 text-xs font-bold">
-                {dDayLabel} 남음
-              </span>
-            )}
-            {isUrgent && (
-              <span className="bg-red-500 text-white rounded-full px-2 py-0.5 text-xs font-bold animate-pulse">
-                마감 임박
-              </span>
-            )}
-          </div>
-          {totalStock > 0 && (
-            <div className="absolute top-3 right-3">
-              <span className="bg-black/50 text-white rounded-full px-2 py-0.5 text-xs">
-                한정 {totalStock}개
-              </span>
-            </div>
+          {/* D-Day badge: red pill, top-left */}
+          {dDayLabel && isActive && (
+            <span className="absolute top-2 left-2 bg-red-500 text-white rounded-full px-2.5 py-0.5 text-[11px] font-bold">
+              {dDayLabel}
+            </span>
+          )}
+          {/* Discount badge: yellow pill, top-right */}
+          {discountPercent > 0 && (
+            <span className="absolute top-2 right-2 bg-yellow-300 text-gray-900 rounded-full px-2 py-0.5 text-[11px] font-bold">
+              {discountPercent}%
+            </span>
           )}
         </div>
 
-        {/* Product Info */}
-        <div className="p-4">
-          <h3 className="font-medium text-gray-900 line-clamp-1">
-            {product.name}
-          </h3>
+        {/* Product info */}
+        <div className="mt-2">
           {brandName && (
-            <BrandBadge brandName={brandName} logoUrl={product.brand?.logoUrl} />
+            <p className="text-xs text-gray-400 truncate">{brandName}</p>
           )}
-
-          {/* Price */}
-          <div className="flex items-baseline gap-2 mt-2">
+          <h4 className="text-sm text-gray-900 line-clamp-2 leading-snug mt-0.5">
+            {product.name}
+          </h4>
+          <div className="flex items-baseline gap-1.5 mt-1.5">
+            <span className="text-base font-bold text-gray-900">
+              {formatWon(effectivePrice)}
+            </span>
             {discountPercent > 0 && (
-              <span className="text-lg font-bold text-red-500">
-                {discountPercent}%
+              <span className="text-xs text-gray-400 line-through">
+                {formatWon(productOriginalPrice)}
               </span>
             )}
-            <span className="text-lg font-bold text-gray-900">
-              {formatKRW(effectivePrice)}
-            </span>
           </div>
-          {discountPercent > 0 && (
-            <span className="text-xs text-gray-300 line-through">
-              {formatKRW(productOriginalPrice)}
-            </span>
+          {soldCount > 0 && (
+            <p className="text-xs text-red-500 font-medium mt-1">
+              {soldCount.toLocaleString()}명 참여중
+            </p>
           )}
-
-          {/* Progress Bar */}
-          {totalStock > 0 && (
-            <div className="mt-3">
-              <div className="w-full h-2 bg-orange-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-orange-500 rounded-full transition-all"
-                  style={{ width: `${progressPercent}%` }}
-                />
-              </div>
-              <p className="text-xs text-gray-400 mt-1">{progressPercent}% 판매</p>
-            </div>
-          )}
-
-          {/* Buy Button */}
-          <button className="w-full mt-3 bg-orange-500 text-white rounded-xl h-12 font-semibold text-sm hover:bg-orange-600 transition-colors">
-            구매하기
-          </button>
         </div>
       </div>
     </Link>
@@ -539,26 +442,21 @@ function PickProductCard({
         {/* Info */}
         <div className="mt-2">
           {brandName && (
-            <BrandBadge brandName={brandName} logoUrl={product.brand?.logoUrl} />
+            <p className="text-xs text-gray-400 truncate">{brandName}</p>
           )}
           <h4 className="text-sm text-gray-900 line-clamp-2 leading-snug mt-0.5">
             {product.name}
           </h4>
-          <div className="flex items-baseline gap-1 mt-1.5">
+          <div className="flex items-baseline gap-1.5 mt-1.5">
+            <span className="text-base font-bold text-gray-900">
+              {formatWon(effectivePrice)}
+            </span>
             {discountPercent > 0 && (
-              <span className="text-sm font-bold text-red-500">
-                {discountPercent}%
+              <span className="text-xs text-gray-400 line-through">
+                {formatWon(productOriginalPrice)}
               </span>
             )}
-            <span className="text-base font-bold text-gray-900">
-              {formatKRW(effectivePrice)}
-            </span>
           </div>
-          {discountPercent > 0 && (
-            <span className="text-xs text-gray-300 line-through">
-              {formatKRW(productOriginalPrice)}
-            </span>
-          )}
         </div>
       </div>
     </Link>

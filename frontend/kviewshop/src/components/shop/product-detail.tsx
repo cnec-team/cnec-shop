@@ -79,8 +79,9 @@ export function ProductDetailPage({
 
   const campaign = campaignProduct?.campaign as Campaign | undefined;
   const isGonggu = !!campaignProduct && campaign?.type === 'GONGGU';
-  const effectivePrice = campaignProduct?.campaign_price ?? product.sale_price;
-  const discountPercent = calculateDiscountPercent(product.original_price, effectivePrice);
+  const effectivePrice = Number(campaignProduct?.campaign_price ?? product.sale_price ?? 0);
+  const originalPrice = Number(product.original_price ?? 0);
+  const discountPercent = calculateDiscountPercent(originalPrice, effectivePrice);
   const brandName = product.brand?.brand_name || '';
   const images = product.images && product.images.length > 0 ? product.images : [];
   const productUrl = `https://shop.cnec.kr/${username}/product/${product.id}${campaignProduct?.campaign_id ? `?campaign=${campaignProduct.campaign_id}` : ''}`;
@@ -296,7 +297,7 @@ export function ProductDetailPage({
           </div>
           {discountPercent > 0 && (
             <p className="text-sm text-gray-300 line-through mt-0.5">
-              {formatKRW(product.original_price)}
+              {formatKRW(originalPrice)}
             </p>
           )}
         </div>
@@ -374,7 +375,7 @@ export function ProductDetailPage({
                 <p>{(product as any).shipping_info}</p>
               ) : (
                 <>
-                  <p>배송비: {(product as any).shipping_fee_type === 'FREE' ? '무료배송' : (product as any).shipping_fee_type === 'CONDITIONAL_FREE' ? `${formatKRW((product as any).free_shipping_threshold || 50000)} 이상 무료배송 (기본 ${formatKRW((product as any).shipping_fee || 3000)})` : `${formatKRW((product as any).shipping_fee || 3000)}`}</p>
+                  <p>배송비: {(product as any).shipping_fee_type === 'FREE' ? '무료배송' : (product as any).shipping_fee_type === 'CONDITIONAL_FREE' ? `${formatKRW(Number((product as any).free_shipping_threshold) || 50000)} 이상 무료배송 (기본 ${formatKRW(Number((product as any).shipping_fee) || 3000)})` : `${formatKRW(Number((product as any).shipping_fee) || 3000)}`}</p>
                   <p>배송기간: 결제 후 2~5일 이내 배송</p>
                   <p>제주/도서산간 지역은 추가 배송비가 발생할 수 있습니다.</p>
                 </>
