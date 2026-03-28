@@ -23,7 +23,7 @@ import {
   Bell,
   Settings,
   Video,
-  X,
+  ChevronRight,
 } from 'lucide-react';
 import {
   Sheet,
@@ -34,6 +34,7 @@ import {
 
 interface MoreMenuItem {
   title: string;
+  description: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
 }
@@ -63,34 +64,34 @@ export function MobileBottomNav() {
     {
       label: '내 셀렉트샵',
       items: [
-        { title: '컬렉션 관리', href: `${base}/collections`, icon: FolderHeart },
-        { title: '뷰티 루틴', href: `${base}/routines`, icon: Sparkles },
-        { title: '배너 관리', href: `${base}/banners`, icon: ImageIcon },
+        { title: '컬렉션 관리', description: '상품을 컬렉션으로 묶어 관리', href: `${base}/collections`, icon: FolderHeart },
+        { title: '뷰티 루틴', description: '스킨케어 루틴 소개', href: `${base}/routines`, icon: Sparkles },
+        { title: '배너 관리', description: '샵 배너 이미지 설정', href: `${base}/banners`, icon: ImageIcon },
       ],
     },
     {
       label: '판매',
       items: [
-        { title: '판매 현황', href: `${base}/sales`, icon: TrendingUp },
-        { title: '주문 관리', href: `${base}/orders`, icon: ShoppingCart },
+        { title: '판매 현황', description: '매출 및 수익 확인', href: `${base}/sales`, icon: TrendingUp },
+        { title: '주문 관리', description: '주문 내역 추적', href: `${base}/orders`, icon: ShoppingCart },
       ],
     },
     {
       label: '정산 & 활동',
       items: [
-        { title: '내 정산', href: `${base}/settlements`, icon: DollarSign },
-        { title: '포인트', href: `${base}/points`, icon: Coins },
-        { title: '등급', href: `${base}/grade`, icon: Trophy },
-        { title: '추천', href: `${base}/referral`, icon: UserPlus },
+        { title: '내 정산', description: '입금 내역 확인', href: `${base}/settlements`, icon: DollarSign },
+        { title: '포인트', description: '포인트 적립 및 출금', href: `${base}/points`, icon: Coins },
+        { title: '등급', description: '크리에이터 등급 혜택', href: `${base}/grade`, icon: Trophy },
+        { title: '추천', description: '친구 초대하고 혜택 받기', href: `${base}/referral`, icon: UserPlus },
       ],
     },
     {
       label: '기타',
       items: [
-        { title: '알림', href: `${base}/notifications`, icon: Bell },
-        { title: '가이드', href: `${base}/guides`, icon: BookOpen },
-        { title: '라이브', href: `${base}/live`, icon: Video },
-        { title: '설정', href: `${base}/settings`, icon: Settings },
+        { title: '알림', description: '새로운 소식 확인', href: `${base}/notifications`, icon: Bell },
+        { title: '가이드', description: '크넥 활용 가이드', href: `${base}/guides`, icon: BookOpen },
+        { title: '라이브', description: '라이브 방송 관리', href: `${base}/live`, icon: Video },
+        { title: '설정', description: '계정 및 알림 설정', href: `${base}/settings`, icon: Settings },
       ],
     },
   ];
@@ -150,19 +151,19 @@ export function MobileBottomNav() {
         </div>
       </nav>
 
-      {/* More Drawer */}
+      {/* More Drawer — list card style */}
       <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
-        <SheetContent side="bottom" className="max-h-[80vh] overflow-y-auto rounded-t-2xl">
-          <SheetHeader className="pb-2">
+        <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-2xl">
+          <SheetHeader className="pb-3">
             <SheetTitle className="text-lg">더보기</SheetTitle>
           </SheetHeader>
-          <div className="space-y-5 pb-6">
+          <div className="space-y-6 pb-8">
             {moreMenuSections.map((section) => (
               <div key={section.label}>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
+                <p className="text-xs font-semibold text-muted-foreground mb-2 px-1">
                   {section.label}
                 </p>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-50 overflow-hidden">
                   {section.items.map((item) => {
                     const active = pathname === item.href || pathname.startsWith(item.href + '/');
                     return (
@@ -171,16 +172,26 @@ export function MobileBottomNav() {
                         href={item.href}
                         onClick={() => setMoreOpen(false)}
                         className={cn(
-                          'flex flex-col items-center gap-1.5 rounded-xl p-3 min-h-[72px] transition-colors',
-                          active
-                            ? 'bg-primary/10 text-primary'
-                            : 'text-foreground hover:bg-muted'
+                          'flex items-center gap-4 px-4 py-3.5 transition-colors',
+                          active ? 'bg-primary/5' : 'hover:bg-gray-50'
                         )}
                       >
-                        <item.icon className="h-5 w-5" />
-                        <span className="text-[11px] font-medium text-center leading-tight">
-                          {item.title}
-                        </span>
+                        <div className={cn(
+                          'w-10 h-10 rounded-xl flex items-center justify-center shrink-0',
+                          active ? 'bg-primary/10 text-primary' : 'bg-gray-50 text-gray-400'
+                        )}>
+                          <item.icon className="h-5 w-5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={cn(
+                            'text-sm font-medium',
+                            active ? 'text-primary' : 'text-gray-900'
+                          )}>
+                            {item.title}
+                          </p>
+                          <p className="text-xs text-gray-400 mt-0.5">{item.description}</p>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-gray-300 shrink-0" />
                       </Link>
                     );
                   })}
