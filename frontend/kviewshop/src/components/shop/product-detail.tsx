@@ -79,22 +79,29 @@ export function ProductDetailPage({
 
   const campaign = campaignProduct?.campaign as Campaign | undefined;
   const isGonggu = !!campaignProduct && campaign?.type === 'GONGGU';
-  const effectivePrice = Number(campaignProduct?.campaign_price ?? product.sale_price ?? 0);
-  const originalPrice = Number(product.original_price ?? 0);
+
+  // Normalize snake_case/camelCase: Prisma returns camelCase, but database.ts types use snake_case
+  const p = product as any;
+  const cp = campaignProduct as any;
+  const c = campaign as any;
+
+  const effectivePrice = Number(cp?.campaign_price ?? cp?.campaignPrice ?? p.sale_price ?? p.salePrice ?? 0);
+  const originalPrice = Number(p.original_price ?? p.originalPrice ?? 0);
   const discountPercent = calculateDiscountPercent(originalPrice, effectivePrice);
-  const brandName = product.brand?.brand_name || '';
+  const brandName = p.brand?.brand_name || p.brand?.brandName || '';
   const images = product.images && product.images.length > 0 ? product.images : [];
-  const productUrl = `https://shop.cnec.kr/${username}/product/${product.id}${campaignProduct?.campaign_id ? `?campaign=${campaignProduct.campaign_id}` : ''}`;
+  const campaignId = cp?.campaign_id ?? cp?.campaignId;
+  const productUrl = `https://shop.cnec.kr/${username}/product/${product.id}${campaignId ? `?campaign=${campaignId}` : ''}`;
   const ogTitle = `${product.name}${discountPercent > 0 ? ` ${discountPercent}% OFF` : ''}`;
   const ogDesc = `${brandName} | ${formatKRW(effectivePrice)}`;
 
   // Gonggu progress
-  const totalStock = Number((campaign as any)?.total_stock ?? (campaign as any)?.totalStock ?? 0);
-  const soldCount = Number((campaign as any)?.sold_count ?? (campaign as any)?.soldCount ?? 0);
+  const totalStock = Number(c?.total_stock ?? c?.totalStock ?? 0);
+  const soldCount = Number(c?.sold_count ?? c?.soldCount ?? 0);
   const progressPercent = totalStock > 0 ? Math.min(Math.round((soldCount / totalStock) * 100), 100) : 0;
 
   // D-day calculation
-  const endAt = campaign?.end_at ?? (campaign as any)?.endAt;
+  const endAt = c?.end_at ?? c?.endAt;
   const dDayNum = (() => {
     if (!endAt) return -1;
     const diff = new Date(endAt).getTime() - Date.now();
@@ -145,7 +152,7 @@ export function ProductDetailPage({
   const handleAddToCart = () => {
     addItem({
       productId: product.id,
-      campaignId: campaignProduct?.campaign_id,
+      campaignId,
       quantity,
       creatorId: creator.id,
       unitPrice: effectivePrice,
@@ -173,7 +180,7 @@ export function ProductDetailPage({
             url={productUrl}
             title={ogTitle}
             description={ogDesc}
-            imageUrl={product.thumbnail_url || images[0]}
+            imageUrl={p.thumbnail_url || p.thumbnailUrl || images[0]}
             trigger={
               <button className="flex items-center gap-1 text-gray-500 hover:text-gray-900 transition-colors">
                 <Share2 className="w-5 h-5" />
@@ -371,11 +378,18 @@ export function ProductDetailPage({
           </button>
           {shippingOpen && (
             <div className="px-4 pb-4 text-sm text-gray-500 space-y-2">
-              {(product as any).shipping_info ? (
-                <p>{(product as any).shipping_info}</p>
+              {(p.shipping_info || p.shippingInfo) ? (
+                <p>{p.shipping_info || p.shippingInfo}</p>
               ) : (
                 <>
-                  <p>배송비: {(product as any).shipping_fee_type === 'FREE' ? '무료배송' : (product as any).shipping_fee_type === 'CONDITIONAL_FREE' ? `${formatKRW(Number((product as any).free_shipping_threshold) || 50000)} 이상 무료배송 (기본 ${formatKRW(Number((product as any).shipping_fee) || 3000)})` : `${formatKRW(Number((product as any).shipping_fee) || 3000)}`}</p>
+                  <p>배송비: {(() => {
+                    const feeType = p.shipping_fee_type || p.shippingFeeType || 'FREE';
+                    const fee = Number(p.shipping_fee ?? p.shippingFee ?? 3000);
+                    const threshold = Number(p.free_shipping_threshold ?? p.freeShippingThreshold ?? 50000);
+                    if (feeType === 'FREE') return '무료배송';
+                    if (feeType === 'CONDITIONAL_FREE') return `${formatKRW(threshold)} 이상 무료배송 (기본 ${formatKRW(fee)})`;
+                    return formatKRW(fee);
+                  })()}</p>
                   <p>배송기간: 결제 후 2~5일 이내 배송</p>
                   <p>제주/도서산간 지역은 추가 배송비가 발생할 수 있습니다.</p>
                 </>
@@ -402,8 +416,8 @@ export function ProductDetailPage({
           </button>
           {returnOpen && (
             <div className="px-4 pb-4 text-sm text-gray-500 space-y-2">
-              {(product as any).return_policy ? (
-                <p>{(product as any).return_policy}</p>
+              {(p.return_policy || p.returnPolicy) ? (
+                <p>{p.return_policy || p.returnPolicy}</p>
               ) : (
                 <>
                   <p>수령 후 7일 이내 교환/환불 가능</p>
