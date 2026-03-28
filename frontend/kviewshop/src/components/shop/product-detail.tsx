@@ -18,6 +18,7 @@ import {
   Flame,
 } from 'lucide-react';
 import { ShareSheet } from '@/components/shop/ShareSheet';
+import { BrandBadge } from '@/components/common/BrandBadge';
 import type {
   Product,
   CampaignProduct,
@@ -233,7 +234,10 @@ export function ProductDetailPage({
         {/* Product Info Section */}
         <div className="bg-white px-4 pt-4 pb-5">
           {brandName && (
-            <p className="text-sm text-gray-400">{brandName}</p>
+            <>
+              <BrandBadge brandName={brandName} size="md" />
+              <p className="text-xs text-gray-400 mt-1">크넥 인증 브랜드</p>
+            </>
           )}
           <h1 className="text-xl font-bold text-gray-900 leading-snug mt-1">
             {product.name}

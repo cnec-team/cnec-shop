@@ -32,6 +32,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { BrandBadge } from '@/components/common/BrandBadge';
 import { formatCurrency } from '@/lib/i18n/config';
 import { PRODUCT_CATEGORY_LABELS } from '@/types/database';
 import { formatEarnings } from '@/lib/utils/beauty-labels';
@@ -181,7 +182,7 @@ export default function CreatorProductsPage() {
       if (error?.message?.includes('Unique')) {
         toast.error('이미 추가된 상품입니다');
       } else {
-        toast.error('추가에 실패했습니다');
+        toast.error('추가하지 못했어요');
       }
     } finally {
       setAddingId(null);
@@ -249,7 +250,7 @@ export default function CreatorProductsPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <Input
-            placeholder="상품명, 브랜드명 검색"
+            placeholder="어떤 상품을 찾고 있나요?"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10 h-10 rounded-xl"
@@ -330,7 +331,7 @@ export default function CreatorProductsPage() {
                 <div className="p-3 flex-1 flex flex-col">
                   <div className="flex-1">
                     {product.brand && (
-                      <p className="text-[10px] text-gray-400 truncate">{product.brand.brandName}</p>
+                      <BrandBadge brandName={product.brand.brandName} />
                     )}
                     <p className="text-xs font-medium text-gray-900 line-clamp-2 mt-0.5 leading-tight">{product.name}</p>
                     <div className="flex items-center gap-1.5 mt-1.5">
@@ -346,7 +347,7 @@ export default function CreatorProductsPage() {
                         {formatCurrency(Number(product.originalPrice), 'KRW')}
                       </span>
                     )}
-                    <p className="text-xs text-emerald-600 font-semibold mt-1">
+                    <p className="text-xs text-earnings font-semibold mt-1">
                       팔면 ₩{earnings.toLocaleString()}
                     </p>
                   </div>

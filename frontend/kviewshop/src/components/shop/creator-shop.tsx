@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { Flame, Heart, Clock, ShoppingBag, Instagram, Share2 } from 'lucide-react';
 import { ShareSheet } from '@/components/shop/ShareSheet';
+import { BrandBadge } from '@/components/common/BrandBadge';
 import { VisitTracker } from '@/components/shop/VisitTracker';
 import {
   getSkinTypeLabel,
@@ -254,7 +255,7 @@ export function CreatorShopPage({
       {/* Footer */}
       <div className="max-w-lg mx-auto border-t border-gray-100 py-3 px-4">
         <p className="text-xs text-gray-400 text-center">
-          배송/CS는 브랜드가 직접 처리합니다 | 크넥이 안전하게 관리해요
+          추천만 하세요. 배송·CS는 크넥이 관리합니다
         </p>
       </div>
     </div>
@@ -453,7 +454,7 @@ function GongguCard({
             {product.name}
           </h3>
           {brandName && (
-            <p className="text-xs text-gray-400 mt-0.5">{brandName}</p>
+            <BrandBadge brandName={brandName} logoUrl={product.brand?.logoUrl} />
           )}
 
           {/* Price */}
@@ -538,7 +539,7 @@ function PickProductCard({
         {/* Info */}
         <div className="mt-2">
           {brandName && (
-            <p className="text-xs text-gray-400 truncate">{brandName}</p>
+            <BrandBadge brandName={brandName} logoUrl={product.brand?.logoUrl} />
           )}
           <h4 className="text-sm text-gray-900 line-clamp-2 leading-snug mt-0.5">
             {product.name}

@@ -60,7 +60,7 @@ export default function PaymentFailPage() {
 
           {/* Title & message */}
           <div>
-            <h1 className="text-xl font-bold text-gray-900">결제에 실패했습니다</h1>
+            <h1 className="text-xl font-bold text-gray-900">결제를 완료하지 못했어요</h1>
             <p className="text-sm text-gray-500 mt-2">{displayMessage}</p>
             {code && code !== 'UNKNOWN_ERROR' && (
               <p className="font-mono text-[10px] text-gray-300 mt-2">

@@ -12,7 +12,7 @@ const PAGE_TITLES: Record<string, string> = {
   campaigns: '캠페인',
   sales: '판매 현황',
   orders: '주문 관리',
-  settlements: '정산 관리',
+  settlements: '내 정산',
   points: '포인트',
   grade: '등급',
   referral: '추천',

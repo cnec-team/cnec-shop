@@ -78,7 +78,7 @@ export function MobileBottomNav() {
     {
       label: '정산 & 활동',
       items: [
-        { title: '정산 관리', href: `${base}/settlements`, icon: DollarSign },
+        { title: '내 정산', href: `${base}/settlements`, icon: DollarSign },
         { title: '포인트', href: `${base}/points`, icon: Coins },
         { title: '등급', href: `${base}/grade`, icon: Trophy },
         { title: '추천', href: `${base}/referral`, icon: UserPlus },

@@ -132,6 +132,12 @@ export default function PaymentSuccessPage() {
             </div>
           </div>
 
+          {/* Shipping & CS Info */}
+          <div className="bg-gray-50 rounded-xl p-4 text-sm text-center space-y-1">
+            <p className="text-gray-600 font-medium">브랜드에서 직접 배송됩니다</p>
+            <p className="text-xs text-gray-400">문의사항은 크넥 고객센터로 연락해주세요</p>
+          </div>
+
           {/* Actions */}
           <div className="flex flex-col gap-3">
             <Link href={'/' + locale + '/buyer/orders'}>

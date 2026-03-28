@@ -36,7 +36,7 @@ interface ConversionWithDetails {
   orderItem?: { product?: { name: string } } | null;
 }
 
-type PeriodTab = 'today' | 'week' | 'month';
+type PeriodTab = 'today' | 'yesterday' | 'week' | 'month';
 
 export default function CreatorSalesPage() {
   const [conversions, setConversions] = useState<ConversionWithDetails[]>([]);
@@ -81,6 +81,11 @@ export default function CreatorSalesPage() {
       switch (periodTab) {
         case 'today': {
           return created.toDateString() === now.toDateString();
+        }
+        case 'yesterday': {
+          const yesterday = new Date(now);
+          yesterday.setDate(yesterday.getDate() - 1);
+          return created.toDateString() === yesterday.toDateString();
         }
         case 'week': {
           const weekAgo = new Date(now);
@@ -127,6 +132,7 @@ export default function CreatorSalesPage() {
       <div className="flex rounded-xl bg-gray-100 p-1 gap-1">
         {([
           { key: 'today' as PeriodTab, label: '오늘' },
+          { key: 'yesterday' as PeriodTab, label: '어제' },
           { key: 'week' as PeriodTab, label: '이번주' },
           { key: 'month' as PeriodTab, label: '이번달' },
         ]).map((tab) => (
@@ -206,7 +212,7 @@ export default function CreatorSalesPage() {
           {filteredConversions.length === 0 ? (
             <div className="text-center py-12">
               <Receipt className="mx-auto h-10 w-10 text-muted-foreground/50" />
-              <p className="mt-3 text-sm text-muted-foreground">해당 기간 판매 내역이 없습니다</p>
+              <p className="mt-3 text-sm text-muted-foreground">아직 첫 판매를 기다리고 있어요</p>
             </div>
           ) : (
             <>
@@ -240,7 +246,7 @@ export default function CreatorSalesPage() {
                       </div>
                     </div>
                     <div className="text-right ml-3">
-                      <p className="text-sm font-bold text-primary">
+                      <p className="text-sm font-bold text-earnings">
                         {formatCurrency(conversion.commissionAmount, 'KRW')}
                       </p>
                       <p className="text-[10px] text-muted-foreground">
@@ -300,7 +306,7 @@ export default function CreatorSalesPage() {
                         <TableCell className="text-right text-sm">
                           {(conversion.commissionRate * 100).toFixed(1)}%
                         </TableCell>
-                        <TableCell className="text-right text-sm font-medium text-primary">
+                        <TableCell className="text-right text-sm font-medium text-earnings">
                           {formatCurrency(conversion.commissionAmount, 'KRW')}
                         </TableCell>
                         <TableCell>

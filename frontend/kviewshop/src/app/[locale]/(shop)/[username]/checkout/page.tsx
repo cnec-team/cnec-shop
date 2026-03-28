@@ -355,6 +355,15 @@ export default function CheckoutPage() {
         </div>
       </header>
 
+      {/* Checkout Progress */}
+      <div className="flex items-center justify-center gap-2 py-4 text-xs text-gray-400">
+        <span className="text-gray-300">장바구니</span>
+        <span>→</span>
+        <span className="text-gray-900 font-medium">주문/결제</span>
+        <span>→</span>
+        <span className="text-gray-300">완료</span>
+      </div>
+
       <div className="max-w-lg mx-auto px-4 py-4 space-y-3">
         {/* Cart Summary */}
         <div className="bg-white rounded-2xl p-5">
