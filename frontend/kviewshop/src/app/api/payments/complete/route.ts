@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { auth } from '@/lib/auth';
 
 // Inline types
 type ConversionType = 'DIRECT' | 'INDIRECT';
@@ -9,6 +10,8 @@ interface CompleteRequestBody {
   orderId: string;
   paymentId: string;
   pgProvider: string;
+  guestEmail?: string;
+  guestPhone?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -27,7 +30,7 @@ export async function POST(request: NextRequest) {
     // Fetch the order to verify it exists and is in PENDING state
     const order = await prisma.order.findUnique({
       where: { id: orderId },
-      select: { id: true, orderNumber: true, status: true, totalAmount: true, creatorId: true },
+      select: { id: true, orderNumber: true, status: true, totalAmount: true, creatorId: true, buyerId: true, buyerEmail: true, buyerPhone: true },
     });
 
     if (!order) {
@@ -35,6 +38,24 @@ export async function POST(request: NextRequest) {
         { error: 'Order not found' },
         { status: 404 }
       );
+    }
+
+    // Verify order ownership
+    const session = await auth();
+    if (session?.user) {
+      // Logged-in user: must match buyerId
+      if (order.buyerId && order.buyerId !== session.user.id) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+    } else {
+      // Guest: must provide matching buyer info
+      const { guestEmail, guestPhone } = body;
+      if (!guestEmail || !guestPhone) {
+        return NextResponse.json({ error: 'Guest verification required' }, { status: 401 });
+      }
+      if (order.buyerEmail !== guestEmail || order.buyerPhone !== guestPhone) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
     }
 
     if (order.status !== 'PENDING') {

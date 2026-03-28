@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { decrementStock } from '@/lib/stock';
+import { auth } from '@/lib/auth';
 
 // Inline types to avoid dependency on database.ts
 type OrderStatus = 'PENDING' | 'PAID' | 'PREPARING' | 'SHIPPING' | 'DELIVERED' | 'CONFIRMED' | 'CANCELLED' | 'REFUNDED';
@@ -139,12 +140,17 @@ export async function POST(request: NextRequest) {
     const orderNumber = generateOrderNumber();
     const status: OrderStatus = 'PENDING';
 
+    // Set buyerId if user is logged in (guest checkout leaves it null)
+    const session = await auth();
+    const buyerId = session?.user?.id || null;
+
     // Create order record
     const order = await prisma.order.create({
       data: {
         orderNumber,
         creatorId,
         brandId,
+        buyerId,
         buyerName: buyer.name,
         buyerPhone: buyer.phone,
         buyerEmail: buyer.email,
