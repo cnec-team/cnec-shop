@@ -4,14 +4,13 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCartStore, useAuthStore } from '@/lib/store/auth';
-import { getCreatorByShopId, getCheckoutProducts, createOrder } from '@/lib/actions/shop';
+import { getCreatorByShopId, getCheckoutProducts } from '@/lib/actions/shop';
 import {
   Loader2,
   ArrowLeft,
   ShoppingBag,
   CheckCircle,
   Copy,
-  CreditCard,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -26,13 +25,6 @@ function formatKRW(amount: number): string {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount);
-}
-
-function generateOrderNumber(): string {
-  const now = new Date();
-  const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
-  const random = Math.random().toString(36).substring(2, 8).toUpperCase();
-  return `CNEC-${dateStr}-${random}`;
 }
 
 // =============================================
@@ -61,6 +53,13 @@ const DELIVERY_MEMOS = [
   '직접 입력',
 ];
 
+const PAYMENT_METHODS = [
+  { value: 'card', label: '신용카드', payMethod: 'CARD' as const, easyPayProvider: undefined },
+  { value: 'kakao', label: '카카오페이', payMethod: 'EASY_PAY' as const, easyPayProvider: 'KAKAOPAY' as const },
+  { value: 'naver', label: '네이버페이', payMethod: 'EASY_PAY' as const, easyPayProvider: 'NAVERPAY' as const },
+  { value: 'toss', label: '토스페이', payMethod: 'EASY_PAY' as const, easyPayProvider: 'TOSSPAY' as const },
+];
+
 // =============================================
 // Main Component
 // =============================================
@@ -79,7 +78,7 @@ export default function CheckoutPage() {
   const [creator, setCreator] = useState<any>(null);
   const [cartItems, setCartItems] = useState<CartItemWithProduct[]>([]);
   const [orderResult, setOrderResult] = useState<OrderResult | null>(null);
-  const [selectedPayment, setSelectedPayment] = useState('kakao');
+  const [selectedPayment, setSelectedPayment] = useState('card');
   const [deliveryMemo, setDeliveryMemo] = useState('선택하세요');
 
   const [form, setForm] = useState({
@@ -187,55 +186,132 @@ export default function CheckoutPage() {
   };
 
   const handleCheckout = async () => {
-    if (!validateForm() || !creator) return;
+    if (!validateForm() || !creator || isProcessing) return;
+
+    const storeId = process.env.NEXT_PUBLIC_PORTONE_STORE_ID;
+    const channelKey = process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY;
+    if (!storeId || !channelKey) {
+      toast.error('결제 시스템 설정이 완료되지 않았습니다. 관리자에게 문의해주세요.');
+      return;
+    }
 
     setIsProcessing(true);
 
     try {
-      const orderNumber = generateOrderNumber();
-
-      const firstProduct = cartItems[0]?.product;
-      const brandId = firstProduct?.brandId || firstProduct?.brand?.id || '';
-
-      const visitorCookie = document.cookie
-        .split('; ')
-        .find((c) => c.startsWith('cnec_visitor='));
-      const conversionType = visitorCookie ? 'DIRECT' : 'INDIRECT';
-
-      const result = await createOrder({
-        orderNumber,
-        creatorId: creator.id,
-        brandId,
-        buyerId: buyer?.id || null,
-        buyerName: form.name,
-        buyerPhone: form.phone,
-        buyerEmail: form.email,
-        shippingAddress: form.address,
-        shippingDetail: form.addressDetail,
-        shippingZipcode: form.zipcode,
-        totalAmount,
-        shippingFee,
-        items: cartItems.map((item) => ({
-          productId: item.productId,
-          campaignId: item.campaignId || null,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          totalPrice: item.unitPrice * item.quantity,
-          productName: item.product?.name || item.product?.nameKo || null,
-          productImage: item.product?.imageUrl || (item.product?.images && item.product.images[0]) || null,
-        })),
-        conversionType: conversionType as 'DIRECT' | 'INDIRECT',
+      // 1. 서버에서 주문 생성 + 재고 차감
+      const prepareRes = await fetch('/api/payments/prepare', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: cartItems.map((item) => ({
+            productId: item.productId,
+            campaignId: item.campaignId || undefined,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+          })),
+          creatorId: creator.id,
+          buyer: {
+            name: form.name,
+            phone: form.phone,
+            email: form.email,
+          },
+          shipping: {
+            address: form.address,
+            zipcode: form.zipcode,
+            detail: form.addressDetail || undefined,
+            memo: deliveryMemo !== '선택하세요' ? deliveryMemo : undefined,
+          },
+        }),
       });
 
-      clearCart();
+      if (!prepareRes.ok) {
+        const err = await prepareRes.json();
+        if (prepareRes.status === 409) {
+          throw new Error('재고가 부족한 상품이 있습니다. 수량을 확인해주세요.');
+        }
+        throw new Error(err.error || '주문 생성에 실패했습니다.');
+      }
 
+      const { orderId, orderNumber, totalAmount: serverTotal } = await prepareRes.json();
+
+      // 2. 포트원 SDK 로드 및 결제 요청
+      let PortOne;
+      try {
+        PortOne = await import('@portone/browser-sdk/v2');
+      } catch {
+        throw new Error('결제 시스템을 불러오는 중 문제가 생겼어요. 새로고침 후 다시 시도해주세요.');
+      }
+
+      const paymentId = `${orderNumber}-${Date.now()}`;
+
+      const firstItem = cartItems[0];
+      const orderName =
+        cartItems.length === 1
+          ? (firstItem.product?.name || firstItem.product?.nameKo || '상품')
+          : `${firstItem.product?.name || firstItem.product?.nameKo || '상품'} 외 ${cartItems.length - 1}건`;
+
+      const selectedMethod = PAYMENT_METHODS.find((m) => m.value === selectedPayment) || PAYMENT_METHODS[0];
+
+      const paymentRequest: Parameters<typeof PortOne.requestPayment>[0] = {
+        storeId,
+        channelKey,
+        paymentId,
+        orderName,
+        totalAmount: Number(serverTotal),
+        currency: 'KRW',
+        payMethod: selectedMethod.payMethod,
+        redirectUrl: `${window.location.origin}/${locale}/payment/success?orderId=${orderId}`,
+        customer: {
+          fullName: form.name,
+          phoneNumber: form.phone,
+          email: form.email,
+        },
+      };
+
+      if (selectedMethod.payMethod === 'EASY_PAY' && selectedMethod.easyPayProvider) {
+        paymentRequest.easyPay = { easyPayProvider: selectedMethod.easyPayProvider };
+      }
+
+      const paymentResponse = await PortOne.requestPayment(paymentRequest);
+
+      // 3. SDK 결과 처리
+      if (!paymentResponse || paymentResponse.code != null) {
+        const code = paymentResponse?.code;
+        if (code === 'USER_CANCEL') {
+          toast.error('결제가 취소되었어요');
+        } else {
+          toast.error(paymentResponse?.message || '결제에 실패했어요. 다른 결제 수단을 시도해주세요.');
+        }
+        return;
+      }
+
+      // 4. 서버에서 결제 검증
+      const completeRes = await fetch('/api/payments/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId,
+          paymentId: paymentResponse.paymentId,
+          pgProvider: 'portone',
+        }),
+      });
+
+      if (!completeRes.ok) {
+        const err = await completeRes.json();
+        throw new Error(err.error || '결제 확인 중 문제가 생겼어요. 고객센터에 문의해주세요.');
+      }
+
+      const completeData = await completeRes.json();
+
+      // 5. 결제 성공 — 장바구니 비우고 결과 표시
+      clearCart();
       setOrderResult({
-        orderNumber: result.orderNumber ?? '',
-        totalAmount,
+        orderNumber: completeData.orderNumber || orderNumber,
+        totalAmount: Number(serverTotal),
       });
     } catch (error: any) {
       console.error('Checkout failed:', error);
-      toast.error(error.message || '주문 처리 중 오류가 발생했습니다.');
+      toast.error(error.message || '네트워크 오류가 발생했어요. 다시 시도해주세요.');
     } finally {
       setIsProcessing(false);
     }
@@ -286,7 +362,7 @@ export default function CheckoutPage() {
           <div className="text-center">
             <CheckCircle className="h-16 w-16 mx-auto mb-4 text-emerald-500" />
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              주문이 완료되었습니다
+              결제가 완료되었습니다
             </h1>
             <p className="text-sm text-gray-400 mb-8">
               주문 내역은 이메일로 전송됩니다.
@@ -315,6 +391,10 @@ export default function CheckoutPage() {
                 </span>
               </div>
             </div>
+
+            <p className="text-xs text-gray-400 mt-4">
+              배송은 브랜드에서 직접 처리합니다. 문의사항은 크넥에 연락해주세요.
+            </p>
 
             <div className="mt-8 space-y-3">
               <Link
@@ -476,12 +556,7 @@ export default function CheckoutPage() {
         <div className="bg-white rounded-2xl p-5">
           <h2 className="text-base font-semibold text-gray-900 mb-4">결제 수단</h2>
           <div className="space-y-2">
-            {[
-              { value: 'kakao', label: '카카오페이' },
-              { value: 'naver', label: '네이버페이' },
-              { value: 'toss', label: '토스페이' },
-              { value: 'card', label: '신용카드' },
-            ].map((method) => (
+            {PAYMENT_METHODS.map((method) => (
               <label
                 key={method.value}
                 className={`flex items-center gap-3 p-3.5 rounded-xl border cursor-pointer transition-colors ${
@@ -490,6 +565,14 @@ export default function CheckoutPage() {
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value={method.value}
+                  checked={selectedPayment === method.value}
+                  onChange={() => setSelectedPayment(method.value)}
+                  className="sr-only"
+                />
                 <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
                   selectedPayment === method.value
                     ? 'border-gray-900'
@@ -547,7 +630,7 @@ export default function CheckoutPage() {
             {isProcessing ? (
               <>
                 <Loader2 className="h-5 w-5 animate-spin" />
-                주문 처리중...
+                결제 처리중...
               </>
             ) : (
               <>총 {formatKRW(totalAmount)} 결제하기</>
