@@ -260,7 +260,62 @@
 
 ---
 
-## 섹션 E: 종합 진단 요약
+## 섹션 E: DB 스키마 vs 코드 정합성
+
+### 스키마에 정의되었으나 코드에서 미사용 모델 (19개)
+
+| 모델 | 용도 | 상태 |
+|------|------|------|
+| CreatorProduct | 레거시 pick 테이블 | 미사용 (CreatorShopItem으로 대체됨) |
+| RoutineStep | 루틴 단계 정규화 | 미사용 (BeautyRoutine.steps JSON 사용) |
+| ProductQuestion | 상품 Q&A | 미구현 |
+| ReviewHelpfulVote | 리뷰 좋아요 | 미구현 |
+| PointsHistory | 구매자 포인트 이력 | 미구현 |
+| CommunityPost | 커뮤니티 게시글 | 미구현 |
+| CommunityComment | 커뮤니티 댓글 | 미구현 |
+| CommunityLike | 커뮤니티 좋아요 | 미구현 |
+| ShortUrl | 단축 링크 | 미구현 |
+| ShortUrlAnalytic | 단축 링크 분석 | 미구현 |
+| CreatorLevel | 레벨 설정 | 미구현 |
+| CreatorLevelHistory | 레벨 변경 이력 | 미구현 |
+| LiveProduct | 라이브 상품 | 미구현 |
+| ConversionCriteria | 전환 기준 | 미구현 |
+| BuyerWishlist | 위시리스트 | 미구현 (스키마만 존재) |
+| BuyerCart | 장바구니 DB | 미구현 (Zustand 클라이언트 스토어 사용 중) |
+| LegalContent | 법적 문서 | 미구현 |
+| SampleRequest | 샘플 요청 | 부분 구현 (관계만 정의) |
+| PromotionKit | 캠페인 프로모션 키트 | 부분 구현 (관계만 정의) |
+
+### Enum vs String 필드 불일치
+
+스키마에 Enum이 정의되어 있으나 모델 필드는 `String` 타입으로 선언됨 (타입 안전성 부재):
+
+| 모델 | 필드 | 정의된 Enum | 실제 타입 | 코드에서 올바른 값 사용? |
+|------|------|------------|-----------|------------------------|
+| CampaignParticipation | status | CampaignParticipationStatus | String | ✅ 맞음 |
+| Conversion | status | ConversionStatus | String | ✅ 맞음 |
+| Settlement | status | SettlementStatus | String | ✅ 맞음 |
+| Order | status | OrderStatus | String | ✅ 맞음 |
+| Product | status | ProductStatus | String | ✅ 맞음 |
+
+> **참고:** Enum 값 자체는 코드에서 올바르게 사용되고 있으나, Prisma 레벨에서 타입 강제가 안 됨
+
+### 마이그레이션 상태
+
+- `prisma/migrations/` 디렉토리 없음
+- `prisma/railway_schema.sql` 파일로 직접 배포 추정
+- Prisma push 모드 사용 중
+
+### 정합성 요약
+
+- ✅ 코드에서 사용하는 30개 모델의 필드/관계는 전부 스키마와 일치
+- ✅ Raw SQL 없음 (전부 Prisma ORM)
+- ✅ camelCase ↔ snake_case 매핑 정상
+- ⚠️ 19개 미사용 모델 → 향후 기능 구현 또는 스키마 정리 필요
+
+---
+
+## 섹션 F: 종합 진단 요약
 
 ### 전체 통계
 
