@@ -5,18 +5,10 @@ import { useRouter } from 'next/navigation';
 import { getBrandSession, createProduct } from '@/lib/actions/brand';
 import { PRODUCT_CATEGORY_LABELS, SHIPPING_FEE_TYPE_LABELS } from '@/types/database';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
 import {
   Select,
@@ -29,15 +21,15 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import ImageUpload from '@/components/common/ImageUpload';
 import {
   AlertCircle,
-  CheckCircle,
+  Check,
   Package,
   Image as ImageIcon,
   FileText,
   Truck,
   Percent,
-  Save,
-  ChevronDown,
-  ChevronUp,
+  Info,
+  Lightbulb,
+  X,
 } from 'lucide-react';
 
 type ProductCategory = string;
@@ -52,47 +44,62 @@ const COURIERS = [
   { code: 'etc', name: '기타' },
 ];
 
-interface SectionProps {
+/* ── 공통 인라인 스타일 클래스 ───────────────── */
+const inputCls =
+  'h-12 rounded-[14px] border-[1.5px] border-gray-100 focus:border-blue-600 focus:ring-[3px] focus:ring-blue-50 text-[14px] placeholder:text-gray-300';
+const selectTriggerCls =
+  'h-12 rounded-[14px] border-[1.5px] border-gray-100 focus:border-blue-600 focus:ring-[3px] focus:ring-blue-50 text-[14px]';
+const textareaCls =
+  'rounded-[14px] border-[1.5px] border-gray-100 focus:border-blue-600 focus:ring-[3px] focus:ring-blue-50 text-[14px] placeholder:text-gray-300';
+const labelCls = 'text-[13px] font-semibold text-gray-900';
+
+/* ── Section Card ─────────────────────────── */
+function SectionCard({
+  title,
+  children,
+}: {
   title: string;
-  description?: string;
-  icon: React.ReactNode;
-  isComplete: boolean;
-  defaultOpen?: boolean;
   children: React.ReactNode;
+}) {
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-7 mb-4">
+      <div className="flex items-center gap-2 mb-6">
+        <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0" />
+        <h2 className="text-[15px] font-bold text-gray-900">{title}</h2>
+      </div>
+      <div className="space-y-5">{children}</div>
+    </div>
+  );
 }
 
-function Section({ title, description, icon, isComplete, defaultOpen = false, children }: SectionProps) {
-  const [open, setOpen] = useState(defaultOpen);
-
+/* ── Price Input with "원" suffix ─────────── */
+function PriceInput({
+  id,
+  value,
+  onChange,
+  placeholder = '0',
+}: {
+  id: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
   return (
-    <Card className="bg-white rounded-xl border shadow-sm overflow-hidden">
-      <button
-        type="button"
-        className="flex w-full items-center justify-between p-5 text-left hover:bg-gray-50/50 transition-colors"
-        onClick={() => setOpen(!open)}
-      >
-        <div className="flex items-center gap-3">
-          <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${isComplete ? 'bg-green-500/10 text-green-600' : 'bg-gray-100 text-muted-foreground'}`}>
-            {isComplete ? <CheckCircle className="h-4 w-4" /> : icon}
-          </div>
-          <div>
-            <p className="text-sm font-semibold">{title}</p>
-            {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {!isComplete && (
-            <AlertCircle className="h-4 w-4 text-yellow-500" />
-          )}
-          {open ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-        </div>
-      </button>
-      {open && (
-        <CardContent className="border-t px-5 py-5 space-y-4">
-          {children}
-        </CardContent>
-      )}
-    </Card>
+    <div className="relative">
+      <Input
+        id={id}
+        type="number"
+        min="0"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className={`${inputCls} text-right pr-10`}
+        style={{ fontVariantNumeric: 'tabular-nums' }}
+      />
+      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[13px] text-gray-400 pointer-events-none">
+        원
+      </span>
+    </div>
   );
 }
 
@@ -141,12 +148,10 @@ export default function NewProductPage() {
     load();
   }, []);
 
-  const basicComplete = !!name.trim() && !!originalPrice && !!salePrice && !!stock;
-  const imageComplete = !!mainImage;
-  const descriptionComplete = !!description.trim();
-
-  // Estimated revenue calculation
-  const estimatedRevenue = salePrice ? Number(salePrice) * (1 - commissionRate / 100) : 0;
+  const discountRate =
+    originalPrice && salePrice && Number(originalPrice) > Number(salePrice)
+      ? Math.round((1 - Number(salePrice) / Number(originalPrice)) * 100)
+      : null;
 
   async function handleSave() {
     if (!brand?.id) return;
@@ -201,287 +206,314 @@ export default function NewProductPage() {
   }
 
   return (
-    <div className="space-y-5 max-w-3xl mx-auto pb-24">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">새 상품 등록</h1>
-          <p className="text-sm text-gray-400 mt-0.5">상품 정보를 단계별로 입력하세요</p>
-        </div>
-        <Button variant="outline" onClick={() => router.back()} size="sm">
-          취소
-        </Button>
-      </div>
-
-      {error && (
-        <div className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          {error}
-        </div>
-      )}
-
-      {/* 1. Basic Info */}
-      <Section
-        title="기본 정보"
-        description="상품명, 카테고리, 가격"
-        icon={<Package className="h-4 w-4" />}
-        isComplete={basicComplete}
-        defaultOpen
-      >
-        <div className="space-y-2">
-          <Label htmlFor="name">상품명 *</Label>
-          <Input
-            id="name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="상품명을 입력하세요"
-            className="h-10"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="category">카테고리 *</Label>
-          <Select value={category} onValueChange={(v) => setCategory(v as ProductCategory)}>
-            <SelectTrigger className="w-full h-10">
-              <SelectValue placeholder="카테고리 선택" />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(PRODUCT_CATEGORY_LABELS).map(([value, label]) => (
-                <SelectItem key={value} value={value}>{label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="space-y-2">
-            <Label htmlFor="originalPrice">정가 (원) *</Label>
-            <Input id="originalPrice" type="number" min="0" value={originalPrice} onChange={(e) => setOriginalPrice(e.target.value)} placeholder="0" className="h-10" />
+    <div className="min-h-screen bg-[#FAFAFA] pb-28">
+      <div className="max-w-[680px] mx-auto px-4 pt-8">
+        {/* ── Page Header ────────────────────────── */}
+        <div className="flex items-center gap-3 mb-8">
+          <div className="flex items-center justify-center w-9 h-9 rounded-[10px] bg-blue-600">
+            <Package className="w-[18px] h-[18px] text-white" />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="salePrice">판매가 (원) *</Label>
-            <Input id="salePrice" type="number" min="0" value={salePrice} onChange={(e) => setSalePrice(e.target.value)} placeholder="0" className="h-10" />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="stock">재고 *</Label>
-            <Input id="stock" type="number" min="0" value={stock} onChange={(e) => setStock(e.target.value)} placeholder="0" className="h-10" />
+          <div>
+            <h1 className="text-[22px] font-extrabold text-gray-900 leading-tight">
+              새 상품 등록
+            </h1>
+            <p className="text-[13px] text-gray-400 mt-0.5">
+              상품 정보를 단계별로 입력하세요
+            </p>
           </div>
         </div>
 
-        {originalPrice && salePrice && Number(originalPrice) > Number(salePrice) && (
-          <div className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
-            할인율: {Math.round((1 - Number(salePrice) / Number(originalPrice)) * 100)}%
+        {/* ── Error Banner ────────────────────────── */}
+        {error && (
+          <div className="flex items-center gap-2.5 rounded-2xl border border-red-200 bg-red-50 px-5 py-3.5 text-[13px] text-red-600 mb-4">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span className="flex-1">{error}</span>
+            <button onClick={() => setError(null)}>
+              <X className="h-3.5 w-3.5 text-red-400" />
+            </button>
           </div>
         )}
 
-        {/* Exclusive composition tip */}
-        <div className="rounded-xl bg-amber-50 border border-amber-100 px-4 py-3">
-          <p className="text-xs font-semibold text-amber-800">공구 성공 팁</p>
-          <p className="text-xs text-amber-700 mt-1">
-            쿠팡/올리브영에 없는 구성(세트+증정)으로 등록하면 가격 비교 불가능 → 크리에이터가 자신 있게 홍보
-          </p>
-        </div>
-      </Section>
-
-      {/* 2. Images */}
-      <Section
-        title="이미지"
-        description="대표, 추가, 썸네일"
-        icon={<ImageIcon className="h-4 w-4" />}
-        isComplete={imageComplete}
-      >
-        <div className="space-y-2">
-          <Label>대표 이미지</Label>
-          <div className="max-w-xs">
-            <ImageUpload value={mainImage} onChange={setMainImage} placeholder="대표 이미지를 업로드하세요" folder="products" />
+        {/* ── 1. 기본 정보 ────────────────────────── */}
+        <SectionCard title="기본 정보">
+          <div className="space-y-2">
+            <Label htmlFor="name" className={labelCls}>
+              상품명 <span className="text-blue-600">*</span>
+            </Label>
+            <Input
+              id="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="상품명을 입력하세요"
+              className={inputCls}
+            />
           </div>
-        </div>
 
-        <div className="space-y-2">
-          <Label>추가 이미지</Label>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {additionalImages.map((url, idx) => (
-              <ImageUpload
-                key={idx}
-                value={url}
-                onChange={(newUrl) => {
-                  const updated = [...additionalImages];
-                  if (newUrl) { updated[idx] = newUrl; } else { updated.splice(idx, 1); }
-                  setAdditionalImages(updated);
-                }}
-                placeholder="추가 이미지"
-                folder="products"
-              />
-            ))}
-            {additionalImages.length < 8 && (
-              <ImageUpload value="" onChange={(url) => { if (url) setAdditionalImages([...additionalImages, url]); }} placeholder="추가 이미지" folder="products" />
-            )}
+          <div className="space-y-2">
+            <Label htmlFor="category" className={labelCls}>
+              카테고리 <span className="text-blue-600">*</span>
+            </Label>
+            <Select value={category} onValueChange={(v) => setCategory(v as ProductCategory)}>
+              <SelectTrigger className={`w-full ${selectTriggerCls}`}>
+                <SelectValue placeholder="카테고리 선택" />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(PRODUCT_CATEGORY_LABELS).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        </div>
 
-        <Separator />
-
-        <div className="space-y-2">
-          <Label>대표 썸네일 이미지</Label>
-          <div className="max-w-xs">
-            <ImageUpload value={thumbnailUrl} onChange={setThumbnailUrl} placeholder="썸네일 이미지" folder="products" />
-          </div>
-          <p className="text-xs text-muted-foreground">비워두면 대표 이미지가 사용됩니다.</p>
-        </div>
-      </Section>
-
-      {/* 3. Description */}
-      <Section
-        title="상세 설명"
-        description="설명, 용량, 성분, 사용법"
-        icon={<FileText className="h-4 w-4" />}
-        isComplete={descriptionComplete}
-      >
-        <div className="space-y-2">
-          <Label htmlFor="description">상품 설명</Label>
-          <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="상품에 대한 상세 설명을 입력하세요" rows={5} />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="volume">용량/수량</Label>
-          <Input id="volume" value={volume} onChange={(e) => setVolume(e.target.value)} placeholder="예: 50ml, 100g, 30매" className="h-10" />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="ingredients">성분</Label>
-          <Textarea id="ingredients" value={ingredients} onChange={(e) => setIngredients(e.target.value)} placeholder="성분 목록을 입력하세요" rows={3} />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="howToUse">사용법</Label>
-          <Textarea id="howToUse" value={howToUse} onChange={(e) => setHowToUse(e.target.value)} placeholder="사용 방법을 입력하세요" rows={3} />
-        </div>
-      </Section>
-
-      {/* 4. Shipping */}
-      <Section
-        title="배송·교환 정보"
-        description="배송비, 택배사, 반품 정책"
-        icon={<Truck className="h-4 w-4" />}
-        isComplete={true}
-      >
-        <div className="space-y-3">
-          <Label>배송비 유형 *</Label>
-          <RadioGroup value={shippingFeeType} onValueChange={(v) => setShippingFeeType(v as ShippingFeeType)} className="flex flex-wrap gap-4">
-            {Object.entries(SHIPPING_FEE_TYPE_LABELS).map(([value, label]) => (
-              <div key={value} className="flex items-center space-x-2">
-                <RadioGroupItem value={value} id={`shipping-type-${value}`} />
-                <Label htmlFor={`shipping-type-${value}`} className="font-normal cursor-pointer">{label}</Label>
-              </div>
-            ))}
-          </RadioGroup>
-        </div>
-
-        {(shippingFeeType === 'PAID' || shippingFeeType === 'CONDITIONAL_FREE') && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="space-y-2">
-              <Label htmlFor="shippingFee">배송비 (원)</Label>
-              <Input id="shippingFee" type="number" min="0" value={shippingFee} onChange={(e) => setShippingFee(e.target.value)} placeholder="3000" className="h-10" />
+              <Label htmlFor="originalPrice" className={labelCls}>
+                정가 <span className="text-blue-600">*</span>
+              </Label>
+              <PriceInput id="originalPrice" value={originalPrice} onChange={setOriginalPrice} />
             </div>
-            {shippingFeeType === 'CONDITIONAL_FREE' && (
-              <div className="space-y-2">
-                <Label htmlFor="freeShippingThreshold">무료배송 기준 금액 (원)</Label>
-                <Input id="freeShippingThreshold" type="number" min="0" value={freeShippingThreshold} onChange={(e) => setFreeShippingThreshold(e.target.value)} placeholder="50000" className="h-10" />
-              </div>
-            )}
-          </div>
-        )}
-
-        <Separator />
-
-        <div className="space-y-2">
-          <Label htmlFor="courier">택배사</Label>
-          <Select value={courier} onValueChange={setCourier}>
-            <SelectTrigger className="w-full sm:w-[250px] h-10">
-              <SelectValue placeholder="택배사 선택" />
-            </SelectTrigger>
-            <SelectContent>
-              {COURIERS.map((c) => (
-                <SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="shippingInfo">배송 안내</Label>
-          <Textarea id="shippingInfo" value={shippingInfo} onChange={(e) => setShippingInfo(e.target.value)} placeholder="예상 배송일, 주의사항 등" rows={3} />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="returnPolicy">교환/환불 정책</Label>
-          <Textarea id="returnPolicy" value={returnPolicy} onChange={(e) => setReturnPolicy(e.target.value)} placeholder="교환 및 환불 관련 정책" rows={3} />
-        </div>
-      </Section>
-
-      {/* 5. Creator Earnings */}
-      <Section
-        title="크리에이터 수익 설정"
-        description="판매 상태 및 크리에이터 수익률"
-        icon={<Percent className="h-4 w-4" />}
-        isComplete={true}
-        defaultOpen
-      >
-        <div className="flex items-center justify-between rounded-lg border p-4">
-          <div>
-            <Label>판매 상태</Label>
-            <p className="text-xs text-muted-foreground mt-0.5">활성화하면 캠페인에 상품을 사용할 수 있습니다</p>
-          </div>
-          <Switch checked={isActive} onCheckedChange={setIsActive} />
-        </div>
-
-        <div className="flex items-center justify-between rounded-lg border p-4">
-          <div>
-            <Label>크리에이터픽 허용</Label>
-            <p className="text-xs text-muted-foreground mt-0.5">크리에이터가 자유롭게 이 상품을 픽할 수 있습니다</p>
-          </div>
-          <Switch checked={allowCreatorPick} onCheckedChange={setAllowCreatorPick} />
-        </div>
-
-        <div className="space-y-4 rounded-lg border p-4">
-          <div className="flex items-center justify-between">
-            <Label>크리에이터 수익률</Label>
-            <span className="text-lg font-bold text-primary">{commissionRate}%</span>
-          </div>
-          <Slider
-            value={[commissionRate]}
-            onValueChange={([v]) => setCommissionRate(v)}
-            min={0}
-            max={50}
-            step={1}
-            className="w-full"
-          />
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>0%</span>
-            <span>50%</span>
+            <div className="space-y-2">
+              <Label htmlFor="salePrice" className={labelCls}>
+                판매가 <span className="text-blue-600">*</span>
+              </Label>
+              <PriceInput id="salePrice" value={salePrice} onChange={setSalePrice} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="stock" className={labelCls}>
+                재고 <span className="text-blue-600">*</span>
+              </Label>
+              <Input
+                id="stock"
+                type="number"
+                min="0"
+                value={stock}
+                onChange={(e) => setStock(e.target.value)}
+                placeholder="0"
+                className={`${inputCls} text-right`}
+                style={{ fontVariantNumeric: 'tabular-nums' }}
+              />
+            </div>
           </div>
 
-          {salePrice && (
-            <div className="rounded-lg bg-emerald-50 px-4 py-3 mt-2">
-              <p className="text-xs text-emerald-600 mb-1">크리에이터가 1개 팔면</p>
-              <div className="flex items-baseline gap-2">
-                <span className="text-lg font-bold text-emerald-700">
-                  ₩{Math.round(Number(salePrice) * commissionRate / 100).toLocaleString('ko-KR')} 수익
-                </span>
-                <span className="text-xs text-emerald-500">
-                  (판매가 {Number(salePrice).toLocaleString('ko-KR')}원의 {commissionRate}%)
-                </span>
-              </div>
+          {/* Discount banner */}
+          {discountRate !== null && (
+            <div className="flex items-center gap-2.5 bg-blue-50 rounded-xl p-3">
+              <Info className="w-4 h-4 text-blue-600 shrink-0" />
+              <span className="text-[13px] font-medium text-blue-700">
+                할인율 {discountRate}% 자동 적용
+              </span>
             </div>
           )}
-        </div>
-      </Section>
 
-      {/* Fixed bottom bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-white/95 backdrop-blur-sm px-6 py-3 lg:left-60">
-        <div className="flex items-center justify-end gap-3 max-w-3xl mx-auto">
-          <Button variant="outline" onClick={() => router.back()} className="h-10 md:h-10">
+          {/* Tip box */}
+          <div className="flex gap-3 bg-amber-50 border border-amber-200 rounded-2xl p-4">
+            <div className="flex items-center justify-center w-8 h-8 rounded-[10px] bg-amber-200 shrink-0">
+              <Lightbulb className="w-4 h-4 text-amber-700" />
+            </div>
+            <div>
+              <p className="text-[13px] font-semibold" style={{ color: '#92400E' }}>
+                공구 성공 팁
+              </p>
+              <p className="text-[12px] mt-0.5" style={{ color: '#B45309' }}>
+                쿠팡/올리브영에 없는 구성(세트+증정)으로 등록하면 가격 비교 불가능 → 크리에이터가 자신 있게 홍보
+              </p>
+            </div>
+          </div>
+        </SectionCard>
+
+        {/* ── 2. 이미지 ──────────────────────────── */}
+        <SectionCard title="이미지">
+          <div className="space-y-2">
+            <Label className={labelCls}>대표 이미지</Label>
+            <div className="max-w-xs">
+              <ImageUpload value={mainImage} onChange={setMainImage} placeholder="대표 이미지를 업로드하세요" folder="products" />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label className={labelCls}>추가 이미지</Label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {additionalImages.map((url, idx) => (
+                <ImageUpload
+                  key={idx}
+                  value={url}
+                  onChange={(newUrl) => {
+                    const updated = [...additionalImages];
+                    if (newUrl) { updated[idx] = newUrl; } else { updated.splice(idx, 1); }
+                    setAdditionalImages(updated);
+                  }}
+                  placeholder="추가 이미지"
+                  folder="products"
+                />
+              ))}
+              {additionalImages.length < 8 && (
+                <ImageUpload value="" onChange={(url) => { if (url) setAdditionalImages([...additionalImages, url]); }} placeholder="추가 이미지" folder="products" />
+              )}
+            </div>
+          </div>
+
+          <div className="border-t border-gray-100 pt-5 space-y-2">
+            <Label className={labelCls}>대표 썸네일 이미지</Label>
+            <div className="max-w-xs">
+              <ImageUpload value={thumbnailUrl} onChange={setThumbnailUrl} placeholder="썸네일 이미지" folder="products" />
+            </div>
+            <p className="text-[12px] text-gray-400">비워두면 대표 이미지가 사용됩니다.</p>
+          </div>
+        </SectionCard>
+
+        {/* ── 3. 상세 설명 ───────────────────────── */}
+        <SectionCard title="상세 설명">
+          <div className="space-y-2">
+            <Label htmlFor="description" className={labelCls}>상품 설명</Label>
+            <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="상품에 대한 상세 설명을 입력하세요" rows={5} className={textareaCls} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="volume" className={labelCls}>용량/수량</Label>
+            <Input id="volume" value={volume} onChange={(e) => setVolume(e.target.value)} placeholder="예: 50ml, 100g, 30매" className={inputCls} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="ingredients" className={labelCls}>성분</Label>
+            <Textarea id="ingredients" value={ingredients} onChange={(e) => setIngredients(e.target.value)} placeholder="성분 목록을 입력하세요" rows={3} className={textareaCls} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="howToUse" className={labelCls}>사용법</Label>
+            <Textarea id="howToUse" value={howToUse} onChange={(e) => setHowToUse(e.target.value)} placeholder="사용 방법을 입력하세요" rows={3} className={textareaCls} />
+          </div>
+        </SectionCard>
+
+        {/* ── 4. 배송·교환 정보 ─────────────────── */}
+        <SectionCard title="배송·교환 정보">
+          <div className="space-y-3">
+            <Label className={labelCls}>
+              배송비 유형 <span className="text-blue-600">*</span>
+            </Label>
+            <RadioGroup value={shippingFeeType} onValueChange={(v) => setShippingFeeType(v as ShippingFeeType)} className="flex flex-wrap gap-3">
+              {Object.entries(SHIPPING_FEE_TYPE_LABELS).map(([value, label]) => (
+                <label
+                  key={value}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-[12px] border-[1.5px] cursor-pointer transition-colors text-[13px] ${
+                    shippingFeeType === value
+                      ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
+                      : 'border-gray-100 text-gray-600 hover:border-gray-200'
+                  }`}
+                >
+                  <RadioGroupItem value={value} id={`shipping-type-${value}`} className="sr-only" />
+                  {label}
+                </label>
+              ))}
+            </RadioGroup>
+          </div>
+
+          {(shippingFeeType === 'PAID' || shippingFeeType === 'CONDITIONAL_FREE') && (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="shippingFee" className={labelCls}>배송비</Label>
+                <PriceInput id="shippingFee" value={shippingFee} onChange={setShippingFee} placeholder="3000" />
+              </div>
+              {shippingFeeType === 'CONDITIONAL_FREE' && (
+                <div className="space-y-2">
+                  <Label htmlFor="freeShippingThreshold" className={labelCls}>무료배송 기준 금액</Label>
+                  <PriceInput id="freeShippingThreshold" value={freeShippingThreshold} onChange={setFreeShippingThreshold} placeholder="50000" />
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="border-t border-gray-100 pt-5 space-y-2">
+            <Label htmlFor="courier" className={labelCls}>택배사</Label>
+            <Select value={courier} onValueChange={setCourier}>
+              <SelectTrigger className={`w-full sm:w-[250px] ${selectTriggerCls}`}>
+                <SelectValue placeholder="택배사 선택" />
+              </SelectTrigger>
+              <SelectContent>
+                {COURIERS.map((c) => (
+                  <SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="shippingInfo" className={labelCls}>배송 안내</Label>
+            <Textarea id="shippingInfo" value={shippingInfo} onChange={(e) => setShippingInfo(e.target.value)} placeholder="예상 배송일, 주의사항 등" rows={3} className={textareaCls} />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="returnPolicy" className={labelCls}>교환/환불 정책</Label>
+            <Textarea id="returnPolicy" value={returnPolicy} onChange={(e) => setReturnPolicy(e.target.value)} placeholder="교환 및 환불 관련 정책" rows={3} className={textareaCls} />
+          </div>
+        </SectionCard>
+
+        {/* ── 5. 크리에이터 수익 설정 ───────────── */}
+        <SectionCard title="크리에이터 수익 설정">
+          <div className="flex items-center justify-between rounded-[14px] border-[1.5px] border-gray-100 p-4">
+            <div>
+              <Label className={labelCls}>판매 상태</Label>
+              <p className="text-[12px] text-gray-400 mt-0.5">활성화하면 캠페인에 상품을 사용할 수 있습니다</p>
+            </div>
+            <Switch checked={isActive} onCheckedChange={setIsActive} />
+          </div>
+
+          <div className="flex items-center justify-between rounded-[14px] border-[1.5px] border-gray-100 p-4">
+            <div>
+              <Label className={labelCls}>크리에이터픽 허용</Label>
+              <p className="text-[12px] text-gray-400 mt-0.5">크리에이터가 자유롭게 이 상품을 픽할 수 있습니다</p>
+            </div>
+            <Switch checked={allowCreatorPick} onCheckedChange={setAllowCreatorPick} />
+          </div>
+
+          <div className="rounded-[14px] border-[1.5px] border-gray-100 p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <Label className={labelCls}>크리에이터 수익률</Label>
+              <span className="text-lg font-bold text-blue-600" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                {commissionRate}%
+              </span>
+            </div>
+            <Slider
+              value={[commissionRate]}
+              onValueChange={([v]) => setCommissionRate(v)}
+              min={0}
+              max={50}
+              step={1}
+              className="w-full"
+            />
+            <div className="flex justify-between text-[11px] text-gray-400">
+              <span>0%</span>
+              <span>50%</span>
+            </div>
+
+            {salePrice && (
+              <div className="bg-[#ECFDF5] rounded-xl px-4 py-3 mt-1">
+                <p className="text-[12px] text-[#059669] mb-1">크리에이터가 1개 팔면</p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-lg font-bold text-[#059669]" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                    ₩{Math.round(Number(salePrice) * commissionRate / 100).toLocaleString('ko-KR')} 수익
+                  </span>
+                  <span className="text-[11px] text-[#059669]/70">
+                    (판매가 {Number(salePrice).toLocaleString('ko-KR')}원의 {commissionRate}%)
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        </SectionCard>
+      </div>
+
+      {/* ── Fixed Bottom CTA ─────────────────── */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-100 bg-white/95 backdrop-blur-sm lg:left-60">
+        <div className="flex items-center justify-end gap-3 max-w-[680px] mx-auto px-4 py-4">
+          <Button
+            variant="outline"
+            onClick={() => router.back()}
+            className="h-[52px] px-7 rounded-[14px] border-[1.5px] border-gray-200 text-[14px] font-semibold text-gray-600"
+          >
             취소
           </Button>
-          <Button onClick={handleSave} disabled={isSaving} className="h-10 md:h-10 min-w-[120px]">
-            <Save className="h-4 w-4 mr-1.5" />
+          <Button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="h-[52px] px-8 rounded-[14px] bg-blue-600 hover:bg-blue-700 text-white text-[14px] font-semibold shadow-lg shadow-blue-600/25 min-w-[140px]"
+          >
             {isSaving ? '저장 중...' : '등록하기'}
           </Button>
         </div>
