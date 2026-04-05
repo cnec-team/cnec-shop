@@ -4,8 +4,8 @@
   "redirects": [
     {
       "source": "/:path*",
-      "has": [{ "type": "host", "value": "www.cnecshop.com" }],
-      "destination": "https://cnecshop.com/:path*",
+      "has": [{ "type": "host", "value": "cnecshop.com" }],
+      "destination": "https://www.cnecshop.com/:path*",
       "permanent": true
     }
   ]
