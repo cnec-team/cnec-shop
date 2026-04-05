@@ -1,11 +1,13 @@
 "use client"
 
 import * as React from "react"
-import { CalendarIcon } from "lucide-react"
+import { CalendarIcon, RefreshCw } from "lucide-react"
 import {
   format,
   addMonths,
   subMonths,
+  addYears,
+  subYears,
   startOfMonth,
   endOfMonth,
   startOfWeek,
@@ -28,6 +30,8 @@ import {
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"]
 
+const HOURS = Array.from({ length: 24 }, (_, i) => `${i}:00`)
+
 function buildCalendarDays(viewDate: Date) {
   const monthStart = startOfMonth(viewDate)
   const monthEnd = endOfMonth(viewDate)
@@ -36,41 +40,65 @@ function buildCalendarDays(viewDate: Date) {
   return eachDayOfInterval({ start: calStart, end: calEnd })
 }
 
-function MonthYearHeader({
+/* ─── Green Month Header ─────────────────────────── */
+
+function GreenMonthHeader({
   viewDate,
-  onPrev,
-  onNext,
+  onPrevYear,
+  onNextYear,
+  onPrevMonth,
+  onNextMonth,
 }: {
   viewDate: Date
-  onPrev: () => void
-  onNext: () => void
+  onPrevYear: () => void
+  onNextYear: () => void
+  onPrevMonth: () => void
+  onNextMonth: () => void
 }) {
   return (
-    <div className="flex items-center justify-between mb-2">
-      <span className="text-[14px] font-semibold text-gray-900">
-        {format(viewDate, "yyyy년 M월", { locale: ko })}
-      </span>
-      <div className="flex items-center gap-1">
+    <div className="flex items-center justify-between bg-[#4A9B8E] rounded-t-lg px-2 py-2.5">
+      <div className="flex items-center gap-0.5">
         <button
           type="button"
-          onClick={onPrev}
-          className="flex items-center justify-center w-7 h-7 rounded-md hover:bg-gray-100 text-gray-500"
+          onClick={onPrevYear}
+          className="flex items-center justify-center w-7 h-7 rounded hover:bg-white/20 text-white text-[14px] font-bold"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          «
         </button>
         <button
           type="button"
-          onClick={onNext}
-          className="flex items-center justify-center w-7 h-7 rounded-md hover:bg-gray-100 text-gray-500"
+          onClick={onPrevMonth}
+          className="flex items-center justify-center w-7 h-7 rounded hover:bg-white/20 text-white text-[14px] font-bold"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+          ‹
+        </button>
+      </div>
+      <span className="text-[14px] font-bold text-white">
+        {format(viewDate, "yyyy.MM")}
+      </span>
+      <div className="flex items-center gap-0.5">
+        <button
+          type="button"
+          onClick={onNextMonth}
+          className="flex items-center justify-center w-7 h-7 rounded hover:bg-white/20 text-white text-[14px] font-bold"
+        >
+          ›
+        </button>
+        <button
+          type="button"
+          onClick={onNextYear}
+          className="flex items-center justify-center w-7 h-7 rounded hover:bg-white/20 text-white text-[14px] font-bold"
+        >
+          »
         </button>
       </div>
     </div>
   )
 }
 
-function CalendarGrid({
+/* ─── Calendar Day Grid ──────────────────────────── */
+
+function CalendarDayGrid({
   viewDate,
   selectedDate,
   onSelectDate,
@@ -82,13 +110,13 @@ function CalendarGrid({
   const days = buildCalendarDays(viewDate)
 
   return (
-    <>
+    <div className="px-3 py-2">
       {/* Weekday headers */}
       <div className="grid grid-cols-7 mb-1">
         {WEEKDAYS.map((d) => (
           <div
             key={d}
-            className="flex items-center justify-center h-8 text-[12px] font-medium text-gray-400"
+            className="flex items-center justify-center h-8 text-[12px] font-semibold text-gray-500"
           >
             {d}
           </div>
@@ -107,11 +135,11 @@ function CalendarGrid({
               type="button"
               onClick={() => onSelectDate(day)}
               className={cn(
-                "flex items-center justify-center h-8 w-full text-[13px] rounded-md transition-colors",
+                "flex items-center justify-center h-8 w-full text-[13px] transition-colors",
                 !inMonth && "text-gray-300",
-                inMonth && !selected && !today && "text-gray-700 hover:bg-gray-100",
-                today && !selected && "bg-gray-100 text-gray-900 font-semibold",
-                selected && "bg-blue-600 text-white font-semibold",
+                inMonth && !selected && !today && "text-gray-700 hover:bg-gray-100 rounded-md",
+                today && !selected && "text-gray-900 font-semibold",
+                selected && "bg-gray-200 text-gray-900 font-semibold rounded-full",
               )}
             >
               {format(day, "d")}
@@ -119,64 +147,57 @@ function CalendarGrid({
           )
         })}
       </div>
-    </>
+    </div>
   )
 }
 
-/* ─── Time Spinner Column ────────────────────────── */
+/* ─── Time Grid (0:00 ~ 23:00) ───────────────────── */
 
-function TimeColumn({
-  items,
-  value,
-  onChange,
-  className,
+function TimeGrid({
+  selectedDate,
+  selectedHour,
+  onSelectHour,
+  onBack,
 }: {
-  items: { label: string; value: number | string }[]
-  value: number | string
-  onChange: (v: number | string) => void
-  className?: string
+  selectedDate: Date
+  selectedHour: number | null
+  onSelectHour: (hour: number) => void
+  onBack: () => void
 }) {
-  const listRef = React.useRef<HTMLDivElement>(null)
-  const itemRefs = React.useRef<Map<number | string, HTMLButtonElement>>(new Map())
-
-  React.useEffect(() => {
-    const el = itemRefs.current.get(value)
-    if (el && listRef.current) {
-      const container = listRef.current
-      const scrollTop = el.offsetTop - container.clientHeight / 2 + el.clientHeight / 2
-      container.scrollTo({ top: scrollTop, behavior: "smooth" })
-    }
-  }, [value])
-
   return (
-    <div
-      ref={listRef}
-      className={cn(
-        "flex flex-col gap-0.5 h-[200px] overflow-y-auto scrollbar-thin px-1",
-        className,
-      )}
-    >
-      {items.map((item) => {
-        const isActive = item.value === value
-        return (
+    <div>
+      {/* Header with date and refresh */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+        <button
+          type="button"
+          onClick={onBack}
+          className="flex items-center justify-center w-7 h-7 rounded-md hover:bg-gray-100 text-gray-400"
+        >
+          <RefreshCw className="w-4 h-4" />
+        </button>
+        <span className="text-[14px] font-semibold text-gray-700">
+          {format(selectedDate, "yyyy.MM.dd.")}
+        </span>
+        <div className="w-7" />
+      </div>
+      {/* Hour grid */}
+      <div className="grid grid-cols-4 gap-1 p-3">
+        {HOURS.map((label, i) => (
           <button
-            key={item.value}
+            key={i}
             type="button"
-            ref={(el) => {
-              if (el) itemRefs.current.set(item.value, el)
-            }}
-            onClick={() => onChange(item.value)}
+            onClick={() => onSelectHour(i)}
             className={cn(
-              "flex items-center justify-center min-h-[36px] rounded-md text-[14px] font-medium transition-colors shrink-0",
-              isActive
-                ? "bg-blue-600 text-white"
+              "flex items-center justify-center h-9 rounded-md text-[13px] transition-colors",
+              selectedHour === i
+                ? "bg-[#4A9B8E] text-white font-semibold"
                 : "text-gray-600 hover:bg-gray-100",
             )}
           >
-            {item.label}
+            {label}
           </button>
-        )
-      })}
+        ))}
+      </div>
     </div>
   )
 }
@@ -184,7 +205,7 @@ function TimeColumn({
 /* ─── DateTimePicker ─────────────────────────────── */
 
 interface DateTimePickerProps {
-  value: string // ISO datetime-local format: "2026-04-05T09:40"
+  value: string // ISO datetime-local format: "2026-04-05T09:00"
   onChange: (value: string) => void
   placeholder?: string
   className?: string
@@ -194,28 +215,19 @@ interface DateTimePickerProps {
 export function DateTimePicker({
   value,
   onChange,
-  placeholder = "연도. 월. 일. -- --:--",
+  placeholder = "연도. 월. 일. --:--",
   className,
   id,
 }: DateTimePickerProps) {
   const [open, setOpen] = React.useState(false)
+  const [step, setStep] = React.useState<"date" | "time">("date")
 
   const parsed = value ? new Date(value) : null
   const [viewDate, setViewDate] = React.useState(parsed || new Date())
-
-  // Time state
-  const [hours, setHours] = React.useState(() => {
-    if (!parsed) return 9
-    const h = parsed.getHours()
-    return h === 0 ? 12 : h > 12 ? h - 12 : h
-  })
-  const [minutes, setMinutes] = React.useState(() =>
-    parsed ? parsed.getMinutes() : 0,
-  )
-  const [isPM, setIsPM] = React.useState(() =>
-    parsed ? parsed.getHours() >= 12 : true,
-  )
   const [selectedDate, setSelectedDate] = React.useState<Date | null>(parsed)
+  const [selectedHour, setSelectedHour] = React.useState<number | null>(
+    parsed ? parsed.getHours() : null,
+  )
 
   // Sync external value changes
   React.useEffect(() => {
@@ -223,85 +235,43 @@ export function DateTimePicker({
       const d = new Date(value)
       setSelectedDate(d)
       setViewDate(d)
-      const h = d.getHours()
-      setHours(h === 0 ? 12 : h > 12 ? h - 12 : h)
-      setMinutes(d.getMinutes())
-      setIsPM(h >= 12)
+      setSelectedHour(d.getHours())
     }
   }, [value])
 
-  function emitChange(date: Date | null, h: number, m: number, pm: boolean) {
-    if (!date) return
-    const d = new Date(date)
-    let hour24 = h
-    if (pm && h !== 12) hour24 = h + 12
-    if (!pm && h === 12) hour24 = 0
-    d.setHours(hour24, m, 0, 0)
-    const iso = format(d, "yyyy-MM-dd'T'HH:mm")
-    onChange(iso)
-  }
+  // Reset step when popover opens
+  React.useEffect(() => {
+    if (open) {
+      setStep(selectedDate && selectedHour !== null ? "date" : "date")
+    }
+  }, [open])
 
   function handleSelectDate(d: Date) {
     setSelectedDate(d)
-    emitChange(d, hours, minutes, isPM)
+    setStep("time")
   }
 
-  function handleHoursChange(v: number | string) {
-    const h = v as number
-    setHours(h)
-    emitChange(selectedDate, h, minutes, isPM)
+  function handleSelectHour(hour: number) {
+    setSelectedHour(hour)
+    if (selectedDate) {
+      const d = new Date(selectedDate)
+      d.setHours(hour, 0, 0, 0)
+      onChange(format(d, "yyyy-MM-dd'T'HH:mm"))
+    }
+    setOpen(false)
+    setStep("date")
   }
 
-  function handleMinutesChange(v: number | string) {
-    const m = v as number
-    setMinutes(m)
-    emitChange(selectedDate, hours, m, isPM)
+  function handleThisMonth() {
+    setViewDate(new Date())
   }
-
-  function handleAmPmChange(v: number | string) {
-    const pm = v === "PM"
-    setIsPM(pm)
-    emitChange(selectedDate, hours, minutes, pm)
-  }
-
-  function handleToday() {
-    const now = new Date()
-    setSelectedDate(now)
-    setViewDate(now)
-    const h = now.getHours()
-    const newH = h === 0 ? 12 : h > 12 ? h - 12 : h
-    setHours(newH)
-    setMinutes(now.getMinutes())
-    setIsPM(h >= 12)
-    emitChange(now, newH, now.getMinutes(), h >= 12)
-  }
-
-  function handleClear() {
-    setSelectedDate(null)
-    onChange("")
-  }
-
-  const hourItems = Array.from({ length: 12 }, (_, i) => ({
-    label: String(i + 1).padStart(2, "0"),
-    value: i + 1,
-  }))
-
-  const minuteItems = Array.from({ length: 60 }, (_, i) => ({
-    label: String(i).padStart(2, "0"),
-    value: i,
-  }))
-
-  const ampmItems = [
-    { label: "오전", value: "AM" as string },
-    { label: "오후", value: "PM" as string },
-  ]
 
   const displayValue = parsed
-    ? format(parsed, "yyyy. MM. dd. a hh:mm", { locale: ko })
+    ? format(parsed, "yyyy. MM. dd. HH:mm")
     : ""
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={(v) => { setOpen(v); if (!v) setStep("date") }}>
       <PopoverTrigger asChild>
         <button
           id={id}
@@ -318,61 +288,43 @@ export function DateTimePicker({
       </PopoverTrigger>
       <PopoverContent
         align="start"
-        className="w-auto p-0 border border-gray-200 shadow-lg rounded-xl"
+        className="w-auto p-0 border border-gray-200 shadow-lg rounded-lg overflow-hidden"
       >
-        <div className="flex">
-          {/* Calendar section */}
-          <div className="p-4 border-r border-gray-100" style={{ width: 280 }}>
-            <MonthYearHeader
+        {step === "date" ? (
+          <div style={{ width: 280 }}>
+            <GreenMonthHeader
               viewDate={viewDate}
-              onPrev={() => setViewDate((d) => subMonths(d, 1))}
-              onNext={() => setViewDate((d) => addMonths(d, 1))}
+              onPrevYear={() => setViewDate((d) => subYears(d, 1))}
+              onNextYear={() => setViewDate((d) => addYears(d, 1))}
+              onPrevMonth={() => setViewDate((d) => subMonths(d, 1))}
+              onNextMonth={() => setViewDate((d) => addMonths(d, 1))}
             />
-            <CalendarGrid
+            <CalendarDayGrid
               viewDate={viewDate}
               selectedDate={selectedDate}
               onSelectDate={handleSelectDate}
             />
             {/* Footer */}
-            <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
+            <div className="flex items-center justify-center px-3 pb-3">
               <button
                 type="button"
-                onClick={handleClear}
-                className="text-[13px] text-blue-600 hover:text-blue-700 font-medium"
+                onClick={handleThisMonth}
+                className="text-[13px] text-gray-500 hover:text-gray-700 font-medium border border-gray-200 rounded-full px-4 py-1.5"
               >
-                삭제
-              </button>
-              <button
-                type="button"
-                onClick={handleToday}
-                className="text-[13px] text-blue-600 hover:text-blue-700 font-medium"
-              >
-                오늘
+                이번달
               </button>
             </div>
           </div>
-          {/* Time spinner section */}
-          <div className="p-4 flex gap-1" style={{ width: 200 }}>
-            <TimeColumn
-              items={hourItems}
-              value={hours}
-              onChange={handleHoursChange}
-              className="flex-1"
-            />
-            <TimeColumn
-              items={minuteItems}
-              value={minutes}
-              onChange={handleMinutesChange}
-              className="flex-1"
-            />
-            <TimeColumn
-              items={ampmItems}
-              value={isPM ? "PM" : "AM"}
-              onChange={handleAmPmChange}
-              className="flex-1"
+        ) : selectedDate ? (
+          <div style={{ width: 280 }}>
+            <TimeGrid
+              selectedDate={selectedDate}
+              selectedHour={selectedHour}
+              onSelectHour={handleSelectHour}
+              onBack={() => setStep("date")}
             />
           </div>
-        </div>
+        ) : null}
       </PopoverContent>
     </Popover>
   )
@@ -441,25 +393,27 @@ export function DatePicker({
       </PopoverTrigger>
       <PopoverContent
         align="start"
-        className="w-auto p-0 border border-gray-200 shadow-lg rounded-xl"
+        className="w-auto p-0 border border-gray-200 shadow-lg rounded-lg overflow-hidden"
       >
-        <div className="p-4" style={{ width: 280 }}>
-          <MonthYearHeader
+        <div style={{ width: 280 }}>
+          <GreenMonthHeader
             viewDate={viewDate}
-            onPrev={() => setViewDate((d) => subMonths(d, 1))}
-            onNext={() => setViewDate((d) => addMonths(d, 1))}
+            onPrevYear={() => setViewDate((d) => subYears(d, 1))}
+            onNextYear={() => setViewDate((d) => addYears(d, 1))}
+            onPrevMonth={() => setViewDate((d) => subMonths(d, 1))}
+            onNextMonth={() => setViewDate((d) => addMonths(d, 1))}
           />
-          <CalendarGrid
+          <CalendarDayGrid
             viewDate={viewDate}
             selectedDate={selectedDate}
             onSelectDate={handleSelectDate}
           />
           {/* Footer */}
-          <div className="flex items-center justify-center mt-3 pt-3 border-t border-gray-100">
+          <div className="flex items-center justify-center px-3 pb-3">
             <button
               type="button"
               onClick={handleThisMonth}
-              className="text-[13px] text-gray-600 hover:text-gray-800 font-medium border border-gray-200 rounded-md px-3 py-1.5"
+              className="text-[13px] text-gray-500 hover:text-gray-700 font-medium border border-gray-200 rounded-full px-4 py-1.5"
             >
               이번달
             </button>
