@@ -2,11 +2,6 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
   "regions": ["icn1"],
-  "build": {
-    "environment": {
-      "NEXT_TELEMETRY_DISABLED": "1"
-    }
-  },
   "headers": [
     {
       "source": "/(.*)",
