@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DateTimePicker } from '@/components/ui/date-time-picker';
 import {
   AlertCircle,
   Check,
@@ -413,24 +414,22 @@ export default function NewCampaignPage() {
                   <Label htmlFor="startAt" className={labelCls}>
                     시작 일시 <span className="text-blue-600">*</span>
                   </Label>
-                  <Input
+                  <DateTimePicker
                     id="startAt"
-                    type="datetime-local"
                     value={startAt}
-                    onChange={(e) => setStartAt(e.target.value)}
-                    className={inputCls}
+                    onChange={setStartAt}
+                    placeholder="연도. 월. 일. -- --:--"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="endAt" className={labelCls}>
                     종료 일시 <span className="text-blue-600">*</span>
                   </Label>
-                  <Input
+                  <DateTimePicker
                     id="endAt"
-                    type="datetime-local"
                     value={endAt}
-                    onChange={(e) => setEndAt(e.target.value)}
-                    className={inputCls}
+                    onChange={setEndAt}
+                    placeholder="연도. 월. 일. -- --:--"
                   />
                 </div>
               </div>

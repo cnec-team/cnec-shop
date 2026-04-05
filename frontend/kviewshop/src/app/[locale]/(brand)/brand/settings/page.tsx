@@ -12,6 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Settings, Percent, Building2, CreditCard, Info, Globe, ShieldCheck, Upload, X, Check, FileText, Plus, Trash2, ImageIcon, Loader2, Tags, Package, Truck } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
+import { DatePicker } from '@/components/ui/date-time-picker';
 import {
   Select,
   SelectContent,
@@ -745,18 +746,16 @@ export default function BrandSettingsPage() {
                     </div>
                     <div className="space-y-2">
                       <Label>{t('issueDate')}</Label>
-                      <Input
-                        type="date"
+                      <DatePicker
                         value={newCert.issueDate}
-                        onChange={(e) => setNewCert({ ...newCert, issueDate: e.target.value })}
+                        onChange={(v) => setNewCert({ ...newCert, issueDate: v })}
                       />
                     </div>
                     <div className="space-y-2">
                       <Label>{t('expiryDate')}</Label>
-                      <Input
-                        type="date"
+                      <DatePicker
                         value={newCert.expiryDate}
-                        onChange={(e) => setNewCert({ ...newCert, expiryDate: e.target.value })}
+                        onChange={(v) => setNewCert({ ...newCert, expiryDate: v })}
                       />
                     </div>
                   </div>
