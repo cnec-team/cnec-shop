@@ -86,5 +86,5 @@ export function formatEarnings(
   commissionRate: number | { toString(): string }
 ): string {
   const amount = calculateEarnings(price, commissionRate)
-  return `팔면 ₩${amount.toLocaleString('ko-KR')}`
+  return `판매 수익 ₩${amount.toLocaleString('ko-KR')}`
 }

@@ -277,7 +277,7 @@ export default function CreatorCampaignsPage() {
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-3 text-xs">
                     {earnings > 0 && (
                       <span className="text-earnings font-semibold">
-                        팔면 ₩{earnings.toLocaleString()}
+                        판매 수익 ₩{earnings.toLocaleString()}
                       </span>
                     )}
                     {campaign.endAt && (
@@ -354,7 +354,7 @@ export default function CreatorCampaignsPage() {
                     {campaign.brand && <BrandBadge brandName={campaign.brand.brandName} />}
                   </div>
                   <span className="text-xs text-earnings font-semibold whitespace-nowrap">
-                    팔면 ₩{getEstimatedEarnings(campaign).toLocaleString()}
+                    판매 수익 ₩{getEstimatedEarnings(campaign).toLocaleString()}
                   </span>
                 </div>
               );

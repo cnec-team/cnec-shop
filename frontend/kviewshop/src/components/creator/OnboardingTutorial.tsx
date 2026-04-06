@@ -261,7 +261,7 @@ export function OnboardingTutorial() {
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">{product.name}</p>
                           <p className="text-xs text-primary font-semibold">
-                            팔면 {formatCurrency(earnings, 'KRW')}
+                            판매 수익 {formatCurrency(earnings, 'KRW')}
                           </p>
                         </div>
                         <Button

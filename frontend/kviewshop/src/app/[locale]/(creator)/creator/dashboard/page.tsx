@@ -261,7 +261,7 @@ export default function CreatorDashboardPage() {
                       <p className="text-xs font-medium text-gray-900 line-clamp-2 mt-0.5 leading-tight min-h-[32px]">{product.name}</p>
                       <p className="text-sm font-bold text-gray-900 mt-1">{formatCurrency(Number(product.salePrice), 'KRW')}</p>
                       <p className="text-xs text-earnings font-semibold mt-0.5">
-                        팔면 ₩{earnings.toLocaleString()}
+                        판매 수익 ₩{earnings.toLocaleString()}
                       </p>
                       <Button
                         className="w-full mt-2 h-9 text-xs bg-gray-900 text-white hover:bg-gray-800 rounded-xl"

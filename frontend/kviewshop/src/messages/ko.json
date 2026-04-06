@@ -1049,7 +1049,7 @@
     "SNS_SHARE": "SNS 공유",
     "FIVE_PRODUCTS": "상품 5개 추가",
     "FIRST_SALE": "첫 판매 달성",
-    "expectedRevenue": "1개 팔면 ₩{amount} 수익"
+    "expectedRevenue": "판매 수익 ₩{amount}"
   },
   "share": {
     "title": "공유",
