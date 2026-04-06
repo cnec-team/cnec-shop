@@ -152,7 +152,7 @@ export function CreatorShopPage({
 }: CreatorShopPageProps) {
   const params = useParams();
   const username = params.username as string;
-  const shopUrl = `https://shop.cnec.kr/${username}`;
+  const shopUrl = `https://www.cnecshop.com/${username}`;
 
   // Separate items by type
   const gongguItems = useMemo(

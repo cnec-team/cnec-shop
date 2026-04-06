@@ -94,7 +94,7 @@ export function ProductDetailPage({
   const brandName = p.brand?.brand_name || p.brand?.brandName || '';
   const images = product.images && product.images.length > 0 ? product.images : [];
   const campaignId = cp?.campaign_id ?? cp?.campaignId;
-  const productUrl = `https://shop.cnec.kr/${username}/product/${product.id}${campaignId ? `?campaign=${campaignId}` : ''}`;
+  const productUrl = `https://www.cnecshop.com/${username}/product/${product.id}${campaignId ? `?campaign=${campaignId}` : ''}`;
   const ogTitle = `${product.name}${discountPercent > 0 ? ` ${discountPercent}% OFF` : ''}`;
   const ogDesc = `${brandName} | ${formatKRW(effectivePrice)}`;
 
