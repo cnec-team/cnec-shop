@@ -454,10 +454,37 @@ export async function handleParticipationAction(
     updateData.approvedAt = new Date()
   }
 
-  return prisma.campaignParticipation.update({
+  const participation = await prisma.campaignParticipation.update({
     where: { id: participationId },
     data: updateData,
+    include: {
+      campaign: { select: { title: true } },
+    },
   })
+
+  // Notify the creator about the approval/rejection
+  try {
+    const creator = await prisma.creator.findUnique({
+      where: { id: participation.creatorId },
+      select: { userId: true },
+    })
+    if (creator?.userId) {
+      const isApproved = action === 'APPROVED'
+      await prisma.notification.create({
+        data: {
+          userId: creator.userId,
+          type: 'CAMPAIGN',
+          title: isApproved ? '공구 참여 승인' : '공구 참여 거절',
+          message: `"${participation.campaign?.title ?? '공구'}" ${isApproved ? '참여가 승인되었습니다.' : '참여가 거절되었습니다.'}`,
+          linkUrl: isApproved ? '/creator/shop' : '/creator/campaigns',
+        },
+      })
+    }
+  } catch {
+    // Don't fail the action if notification fails
+  }
+
+  return participation
 }
 
 export async function getCreatorPerformance(

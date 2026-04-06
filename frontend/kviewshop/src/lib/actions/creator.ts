@@ -253,7 +253,7 @@ export async function applyCampaignParticipation(data: {
 }) {
   const { creator } = await requireCreator()
 
-  return prisma.campaignParticipation.create({
+  const participation = await prisma.campaignParticipation.create({
     data: {
       campaignId: data.campaignId,
       creatorId: creator.id,
@@ -261,6 +261,29 @@ export async function applyCampaignParticipation(data: {
       message: data.message ?? null,
     },
   })
+
+  // Notify the brand that a creator has applied
+  try {
+    const campaign = await prisma.campaign.findUnique({
+      where: { id: data.campaignId },
+      select: { title: true, brand: { select: { userId: true } } },
+    })
+    if (campaign?.brand?.userId) {
+      await prisma.notification.create({
+        data: {
+          userId: campaign.brand.userId,
+          type: 'CAMPAIGN',
+          title: '공구 참여 신청',
+          message: `${creator.displayName ?? creator.username ?? '크리에이터'}님이 "${campaign.title}" 공구에 참여를 신청했습니다.`,
+          linkUrl: '/brand/creators/pending',
+        },
+      })
+    }
+  } catch {
+    // Don't fail the participation if notification fails
+  }
+
+  return participation
 }
 
 export async function addCampaignShopItems(campaignId: string, productIds: string[]) {
