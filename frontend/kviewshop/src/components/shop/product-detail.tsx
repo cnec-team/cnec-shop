@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { ShareSheet } from '@/components/shop/ShareSheet';
 import { BrandBadge } from '@/components/common/BrandBadge';
+import { calculateDDay, getDDayLabel, getTimeRemaining, hasCampaignStarted } from '@/lib/utils/date';
 import type {
   Product,
   CampaignProduct,
@@ -78,7 +79,8 @@ export function ProductDetailPage({
   const [returnOpen, setReturnOpen] = useState(false);
 
   const campaign = campaignProduct?.campaign as Campaign | undefined;
-  const isGonggu = !!campaignProduct && campaign?.type === 'GONGGU';
+  const startAt = (campaign as any)?.start_at ?? (campaign as any)?.startAt;
+  const isGonggu = !!campaignProduct && campaign?.type === 'GONGGU' && campaign?.status === 'ACTIVE' && hasCampaignStarted(startAt);
 
   // Normalize snake_case/camelCase: Prisma returns camelCase, but database.ts types use snake_case
   const p = product as any;
@@ -102,12 +104,7 @@ export function ProductDetailPage({
 
   // D-day calculation
   const endAt = c?.end_at ?? c?.endAt;
-  const dDayNum = (() => {
-    if (!endAt) return -1;
-    const diff = new Date(endAt).getTime() - Date.now();
-    if (diff <= 0) return 0;
-    return Math.floor(diff / (1000 * 60 * 60 * 24));
-  })();
+  const dDayNum = calculateDDay(endAt);
 
   // Countdown timer for gonggu
   const [countdown, setCountdown] = useState('');
@@ -116,23 +113,14 @@ export function ProductDetailPage({
     if (!isGonggu || !endAt) return;
 
     const updateCountdown = () => {
-      const now = new Date().getTime();
-      const end = new Date(endAt).getTime();
-      const diff = end - now;
-
-      if (diff <= 0) {
+      const t = getTimeRemaining(endAt);
+      if (t.total <= 0) {
         setCountdown('마감되었습니다');
         return;
       }
-
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
       const pad = (n: number) => n.toString().padStart(2, '0');
       setCountdown(
-        `${days > 0 ? `${days}일 ` : ''}${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
+        `${t.days > 0 ? `${t.days}일 ` : ''}${pad(t.hours)}:${pad(t.minutes)}:${pad(t.seconds)}`
       );
     };
 

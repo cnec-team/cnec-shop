@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Product, Campaign } from '@/types/database';
+import { calculateDDay, getDDayLabel } from '@/lib/utils/date';
 
 interface ProductCardProps {
   product: Product;
@@ -19,13 +20,11 @@ function formatKRW(amount: number): string {
   }).format(amount);
 }
 
-function calculateDDay(endAt: string | undefined | null): { label: string; active: boolean } {
-  if (!endAt) return { label: '', active: false };
-  const diff = new Date(endAt).getTime() - Date.now();
-  if (diff <= 0) return { label: '', active: false };
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  if (days === 0) return { label: 'D-Day', active: true };
-  return { label: `D-${days}`, active: true };
+function calcDDay(endAt: string | undefined | null): { label: string; active: boolean } {
+  const days = calculateDDay(endAt);
+  if (days <= 0 && days !== 0) return { label: '', active: false };
+  const label = getDDayLabel(days);
+  return { label, active: days >= 0 };
 }
 
 function discountPercent(original: number, sale: number): number {
@@ -36,7 +35,7 @@ function discountPercent(original: number, sale: number): number {
 export function ProductCard({ product, campaign, campaignPrice, locale, shopId }: ProductCardProps) {
   const effectivePrice = campaignPrice ?? product.sale_price;
   const discount = discountPercent(product.original_price, effectivePrice);
-  const dDay = campaign ? calculateDDay(campaign.end_at) : { label: '', active: false };
+  const dDay = campaign ? calcDDay(campaign.end_at) : { label: '', active: false };
   const imageUrl = product.thumbnail_url || product.images?.[0];
 
   const href = shopId

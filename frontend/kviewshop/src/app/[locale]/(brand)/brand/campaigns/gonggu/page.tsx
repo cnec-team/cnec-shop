@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+import { calculateDDay, getDDayLabel } from '@/lib/utils/date';
 import {
   Megaphone,
   Plus,
@@ -54,10 +55,9 @@ const STATUS_CONFIG: Record<string, {
 
 function getDday(endAt: string | null): string | null {
   if (!endAt) return null;
-  const diff = Math.ceil((new Date(endAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-  if (diff < 0) return '종료됨';
-  if (diff === 0) return 'D-DAY';
-  return `D-${diff}`;
+  const days = calculateDDay(endAt);
+  if (days <= 0) return days === 0 ? 'D-DAY' : '종료됨';
+  return getDDayLabel(days);
 }
 
 interface GongguCampaign {

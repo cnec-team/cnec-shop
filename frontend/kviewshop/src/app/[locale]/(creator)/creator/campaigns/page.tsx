@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { calculateDDay, getDDayLabel } from '@/lib/utils/date';
 import {
   Dialog,
   DialogContent,
@@ -142,12 +143,9 @@ export default function CreatorCampaignsPage() {
 
   const getDDay = (endAt?: string | null) => {
     if (!endAt) return null;
-    const end = new Date(endAt);
-    const now = new Date();
-    const diff = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    if (diff < 0) return '종료';
-    if (diff === 0) return 'D-Day';
-    return `D-${diff}`;
+    const days = calculateDDay(endAt);
+    if (days <= 0) return days === 0 ? 'D-Day' : '종료';
+    return getDDayLabel(days);
   };
 
   const getEstimatedEarnings = (campaign: CampaignWithDetails) => {
