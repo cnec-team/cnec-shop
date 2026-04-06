@@ -417,10 +417,11 @@ export default function NewCampaignPage() {
                   <DatePicker
                     value={startDate}
                     onChange={setStartDate}
-                    placeholder="YYYY. MM. DD."
+                    placeholder="YYYY. MM. DD. HH:mm"
                     minDate={new Date()}
                     maxDate={(() => { const d = new Date(); d.setDate(d.getDate() + 30); return d; })()}
                     helperText="등록/수정일로부터 30일 이내로 선택 가능"
+                    showTime
                   />
                 </div>
                 <div className="space-y-2">
@@ -430,10 +431,11 @@ export default function NewCampaignPage() {
                   <DatePicker
                     value={endDate}
                     onChange={setEndDate}
-                    placeholder="YYYY. MM. DD."
+                    placeholder="YYYY. MM. DD. HH:mm"
                     minDate={startDate ?? new Date()}
                     maxDate={(() => { const base = startDate ?? new Date(); const d = new Date(base); d.setDate(d.getDate() + 30); return d; })()}
                     helperText="시작일로부터 30일 이내로 선택 가능"
+                    showTime
                   />
                 </div>
               </div>
