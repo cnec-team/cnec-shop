@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DatePicker } from '@/components/ui/date-picker';
 import {
   AlertCircle,
   Check,
@@ -116,8 +117,8 @@ export default function NewCampaignPage() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [campaignType, setCampaignType] = useState<CampaignType>('GONGGU');
-  const [startAt, setStartAt] = useState('');
-  const [endAt, setEndAt] = useState('');
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
 
   // Step 2: Products
   const [products, setProducts] = useState<ProductData[]>([]);
@@ -179,9 +180,9 @@ export default function NewCampaignPage() {
       case 0:
         if (!title.trim()) { setError('캠페인명을 입력해주세요.'); return false; }
         if (campaignType === 'GONGGU') {
-          if (!startAt) { setError('시작일시를 입력해주세요.'); return false; }
-          if (!endAt) { setError('종료일시를 입력해주세요.'); return false; }
-          if (new Date(endAt) <= new Date(startAt)) { setError('종료일시는 시작일시 이후여야 합니다.'); return false; }
+          if (!startDate) { setError('시작일을 선택해주세요.'); return false; }
+          if (!endDate) { setError('종료일을 선택해주세요.'); return false; }
+          if (endDate <= startDate) { setError('종료일은 시작일 이후여야 합니다.'); return false; }
         }
         return true;
       case 1:
@@ -232,8 +233,8 @@ export default function NewCampaignPage() {
         totalStock: totalStock ? Number(totalStock) : undefined,
         targetParticipants: targetParticipants ? Number(targetParticipants) : undefined,
         conditions: conditions.trim() || undefined,
-        startAt: campaignType === 'GONGGU' ? new Date(startAt).toISOString() : undefined,
-        endAt: campaignType === 'GONGGU' ? new Date(endAt).toISOString() : undefined,
+        startAt: campaignType === 'GONGGU' && startDate ? startDate.toISOString() : undefined,
+        endAt: campaignType === 'GONGGU' && endDate ? endDate.toISOString() : undefined,
         products: selectedProducts.map((sp) => ({
           productId: sp.productId,
           campaignPrice: Number(sp.campaignPrice),
@@ -410,27 +411,29 @@ export default function NewCampaignPage() {
             {campaignType === 'GONGGU' && (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="startAt" className={labelCls}>
-                    시작 일시 <span className="text-blue-600">*</span>
+                  <Label className={labelCls}>
+                    시작일 <span className="text-blue-600">*</span>
                   </Label>
-                  <Input
-                    id="startAt"
-                    type="datetime-local"
-                    value={startAt}
-                    onChange={(e) => setStartAt(e.target.value)}
-                    className={inputCls}
+                  <DatePicker
+                    value={startDate}
+                    onChange={setStartDate}
+                    placeholder="YYYY. MM. DD."
+                    minDate={new Date()}
+                    maxDate={(() => { const d = new Date(); d.setDate(d.getDate() + 30); return d; })()}
+                    helperText="등록/수정일로부터 30일 이내로 선택 가능"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="endAt" className={labelCls}>
-                    종료 일시 <span className="text-blue-600">*</span>
+                  <Label className={labelCls}>
+                    종료일 <span className="text-blue-600">*</span>
                   </Label>
-                  <Input
-                    id="endAt"
-                    type="datetime-local"
-                    value={endAt}
-                    onChange={(e) => setEndAt(e.target.value)}
-                    className={inputCls}
+                  <DatePicker
+                    value={endDate}
+                    onChange={setEndDate}
+                    placeholder="YYYY. MM. DD."
+                    minDate={startDate ?? new Date()}
+                    maxDate={(() => { const base = startDate ?? new Date(); const d = new Date(base); d.setDate(d.getDate() + 30); return d; })()}
+                    helperText="시작일로부터 30일 이내로 선택 가능"
                   />
                 </div>
               </div>
@@ -653,8 +656,8 @@ export default function NewCampaignPage() {
                   { label: '선택 상품', value: `${selectedProducts.length}개` },
                   { label: '수수료율', value: `${commissionRate}%` },
                   { label: '모집 방식', value: recruitmentType === 'OPEN' ? '자동 승인' : '승인제' },
-                  ...(campaignType === 'GONGGU' && startAt
-                    ? [{ label: '기간', value: `${startAt} ~ ${endAt}` }]
+                  ...(campaignType === 'GONGGU' && startDate
+                    ? [{ label: '기간', value: `${startDate.toLocaleDateString('ko-KR')} ~ ${endDate?.toLocaleDateString('ko-KR') ?? ''}` }]
                     : []),
                 ].map((row, i) => (
                   <div key={i} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
