@@ -775,6 +775,50 @@ export async function updateProduct(
   })
 }
 
+export async function deleteProducts(productIds: string[]) {
+  const { brand } = await requireBrand()
+
+  const result = await prisma.product.deleteMany({
+    where: {
+      id: { in: productIds },
+      brandId: brand.id,
+    },
+  })
+
+  return result.count
+}
+
+export async function bulkUpdateProducts(
+  productIds: string[],
+  data: {
+    status?: string
+    allowCreatorPick?: boolean
+    defaultCommissionRate?: number
+  }
+) {
+  const { brand } = await requireBrand()
+
+  const updateData: Record<string, unknown> = {}
+  if (data.status !== undefined) updateData.status = data.status
+  if (data.allowCreatorPick !== undefined) updateData.allowCreatorPick = data.allowCreatorPick
+  if (data.defaultCommissionRate !== undefined) {
+    const rate = data.defaultCommissionRate > 1
+      ? data.defaultCommissionRate / 100
+      : data.defaultCommissionRate
+    updateData.defaultCommissionRate = Math.min(Math.max(rate, 0), 0.9999)
+  }
+
+  const result = await prisma.product.updateMany({
+    where: {
+      id: { in: productIds },
+      brandId: brand.id,
+    },
+    data: updateData as any,
+  })
+
+  return result.count
+}
+
 export async function createProduct(data: {
   brandId: string
   name: string
