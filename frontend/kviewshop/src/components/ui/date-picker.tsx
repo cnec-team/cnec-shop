@@ -17,6 +17,7 @@ interface DatePickerProps {
   minDate?: Date;
   maxDate?: Date;
   helperText?: string;
+  showTime?: boolean;
 }
 
 export function DatePicker({
@@ -27,9 +28,21 @@ export function DatePicker({
   minDate,
   maxDate,
   helperText,
+  showTime = false,
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false);
   const [month, setMonth] = React.useState<Date>(value ?? new Date());
+  const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(value);
+  const [hour, setHour] = React.useState<number>(value ? value.getHours() : 0);
+  const [minute, setMinute] = React.useState<number>(value ? value.getMinutes() : 0);
+
+  React.useEffect(() => {
+    if (value) {
+      setSelectedDate(value);
+      setHour(value.getHours());
+      setMinute(value.getMinutes());
+    }
+  }, [value]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -47,7 +60,11 @@ export function DatePicker({
         >
           <CalendarIcon className="h-4 w-4 text-gray-400 shrink-0" />
           <span className="flex-1">
-            {value ? format(value, 'yyyy. MM. dd.') : placeholder}
+            {value
+              ? showTime
+                ? format(value, 'yyyy. MM. dd. HH:mm')
+                : format(value, 'yyyy. MM. dd.')
+              : placeholder}
           </span>
           <ChevronRightIcon className={cn(
             'h-4 w-4 text-gray-400 transition-transform',
@@ -87,8 +104,15 @@ export function DatePicker({
             mode="single"
             selected={value}
             onSelect={(date) => {
-              onChange(date);
-              setOpen(false);
+              if (!showTime) {
+                onChange(date);
+                setOpen(false);
+              } else if (date) {
+                const d = new Date(date);
+                d.setHours(hour, minute, 0, 0);
+                setSelectedDate(d);
+                onChange(d);
+              }
             }}
             month={month}
             onMonthChange={setMonth}
@@ -123,6 +147,74 @@ export function DatePicker({
               Chevron: () => <></>,
             }}
           />
+
+          {/* Time Picker */}
+          {showTime && (
+            <div className="mt-3 pt-3 border-t border-gray-100">
+              <div className="flex items-center justify-center gap-2">
+                <div className="flex items-center gap-1">
+                  <select
+                    value={hour}
+                    onChange={(e) => {
+                      const h = Number(e.target.value);
+                      setHour(h);
+                      if (selectedDate) {
+                        const d = new Date(selectedDate);
+                        d.setHours(h, minute, 0, 0);
+                        setSelectedDate(d);
+                        onChange(d);
+                      }
+                    }}
+                    className="h-9 w-16 rounded-lg border border-gray-200 bg-white text-center text-[14px] text-gray-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-50 appearance-none cursor-pointer"
+                  >
+                    {Array.from({ length: 24 }, (_, i) => (
+                      <option key={i} value={i}>
+                        {String(i).padStart(2, '0')}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-[13px] text-gray-500">시</span>
+                </div>
+                <span className="text-gray-300 text-lg font-light">:</span>
+                <div className="flex items-center gap-1">
+                  <select
+                    value={minute}
+                    onChange={(e) => {
+                      const m = Number(e.target.value);
+                      setMinute(m);
+                      if (selectedDate) {
+                        const d = new Date(selectedDate);
+                        d.setHours(hour, m, 0, 0);
+                        setSelectedDate(d);
+                        onChange(d);
+                      }
+                    }}
+                    className="h-9 w-16 rounded-lg border border-gray-200 bg-white text-center text-[14px] text-gray-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-50 appearance-none cursor-pointer"
+                  >
+                    {Array.from({ length: 60 }, (_, i) => (
+                      <option key={i} value={i}>
+                        {String(i).padStart(2, '0')}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-[13px] text-gray-500">분</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                disabled={!selectedDate}
+                className={cn(
+                  'mt-3 w-full h-9 rounded-lg text-[13px] font-medium transition-colors',
+                  selectedDate
+                    ? 'bg-blue-600 text-white hover:bg-blue-700'
+                    : 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                )}
+              >
+                확인
+              </button>
+            </div>
+          )}
 
           {/* Helper text */}
           {helperText && (
