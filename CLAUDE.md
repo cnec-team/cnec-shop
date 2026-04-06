@@ -14,7 +14,13 @@ CNEC Shop — K-뷰티 크리에이터 커머스 플랫폼 (Next.js + Prisma + P
   - `src/lib/utils/` — 유틸리티 (date.ts 등)
   - `prisma/schema.prisma` — DB 스키마
 
-## Git & Deployment Rules
+## Deployment
+
+- **Vercel**로 배포 (Netlify 사용하지 않음)
+- main 브랜치에 머지 시 Vercel 자동 배포 트리거
+- 도메인: `shop.cnec.kr`
+
+## Git Rules
 
 - 변경사항 완료 후 항상 **커밋 → 푸시 → PR 생성 → squash 머지**까지 자동으로 진행
 - 별도 지시 없는 한 main 브랜치에 머지하여 배포 트리거
