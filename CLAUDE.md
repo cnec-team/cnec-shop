@@ -18,7 +18,7 @@ CNEC Shop — K-뷰티 크리에이터 커머스 플랫폼 (Next.js + Prisma + P
 
 - **Vercel**로 배포 (Netlify 사용하지 않음)
 - main 브랜치에 머지 시 Vercel 자동 배포 트리거
-- 도메인: `shop.cnec.kr`
+- 도메인: `www.cnecshop.com`
 
 ## Git Rules
 

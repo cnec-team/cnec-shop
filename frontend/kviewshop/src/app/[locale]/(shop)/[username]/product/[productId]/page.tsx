@@ -5,7 +5,7 @@ import { ProductJsonLd } from '@/components/seo/JsonLd';
 import type { Metadata } from 'next';
 import type { Product, CampaignProduct, Creator } from '@/types/database';
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://shop.cnec.kr';
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.cnecshop.com';
 
 interface ProductPageProps {
   params: Promise<{

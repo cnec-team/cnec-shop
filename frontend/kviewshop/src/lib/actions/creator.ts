@@ -630,7 +630,7 @@ export async function getCreatorReferralData() {
 
   // Generate referral code from creator's id/username
   const referralCode = creator.username || creator.id.substring(0, 8)
-  const shareLink = `https://shop.cnec.kr/join?ref=${referralCode}`
+  const shareLink = `https://www.cnecshop.com/join?ref=${referralCode}`
 
   const stats = {
     totalInvited: referrals.length,

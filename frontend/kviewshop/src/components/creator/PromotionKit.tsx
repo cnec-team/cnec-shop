@@ -18,7 +18,7 @@ interface PromotionKitProps {
 }
 
 export function PromotionKit({ productName, brandName, category, shopId, productId }: PromotionKitProps) {
-  const baseUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://shop.cnec.kr'}/ko/${shopId}/product/${productId}`;
+  const baseUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://www.cnecshop.com'}/ko/${shopId}/product/${productId}`;
   const shareUrl = buildShareUrl(baseUrl, 'instagram');
   const categoryLabel = PRODUCT_CATEGORY_LABELS[category] || category;
   const caption = `직접 써보고 추천하는 ${productName}! 프로필 링크에서 구매할 수 있어요`;

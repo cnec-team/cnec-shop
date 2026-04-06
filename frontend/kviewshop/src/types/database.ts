@@ -80,7 +80,7 @@ export type MissionKey = 'SHOP_OPEN' | 'FIRST_PRODUCT' | 'SNS_SHARE' | 'FIVE_PRO
 export interface Creator {
   id: string;
   user_id: string;
-  shop_id: string; // URL slug: shop.cnec.kr/{shop_id}
+  shop_id: string; // URL slug: www.cnecshop.com/{shop_id}
   display_name: string;
   bio?: string;
   profile_image_url?: string;

@@ -263,7 +263,7 @@ export default function SignupPage() {
                 <Label>샵 ID</Label>
                 <div className="flex items-center">
                   <span className="flex h-10 items-center rounded-l-md border border-r-0 border-input bg-muted px-3 text-xs text-muted-foreground">
-                    shop.cnec.kr/
+                    www.cnecshop.com/
                   </span>
                   <Input
                     value={shopId}

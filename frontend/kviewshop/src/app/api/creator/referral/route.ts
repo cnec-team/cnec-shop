@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
       totalReward: referrals.reduce((sum, r) => sum + (r.referrerRewardTotal || 0), 0),
     };
 
-    const shareLink = `https://shop.cnec.kr/signup?ref=${referralCode}`;
+    const shareLink = `https://www.cnecshop.com/signup?ref=${referralCode}`;
 
     return NextResponse.json({
       referralCode,
