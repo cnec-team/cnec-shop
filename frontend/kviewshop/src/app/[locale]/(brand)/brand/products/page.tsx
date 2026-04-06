@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getBrandProducts, getBrandSession } from '@/lib/actions/brand';
+import { getBrandProducts, getBrandSession, deleteProducts, bulkUpdateProducts } from '@/lib/actions/brand';
 import { PRODUCT_CATEGORY_LABELS } from '@/types/database';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +26,16 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
+import {
   LayoutGrid,
   List,
   Search,
@@ -33,6 +43,7 @@ import {
   Plus,
   Upload,
   Info,
+  Loader2,
 } from 'lucide-react';
 
 interface ProductData {
@@ -78,6 +89,26 @@ export default function BrandProductsPage() {
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [sortMode, setSortMode] = useState<SortMode>('latest');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [bulkStatus, setBulkStatus] = useState('');
+  const [bulkAllowCreatorPick, setBulkAllowCreatorPick] = useState('');
+  const [bulkCommissionRate, setBulkCommissionRate] = useState('');
+
+  const loadProducts = async (brandId?: string) => {
+    const id = brandId || brand?.id;
+    if (!id) return;
+    setIsLoading(true);
+    try {
+      const data = await getBrandProducts(id, statusFilter, categoryFilter);
+      setProducts(data as any);
+    } catch (error) {
+      console.error('Failed to fetch products:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     async function load() {
@@ -88,12 +119,9 @@ export default function BrandProductsPage() {
           return;
         }
         setBrand(brandData);
-
-        const data = await getBrandProducts(brandData.id, statusFilter, categoryFilter);
-        setProducts(data as any);
+        await loadProducts(brandData.id);
       } catch (error) {
         console.error('Failed to fetch products:', error);
-      } finally {
         setIsLoading(false);
       }
     }
@@ -130,6 +158,51 @@ export default function BrandProductsPage() {
       setSelectedIds(new Set());
     } else {
       setSelectedIds(new Set(sortedProducts.map((p) => p.id)));
+    }
+  };
+
+  const handleDelete = async () => {
+    setIsSubmitting(true);
+    try {
+      const count = await deleteProducts(Array.from(selectedIds));
+      toast.success(`${count}개 상품이 삭제되었습니다.`);
+      setSelectedIds(new Set());
+      setShowDeleteConfirm(false);
+      await loadProducts();
+    } catch (error) {
+      toast.error('삭제에 실패했습니다.');
+      console.error('Failed to delete products:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleBulkUpdate = async () => {
+    const data: { status?: string; allowCreatorPick?: boolean; defaultCommissionRate?: number } = {};
+    if (bulkStatus) data.status = bulkStatus;
+    if (bulkAllowCreatorPick) data.allowCreatorPick = bulkAllowCreatorPick === 'true';
+    if (bulkCommissionRate) data.defaultCommissionRate = Number(bulkCommissionRate);
+
+    if (Object.keys(data).length === 0) {
+      toast.error('변경할 항목을 선택해주세요.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const count = await bulkUpdateProducts(Array.from(selectedIds), data);
+      toast.success(`${count}개 상품이 업데이트되었습니다.`);
+      setSelectedIds(new Set());
+      setShowSettingsModal(false);
+      setBulkStatus('');
+      setBulkAllowCreatorPick('');
+      setBulkCommissionRate('');
+      await loadProducts();
+    } catch (error) {
+      toast.error('설정 변경에 실패했습니다.');
+      console.error('Failed to update products:', error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -240,6 +313,7 @@ export default function BrandProductsPage() {
             size="sm"
             className="h-10 px-6 rounded-lg border-gray-300 text-gray-700"
             disabled={selectedIds.size === 0}
+            onClick={() => setShowSettingsModal(true)}
           >
             설정 변경
           </Button>
@@ -248,6 +322,7 @@ export default function BrandProductsPage() {
             size="sm"
             className="h-10 px-6 rounded-lg border-gray-300 text-gray-700"
             disabled={selectedIds.size === 0}
+            onClick={() => setShowDeleteConfirm(true)}
           >
             삭제
           </Button>
@@ -527,6 +602,87 @@ export default function BrandProductsPage() {
           })}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>상품 삭제</DialogTitle>
+            <DialogDescription>
+              선택한 {selectedIds.size}개 상품을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setShowDeleteConfirm(false)} disabled={isSubmitting}>
+              취소
+            </Button>
+            <Button className="bg-red-600 hover:bg-red-700 text-white" onClick={handleDelete} disabled={isSubmitting}>
+              {isSubmitting ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />삭제 중...</> : '삭제'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Settings Change Dialog */}
+      <Dialog open={showSettingsModal} onOpenChange={(open) => {
+        setShowSettingsModal(open);
+        if (!open) { setBulkStatus(''); setBulkAllowCreatorPick(''); setBulkCommissionRate(''); }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>설정 변경</DialogTitle>
+            <DialogDescription>
+              선택한 {selectedIds.size}개 상품의 설정을 일괄 변경합니다. 변경하지 않을 항목은 비워두세요.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">판매 상태</Label>
+              <Select value={bulkStatus} onValueChange={setBulkStatus}>
+                <SelectTrigger className="h-10">
+                  <SelectValue placeholder="변경 없음" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ACTIVE">판매중</SelectItem>
+                  <SelectItem value="INACTIVE">판매중지</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">크리에이터 픽 허용</Label>
+              <Select value={bulkAllowCreatorPick} onValueChange={setBulkAllowCreatorPick}>
+                <SelectTrigger className="h-10">
+                  <SelectValue placeholder="변경 없음" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="true">ON</SelectItem>
+                  <SelectItem value="false">OFF</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">기본 수익률 (%)</Label>
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                placeholder="변경 없음"
+                value={bulkCommissionRate}
+                onChange={(e) => setBulkCommissionRate(e.target.value)}
+                className="h-10"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setShowSettingsModal(false)} disabled={isSubmitting}>
+              취소
+            </Button>
+            <Button onClick={handleBulkUpdate} disabled={isSubmitting}>
+              {isSubmitting ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />적용 중...</> : '적용'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
