@@ -788,6 +788,7 @@ export async function createProduct(data: {
   volume?: string
   ingredients?: string
   howToUse?: string
+  detailUrl?: string
   shippingFeeType: string
   shippingFee: number
   freeShippingThreshold?: number
@@ -821,6 +822,7 @@ export async function createProduct(data: {
       volume: data.volume ?? null,
       ingredients: data.ingredients ?? null,
       howToUse: data.howToUse ?? null,
+      detailUrl: data.detailUrl ?? null,
       shippingFeeType: data.shippingFeeType as ShippingFeeType | undefined,
       shippingFee: data.shippingFee,
       freeShippingThreshold: data.freeShippingThreshold ?? null,

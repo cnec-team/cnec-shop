@@ -30,7 +30,11 @@ import {
   Info,
   Lightbulb,
   X,
+  CircleDollarSign,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 type ProductCategory = string;
 type ShippingFeeType = string;
@@ -105,7 +109,10 @@ function PriceInput({
 
 export default function NewProductPage() {
   const router = useRouter();
-  const [brand, setBrand] = useState<{ id: string } | null>(null);
+  const [brand, setBrand] = useState<{
+    id: string;
+    creatorCommissionRate?: number | null;
+  } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -123,6 +130,12 @@ export default function NewProductPage() {
   const [volume, setVolume] = useState('');
   const [ingredients, setIngredients] = useState('');
   const [howToUse, setHowToUse] = useState('');
+
+  // Detail URL (new)
+  const [detailUrl, setDetailUrl] = useState('');
+
+  // Collapsible for direct input fields
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   // Thumbnail
   const [thumbnailUrl, setThumbnailUrl] = useState('');
@@ -153,6 +166,26 @@ export default function NewProductPage() {
       ? Math.round((1 - Number(salePrice) / Number(originalPrice)) * 100)
       : null;
 
+  // Commission preview calculation
+  const salePriceNum = Number(salePrice) || 0;
+  const brandCommissionRate = brand?.creatorCommissionRate ?? null;
+  const effectiveRate = brandCommissionRate ?? 10;
+  const isDefaultRate = brandCommissionRate === null || brandCommissionRate === undefined;
+  const commissionAmount = Math.round(salePriceNum * effectiveRate / 100);
+
+  function handleMainImageValidation(file: File) {
+    const img = new Image();
+    img.onload = () => {
+      if (img.width < 800 || img.height < 800) {
+        toast.warning(
+          '이미지 크기가 800×800px보다 작아요. 상품 페이지에서 흐릿하게 보일 수 있어요.'
+        );
+      }
+      URL.revokeObjectURL(img.src);
+    };
+    img.src = URL.createObjectURL(file);
+  }
+
   async function handleSave() {
     if (!brand?.id) return;
 
@@ -160,6 +193,12 @@ export default function NewProductPage() {
     if (!originalPrice || Number(originalPrice) <= 0) { setError('정가를 올바르게 입력해주세요.'); return; }
     if (!salePrice || Number(salePrice) <= 0) { setError('판매가를 올바르게 입력해주세요.'); return; }
     if (!stock || Number(stock) < 0) { setError('재고를 올바르게 입력해주세요.'); return; }
+
+    // Validate detail URL format if provided
+    if (detailUrl.trim() && !detailUrl.trim().startsWith('https://')) {
+      setError('상세페이지 URL은 https://로 시작해야 합니다.');
+      return;
+    }
 
     setIsSaving(true);
     setError(null);
@@ -182,6 +221,7 @@ export default function NewProductPage() {
         volume: volume.trim() || undefined,
         ingredients: ingredients.trim() || undefined,
         howToUse: howToUse.trim() || undefined,
+        detailUrl: detailUrl.trim() || undefined,
         shippingFeeType,
         shippingFee: shippingFeeType !== 'FREE' ? Number(shippingFee) || 0 : 0,
         freeShippingThreshold:
@@ -305,6 +345,36 @@ export default function NewProductPage() {
             </div>
           )}
 
+          {/* Commission Preview */}
+          {salePriceNum > 0 && (
+            <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <CircleDollarSign className="h-4 w-4 text-blue-600" />
+                <span className="text-[13px] font-semibold text-blue-900">
+                  예상 크리에이터 커미션
+                </span>
+              </div>
+              <p className="text-[13px] text-blue-800">
+                판매가{' '}
+                <span className="font-semibold">
+                  ₩{salePriceNum.toLocaleString()}
+                </span>{' '}
+                × 커미션율{' '}
+                <span className="font-semibold">
+                  {effectiveRate}%{isDefaultRate && ' (기본값)'}
+                </span>{' '}
+                ={' '}
+                <span className="font-semibold text-blue-700">
+                  ₩{commissionAmount.toLocaleString()}
+                </span>{' '}
+                / 건
+              </p>
+              <p className="text-[11px] text-gray-500">
+                커미션율은 캠페인 생성 시 변경할 수 있어요
+              </p>
+            </div>
+          )}
+
           {/* Tip box */}
           <div className="flex gap-3 bg-amber-50 border border-amber-200 rounded-2xl p-4">
             <div className="flex items-center justify-center w-8 h-8 rounded-[10px] bg-amber-200 shrink-0">
@@ -325,13 +395,19 @@ export default function NewProductPage() {
         <SectionCard title="이미지">
           <div className="space-y-2">
             <Label className={labelCls}>대표 이미지</Label>
+            <p className="text-[12px] text-gray-400">
+              1:1 정사각형 권장 · 최소 800×800px · JPG/PNG/WebP
+            </p>
             <div className="max-w-xs">
-              <ImageUpload value={mainImage} onChange={setMainImage} placeholder="대표 이미지를 업로드하세요" folder="products" />
+              <ImageUpload value={mainImage} onChange={setMainImage} placeholder="대표 이미지를 업로드하세요" folder="products" onFileSelected={handleMainImageValidation} />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label className={labelCls}>추가 이미지</Label>
+            <Label className={labelCls}>추가 이미지 (최대 5장)</Label>
+            <p className="text-[12px] text-gray-400">
+              상품 구성, 텍스처, 사용샷 등 다양한 각도의 이미지를 추가하면 전환율이 올라가요
+            </p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {additionalImages.map((url, idx) => (
                 <ImageUpload
@@ -346,7 +422,7 @@ export default function NewProductPage() {
                   folder="products"
                 />
               ))}
-              {additionalImages.length < 8 && (
+              {additionalImages.length < 5 && (
                 <ImageUpload value="" onChange={(url) => { if (url) setAdditionalImages([...additionalImages, url]); }} placeholder="추가 이미지" folder="products" />
               )}
             </div>
@@ -361,23 +437,58 @@ export default function NewProductPage() {
           </div>
         </SectionCard>
 
-        {/* ── 3. 상세 설명 ───────────────────────── */}
-        <SectionCard title="상세 설명">
+        {/* ── 3. 상세 정보 ───────────────────────── */}
+        <SectionCard title="상세 정보">
+          {/* Detail URL */}
           <div className="space-y-2">
-            <Label htmlFor="description" className={labelCls}>상품 설명</Label>
-            <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="상품에 대한 상세 설명을 입력하세요" rows={5} className={textareaCls} />
+            <Label htmlFor="detailUrl" className={labelCls}>기존 상품 상세페이지 URL</Label>
+            <Input
+              id="detailUrl"
+              type="url"
+              value={detailUrl}
+              onChange={(e) => setDetailUrl(e.target.value)}
+              placeholder="https://smartstore.naver.com/brand/products/12345"
+              className={inputCls}
+            />
+            <p className="text-[12px] text-gray-400">
+              스마트스토어, 카페24 등 기존 상세페이지 링크를 입력하면 구매자가 바로 확인할 수 있어요
+            </p>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="volume" className={labelCls}>용량/수량</Label>
-            <Input id="volume" value={volume} onChange={(e) => setVolume(e.target.value)} placeholder="예: 50ml, 100g, 30매" className={inputCls} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="ingredients" className={labelCls}>성분</Label>
-            <Textarea id="ingredients" value={ingredients} onChange={(e) => setIngredients(e.target.value)} placeholder="성분 목록을 입력하세요" rows={3} className={textareaCls} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="howToUse" className={labelCls}>사용법</Label>
-            <Textarea id="howToUse" value={howToUse} onChange={(e) => setHowToUse(e.target.value)} placeholder="사용 방법을 입력하세요" rows={3} className={textareaCls} />
+
+          {/* Collapsible: Direct Input Fields */}
+          <div className="rounded-[14px] border-[1.5px] border-gray-100">
+            <button
+              type="button"
+              onClick={() => setIsDetailOpen(!isDetailOpen)}
+              className="flex items-center justify-between w-full px-5 py-3.5 text-[13px] font-semibold text-gray-700 hover:bg-gray-50 rounded-[14px] transition-colors"
+            >
+              <span>직접 입력 (선택)</span>
+              {isDetailOpen ? (
+                <ChevronUp className="h-4 w-4 text-gray-400" />
+              ) : (
+                <ChevronDown className="h-4 w-4 text-gray-400" />
+              )}
+            </button>
+            {isDetailOpen && (
+              <div className="px-5 pb-5 space-y-5">
+                <div className="space-y-2">
+                  <Label htmlFor="description" className={labelCls}>상품 설명</Label>
+                  <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="상품에 대한 상세 설명을 입력하세요" rows={5} className={textareaCls} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="volume" className={labelCls}>용량/수량</Label>
+                  <Input id="volume" value={volume} onChange={(e) => setVolume(e.target.value)} placeholder="예: 50ml, 100g, 30매" className={inputCls} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="ingredients" className={labelCls}>성분</Label>
+                  <Textarea id="ingredients" value={ingredients} onChange={(e) => setIngredients(e.target.value)} placeholder="성분 목록을 입력하세요" rows={3} className={textareaCls} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="howToUse" className={labelCls}>사용법</Label>
+                  <Textarea id="howToUse" value={howToUse} onChange={(e) => setHowToUse(e.target.value)} placeholder="사용 방법을 입력하세요" rows={3} className={textareaCls} />
+                </div>
+              </div>
+            )}
           </div>
         </SectionCard>
 

@@ -527,6 +527,8 @@ model Product {
   courier               String?        @db.VarChar(20)
   shippingInfo          String?        @map("shipping_info")
   returnPolicy          String?        @map("return_policy")
+  // External detail page
+  detailUrl             String?        @map("detail_url")
   // Timestamps
   createdAt             DateTime       @default(now()) @map("created_at") @db.Timestamptz
   updatedAt             DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
