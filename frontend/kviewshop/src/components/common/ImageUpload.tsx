@@ -12,6 +12,7 @@ interface ImageUploadProps {
   maxSizeMB?: number;
   accept?: string;
   folder?: string;
+  onFileSelected?: (file: File) => void;
 }
 
 const ASPECT_CLASSES: Record<string, string> = {
@@ -28,6 +29,7 @@ export default function ImageUpload({
   maxSizeMB = 5,
   accept = 'image/jpeg,image/png,image/webp',
   folder = 'uploads',
+  onFileSelected,
 }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -45,6 +47,8 @@ export default function ImageUpload({
         toast.error('지원하지 않는 파일 형식입니다.');
         return;
       }
+
+      onFileSelected?.(file);
 
       setUploading(true);
       try {
@@ -70,7 +74,7 @@ export default function ImageUpload({
         setUploading(false);
       }
     },
-    [accept, folder, maxSizeMB, onChange],
+    [accept, folder, maxSizeMB, onChange, onFileSelected],
   );
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
