@@ -81,6 +81,7 @@ export function ProductDetailPage({
   const campaign = campaignProduct?.campaign as Campaign | undefined;
   const startAt = (campaign as any)?.start_at ?? (campaign as any)?.startAt;
   const isGonggu = !!campaignProduct && campaign?.type === 'GONGGU' && campaign?.status === 'ACTIVE' && hasCampaignStarted(startAt);
+  const isNotYetStarted = !!campaignProduct && campaign?.type === 'GONGGU' && !hasCampaignStarted(startAt);
 
   // Normalize snake_case/camelCase: Prisma returns camelCase, but database.ts types use snake_case
   const p = product as any;
@@ -470,20 +471,21 @@ export function ProductDetailPage({
         <div className="max-w-lg mx-auto flex items-center gap-3 px-4 py-3">
           <button
             onClick={handleAddToCart}
-            className="w-14 h-14 flex items-center justify-center border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+            disabled={isNotYetStarted}
+            className="w-14 h-14 flex items-center justify-center border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <ShoppingBag className="w-5 h-5 text-gray-600" />
           </button>
           <button
             onClick={handleBuy}
-            disabled={product.stock === 0}
+            disabled={product.stock === 0 || isNotYetStarted}
             className={`flex-1 h-14 rounded-xl font-semibold text-lg text-white transition-colors ${
               isGonggu
                 ? 'bg-orange-500 hover:bg-orange-600'
                 : 'bg-gray-900 hover:bg-gray-800'
             } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
-            {product.stock === 0 ? '품절' : `구매하기 ${formatKRW(effectivePrice * quantity)}`}
+            {isNotYetStarted ? '오픈 예정' : product.stock === 0 ? '품절' : `구매하기 ${formatKRW(effectivePrice * quantity)}`}
           </button>
         </div>
       </div>
