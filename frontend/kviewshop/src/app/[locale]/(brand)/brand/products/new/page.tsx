@@ -595,7 +595,7 @@ export default function NewProductPage() {
 
             {salePrice && (
               <div className="bg-[#ECFDF5] rounded-xl px-4 py-3 mt-1">
-                <p className="text-[12px] text-[#059669] mb-1">크리에이터가 1개 팔면</p>
+                <p className="text-[12px] text-[#059669] mb-1">크리에이터 판매 수익</p>
                 <div className="flex items-baseline gap-2">
                   <span className="text-lg font-bold text-[#059669]" style={{ fontVariantNumeric: 'tabular-nums' }}>
                     ₩{Math.round(Number(salePrice) * commissionRate / 100).toLocaleString('ko-KR')} 수익

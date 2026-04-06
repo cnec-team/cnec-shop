@@ -367,7 +367,7 @@ export default function CreatorProductsPage() {
                       </span>
                     )}
                     <p className="text-xs text-earnings font-semibold mt-1">
-                      팔면 ₩{earnings.toLocaleString()}
+                      판매 수익 ₩{earnings.toLocaleString()}
                     </p>
                   </div>
 
