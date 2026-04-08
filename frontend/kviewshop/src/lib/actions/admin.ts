@@ -196,14 +196,19 @@ export async function getPublicSettings(keys: string[]) {
 
 // Public: get platform stats for landing page
 export async function getPlatformStats() {
-  const [products, creators, brands, orders] = await Promise.all([
-    prisma.product.count({ where: { status: 'ACTIVE' } }),
-    prisma.creator.count({ where: { status: 'ACTIVE' } }),
-    prisma.brand.count(),
-    prisma.order.count(),
-  ])
+  try {
+    const [products, creators, brands, orders] = await Promise.all([
+      prisma.product.count({ where: { status: 'ACTIVE' } }),
+      prisma.creator.count({ where: { status: 'ACTIVE' } }),
+      prisma.brand.count(),
+      prisma.order.count(),
+    ])
 
-  return { products, creators, brands, orders }
+    return { products, creators, brands, orders }
+  } catch (error) {
+    console.error('getPlatformStats error:', error)
+    return { products: 0, creators: 0, brands: 0, orders: 0 }
+  }
 }
 
 // ==================== Settlements ====================
