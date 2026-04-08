@@ -151,6 +151,7 @@ export default function NewProductPage() {
   // Sales settings
   const [isActive, setIsActive] = useState(true);
   const [allowCreatorPick, setAllowCreatorPick] = useState(true);
+  const [allowTrial, setAllowTrial] = useState(true);
   const [commissionRate, setCommissionRate] = useState(10);
 
   useEffect(() => {
@@ -233,6 +234,7 @@ export default function NewProductPage() {
         returnPolicy: returnPolicy.trim() || undefined,
         status: isActive ? 'ACTIVE' : 'INACTIVE',
         allowCreatorPick,
+        allowTrial,
         defaultCommissionRate: commissionRate,
       });
 
@@ -571,6 +573,14 @@ export default function NewProductPage() {
               <p className="text-[12px] text-gray-400 mt-0.5">크리에이터가 자유롭게 이 상품을 픽할 수 있습니다</p>
             </div>
             <Switch checked={allowCreatorPick} onCheckedChange={setAllowCreatorPick} />
+          </div>
+
+          <div className="flex items-center justify-between rounded-[14px] border-[1.5px] border-gray-100 p-4">
+            <div>
+              <Label className={labelCls}>체험 신청 허용</Label>
+              <p className="text-[12px] text-gray-400 mt-0.5">크리에이터가 이 상품의 체험을 신청할 수 있습니다</p>
+            </div>
+            <Switch checked={allowTrial} onCheckedChange={setAllowTrial} />
           </div>
 
           <div className="rounded-[14px] border-[1.5px] border-gray-100 p-5 space-y-4">
