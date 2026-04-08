@@ -54,7 +54,7 @@
 - D-day 계산 오류 수정
 - 도메인 www.cnecshop.com 통일
 - useCountUp 훅 React hooks rules 위반 수정
-- 크리에이터 파일럿(MissionWidget) 제거 + 불필요 네비 삭제
+- 크리에이터 사용 단계(MissionWidget) 제거 + 불필요 네비 삭제
 
 ### 제거 (Removed)
 - Supabase 전체 의존성 제거
