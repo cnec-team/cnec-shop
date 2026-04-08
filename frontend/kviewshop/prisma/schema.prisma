@@ -145,6 +145,13 @@ enum SampleRequestStatus {
   shipped
   received
   rejected
+  cancelled
+  decided
+}
+
+enum SampleRequestDecision {
+  PROCEED
+  PASS
 }
 
 enum SupportTicketCategory {
@@ -519,6 +526,7 @@ model Product {
   isActive              Boolean        @default(true) @map("is_active")
   status                String         @default("ACTIVE") @db.VarChar(10)
   allowCreatorPick      Boolean        @default(true) @map("allow_creator_pick")
+  allowTrial            Boolean        @default(true) @map("allow_trial")
   defaultCommissionRate Decimal        @default(0.10) @map("default_commission_rate") @db.Decimal(5, 4)
   // Shipping
   shippingFeeType       ShippingFeeType @default(FREE) @map("shipping_fee_type")
@@ -540,6 +548,7 @@ model Product {
   liveProducts       LiveProduct[]
   productQuestions   ProductQuestion[]
   productReviews     ProductReview[]
+  sampleRequests     SampleRequest[]
   buyerWishlists     BuyerWishlist[]
   buyerCarts         BuyerCart[]
   liveChatMessages   LiveChatMessage[]
@@ -1003,7 +1012,7 @@ model SampleRequest {
   brandId         String   @map("brand_id")
   brand           Brand    @relation(fields: [brandId], references: [id])
   productIds      String[] @default([]) @map("product_ids")
-  status          String   @default("pending")
+  status          SampleRequestStatus @default(pending)
   shippingAddress Json?    @map("shipping_address") @db.JsonB
   message         String?
   adminNote       String?  @map("admin_note")
@@ -1011,7 +1020,21 @@ model SampleRequest {
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
+  // Product trial fields
+  productId       String?  @map("product_id")
+  product         Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  decision        SampleRequestDecision?
+  rejectReason    String?  @map("reject_reason")
+  passReason      String?  @map("pass_reason")
+  respondedAt     DateTime? @map("responded_at") @db.Timestamptz
+  shippedAt       DateTime? @map("shipped_at") @db.Timestamptz
+  receivedAt      DateTime? @map("received_at") @db.Timestamptz
+  decidedAt       DateTime? @map("decided_at") @db.Timestamptz
+  convertedTo     String?  @map("converted_to")
+
   @@index([status])
+  @@index([brandId, status])
+  @@index([creatorId, status])
   @@map("sample_requests")
 }
 
