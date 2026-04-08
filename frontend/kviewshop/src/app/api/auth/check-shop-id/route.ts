@@ -9,10 +9,18 @@ export async function GET(req: Request) {
     return NextResponse.json({ available: false })
   }
 
-  const existing = await prisma.creator.findUnique({
-    where: { shopId: id },
-    select: { id: true },
-  })
+  try {
+    const existing = await prisma.creator.findUnique({
+      where: { shopId: id },
+      select: { id: true },
+    })
 
-  return NextResponse.json({ available: !existing })
+    return NextResponse.json({ available: !existing })
+  } catch (error) {
+    console.error('check-shop-id error:', error)
+    return NextResponse.json(
+      { error: '서버 오류가 발생했습니다', available: false },
+      { status: 500 }
+    )
+  }
 }
