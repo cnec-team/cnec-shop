@@ -757,6 +757,7 @@ export async function updateProduct(
     returnPolicy?: string | null
     status?: string
     allowCreatorPick?: boolean
+    allowTrial?: boolean
     defaultCommissionRate?: number
   }
 ) {
@@ -789,6 +790,7 @@ export async function updateProduct(
   if (data.returnPolicy !== undefined) updateData.returnPolicy = data.returnPolicy
   if (data.status !== undefined) updateData.status = data.status
   if (data.allowCreatorPick !== undefined) updateData.allowCreatorPick = data.allowCreatorPick
+  if (data.allowTrial !== undefined) updateData.allowTrial = data.allowTrial
   if (data.defaultCommissionRate !== undefined) {
     const rate = data.defaultCommissionRate > 1
       ? data.defaultCommissionRate / 100
@@ -820,6 +822,7 @@ export async function bulkUpdateProducts(
   data: {
     status?: string
     allowCreatorPick?: boolean
+    allowTrial?: boolean
     defaultCommissionRate?: number
   }
 ) {
@@ -828,6 +831,7 @@ export async function bulkUpdateProducts(
   const updateData: Record<string, unknown> = {}
   if (data.status !== undefined) updateData.status = data.status
   if (data.allowCreatorPick !== undefined) updateData.allowCreatorPick = data.allowCreatorPick
+  if (data.allowTrial !== undefined) updateData.allowTrial = data.allowTrial
   if (data.defaultCommissionRate !== undefined) {
     const rate = data.defaultCommissionRate > 1
       ? data.defaultCommissionRate / 100
@@ -868,6 +872,7 @@ export async function createProduct(data: {
   returnPolicy?: string
   status: string
   allowCreatorPick: boolean
+  allowTrial?: boolean
   defaultCommissionRate: number
 }) {
   const { brand } = await requireBrand()
@@ -902,6 +907,7 @@ export async function createProduct(data: {
       returnPolicy: data.returnPolicy ?? null,
       status: data.status,
       allowCreatorPick: data.allowCreatorPick,
+      allowTrial: data.allowTrial ?? true,
       defaultCommissionRate: clampedRate,
     },
   })
