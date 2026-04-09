@@ -36,7 +36,7 @@ interface WebSiteJsonLdProps {
   url?: string;
 }
 
-export function WebSiteJsonLd({ url = 'https://shop.cnec.kr' }: WebSiteJsonLdProps) {
+export function WebSiteJsonLd({ url = 'https://www.cnecshop.com' }: WebSiteJsonLdProps) {
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'WebSite',

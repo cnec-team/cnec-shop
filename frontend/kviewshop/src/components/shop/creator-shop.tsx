@@ -3,9 +3,10 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { Clock, ShoppingBag, Instagram, Share2 } from 'lucide-react';
+import { Clock, ShoppingBag, Instagram, Share2, CalendarDays } from 'lucide-react';
 import { ShareSheet } from '@/components/shop/ShareSheet';
 import { VisitTracker } from '@/components/shop/VisitTracker';
+import { calculateDDay, calculateDDayUntilStart, getDDayLabel, getDDayStartLabel, formatCampaignPeriod, hasCampaignStarted } from '@/lib/utils/date';
 
 // =============================================
 // Types matching Prisma camelCase output
@@ -46,6 +47,7 @@ interface ShopCampaign {
   id: string;
   title?: string | null;
   status?: string;
+  startAt?: Date | string | null;
   endAt?: Date | string | null;
   totalStock?: number | null;
   soldCount?: number | null;
@@ -93,25 +95,46 @@ interface CreatorShopPageProps {
 // Helpers
 // =============================================
 
-function calculateDDay(endAt: string | Date | undefined | null): number {
-  if (!endAt) return -1;
-  const now = new Date();
-  const end = new Date(endAt);
-  const diff = end.getTime() - now.getTime();
-  if (diff <= 0) return 0;
-  return Math.floor(diff / (1000 * 60 * 60 * 24));
-}
-
-function getDDayLabel(days: number): string {
-  if (days < 0) return '';
-  if (days === 0) return 'D-Day';
-  return `D-${days}`;
-}
-
 function calculateDiscountPercent(original: number, sale: number): number {
   if (original <= 0) return 0;
   return Math.round(((original - sale) / original) * 100);
 }
+
+type BadgeVariant = 'red' | 'red-pulse' | 'blue' | 'gray';
+
+function getGongguBadge(campaign: ShopCampaign): { label: string; variant: BadgeVariant } | null {
+  const totalStock = Number(campaign.totalStock ?? 0);
+  const soldCount = Number(campaign.soldCount ?? 0);
+
+  // Sold out
+  if (totalStock > 0 && soldCount >= totalStock) {
+    return { label: 'SOLD OUT', variant: 'gray' };
+  }
+
+  // Not started yet
+  if (!hasCampaignStarted(campaign.startAt)) {
+    const daysToStart = calculateDDayUntilStart(campaign.startAt);
+    return { label: getDDayStartLabel(daysToStart), variant: 'blue' };
+  }
+
+  // Active - calculate D-day to end
+  const daysLeft = calculateDDay(campaign.endAt);
+  if (daysLeft <= 0) return { label: '마감', variant: 'gray' };
+
+  // Low stock urgency
+  const stockLow = totalStock > 0 && (totalStock - soldCount) / totalStock < 0.2;
+  if (stockLow) return { label: '마감 임박', variant: 'red-pulse' };
+  if (daysLeft <= 3) return { label: getDDayLabel(daysLeft), variant: 'red-pulse' };
+
+  return { label: getDDayLabel(daysLeft), variant: 'red' };
+}
+
+const BADGE_STYLES: Record<BadgeVariant, string> = {
+  red: 'bg-red-500 text-white',
+  'red-pulse': 'bg-red-500 text-white animate-pulse',
+  blue: 'bg-blue-500 text-white',
+  gray: 'bg-gray-400 text-white',
+};
 
 function formatWon(amount: number): string {
   return new Intl.NumberFormat('ko-KR').format(amount) + '원';
@@ -129,7 +152,7 @@ export function CreatorShopPage({
 }: CreatorShopPageProps) {
   const params = useParams();
   const username = params.username as string;
-  const shopUrl = `https://shop.cnec.kr/${username}`;
+  const shopUrl = `https://www.cnecshop.com/${username}`;
 
   // Separate items by type
   const gongguItems = useMemo(
@@ -328,15 +351,17 @@ function GongguCard({
 
   if (!product) return null;
 
-  const productSalePrice = Number(product.salePrice ?? 0);
   const productOriginalPrice = Number(product.originalPrice ?? 0);
+  const productSalePrice = Number(product.salePrice ?? 0);
   const effectivePrice = Number(campaignProduct?.campaignPrice ?? productSalePrice);
   const discountPercent = calculateDiscountPercent(productOriginalPrice, effectivePrice);
-  const dDayNum = campaign?.endAt ? calculateDDay(campaign.endAt) : -1;
-  const dDayLabel = getDDayLabel(dDayNum);
   const brandName = product.brand?.brandName || '';
-  const isActive = campaign?.status === 'ACTIVE';
   const soldCount = Number(campaign?.soldCount ?? 0);
+  const totalStock = Number(campaign?.totalStock ?? 0);
+  const remaining = totalStock > 0 ? totalStock - soldCount : -1;
+  const progressPercent = totalStock > 0 ? Math.min(Math.round((soldCount / totalStock) * 100), 100) : 0;
+  const badge = campaign ? getGongguBadge(campaign) : null;
+  const period = campaign ? formatCampaignPeriod(campaign.startAt, campaign.endAt) : '';
 
   return (
     <Link
@@ -357,13 +382,13 @@ function GongguCard({
               이미지 없음
             </div>
           )}
-          {/* D-Day badge: red pill, top-left */}
-          {dDayLabel && isActive && (
-            <span className="absolute top-2 left-2 bg-red-500 text-white rounded-full px-2.5 py-0.5 text-[11px] font-bold">
-              {dDayLabel}
+          {/* Status badge: top-left */}
+          {badge && (
+            <span className={`absolute top-2 left-2 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${BADGE_STYLES[badge.variant]}`}>
+              {badge.label}
             </span>
           )}
-          {/* Discount badge: yellow pill, top-right */}
+          {/* Discount badge: top-right */}
           {discountPercent > 0 && (
             <span className="absolute top-2 right-2 bg-yellow-300 text-gray-900 rounded-full px-2 py-0.5 text-[11px] font-bold">
               {discountPercent}%
@@ -372,26 +397,58 @@ function GongguCard({
         </div>
 
         {/* Product info */}
-        <div className="mt-2">
+        <div className="mt-2.5">
           {brandName && (
             <p className="text-xs text-gray-400 truncate">{brandName}</p>
           )}
           <h4 className="text-sm text-gray-900 line-clamp-2 leading-snug mt-0.5">
             {product.name}
           </h4>
+
+          {/* Campaign period */}
+          {period && (
+            <div className="flex items-center gap-1 mt-1">
+              <CalendarDays className="h-3 w-3 text-gray-400" />
+              <span className="text-[11px] text-gray-400">{period}</span>
+            </div>
+          )}
+
+          {/* Price */}
           <div className="flex items-baseline gap-1.5 mt-1.5">
             <span className="text-base font-bold text-gray-900">
               {formatWon(effectivePrice)}
             </span>
             {discountPercent > 0 && (
-              <span className="text-xs text-gray-400 line-through">
-                {formatWon(productOriginalPrice)}
-              </span>
+              <>
+                <span className="text-xs text-gray-400 line-through">
+                  {formatWon(productOriginalPrice)}
+                </span>
+                <span className="text-xs font-semibold text-red-500">
+                  -{discountPercent}%
+                </span>
+              </>
             )}
           </div>
+
+          {/* Stock progress bar */}
+          {totalStock > 0 && (
+            <div className="mt-2">
+              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-red-500 rounded-full transition-all"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+              <p className="text-[11px] text-gray-400 mt-0.5">
+                {remaining > 0 ? `${remaining.toLocaleString()}개 남음` : '품절'}
+              </p>
+            </div>
+          )}
+
+          {/* Social proof */}
           {soldCount > 0 && (
-            <p className="text-xs text-red-500 font-medium mt-1">
-              {soldCount.toLocaleString()}명 참여중
+            <p className="text-xs text-gray-500 mt-1">
+              {soldCount.toLocaleString()}명이 구매했어요
             </p>
           )}
         </div>

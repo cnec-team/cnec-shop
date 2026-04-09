@@ -11,6 +11,9 @@ import {
   ShoppingBag,
   CheckCircle,
   Copy,
+  Minus,
+  Plus,
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -70,7 +73,7 @@ export default function CheckoutPage() {
   const username = params.username as string;
   const locale = params.locale as string;
 
-  const { items, clearCart } = useCartStore();
+  const { items, clearCart, updateQuantity, removeItem } = useCartStore();
   const buyer = useAuthStore((s) => s.buyer);
 
   const [isLoading, setIsLoading] = useState(true);
@@ -137,6 +140,27 @@ export default function CheckoutPage() {
 
     loadData();
   }, [username, items, locale, router]);
+
+  const handleUpdateQuantity = (productId: string, newQty: number) => {
+    if (newQty < 1) return;
+    updateQuantity(productId, newQty);
+    setCartItems((prev) =>
+      prev.map((item) =>
+        item.productId === productId ? { ...item, quantity: newQty } : item
+      )
+    );
+  };
+
+  const handleRemoveItem = (productId: string) => {
+    removeItem(productId);
+    setCartItems((prev) => {
+      const next = prev.filter((item) => item.productId !== productId);
+      if (next.length === 0) {
+        router.back();
+      }
+      return next;
+    });
+  };
 
   const productAmount = cartItems.reduce((total, item) => {
     return total + Number(item.unitPrice) * item.quantity;
@@ -471,13 +495,36 @@ export default function CheckoutPage() {
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">
-                    {item.product?.name || '상품'}
-                  </p>
-                  <div className="flex items-center justify-between mt-1">
-                    <span className="text-xs text-gray-400">
-                      수량: {item.quantity}
-                    </span>
+                  <div className="flex items-start justify-between">
+                    <p className="text-sm font-medium text-gray-900 truncate flex-1">
+                      {item.product?.name || '상품'}
+                    </p>
+                    <button
+                      onClick={() => handleRemoveItem(item.productId)}
+                      className="ml-2 p-1 text-gray-300 hover:text-gray-500 transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between mt-2">
+                    <div className="flex items-center gap-0">
+                      <button
+                        onClick={() => handleUpdateQuantity(item.productId, item.quantity - 1)}
+                        disabled={item.quantity <= 1}
+                        className="w-7 h-7 flex items-center justify-center border border-gray-200 rounded-l-lg hover:bg-gray-50 disabled:opacity-30"
+                      >
+                        <Minus className="h-3 w-3" />
+                      </button>
+                      <span className="w-8 h-7 flex items-center justify-center border-y border-gray-200 text-xs font-medium">
+                        {item.quantity}
+                      </span>
+                      <button
+                        onClick={() => handleUpdateQuantity(item.productId, item.quantity + 1)}
+                        className="w-7 h-7 flex items-center justify-center border border-gray-200 rounded-r-lg hover:bg-gray-50"
+                      >
+                        <Plus className="h-3 w-3" />
+                      </button>
+                    </div>
                     <span className="text-sm font-bold text-gray-900">
                       {formatKRW(Number(item.unitPrice) * item.quantity)}
                     </span>

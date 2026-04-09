@@ -22,6 +22,7 @@ import {
   BarChart3,
   Repeat,
   Zap,
+  Gift,
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
@@ -73,6 +74,12 @@ export function BrandSidebar({ locale, brandName, brandStatus }: BrandSidebarPro
         { title: '공구 캠페인', href: `${base}/brand/campaigns/gonggu`, icon: Megaphone },
         { title: '상시 캠페인', href: `${base}/brand/campaigns/always`, icon: Repeat },
         { title: '캠페인 생성', href: `${base}/brand/campaigns/new`, icon: Zap },
+      ],
+    },
+    {
+      label: '체험 관리',
+      items: [
+        { title: '체험 신청', href: `${base}/brand/trial`, icon: Gift },
       ],
     },
     {

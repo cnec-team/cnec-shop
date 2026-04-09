@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/db'
 import { Prisma } from '@/generated/prisma/client'
 import { auth } from '@/lib/auth'
+import { sendNotification } from '@/lib/notifications'
 
 async function requireCreator() {
   const session = await auth()
@@ -253,7 +254,7 @@ export async function applyCampaignParticipation(data: {
 }) {
   const { creator } = await requireCreator()
 
-  return prisma.campaignParticipation.create({
+  const participation = await prisma.campaignParticipation.create({
     data: {
       campaignId: data.campaignId,
       creatorId: creator.id,
@@ -261,6 +262,27 @@ export async function applyCampaignParticipation(data: {
       message: data.message ?? null,
     },
   })
+
+  // Notify the brand that a creator has applied
+  try {
+    const campaign = await prisma.campaign.findUnique({
+      where: { id: data.campaignId },
+      select: { title: true, brand: { select: { userId: true } } },
+    })
+    if (campaign?.brand?.userId) {
+      sendNotification({
+        userId: campaign.brand.userId,
+        type: 'CAMPAIGN',
+        title: '공구 참여 신청',
+        message: `${creator.displayName ?? creator.username ?? '크리에이터'}님이 "${campaign.title}" 공구에 참여를 신청했습니다.`,
+        linkUrl: '/brand/creators/pending',
+      })
+    }
+  } catch {
+    // Don't fail the participation if notification fails
+  }
+
+  return participation
 }
 
 export async function addCampaignShopItems(campaignId: string, productIds: string[]) {
@@ -484,7 +506,7 @@ export async function getPickableProducts(creatorId: string) {
 export async function addProductToShop(productId: string) {
   const { creator } = await requireCreator()
 
-  return prisma.creatorShopItem.create({
+  const item = await prisma.creatorShopItem.create({
     data: {
       creatorId: creator.id,
       productId,
@@ -493,6 +515,23 @@ export async function addProductToShop(productId: string) {
       isVisible: true,
     },
   })
+
+  // 브랜드에게 크리에이터픽 알림
+  const product = await prisma.product.findUnique({
+    where: { id: productId },
+    select: { name: true, brand: { select: { userId: true } } },
+  })
+  if (product?.brand?.userId) {
+    sendNotification({
+      userId: product.brand.userId,
+      type: 'CAMPAIGN',
+      title: '크리에이터픽 추가',
+      message: `${creator.displayName ?? creator.username ?? '크리에이터'}님이 "${product.name ?? '상품'}"을 픽했어요.`,
+      linkUrl: '/brand/creators',
+    })
+  }
+
+  return item
 }
 
 export async function applyGongguProduct(data: {
@@ -592,6 +631,15 @@ export async function withdrawPoints(amount: number) {
     },
   })
 
+  // 크리에이터에게 출금 완료 알림
+  sendNotification({
+    userId: creator.userId,
+    type: 'SETTLEMENT',
+    title: '포인트 출금 요청',
+    message: `₩${amount.toLocaleString('ko-KR')} 출금이 요청되었어요. 잔액: ₩${(balance - amount).toLocaleString('ko-KR')}`,
+    linkUrl: '/creator/points',
+  })
+
   return { success: true, point }
 }
 
@@ -607,7 +655,7 @@ export async function getCreatorReferralData() {
 
   // Generate referral code from creator's id/username
   const referralCode = creator.username || creator.id.substring(0, 8)
-  const shareLink = `https://shop.cnec.kr/join?ref=${referralCode}`
+  const shareLink = `https://www.cnecshop.com/join?ref=${referralCode}`
 
   const stats = {
     totalInvited: referrals.length,

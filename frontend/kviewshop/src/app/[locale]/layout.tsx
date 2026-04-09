@@ -3,6 +3,7 @@ import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { locales, isRTL, type Locale } from '@/lib/i18n/config';
 import { Providers } from '@/components/providers';
+import { Toaster } from '@/components/ui/sonner';
 
 interface LocaleLayoutProps {
   children: React.ReactNode;
@@ -25,11 +26,25 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
   const messages = await getMessages();
 
   return (
-    <html lang={locale} dir={isRTL(locale as Locale) ? 'rtl' : 'ltr'}>
-      <body>
+    <html lang={locale} dir={isRTL(locale as Locale) ? 'rtl' : 'ltr'} suppressHydrationWarning>
+      <head>
+        <link rel="preconnect" href="https://cdn.jsdelivr.net" crossOrigin="anonymous" />
+        <link
+          rel="stylesheet"
+          as="style"
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+        />
+        <script
+          src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.4/kakao.min.js"
+          defer
+          crossOrigin="anonymous"
+        />
+      </head>
+      <body className="font-body antialiased">
         <NextIntlClientProvider messages={messages}>
           <Providers>{children}</Providers>
         </NextIntlClientProvider>
+        <Toaster />
       </body>
     </html>
   );

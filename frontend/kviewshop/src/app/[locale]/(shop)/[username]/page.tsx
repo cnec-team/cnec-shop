@@ -4,7 +4,7 @@ import { CreatorShopPage } from '@/components/shop/creator-shop';
 import { OrganizationJsonLd } from '@/components/seo/JsonLd';
 import type { Metadata } from 'next';
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://shop.cnec.kr';
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.cnecshop.com';
 
 interface ShopPageProps {
   params: Promise<{

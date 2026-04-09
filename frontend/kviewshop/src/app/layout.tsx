@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import { Toaster } from '@/components/ui/sonner';
 
 export const metadata: Metadata = {
   title: {
@@ -28,25 +27,5 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return (
-    <html suppressHydrationWarning>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
-        <script
-          src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.4/kakao.min.js"
-          defer
-          crossOrigin="anonymous"
-        />
-      </head>
-      <body className="font-body antialiased">
-        {children}
-        <Toaster />
-      </body>
-    </html>
-  );
+  return children;
 }

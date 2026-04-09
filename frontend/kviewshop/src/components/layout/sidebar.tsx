@@ -25,6 +25,7 @@ import {
   Trophy,
   BookOpen,
   HelpCircle,
+  Gift,
 } from 'lucide-react';
 import type { UserRole } from '@/types/database';
 import type { Locale } from '@/lib/i18n/config';
@@ -113,6 +114,13 @@ export function Sidebar({ role, locale }: SidebarProps) {
             items: [
               { title: '공구 캠페인', href: `${base}/creator/campaigns`, icon: Megaphone },
               { title: '내 캠페인', href: `${base}/creator/campaigns/my`, icon: Store },
+            ],
+          },
+          {
+            label: '제품 체험',
+            items: [
+              { title: '체험 가능 상품', href: `${base}/creator/trial`, icon: Gift },
+              { title: '내 체험 현황', href: `${base}/creator/trial/my`, icon: Package },
             ],
           },
           { items: [{ title: '주문 현황', href: `${base}/creator/orders`, icon: ShoppingCart }] },

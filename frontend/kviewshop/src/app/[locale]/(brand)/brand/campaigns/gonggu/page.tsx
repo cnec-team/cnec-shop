@@ -3,45 +3,61 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getBrandCampaigns, getBrandSession, updateCampaignStatus } from '@/lib/actions/brand';
-import { CAMPAIGN_STATUS_LABELS } from '@/types/database';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from 'sonner';
+import { calculateDDay, getDDayLabel } from '@/lib/utils/date';
 import {
   Megaphone,
   Plus,
   Calendar,
   Users,
   ArrowRight,
+  Package,
+  Percent,
+  Sparkles,
+  Rocket,
+  BarChart3,
+  Loader2,
 } from 'lucide-react';
 
 function formatCurrency(num: number): string {
   return `${num.toLocaleString('ko-KR')}원`;
 }
 
-function getStatusStyle(status: string): string {
-  switch (status) {
-    case 'DRAFT': return 'bg-gray-500/10 text-gray-600 border-gray-200';
-    case 'RECRUITING': return 'bg-blue-500/10 text-blue-600 border-blue-200';
-    case 'ACTIVE': return 'bg-green-500/10 text-green-600 border-green-200';
-    case 'ENDED': return 'bg-red-500/10 text-red-600 border-red-200';
-    default: return '';
-  }
-}
+const STATUS_CONFIG: Record<string, {
+  label: string;
+  badgeCls: string;
+  borderCls: string;
+}> = {
+  DRAFT: {
+    label: '작성중',
+    badgeCls: 'bg-gray-100 text-gray-600 border-0',
+    borderCls: 'border-l-4 border-l-gray-300',
+  },
+  RECRUITING: {
+    label: '모집중',
+    badgeCls: 'bg-blue-100 text-blue-700 border-0',
+    borderCls: 'border-l-4 border-l-blue-500',
+  },
+  ACTIVE: {
+    label: '진행중',
+    badgeCls: 'bg-green-100 text-green-700 border-0',
+    borderCls: 'border-l-4 border-l-green-500',
+  },
+  ENDED: {
+    label: '종료',
+    badgeCls: 'bg-gray-100 text-gray-400 border-0',
+    borderCls: 'border-l-4 border-l-gray-200',
+  },
+};
 
 function getDday(endAt: string | null): string | null {
   if (!endAt) return null;
-  const diff = Math.ceil((new Date(endAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-  if (diff < 0) return '종료됨';
-  if (diff === 0) return 'D-DAY';
-  return `D-${diff}`;
+  const days = calculateDDay(endAt);
+  if (days <= 0) return days === 0 ? 'D-DAY' : '종료됨';
+  return getDDayLabel(days);
 }
 
 interface GongguCampaign {
@@ -61,6 +77,204 @@ interface GongguCampaign {
     campaignPrice: number | string;
     product: { name: string | null } | null;
   }>;
+}
+
+function CampaignCard({
+  campaign,
+  isUpdating,
+  onStatusChange,
+}: {
+  campaign: GongguCampaign;
+  isUpdating: boolean;
+  onStatusChange: (id: string, status: string) => void;
+}) {
+  const config = STATUS_CONFIG[campaign.status] ?? STATUS_CONFIG.DRAFT;
+  const dday = getDday(campaign.endAt);
+  const progressPercent = campaign.totalStock && campaign.totalStock > 0
+    ? Math.min((campaign.soldCount / campaign.totalStock) * 100, 100) : 0;
+  const commissionRate = Number(campaign.commissionRate) * 100;
+
+  return (
+    <div className={`bg-white rounded-xl border shadow-sm hover:shadow-md transition-shadow ${config.borderCls} overflow-hidden`}>
+      <div className="p-6 space-y-4">
+        {/* Header: Status + D-day */}
+        <div className="flex items-center justify-between">
+          <Badge className={config.badgeCls}>
+            {config.label}
+          </Badge>
+          {dday && (campaign.status === 'ACTIVE' || campaign.status === 'RECRUITING') && (
+            <span className="text-sm font-semibold text-orange-600">{dday}</span>
+          )}
+        </div>
+
+        {/* Title */}
+        <div>
+          <Link href={`../campaigns/${campaign.id}`} className="hover:underline">
+            <h3 className="text-lg font-bold text-gray-900 line-clamp-1">{campaign.title}</h3>
+          </Link>
+        </div>
+
+        {/* Info Pills */}
+        <div className="flex flex-wrap gap-2">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 rounded-lg">
+            <Package className="h-3.5 w-3.5 text-gray-400" />
+            <span className="text-xs text-gray-600">상품 {campaign.products.length}개</span>
+          </div>
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 rounded-lg">
+            <Percent className="h-3.5 w-3.5 text-gray-400" />
+            <span className="text-xs text-gray-600">커미션 {commissionRate}%</span>
+          </div>
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 rounded-lg">
+            <Users className="h-3.5 w-3.5 text-gray-400" />
+            <span className="text-xs text-gray-600">{campaign.recruitmentType === 'OPEN' ? '자동승인' : '승인제'}</span>
+          </div>
+        </div>
+
+        {/* Period */}
+        {campaign.startAt && (
+          <div className="flex items-center gap-1.5 text-xs text-gray-400">
+            <Calendar className="h-3.5 w-3.5" />
+            <span>
+              {new Date(campaign.startAt).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })}
+              {campaign.endAt && ` ~ ${new Date(campaign.endAt).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })}`}
+            </span>
+          </div>
+        )}
+
+        {/* Product List */}
+        {campaign.products.length > 0 && (
+          <div className="bg-gray-50 rounded-lg p-3 space-y-1.5">
+            {campaign.products.slice(0, 2).map((cp) => (
+              <div key={cp.id} className="flex items-center justify-between">
+                <span className="text-sm text-gray-600 truncate flex-1 mr-2">{cp.product?.name ?? '상품'}</span>
+                <span className="text-sm font-semibold text-gray-900 shrink-0">{formatCurrency(Number(cp.campaignPrice))}</span>
+              </div>
+            ))}
+            {campaign.products.length > 2 && (
+              <p className="text-xs text-gray-400">+{campaign.products.length - 2}개 더</p>
+            )}
+          </div>
+        )}
+
+        {/* Progress Bar */}
+        <div className="border-t border-gray-100 pt-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs text-gray-400">판매 진행률</span>
+            <span className="text-xs font-medium text-gray-700">
+              {campaign.soldCount.toLocaleString('ko-KR')} / {(campaign.totalStock ?? 0).toLocaleString('ko-KR')}개
+            </span>
+          </div>
+          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all ${
+                campaign.status === 'ACTIVE' ? 'bg-green-500' : 'bg-blue-500'
+              }`}
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+        </div>
+
+        {/* CTA Section */}
+        <div className="space-y-2">
+          {/* Status-specific guidance */}
+          {campaign.status === 'DRAFT' && (
+            <p className="text-xs text-gray-400">모집을 시작하면 크리에이터가 이 캠페인을 보고 참여할 수 있어요</p>
+          )}
+          {campaign.status === 'RECRUITING' && (
+            <p className="text-xs text-blue-500">크리에이터가 참여 중이에요. 캠페인을 시작하면 판매가 시작됩니다</p>
+          )}
+          {campaign.status === 'ACTIVE' && dday && (
+            <p className="text-xs text-green-600">공구가 진행 중이에요! {dday === '종료됨' ? '종료 예정' : `${dday}일 남았어요`}</p>
+          )}
+          {campaign.status === 'ENDED' && (
+            <p className="text-xs text-gray-400">공구가 종료되었어요</p>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2 pt-1">
+            {campaign.status === 'DRAFT' && (
+              <>
+                <Button
+                  size="sm"
+                  className="h-10 flex-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium"
+                  disabled={isUpdating}
+                  onClick={() => onStatusChange(campaign.id, 'RECRUITING')}
+                >
+                  {isUpdating ? (
+                    <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />처리 중...</>
+                  ) : (
+                    <><Sparkles className="h-4 w-4 mr-1.5" />모집 시작하기</>
+                  )}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-10 px-4 rounded-lg border-gray-200 text-gray-500 text-sm"
+                  disabled={isUpdating}
+                  onClick={() => onStatusChange(campaign.id, 'ENDED')}
+                >
+                  취소
+                </Button>
+              </>
+            )}
+            {campaign.status === 'RECRUITING' && (
+              <>
+                <Button
+                  size="sm"
+                  className="h-10 flex-1 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-medium"
+                  disabled={isUpdating}
+                  onClick={() => onStatusChange(campaign.id, 'ACTIVE')}
+                >
+                  {isUpdating ? (
+                    <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />처리 중...</>
+                  ) : (
+                    <><Rocket className="h-4 w-4 mr-1.5" />캠페인 시작</>
+                  )}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-10 px-4 rounded-lg border-gray-200 text-gray-500 text-sm"
+                  disabled={isUpdating}
+                  onClick={() => onStatusChange(campaign.id, 'ENDED')}
+                >
+                  취소
+                </Button>
+              </>
+            )}
+            {campaign.status === 'ACTIVE' && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-10 px-4 rounded-lg border-red-200 text-red-500 hover:bg-red-50 text-sm"
+                disabled={isUpdating}
+                onClick={() => onStatusChange(campaign.id, 'ENDED')}
+              >
+                {isUpdating ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />처리 중...</> : '종료하기'}
+              </Button>
+            )}
+            {campaign.status === 'ENDED' && (
+              <Link href={`../campaigns/${campaign.id}`}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-10 px-4 rounded-lg border-gray-200 text-gray-500 text-sm"
+                >
+                  <BarChart3 className="h-4 w-4 mr-1.5" />
+                  결과 보기
+                </Button>
+              </Link>
+            )}
+            <Link href={`../campaigns/${campaign.id}`} className="ml-auto">
+              <Button size="sm" variant="ghost" className="h-10 px-3 rounded-lg text-gray-400 hover:text-gray-600 text-sm">
+                상세 <ArrowRight className="h-3.5 w-3.5 ml-1" />
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function GongguCampaignsPage() {
@@ -89,8 +303,14 @@ export default function GongguCampaignsPage() {
     setUpdatingId(campaignId);
     try {
       await updateCampaignStatus(campaignId, newStatus);
+      toast.success(
+        newStatus === 'RECRUITING' ? '모집이 시작되었습니다!' :
+        newStatus === 'ACTIVE' ? '캠페인이 시작되었습니다!' :
+        newStatus === 'ENDED' ? '캠페인이 종료되었습니다.' : '상태가 변경되었습니다.'
+      );
       await load();
     } catch (error) {
+      toast.error('상태 변경에 실패했습니다.');
       console.error('Failed to update campaign status:', error);
     } finally {
       setUpdatingId(null);
@@ -102,11 +322,11 @@ export default function GongguCampaignsPage() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">공구 캠페인</h1>
-          <p className="text-sm text-muted-foreground mt-1">기간 한정 공동구매 캠페인을 관리합니다</p>
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900">공구 캠페인</h1>
+          <p className="text-sm text-gray-400 mt-1">기간 한정 공동구매 캠페인을 관리합니다</p>
         </div>
         <Link href="../campaigns/new">
-          <Button size="sm" className="h-9">
+          <Button size="sm" className="h-10 px-5 rounded-lg bg-primary hover:bg-primary/90 text-white font-medium">
             <Plus className="h-4 w-4 mr-1.5" />
             새 캠페인
           </Button>
@@ -114,152 +334,50 @@ export default function GongguCampaignsPage() {
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Card key={i} className="bg-white rounded-xl">
-              <CardContent className="p-5 space-y-3">
-                <Skeleton className="h-5 w-48" />
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-2 w-full" />
-              </CardContent>
-            </Card>
+            <div key={i} className="bg-white rounded-xl border shadow-sm p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <Skeleton className="h-6 w-16 rounded-full" />
+                <Skeleton className="h-5 w-10" />
+              </div>
+              <Skeleton className="h-6 w-48" />
+              <div className="flex gap-2">
+                <Skeleton className="h-8 w-24 rounded-lg" />
+                <Skeleton className="h-8 w-24 rounded-lg" />
+                <Skeleton className="h-8 w-20 rounded-lg" />
+              </div>
+              <Skeleton className="h-2 w-full rounded-full" />
+              <Skeleton className="h-10 w-full rounded-lg" />
+            </div>
           ))}
         </div>
       ) : campaigns.length === 0 ? (
-        <Card className="bg-white rounded-xl border shadow-sm">
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <Megaphone className="h-16 w-16 text-muted-foreground/20 mb-4" />
-            <p className="text-lg font-medium mb-1">공구 캠페인으로 크리에이터와 함께 판매해보세요</p>
-            <p className="text-sm text-muted-foreground mb-6">
-              기간 한정 공동구매로 매출을 극대화할 수 있어요
-            </p>
+        <div className="bg-white rounded-xl border shadow-sm">
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-gray-50 mb-4">
+              <Package className="h-8 w-8 text-gray-300" />
+            </div>
+            <p className="text-lg font-semibold text-gray-900 mb-1">아직 공구 캠페인이 없어요</p>
+            <p className="text-sm text-gray-400 mb-6">첫 공구를 시작해보세요!</p>
             <Link href="../campaigns/new">
-              <Button>
+              <Button className="h-10 px-6 rounded-lg">
                 <Plus className="h-4 w-4 mr-1.5" />
-                캠페인 만들기
+                새 캠페인 만들기
               </Button>
             </Link>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {campaigns.map((campaign) => {
-            const progressPercent = campaign.totalStock && campaign.totalStock > 0
-              ? (campaign.soldCount / campaign.totalStock) * 100 : 0;
-            const isUpdating = updatingId === campaign.id;
-            const dday = getDday(campaign.endAt);
-
-            return (
-              <Card key={campaign.id} className="bg-white rounded-xl border shadow-sm hover:shadow-md transition-shadow overflow-hidden">
-                <div className="p-5 space-y-4">
-                  {/* Header */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <Link href={`../campaigns/${campaign.id}`} className="hover:underline">
-                        <h3 className="font-semibold truncate">{campaign.title}</h3>
-                      </Link>
-                      {campaign.description && (
-                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                          {campaign.description}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {dday && campaign.status === 'ACTIVE' && (
-                        <Badge variant="outline" className="text-[10px] bg-orange-50 text-orange-600 border-orange-200">
-                          {dday}
-                        </Badge>
-                      )}
-                      <Badge variant="outline" className={getStatusStyle(campaign.status)}>
-                        {CAMPAIGN_STATUS_LABELS[campaign.status as keyof typeof CAMPAIGN_STATUS_LABELS]}
-                      </Badge>
-                    </div>
-                  </div>
-
-                  {/* Progress */}
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">판매 진행률</span>
-                      <span className="font-medium">
-                        {campaign.soldCount.toLocaleString('ko-KR')} / {(campaign.totalStock ?? 0).toLocaleString('ko-KR')}
-                      </span>
-                    </div>
-                    <Progress value={progressPercent} className="h-2" />
-                  </div>
-
-                  {/* Meta */}
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                    {campaign.startAt && (
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {new Date(campaign.startAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}
-                        {campaign.endAt && ` ~ ${new Date(campaign.endAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}`}
-                      </span>
-                    )}
-                    <span>크리에이터 수익 {Number(campaign.commissionRate) * 100}%</span>
-                    <span>{campaign.recruitmentType === 'OPEN' ? '자동 승인' : '승인제'}</span>
-                  </div>
-
-                  {/* Products */}
-                  {campaign.products && campaign.products.length > 0 && (
-                    <div className="rounded-lg bg-gray-50 p-3 space-y-1">
-                      {campaign.products.slice(0, 2).map((cp) => (
-                        <div key={cp.id} className="flex items-center justify-between text-sm">
-                          <span className="truncate text-muted-foreground">{cp.product?.name ?? '상품'}</span>
-                          <span className="font-medium shrink-0 ml-2">{formatCurrency(Number(cp.campaignPrice))}</span>
-                        </div>
-                      ))}
-                      {campaign.products.length > 2 && (
-                        <p className="text-xs text-muted-foreground">+{campaign.products.length - 2}개 더</p>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Actions */}
-                  <div className="flex gap-2 pt-2 border-t">
-                    {campaign.status === 'DRAFT' && (
-                      <>
-                        <Button size="sm" className="h-8 text-xs flex-1" disabled={isUpdating}
-                          onClick={() => handleStatusChange(campaign.id, 'RECRUITING')}>
-                          {isUpdating ? '처리 중...' : '모집 시작'}
-                        </Button>
-                        <Button size="sm" variant="outline" className="h-8 text-xs" disabled={isUpdating}
-                          onClick={() => handleStatusChange(campaign.id, 'ENDED')}>
-                          취소
-                        </Button>
-                      </>
-                    )}
-                    {campaign.status === 'RECRUITING' && (
-                      <>
-                        <Button size="sm" className="h-8 text-xs flex-1" disabled={isUpdating}
-                          onClick={() => handleStatusChange(campaign.id, 'ACTIVE')}>
-                          {isUpdating ? '처리 중...' : '캠페인 시작'}
-                        </Button>
-                        <Button size="sm" variant="outline" className="h-8 text-xs" disabled={isUpdating}
-                          onClick={() => handleStatusChange(campaign.id, 'ENDED')}>
-                          취소
-                        </Button>
-                      </>
-                    )}
-                    {campaign.status === 'ACTIVE' && (
-                      <Button size="sm" variant="destructive" className="h-8 text-xs" disabled={isUpdating}
-                        onClick={() => handleStatusChange(campaign.id, 'ENDED')}>
-                        {isUpdating ? '처리 중...' : '종료'}
-                      </Button>
-                    )}
-                    {campaign.status === 'ENDED' && (
-                      <span className="text-xs text-muted-foreground py-1">종료된 캠페인</span>
-                    )}
-                    <Link href={`../campaigns/${campaign.id}`} className="ml-auto">
-                      <Button size="sm" variant="ghost" className="h-8 text-xs">
-                        상세 <ArrowRight className="h-3 w-3 ml-1" />
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              </Card>
-            );
-          })}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          {campaigns.map((campaign) => (
+            <CampaignCard
+              key={campaign.id}
+              campaign={campaign}
+              isUpdating={updatingId === campaign.id}
+              onStatusChange={handleStatusChange}
+            />
+          ))}
         </div>
       )}
     </div>

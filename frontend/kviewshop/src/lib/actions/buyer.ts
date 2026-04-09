@@ -2,6 +2,7 @@
 
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
+import { sendNotification } from '@/lib/notifications'
 
 async function requireBuyer() {
   const session = await auth()
@@ -138,6 +139,21 @@ export async function submitCreatorApplication(data: {
       status: 'pending',
     },
   })
+
+  // 어드민에게 크리에이터 신청 알림
+  const admins = await prisma.user.findMany({
+    where: { role: 'super_admin' },
+    select: { id: true },
+  })
+  for (const admin of admins) {
+    sendNotification({
+      userId: admin.id,
+      type: 'SYSTEM',
+      title: '크리에이터 신청',
+      message: `${data.displayName}님이 크리에이터 신청을 했어요.`,
+      linkUrl: '/admin/creators',
+    })
+  }
 
   return { id: application.id, success: true }
 }
@@ -435,6 +451,21 @@ export async function submitReview(data: {
   })
 
   // TODO: Award points to buyer's point balance when BuyerPoint model is available
+
+  // 브랜드에게 리뷰 알림
+  const product = await prisma.product.findUnique({
+    where: { id: data.productId },
+    select: { name: true, brand: { select: { userId: true } } },
+  })
+  if (product?.brand?.userId) {
+    sendNotification({
+      userId: product.brand.userId,
+      type: 'ORDER',
+      title: '새 리뷰가 등록됐어요',
+      message: `"${product.name ?? '상품'}" 상품에 ${data.rating}점 리뷰가 작성되었어요.`,
+      linkUrl: '/brand/products',
+    })
+  }
 
   return { id: review.id, pointsEarned }
 }

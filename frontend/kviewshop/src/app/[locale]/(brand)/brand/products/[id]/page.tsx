@@ -74,6 +74,7 @@ export default function ProductDetailPage() {
   // Sales settings
   const [isActive, setIsActive] = useState(true);
   const [allowCreatorPick, setAllowCreatorPick] = useState(true);
+  const [allowTrial, setAllowTrial] = useState(true);
   const [commissionRate, setCommissionRate] = useState('10');
 
   useEffect(() => {
@@ -104,6 +105,7 @@ export default function ProductDetailPage() {
         setReturnPolicy(product.returnPolicy ?? '');
         setIsActive(product.status === 'ACTIVE');
         setAllowCreatorPick(product.allowCreatorPick);
+        setAllowTrial(product.allowTrial ?? true);
         // DB stores decimal (0.10), display as percentage (10)
         setCommissionRate(String(Number(product.defaultCommissionRate) * 100));
 
@@ -168,6 +170,7 @@ export default function ProductDetailPage() {
         returnPolicy: returnPolicy.trim() || null,
         status: isActive ? 'ACTIVE' : 'INACTIVE',
         allowCreatorPick,
+        allowTrial,
         defaultCommissionRate: Number(commissionRate),
       });
 
@@ -516,6 +519,16 @@ export default function ProductDetailPage() {
               </p>
             </div>
             <Switch checked={allowCreatorPick} onCheckedChange={setAllowCreatorPick} />
+          </div>
+          <Separator />
+          <div className="flex items-center justify-between">
+            <div>
+              <Label>체험 신청 허용</Label>
+              <p className="text-sm text-muted-foreground">
+                크리에이터가 이 상품의 체험을 신청할 수 있습니다.
+              </p>
+            </div>
+            <Switch checked={allowTrial} onCheckedChange={setAllowTrial} />
           </div>
           <Separator />
           <div className="space-y-2">

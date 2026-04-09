@@ -155,7 +155,7 @@ export async function createOrder(data: {
     }),
   })
 
-  // --- 알림 발송 ---
+  // --- 3채널 알림 발송 ---
   try {
     const firstItemName = data.items[0]?.productName || '상품'
     const totalQty = data.items.reduce((sum, i) => sum + i.quantity, 0)
@@ -166,14 +166,13 @@ export async function createOrder(data: {
       : null
 
     // 주문 완료 → 구매자
-    const orderTemplate = orderCompleteMessage({
-      buyerName: data.buyerName,
-      orderNumber: order.orderNumber ?? '',
-      productName: firstItemName ?? '상품',
-      totalAmount: Number(data.totalAmount),
-    })
-
     if (data.buyerId) {
+      const orderTemplate = orderCompleteMessage({
+        buyerName: data.buyerName,
+        orderNumber: order.orderNumber ?? '',
+        productName: firstItemName,
+        totalAmount: Number(data.totalAmount),
+      })
       await sendNotification({
         userId: data.buyerId,
         type: orderTemplate.inApp.type,
