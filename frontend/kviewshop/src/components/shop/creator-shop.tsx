@@ -3,9 +3,10 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { Clock, ShoppingBag, Instagram, Share2, CalendarDays, Package } from 'lucide-react';
+import { Clock, ShoppingBag, Instagram, Share2, CalendarDays, Package, User, UserPlus } from 'lucide-react';
 import { ShareSheet } from '@/components/shop/ShareSheet';
 import { VisitTracker } from '@/components/shop/VisitTracker';
+import { useAuthStore } from '@/lib/store/auth';
 import { calculateDDay, calculateDDayUntilStart, getDDayLabel, getDDayStartLabel, formatCampaignPeriod, hasCampaignStarted } from '@/lib/utils/date';
 
 // =============================================
@@ -275,6 +276,7 @@ export { CreatorShopPage as CreatorShop };
 
 function ShopHeader({ creator, shopUrl, locale }: { creator: ShopCreator; shopUrl: string; locale: string }) {
   const shopDesc = creator.bio || 'K-뷰티 크리에이터 셀렉트샵';
+  const buyer = useAuthStore((s) => s.buyer);
 
   return (
     <div className="bg-white">
@@ -291,6 +293,21 @@ function ShopHeader({ creator, shopUrl, locale }: { creator: ShopCreator; shopUr
             <Package className="h-4 w-4" />
             <span className="text-xs font-medium">주문조회</span>
           </Link>
+          {buyer ? (
+            <Link
+              href={`/${locale}/buyer/dashboard`}
+              className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+            >
+              <User className="h-4 w-4 text-gray-500" />
+            </Link>
+          ) : (
+            <Link
+              href={`/${locale}/buyer/login`}
+              className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+            >
+              <UserPlus className="h-4 w-4 text-gray-500" />
+            </Link>
+          )}
           <ShareSheet
             url={shopUrl}
             title={`${creator.displayName}의 셀렉트샵`}

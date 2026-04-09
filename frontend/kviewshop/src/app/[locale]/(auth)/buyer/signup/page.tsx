@@ -23,9 +23,10 @@ const signupSchema = z.object({
   password: z.string().min(8),
   confirmPassword: z.string().min(8),
   nickname: z.string().min(2).max(30),
+  phone: z.string().optional(),
   marketingConsent: z.boolean().optional(),
 }).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
+  message: '비밀번호가 일치하지 않습니다',
   path: ['confirmPassword'],
 });
 
@@ -93,24 +94,25 @@ export default function BuyerSignupPage() {
       await registerBuyer({
         email: data.email,
         nickname: data.nickname,
+        phone: data.phone,
         locale,
         marketingConsent: data.marketingConsent || false,
       });
 
-      toast.success('Account created successfully! Welcome to CNEC Shop!');
+      toast.success('가입이 완료되었습니다!');
       router.push(`/${locale}/buyer/dashboard`);
     } catch (error) {
       console.error('Signup error:', error);
-      setSignupError('An error occurred during signup');
+      setSignupError('가입 중 오류가 발생했습니다');
     } finally {
       setIsLoading(false);
     }
   };
 
   const benefits = [
-    { icon: Gift, text: 'Earn reward points with every review' },
-    { icon: Heart, text: 'Subscribe to your favorite creator shops' },
-    { icon: TrendingUp, text: 'Become a creator when you qualify!' },
+    { icon: Gift, text: '리뷰 작성 시 포인트 적립' },
+    { icon: Heart, text: '좋아하는 크리에이터 샵 구독' },
+    { icon: TrendingUp, text: '조건 충족 시 크리에이터 전환 가능' },
   ];
 
   return (
@@ -124,16 +126,16 @@ export default function BuyerSignupPage() {
           </Link>
           <div className="flex items-center justify-center gap-2 mb-2">
             <ShoppingBag className="h-6 w-6 text-primary" />
-            <CardTitle className="text-2xl font-headline">Create Account</CardTitle>
+            <CardTitle className="text-2xl font-headline">회원가입</CardTitle>
           </div>
           <CardDescription>
-            Join CNEC Shop and discover amazing creator curated products
+            크넥샵에서 크리에이터 추천 제품을 만나보세요
           </CardDescription>
         </CardHeader>
         <CardContent>
           {/* Benefits */}
           <div className="mb-6 p-4 rounded-lg bg-primary/5 border border-primary/20">
-            <p className="text-sm font-medium mb-3">Member Benefits</p>
+            <p className="text-sm font-medium mb-3">회원 혜택</p>
             <div className="space-y-2">
               {benefits.map((benefit, idx) => (
                 <div key={idx} className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -153,16 +155,27 @@ export default function BuyerSignupPage() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="nickname">Nickname</Label>
+              <Label htmlFor="nickname">닉네임</Label>
               <Input
                 id="nickname"
-                placeholder="Your display name"
+                placeholder="사용할 닉네임"
                 {...register('nickname')}
                 className="bg-muted"
               />
               {errors.nickname && (
                 <p className="text-sm text-destructive">{errors.nickname.message}</p>
               )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone">전화번호 (선택)</Label>
+              <Input
+                id="phone"
+                type="tel"
+                placeholder="010-0000-0000"
+                {...register('phone')}
+                className="bg-muted"
+              />
             </div>
 
             <div className="space-y-2">
@@ -184,7 +197,7 @@ export default function BuyerSignupPage() {
               <Input
                 id="password"
                 type="password"
-                placeholder="Minimum 8 characters"
+                placeholder="8자 이상"
                 {...register('password')}
                 className="bg-muted"
               />
@@ -194,7 +207,7 @@ export default function BuyerSignupPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Label htmlFor="confirmPassword">비밀번호 확인</Label>
               <Input
                 id="confirmPassword"
                 type="password"
@@ -216,7 +229,7 @@ export default function BuyerSignupPage() {
                 htmlFor="marketingConsent"
                 className="text-sm text-muted-foreground leading-tight cursor-pointer"
               >
-                I agree to receive marketing emails about new products, promotions, and creator updates
+                신상품, 프로모션, 크리에이터 소식 마케팅 이메일 수신에 동의합니다
               </label>
             </div>
 
@@ -228,29 +241,30 @@ export default function BuyerSignupPage() {
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating Account...
+                  가입 처리 중...
                 </>
               ) : (
-                'Create Account'
+                '가입하기'
               )}
             </Button>
           </form>
 
           <div className="mt-6 text-center text-sm">
-            <span className="text-muted-foreground">Already have an account? </span>
+            <span className="text-muted-foreground">이미 계정이 있으신가요? </span>
             <Link
               href={`/${locale}/buyer/login`}
               className="text-primary hover:underline"
             >
-              Sign In
+              로그인
             </Link>
           </div>
 
           <p className="mt-4 text-xs text-center text-muted-foreground">
-            By creating an account, you agree to our{' '}
-            <Link href={`/${locale}/terms`} className="underline">Terms of Service</Link>
-            {' '}and{' '}
-            <Link href={`/${locale}/privacy`} className="underline">Privacy Policy</Link>
+            가입 시{' '}
+            <Link href={`/${locale}/terms`} className="underline">이용약관</Link>
+            {' '}및{' '}
+            <Link href={`/${locale}/privacy`} className="underline">개인정보처리방침</Link>
+            에 동의하게 됩니다
           </p>
         </CardContent>
       </Card>
