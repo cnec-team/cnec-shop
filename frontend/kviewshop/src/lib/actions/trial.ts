@@ -33,6 +33,19 @@ async function requireBrand() {
 
 // ==================== 크리에이터용 ====================
 
+/** 0. 크리에이터 배송지 조회 */
+export async function getCreatorShippingAddress() {
+  const { creator } = await requireCreator()
+
+  const data = await prisma.creator.findUnique({
+    where: { id: creator.id },
+    select: { defaultShippingAddress: true },
+  })
+
+  const addr = data?.defaultShippingAddress as { address?: string } | null
+  return { address: addr?.address ?? '' }
+}
+
 /** 1. 체험 신청 */
 export async function requestProductTrial(data: {
   productId: string
@@ -70,6 +83,20 @@ export async function requestProductTrial(data: {
       shippingAddress: data.shippingAddress ?? Prisma.JsonNull,
     },
   })
+
+  // 크리에이터 기본 배송지가 없으면 저장
+  if (data.shippingAddress) {
+    const current = await prisma.creator.findUnique({
+      where: { id: creator.id },
+      select: { defaultShippingAddress: true },
+    })
+    if (!current?.defaultShippingAddress) {
+      await prisma.creator.update({
+        where: { id: creator.id },
+        data: { defaultShippingAddress: data.shippingAddress },
+      })
+    }
+  }
 
   // 브랜드에게 알림
   try {
@@ -471,6 +498,7 @@ export async function getTrialableProducts(filters?: {
         nameKo: true,
         imageUrl: true,
         thumbnailUrl: true,
+        images: true,
         category: true,
         description: true,
         descriptionKo: true,

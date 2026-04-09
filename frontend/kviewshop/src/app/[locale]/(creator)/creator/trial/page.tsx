@@ -29,6 +29,7 @@ import { toast } from 'sonner'
 import {
   getTrialableProducts,
   requestProductTrial,
+  getCreatorShippingAddress,
 } from '@/lib/actions/trial'
 
 type TrialProduct = {
@@ -37,6 +38,7 @@ type TrialProduct = {
   nameKo: string | null
   imageUrl: string | null
   thumbnailUrl: string | null
+  images: string[]
   category: string | null
   description: string | null
   descriptionKo: string | null
@@ -73,6 +75,7 @@ export default function CreatorTrialCatalogPage() {
   const [selectedProduct, setSelectedProduct] = useState<TrialProduct | null>(null)
   const [message, setMessage] = useState('')
   const [address, setAddress] = useState('')
+  const [savedAddress, setSavedAddress] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   const fetchProducts = useCallback(async () => {
@@ -96,6 +99,14 @@ export default function CreatorTrialCatalogPage() {
     fetchProducts()
   }, [fetchProducts])
 
+  useEffect(() => {
+    getCreatorShippingAddress().then((res) => {
+      if (res.address) {
+        setSavedAddress(res.address)
+      }
+    })
+  }, [])
+
   const handleCategoryChange = (cat: string) => {
     setCategory(cat)
     setPage(1)
@@ -104,15 +115,19 @@ export default function CreatorTrialCatalogPage() {
   const openModal = (product: TrialProduct) => {
     setSelectedProduct(product)
     setMessage('')
-    setAddress('')
+    setAddress(savedAddress)
     setModalOpen(true)
   }
 
   const handleSubmit = async () => {
     if (!selectedProduct) return
+    if (!address.trim()) {
+      toast.error('배송지를 입력해주세요.')
+      return
+    }
     setSubmitting(true)
     try {
-      const shippingAddress = address ? { address } : undefined
+      const shippingAddress = { address: address.trim() }
       const res = await requestProductTrial({
         productId: selectedProduct.id,
         message: message || undefined,
@@ -120,6 +135,7 @@ export default function CreatorTrialCatalogPage() {
       })
       if (res.success) {
         toast.success('체험을 신청했어요!')
+        setSavedAddress(address.trim())
         setModalOpen(false)
         fetchProducts()
       } else {
@@ -222,9 +238,9 @@ export default function CreatorTrialCatalogPage() {
             <div className="space-y-4">
               <div className="flex gap-3 items-center">
                 <div className="w-14 h-14 rounded-xl bg-gray-100 overflow-hidden shrink-0">
-                  {selectedProduct.thumbnailUrl || selectedProduct.imageUrl ? (
+                  {selectedProduct.thumbnailUrl || selectedProduct.imageUrl || selectedProduct.images?.[0] ? (
                     <Image
-                      src={selectedProduct.thumbnailUrl || selectedProduct.imageUrl || ''}
+                      src={selectedProduct.thumbnailUrl || selectedProduct.imageUrl || selectedProduct.images?.[0] || ''}
                       alt=""
                       width={56}
                       height={56}
@@ -245,13 +261,18 @@ export default function CreatorTrialCatalogPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="trial-address">배송지 (선택)</Label>
+                <Label htmlFor="trial-address">
+                  배송지 <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="trial-address"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   placeholder="배송 받을 주소를 입력하세요"
                 />
+                {savedAddress && address === savedAddress && (
+                  <p className="text-xs text-gray-400">내 프로필에 저장된 주소입니다</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -298,9 +319,9 @@ function ProductCard({
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       <div className="aspect-square bg-gray-50 relative">
-        {product.thumbnailUrl || product.imageUrl ? (
+        {product.thumbnailUrl || product.imageUrl || product.images?.[0] ? (
           <Image
-            src={product.thumbnailUrl || product.imageUrl || ''}
+            src={product.thumbnailUrl || product.imageUrl || product.images?.[0] || ''}
             alt={product.nameKo || product.name || ''}
             fill
             className="object-cover"

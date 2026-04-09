@@ -430,6 +430,7 @@ model Creator {
   // Contact
   email                String?
   phone                String?
+  defaultShippingAddress Json? @map("default_shipping_address") @db.JsonB
   // Shop design
   themeColor           String    @default("#1a1a1a") @map("theme_color")
   backgroundColor      String    @default("#1a1a1a") @map("background_color")
