@@ -353,72 +353,86 @@ export default function LandingPage() {
             <p className={`text-sm font-semibold uppercase tracking-[0.15em] text-blue-600 ${anim(steps.isInView, 'animate-fade-in-up')}`}>
               HOW IT WORKS
             </p>
-            <h2 className={`text-3xl md:text-5xl font-black tracking-tight leading-[1.08] text-gray-900 mt-4 ${anim(steps.isInView, 'animate-fade-in-up delay-100')}`}>
-              클릭 한 번으로,
+            <h2 className={`text-3xl md:text-5xl font-black tracking-tight leading-[1.08] mt-4 ${anim(steps.isInView, 'animate-fade-in-up delay-100')}`}>
+              <span className="text-gray-900">클릭 한 번으로,</span>
               <br />
-              공동구매가 시작됩니다
+              <span style={gradientText}>공동구매</span>
+              <span className="text-gray-900">가 시작됩니다</span>
             </h2>
             <p className={`text-base md:text-lg text-gray-400 mt-4 max-w-2xl mx-auto ${anim(steps.isInView, 'animate-fade-in-up delay-200')}`}>
               브랜드가 상품을 등록하면, 크리에이터가 내 셀렉트샵에 추가하여 팔로워에게 직접 판매합니다.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto relative">
+          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
             {/* BRAND Card */}
-            <div className={`relative ${anim(steps.isInView, 'animate-fade-in-up delay-300')}`}>
-              <div className="group bg-white rounded-3xl border border-gray-100 p-8 shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-blue-100 transition-all duration-500 h-full">
-                <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center mb-6">
-                  <Building2 className="h-7 w-7 text-blue-600" />
-                </div>
-                <p className="text-xs font-bold uppercase tracking-widest text-blue-600 mb-2">BRAND</p>
-                <h3 className="text-xl font-bold text-gray-900 mb-4">상품 등록 + 캠페인</h3>
-                <p className="text-sm text-gray-400 leading-relaxed">
-                  상품을 등록하고 공구/상시 캠페인을 생성합니다. 크리에이터가 선택하면 판매가 시작됩니다.
-                </p>
-              </div>
-              <div className="hidden md:flex absolute top-1/2 -right-3 z-10 -translate-y-1/2">
-                <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center">
-                  <ChevronRight className="h-3.5 w-3.5 text-white" />
-                </div>
-              </div>
-            </div>
-
-            {/* CNEC Card — highlighted */}
-            <div className={`relative ${anim(steps.isInView, 'animate-fade-in-up delay-400')}`}>
-              <div className="group rounded-3xl p-8 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-500 h-full text-white" style={blueGradientBg}>
-                <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center mb-6">
-                  <Zap className="h-7 w-7 text-white" />
-                </div>
-                <p className="text-xs font-bold uppercase tracking-widest text-blue-200 mb-2">CNEC</p>
-                <h3 className="text-xl font-bold mb-4">플랫폼 운영</h3>
-                <div className="space-y-3 mt-4">
-                  {['결제(PG) 처리', '전환 추적', '수수료 정산', '크리에이터-브랜드 매칭'].map((item) => (
-                    <div key={item} className="flex items-center gap-2.5">
-                      <CheckCircle2 className="h-4 w-4 text-blue-200 shrink-0" />
-                      <span className="text-sm text-white/90">{item}</span>
+            <div className={`${anim(steps.isInView, 'animate-fade-in-up delay-300')}`}>
+              <Link href="/ko/brand/login">
+                <div className="bg-gray-50/80 rounded-3xl p-10 md:p-12 h-full cursor-pointer hover:scale-[1.02] hover:shadow-xl transition-all duration-500">
+                  <div className="flex items-center justify-between mb-10">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">FOR BRAND</p>
+                      <h3 className="text-4xl font-black text-gray-900 mt-1">BRAND</h3>
                     </div>
-                  ))}
+                    <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center shadow-sm">
+                      <Building2 className="h-7 w-7 text-gray-600" />
+                    </div>
+                  </div>
+
+                  <div className="w-full h-px bg-gray-200 mb-10" />
+
+                  <div className="space-y-9">
+                    {[
+                      { title: '상품 등록', desc: '— 상품 정보 + 이미지' },
+                      { title: '캠페인 생성', desc: '— 공구 기간·특별가·수수료 설정' },
+                      { title: '크리에이터 선정', desc: '— 승인하면 셀렉트샵에 자동 추가' },
+                    ].map((item) => (
+                      <div key={item.title} className="flex items-start gap-4">
+                        <div className="w-3 h-3 rounded-full border-2 border-blue-400 mt-1.5 shrink-0" />
+                        <div>
+                          <p className="text-lg font-bold text-gray-900">{item.title}</p>
+                          <p className="text-sm text-gray-400 mt-1">{item.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-              <div className="hidden md:flex absolute top-1/2 -right-3 z-10 -translate-y-1/2">
-                <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center">
-                  <ChevronRight className="h-3.5 w-3.5 text-white" />
-                </div>
-              </div>
+              </Link>
             </div>
 
-            {/* CREATOR Card */}
-            <div className={`relative ${anim(steps.isInView, 'animate-fade-in-up delay-500')}`}>
-              <div className="group bg-white rounded-3xl border border-gray-100 p-8 shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-blue-100 transition-all duration-500 h-full">
-                <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center mb-6">
-                  <Store className="h-7 w-7 text-blue-600" />
+            {/* CREATOR Card — highlighted */}
+            <div className={`${anim(steps.isInView, 'animate-fade-in-up delay-400')}`}>
+              <Link href="/ko/creator/login">
+                <div className="rounded-3xl p-10 md:p-12 h-full text-white cursor-pointer hover:scale-[1.02] hover:shadow-2xl transition-all duration-500" style={blueGradientBg}>
+                  <div className="flex items-center justify-between mb-10">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-widest text-blue-200">FOR CREATOR</p>
+                      <h3 className="text-4xl font-black mt-1">CREATOR</h3>
+                    </div>
+                    <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center">
+                      <Store className="h-7 w-7 text-white" />
+                    </div>
+                  </div>
+
+                  <div className="w-full h-px bg-white/20 mb-10" />
+
+                  <div className="space-y-9">
+                    {[
+                      { title: '셀렉트샵 개설', desc: '— SNS 프로필 링크 하나로 완성' },
+                      { title: '캠페인 선택', desc: '— 내 채널에 맞는 브랜드' },
+                      { title: 'SNS 공유', desc: '— 판매 시작, 수익 실시간 확인' },
+                    ].map((item) => (
+                      <div key={item.title} className="flex items-start gap-4">
+                        <div className="w-3 h-3 rounded-full border-2 border-blue-300 mt-1.5 shrink-0" />
+                        <div>
+                          <p className="text-lg font-bold text-white">{item.title}</p>
+                          <p className="text-sm text-white/60 mt-1">{item.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <p className="text-xs font-bold uppercase tracking-widest text-blue-600 mb-2">CREATOR</p>
-                <h3 className="text-xl font-bold text-gray-900 mb-4">셀렉트샵 운영</h3>
-                <p className="text-sm text-gray-400 leading-relaxed">
-                  내 셀렉트샵에 상품을 추가하고 SNS로 팔로워에게 홍보하세요
-                </p>
-              </div>
+              </Link>
             </div>
           </div>
         </div>
