@@ -170,31 +170,40 @@ export default function LandingPage() {
           {/* Left — Copy */}
           <div>
             <span
-              className={`inline-flex items-center gap-2 rounded-full bg-blue-50/80 border border-blue-100 px-4 py-2 text-sm font-semibold uppercase tracking-[0.15em] text-blue-600 ${anim(hero.isInView, 'animate-fade-in-up')}`}
+              className={`inline-flex items-center gap-2 text-sm font-semibold text-blue-600 ${anim(hero.isInView, 'animate-fade-in-up')}`}
             >
-              SELECT SHOP
+              <Sparkles className="h-4 w-4" />
+              크넥샵
             </span>
 
             <h1
-              className={`mt-6 text-[2.75rem] sm:text-5xl md:text-6xl lg:text-[4.5rem] font-black leading-[1.05] tracking-tight text-gray-900 ${anim(hero.isInView, 'animate-fade-in-up delay-100')}`}
+              className={`mt-4 text-[2.5rem] sm:text-5xl md:text-[3.5rem] font-black leading-[1.1] tracking-tight text-gray-900 ${anim(hero.isInView, 'animate-fade-in-up delay-100')}`}
             >
-              내 손안의
+              뷰티 공동구매,
               <br />
-              <span style={gradientText}>셀렉트샵</span>
+              내 샵에서 바로 오픈
             </h1>
 
             <p
-              className={`text-lg md:text-xl text-gray-500 leading-relaxed max-w-lg mt-6 ${anim(hero.isInView, 'animate-fade-in-up delay-200')}`}
+              className={`text-base md:text-lg text-gray-500 leading-relaxed max-w-md mt-5 ${anim(hero.isInView, 'animate-fade-in-up delay-200')}`}
             >
-              크리에이터가 직접 큐레이션한 뷰티 제품을 팔로워에게 공유하세요.
-              모바일에서도 완벽하게 작동하는 셀렉트샵을 지금 바로 만들어보세요.
+              한정된 기간, 파격적인 혜택. 팔로워들이 기다려온 공동구매를 가장 빠르고 트렌디하게 시작하세요.
             </p>
 
-            <div className={`mt-8 space-y-4 ${anim(hero.isInView, 'animate-fade-in-up delay-300')}`}>
-              {['나만의 브랜딩이 적용된 셀렉트샵', 'SNS 프로필 링크 하나로 시작', '실시간 판매 현황 확인'].map((t) => (
-                <div key={t} className="flex items-center gap-3">
-                  <CheckCircle2 className="h-5 w-5 text-blue-500 shrink-0" />
-                  <span className="text-base text-gray-600 font-medium">{t}</span>
+            <div className={`mt-9 space-y-6 ${anim(hero.isInView, 'animate-fade-in-up delay-300')}`}>
+              {[
+                { Icon: Store, title: '클릭한번으로 나만의 브랜드샵', desc: '자동 정산 + 실시간 수익 확인' },
+                { Icon: Link2, title: '인스타 스토리 최적화 링크', desc: '클릭 한 번에 연결되는 매끄러운 구매 동선' },
+                { Icon: TrendingUp, title: '구매를 자극하는 타임 딜', desc: 'D-Day 카운트다운과 품절 임박 뱃지로 전환율 극대화' },
+              ].map((f) => (
+                <div key={f.title} className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                    <f.Icon className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-gray-900">{f.title}</h3>
+                    <p className="text-sm text-gray-400 mt-0.5">{f.desc}</p>
+                  </div>
                 </div>
               ))}
             </div>
@@ -217,38 +226,95 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Right — Phone Mockup Image */}
+          {/* Right — Phone Mockup */}
           <div className={`relative ${anim(hero.isInView, 'animate-fade-in-right delay-300')}`}>
-            <div className="relative mx-auto w-[300px] md:w-[380px]">
-              <Image
-                src="/images/creators/phone_mockup.png"
-                alt="셀렉트샵 미리보기"
-                width={1760}
-                height={2426}
-                className="w-full h-auto drop-shadow-2xl"
-                priority
-              />
+            <div className="relative mx-auto w-[300px] md:w-[340px]">
+              <div className="rounded-[3rem] border-[6px] border-gray-900 bg-white shadow-2xl shadow-gray-900/10 overflow-hidden">
+                {/* Notch */}
+                <div className="relative flex justify-center">
+                  <div className="w-[100px] h-[26px] bg-gray-900 rounded-b-2xl" />
+                </div>
 
-              {/* Floating earnings card */}
-              <div className="absolute -bottom-5 -left-5 md:-left-8 animate-float">
-                <div className="bg-white rounded-2xl p-4 shadow-xl shadow-blue-100/40 border border-gray-100">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center" style={blueGradientBg}>
-                      <TrendingUp className="h-5 w-5 text-white" />
-                    </div>
+                {/* Header */}
+                <div className="px-5 pt-3 pb-2">
+                  <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-gray-400">이번 달 수익</p>
-                      <p className="text-lg font-bold text-gray-900">₩2,450,000</p>
+                      <p className="text-[10px] text-blue-600 font-semibold tracking-wider">크넥샵 공동구매</p>
+                      <p className="text-lg font-bold text-gray-900 mt-0.5">지나빅 뷰티 마켓</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="bg-rose-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+                        LIVE
+                      </span>
+                      <span className="text-[10px] text-gray-400 font-medium">공구마감 D-1</span>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Floating star badge */}
-              <div className="absolute -top-3 -right-3 md:-right-6 animate-float" style={{ animationDelay: '2s' }}>
-                <div className="bg-white rounded-2xl px-4 py-3 shadow-xl border border-gray-100 flex items-center gap-2">
-                  <Star className="h-4 w-4 text-amber-400 fill-amber-400" />
-                  <span className="text-sm font-semibold text-gray-700">검증된 브랜드만</span>
+                {/* Product cards */}
+                <div className="px-4 pb-3 space-y-3">
+                  {/* Featured product */}
+                  <div className="bg-gray-50 rounded-2xl p-3">
+                    <div className="flex items-center gap-1 mb-2">
+                      <span className="bg-blue-600 text-white text-[9px] font-bold px-2 py-0.5 rounded">할인특가</span>
+                    </div>
+                    <div className="flex gap-3">
+                      <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0">
+                        <Image src="/images/creators/product_serum.jpg" alt="세럼" width={128} height={128} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] text-gray-400">한절기 필수 진정 앰플</p>
+                        <p className="text-xs font-semibold text-gray-900 mt-0.5">센서티브 카밍 앰플 대용량 세트</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-sm font-bold text-gray-900">₩32,000</span>
+                          <span className="text-[10px] text-gray-300 line-through">₩48,000</span>
+                          <span className="text-[10px] font-bold text-rose-500">33%</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Second product */}
+                  <div className="bg-gray-50 rounded-2xl p-3">
+                    <div className="flex items-center gap-1 mb-2">
+                      <span className="bg-blue-600 text-white text-[9px] font-bold px-2 py-0.5 rounded">BEST</span>
+                    </div>
+                    <div className="flex gap-3">
+                      <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0">
+                        <Image src="/images/creators/product_ampoule.jpg" alt="크림" width={128} height={128} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] text-gray-400">속당김 없는 깊은 보습</p>
+                        <p className="text-xs font-semibold text-gray-900 mt-0.5">콜라겐 수분 크림 100ml</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-sm font-bold text-gray-900">₩28,500</span>
+                          <span className="text-[10px] text-gray-300 line-through">₩42,000</span>
+                          <span className="text-[10px] font-bold text-rose-500">32%</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom nav */}
+                <div className="px-5 py-2.5 border-t border-gray-100 flex justify-around">
+                  {[
+                    { icon: Home, label: '홈', active: true },
+                    { icon: ShoppingBag, label: '상품', active: false },
+                    { icon: BarChart3, label: '매출', active: false },
+                    { icon: User, label: '마이', active: false },
+                  ].map((tab) => (
+                    <div key={tab.label} className={`flex flex-col items-center gap-0.5 ${tab.active ? 'text-blue-600' : 'text-gray-300'}`}>
+                      <tab.icon className="h-4 w-4" />
+                      <span className="text-[9px] font-medium">{tab.label}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Home indicator */}
+                <div className="flex justify-center pb-2">
+                  <div className="w-[120px] h-[4px] bg-gray-900 rounded-full" />
                 </div>
               </div>
             </div>
