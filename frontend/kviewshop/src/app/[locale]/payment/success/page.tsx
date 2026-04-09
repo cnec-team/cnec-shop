@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { useCartStore } from '@/lib/store/auth';
+import { useCartStore, useAuthStore } from '@/lib/store/auth';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, Package, Home, Loader2, AlertCircle } from 'lucide-react';
 
@@ -13,6 +13,7 @@ export default function PaymentSuccessPage() {
   const searchParams = useSearchParams();
   const locale = params.locale as string;
   const clearCart = useCartStore((state) => state.clearCart);
+  const buyer = useAuthStore((s) => s.buyer);
 
   const [isProcessing, setIsProcessing] = useState(true);
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
@@ -140,7 +141,7 @@ export default function PaymentSuccessPage() {
 
           {/* Actions */}
           <div className="flex flex-col gap-3">
-            <Link href={'/' + locale + '/buyer/orders'}>
+            <Link href={buyer ? ('/' + locale + '/buyer/orders') : ('/' + locale + '/orders' + (orderNumber ? '?orderNumber=' + encodeURIComponent(orderNumber) : ''))}>
               <Button className="w-full h-12 bg-gray-900 text-white hover:bg-gray-800 rounded-xl gap-2">
                 <Package className="h-4 w-4" />
                 주문 내역 보기

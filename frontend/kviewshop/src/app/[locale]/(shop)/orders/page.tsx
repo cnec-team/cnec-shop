@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Search, Package, Truck, Loader2, ShoppingBag } from 'lucide-react';
 import { lookupOrder } from '@/lib/actions/shop';
 import { getCourierLabel, getTrackingUrl } from '@/lib/utils/courier';
@@ -45,7 +46,9 @@ function formatCurrency(amount: number): string {
 }
 
 export default function OrderLookupPage() {
-  const [orderNumber, setOrderNumber] = useState('');
+  const searchParams = useSearchParams();
+  const initialOrderNumber = searchParams.get('orderNumber') || '';
+  const [orderNumber, setOrderNumber] = useState(initialOrderNumber);
   const [buyerPhone, setBuyerPhone] = useState('');
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(false);
