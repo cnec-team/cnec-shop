@@ -97,14 +97,31 @@ export default function CheckoutPage() {
 
   const [depositorName, setDepositorName] = useState('');
   const [returnUrl, setReturnUrl] = useState('');
-  const [form, setForm] = useState({
+
+  // Orderer / Shipping split
+  const [sameAsOrderer, setSameAsOrderer] = useState(true);
+  const [ordererForm, setOrdererForm] = useState({
     name: '',
     phone: '',
     email: '',
+  });
+  const [shippingForm, setShippingForm] = useState({
+    name: '',
+    phone: '',
     address: '',
     addressDetail: '',
     zipcode: '',
   });
+
+  // Computed form for backward compat
+  const form = {
+    name: ordererForm.name,
+    phone: ordererForm.phone,
+    email: ordererForm.email,
+    address: shippingForm.address,
+    addressDetail: shippingForm.addressDetail,
+    zipcode: shippingForm.zipcode,
+  };
 
   // Set returnUrl on client side
   useEffect(() => {
@@ -159,26 +176,25 @@ export default function CheckoutPage() {
     loadData();
   }, [username, items, locale, router]);
 
-  // Auto-fill default shipping address for logged-in users
+  // Auto-fill for logged-in buyers
   useEffect(() => {
     if (!buyer) return;
-
+    const b = buyer as any;
+    setOrdererForm((prev) => ({
+      name: prev.name || b.nickname || b.name || '',
+      phone: prev.phone || b.phone || '',
+      email: prev.email || b.email || user?.email || '',
+    }));
     try {
-      const raw = buyer.defaultShippingAddress;
+      const raw = b.defaultShippingAddress;
       if (!raw) return;
-
       const addresses: ShippingAddress[] = Array.isArray(raw) ? raw : [];
       if (addresses.length === 0) return;
-
       setSavedAddresses(addresses);
-
       const defaultAddr = addresses.find((a) => a.isDefault) || addresses[0];
       setSelectedAddressId(defaultAddr.id || 'first');
-
-      setForm((prev) => ({
-        name: prev.name || defaultAddr.name || '',
-        phone: prev.phone || defaultAddr.phone || '',
-        email: prev.email || user?.email || '',
+      setShippingForm((prev) => ({
+        ...prev,
         address: prev.address || defaultAddr.address || '',
         addressDetail: prev.addressDetail || defaultAddr.addressDetail || '',
         zipcode: prev.zipcode || defaultAddr.zipcode || '',
@@ -206,7 +222,7 @@ export default function CheckoutPage() {
     await loadDaumPostcode();
     new (window as any).daum.Postcode({
       oncomplete: (data: any) => {
-        setForm((prev) => ({
+        setShippingForm((prev) => ({
           ...prev,
           zipcode: data.zonecode,
           address: data.roadAddress || data.jibunAddress,
@@ -222,17 +238,16 @@ export default function CheckoutPage() {
     setSelectedAddressId(addressId);
 
     if (addressId === 'new') {
-      setForm({ name: '', phone: '', email: user?.email || '', address: '', addressDetail: '', zipcode: '' });
+      setShippingForm({ name: '', phone: '', address: '', addressDetail: '', zipcode: '' });
       return;
     }
 
     const addr = savedAddresses.find((a) => a.id === addressId);
     if (!addr) return;
 
-    setForm({
+    setShippingForm({
       name: addr.name || '',
       phone: addr.phone || '',
-      email: user?.email || form.email || '',
       address: addr.address || '',
       addressDetail: addr.addressDetail || '',
       zipcode: addr.zipcode || '',
@@ -285,31 +300,17 @@ export default function CheckoutPage() {
   const totalAmount = productAmount + shippingFee;
 
   const validateForm = (): boolean => {
-    if (!form.name.trim()) {
-      toast.error('이름을 입력해주세요.');
-      return false;
-    }
-    if (!form.phone.trim()) {
-      toast.error('전화번호를 입력해주세요.');
-      return false;
-    }
-    if (!form.email.trim()) {
-      toast.error('이메일을 입력해주세요.');
-      return false;
-    }
+    if (!ordererForm.name.trim()) { toast.error('주문자 이름을 입력해주세요.'); return false; }
+    if (!ordererForm.phone.trim()) { toast.error('주문자 전화번호를 입력해주세요.'); return false; }
+    if (!ordererForm.email.trim()) { toast.error('이메일을 입력해주세요.'); return false; }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(form.email)) {
-      toast.error('올바른 이메일 형식을 입력해주세요.');
-      return false;
+    if (!emailRegex.test(ordererForm.email)) { toast.error('올바른 이메일 형식을 입력해주세요.'); return false; }
+    if (!sameAsOrderer) {
+      if (!shippingForm.name.trim()) { toast.error('수령자 이름을 입력해주세요.'); return false; }
+      if (!shippingForm.phone.trim()) { toast.error('수령자 전화번호를 입력해주세요.'); return false; }
     }
-    if (!form.address.trim()) {
-      toast.error('주소를 입력해주세요.');
-      return false;
-    }
-    if (!form.zipcode.trim()) {
-      toast.error('우편번호를 입력해주세요.');
-      return false;
-    }
+    if (!shippingForm.address.trim()) { toast.error('주소를 입력해주세요.'); return false; }
+    if (!shippingForm.zipcode.trim()) { toast.error('우편번호를 입력해주세요.'); return false; }
     return true;
   };
 
@@ -329,14 +330,16 @@ export default function CheckoutPage() {
         })),
         creatorId: creator.id,
         buyer: {
-          name: form.name,
-          phone: form.phone,
-          email: form.email,
+          name: ordererForm.name,
+          phone: ordererForm.phone,
+          email: ordererForm.email,
         },
         shipping: {
-          address: form.address,
-          zipcode: form.zipcode,
-          detail: form.addressDetail || undefined,
+          name: sameAsOrderer ? ordererForm.name : shippingForm.name,
+          phone: sameAsOrderer ? ordererForm.phone : shippingForm.phone,
+          address: shippingForm.address,
+          zipcode: shippingForm.zipcode,
+          detail: shippingForm.addressDetail || undefined,
           memo: deliveryMemo !== '선택하세요' ? deliveryMemo : undefined,
         },
         ...(isBankTransfer && {
@@ -647,10 +650,84 @@ export default function CheckoutPage() {
           </div>
         )}
 
-        {/* Delivery Info */}
+        {/* Orderer Info */}
+        <div className="bg-white rounded-2xl p-5">
+          <h2 className="text-base font-semibold text-gray-900 mb-4">주문자 정보</h2>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-gray-500">이름 *</label>
+              <input
+                type="text"
+                value={ordererForm.name}
+                onChange={(e) => setOrdererForm({ ...ordererForm, name: e.target.value })}
+                placeholder="홍길동"
+                className="w-full h-11 px-4 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-300"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-gray-500">전화번호 *</label>
+              <input
+                type="tel"
+                value={ordererForm.phone}
+                onChange={(e) => setOrdererForm({ ...ordererForm, phone: e.target.value })}
+                placeholder="010-1234-5678"
+                className="w-full h-11 px-4 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-300"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-gray-500">이메일 *</label>
+              <input
+                type="email"
+                value={ordererForm.email}
+                onChange={(e) => setOrdererForm({ ...ordererForm, email: e.target.value })}
+                placeholder="example@email.com"
+                className="w-full h-11 px-4 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-300"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Shipping Info */}
         <div className="bg-white rounded-2xl p-5">
           <h2 className="text-base font-semibold text-gray-900 mb-4">배송 정보</h2>
           <div className="space-y-4">
+            {/* Same as orderer checkbox */}
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={sameAsOrderer}
+                onChange={(e) => setSameAsOrderer(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300 text-gray-900 focus:ring-gray-900"
+              />
+              <span className="text-sm text-gray-700">주문자 정보와 동일</span>
+            </label>
+
+            {/* Recipient name/phone (hidden if sameAsOrderer) */}
+            {!sameAsOrderer && (
+              <>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-gray-500">받는 분 *</label>
+                  <input
+                    type="text"
+                    value={shippingForm.name}
+                    onChange={(e) => setShippingForm({ ...shippingForm, name: e.target.value })}
+                    placeholder="홍길동"
+                    className="w-full h-11 px-4 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-300"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-gray-500">전화번호 *</label>
+                  <input
+                    type="tel"
+                    value={shippingForm.phone}
+                    onChange={(e) => setShippingForm({ ...shippingForm, phone: e.target.value })}
+                    placeholder="010-1234-5678"
+                    className="w-full h-11 px-4 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-300"
+                  />
+                </div>
+              </>
+            )}
+
             {/* Saved address dropdown */}
             {savedAddresses.length > 0 && (
               <div className="space-y-1.5">
@@ -671,44 +748,15 @@ export default function CheckoutPage() {
             )}
 
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-gray-500">이름 *</label>
-              <input
-                type="text"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="홍길동"
-                className="w-full h-11 px-4 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-300"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-gray-500">전화번호 *</label>
-              <input
-                type="tel"
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                placeholder="010-1234-5678"
-                className="w-full h-11 px-4 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-300"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-gray-500">이메일 *</label>
-              <input
-                type="email"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                placeholder="example@email.com"
-                className="w-full h-11 px-4 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-300"
-              />
-            </div>
-            <div className="space-y-1.5">
               <label className="text-xs font-medium text-gray-500">우편번호 *</label>
               <div className="flex gap-2">
                 <input
                   type="text"
-                  value={form.zipcode}
-                  onChange={(e) => setForm({ ...form, zipcode: e.target.value })}
+                  value={shippingForm.zipcode}
+                  readOnly
                   placeholder="12345"
-                  className="flex-1 h-11 px-4 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-300"
+                  className="flex-1 h-11 px-4 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-300 bg-gray-50 cursor-pointer"
+                  onClick={handleSearchAddress}
                 />
                 <button
                   type="button"
@@ -724,10 +772,9 @@ export default function CheckoutPage() {
               <label className="text-xs font-medium text-gray-500">주소 *</label>
               <input
                 type="text"
-                value={form.address}
-                onChange={(e) => setForm({ ...form, address: e.target.value })}
-                placeholder="서울특별시 강남구 테헤란로 123"
+                value={shippingForm.address}
                 readOnly
+                placeholder="주소 검색을 눌러주세요"
                 className="w-full h-11 px-4 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-300 bg-gray-50 cursor-pointer"
                 onClick={handleSearchAddress}
               />
@@ -737,8 +784,8 @@ export default function CheckoutPage() {
               <input
                 ref={addressDetailRef}
                 type="text"
-                value={form.addressDetail}
-                onChange={(e) => setForm({ ...form, addressDetail: e.target.value })}
+                value={shippingForm.addressDetail}
+                onChange={(e) => setShippingForm({ ...shippingForm, addressDetail: e.target.value })}
                 placeholder="101동 1001호"
                 className="w-full h-11 px-4 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-300"
               />

@@ -210,10 +210,14 @@ export default async function ProductPage({ params, searchParams }: ProductPageP
     campaignProduct = await getCampaignProduct(productId, campaignId);
   }
 
-  // Fetch other products and creator contents in parallel
-  const [otherProducts, creatorContents] = await Promise.all([
+  // Fetch other products, creator contents, and reels info in parallel
+  const [otherProducts, creatorContents, shopItemReels] = await Promise.all([
     getOtherProducts(creator.id, productId),
     getCreatorProductContents(creator.id, productId),
+    prisma.creatorShopItem.findFirst({
+      where: { creatorId: creator.id, productId, isVisible: true },
+      select: { reelsUrl: true, reelsCaption: true },
+    }),
   ]);
 
   // Serialize Decimal fields before passing to client components
@@ -262,6 +266,8 @@ export default async function ProductPage({ params, searchParams }: ProductPageP
         username={username}
         otherProducts={otherProducts}
         creatorContents={creatorContents}
+        reelsUrl={shopItemReels?.reelsUrl}
+        reelsCaption={shopItemReels?.reelsCaption}
       />
     </>
   );

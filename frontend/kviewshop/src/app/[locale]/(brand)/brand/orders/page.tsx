@@ -9,6 +9,7 @@ import {
   cancelOrder as cancelOrderAction,
   handleShippingStart as shippingStartAction,
   updateTrackingInfo,
+  bulkShippingStart,
 } from '@/lib/actions/brand';
 import { ORDER_STATUS_LABELS } from '@/types/database';
 
@@ -53,6 +54,7 @@ import {
   CreditCard,
   Send,
   AlertTriangle,
+  Loader2,
 } from 'lucide-react';
 
 const COURIERS = [
@@ -178,6 +180,13 @@ export default function BrandOrdersPage() {
   const [showCancelForm, setShowCancelForm] = useState<Record<string, boolean>>({});
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
+  // Bulk shipping
+  const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
+  const [bulkShipOpen, setBulkShipOpen] = useState(false);
+  const [bulkCourier, setBulkCourier] = useState('cj');
+  const [bulkTrackingInputs, setBulkTrackingInputs] = useState<Record<string, string>>({});
+  const [bulkProcessing, setBulkProcessing] = useState(false);
+
   // Confirmation dialog
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
@@ -284,6 +293,62 @@ export default function BrandOrdersPage() {
     }
   }
 
+  // Bulk shipping helpers
+  const shippableOrders = orders.filter((o) => o.status === 'PREPARING');
+  const toggleOrderSelection = (orderId: string) => {
+    setSelectedOrderIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(orderId)) next.delete(orderId);
+      else next.add(orderId);
+      return next;
+    });
+  };
+  const toggleSelectAll = () => {
+    if (selectedOrderIds.size === shippableOrders.length) {
+      setSelectedOrderIds(new Set());
+    } else {
+      setSelectedOrderIds(new Set(shippableOrders.map((o) => o.id)));
+    }
+  };
+  const handleBulkShip = async () => {
+    const payload = Array.from(selectedOrderIds).map((id) => ({
+      orderId: id,
+      trackingNumber: bulkTrackingInputs[id] || '',
+      courierCode: bulkCourier,
+    }));
+    const missing = payload.filter((p) => !p.trackingNumber.trim());
+    if (missing.length > 0) {
+      toast.error(`송장번호가 입력되지 않은 주문이 ${missing.length}건 있습니다`);
+      return;
+    }
+    setBulkProcessing(true);
+    try {
+      const results = await bulkShippingStart(payload);
+      const successCount = results.filter((r) => r.success).length;
+      const failCount = results.filter((r) => !r.success).length;
+      setOrders((prev) =>
+        prev.map((o) => {
+          const result = results.find((r) => r.orderId === o.id && r.success);
+          if (!result) return o;
+          const p = payload.find((p) => p.orderId === o.id)!;
+          return { ...o, status: 'SHIPPING' as OrderStatus, trackingNumber: p.trackingNumber, courierCode: p.courierCode };
+        })
+      );
+      setSelectedOrderIds(new Set());
+      setBulkShipOpen(false);
+      setBulkTrackingInputs({});
+      if (failCount > 0) {
+        toast.error(`${successCount}건 성공, ${failCount}건 실패`);
+      } else {
+        toast.success(`${successCount}건 일괄 발송 처리되었습니다`);
+      }
+    } catch {
+      toast.error('일괄 발송 처리에 실패했습니다');
+    } finally {
+      setBulkProcessing(false);
+    }
+  };
+
   const allOrders = orders;
   const statusCounts = allOrders.reduce((acc, o) => {
     acc[o.status] = (acc[o.status] || 0) + 1;
@@ -334,10 +399,18 @@ export default function BrandOrdersPage() {
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">주문 관리</h1>
           <p className="text-sm text-gray-400 mt-1">총 {orders.length}건의 주문</p>
         </div>
-        <Button variant="outline" size="sm" onClick={handleDownloadExcel} disabled={orders.length === 0} className="h-10 rounded-xl px-4">
-          <Download className="h-4 w-4 mr-2" />
-          엑셀 다운로드
-        </Button>
+        <div className="flex gap-2">
+          {selectedOrderIds.size > 0 && (
+            <Button size="sm" onClick={() => setBulkShipOpen(true)} className="h-10 rounded-xl bg-violet-600 hover:bg-violet-700 text-white">
+              <Truck className="h-4 w-4 mr-1.5" />
+              일괄 발송 ({selectedOrderIds.size}건)
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={handleDownloadExcel} disabled={orders.length === 0} className="h-10 rounded-xl px-4">
+            <Download className="h-4 w-4 mr-2" />
+            엑셀 다운로드
+          </Button>
+        </div>
       </div>
 
       {/* Quick stats */}
@@ -432,6 +505,15 @@ export default function BrandOrdersPage() {
                   className="flex items-center gap-4 p-4 sm:p-5 cursor-pointer"
                   onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}
                 >
+                  {/* Checkbox for PREPARING orders */}
+                  {order.status === 'PREPARING' && (
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        checked={selectedOrderIds.has(order.id)}
+                        onCheckedChange={() => toggleOrderSelection(order.id)}
+                      />
+                    </div>
+                  )}
                   {/* Product thumbnail */}
                   <div className="hidden sm:flex h-14 w-14 rounded-xl bg-gray-50 shrink-0 overflow-hidden items-center justify-center">
                     {firstItemImg ? (
@@ -781,6 +863,50 @@ export default function BrandOrdersPage() {
           })}
         </div>
       )}
+
+      {/* Bulk Shipping Modal */}
+      <Dialog open={bulkShipOpen} onOpenChange={setBulkShipOpen}>
+        <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>일괄 발송 처리</DialogTitle>
+            <DialogDescription>{selectedOrderIds.size}건의 주문을 발송 처리합니다</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-sm">택배사 (전체 동일 적용)</Label>
+              <Select value={bulkCourier} onValueChange={setBulkCourier}>
+                <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {COURIERS.map((c) => (<SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Separator />
+            <div className="space-y-3">
+              {orders.filter((o) => selectedOrderIds.has(o.id)).map((order) => (
+                <div key={order.id} className="flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{order.items?.[0]?.product?.name ?? '상품'}</p>
+                    <p className="text-xs text-gray-400">{order.orderNumber} · {order.buyerName}</p>
+                  </div>
+                  <Input
+                    value={bulkTrackingInputs[order.id] ?? ''}
+                    onChange={(e) => setBulkTrackingInputs((prev) => ({ ...prev, [order.id]: e.target.value }))}
+                    placeholder="송장번호"
+                    className="w-44 h-10 rounded-xl"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" className="rounded-xl" onClick={() => setBulkShipOpen(false)}>취소</Button>
+            <Button onClick={handleBulkShip} disabled={bulkProcessing} className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl">
+              {bulkProcessing ? <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />처리 중...</> : `${selectedOrderIds.size}건 일괄 발송`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Confirmation Dialog */}
       <Dialog open={confirmDialog.open} onOpenChange={(open) => setConfirmDialog((prev) => ({ ...prev, open }))}>

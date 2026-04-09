@@ -707,6 +707,8 @@ model CreatorShopItem {
   displayOrder Int         @default(0) @map("display_order")
   isVisible    Boolean     @default(true) @map("is_visible")
   addedAt      DateTime    @default(now()) @map("added_at") @db.Timestamptz
+  reelsUrl     String?     @map("reels_url")
+  reelsCaption String?     @map("reels_caption")
 
   @@index([type])
   @@map("creator_shop_items")

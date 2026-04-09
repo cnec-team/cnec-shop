@@ -56,6 +56,8 @@ interface ProductDetailPageProps {
   username: string;
   otherProducts?: { id: string; name: string; images?: string[]; salePrice?: number; originalPrice?: number }[];
   creatorContents?: CreatorContentItem[];
+  reelsUrl?: string | null;
+  reelsCaption?: string | null;
 }
 
 // =============================================
@@ -88,6 +90,8 @@ export function ProductDetailPage({
   username,
   otherProducts,
   creatorContents,
+  reelsUrl,
+  reelsCaption,
 }: ProductDetailPageProps) {
   const router = useRouter();
   const { addItem } = useCartStore();
@@ -346,7 +350,7 @@ export function ProductDetailPage({
         {/* Brand Product Detail Accordion */}
         {(p.description || p.descriptionKo || p.howToUse || p.how_to_use || p.ingredients) && (
           <div className="bg-white mt-2 px-4">
-            <Accordion type="multiple" defaultValue={["description"]}>
+            <Accordion type="multiple" defaultValue={["description", "howToUse", "ingredients"]}>
               {(p.description || p.descriptionKo) && (
                 <AccordionItem value="description">
                   <AccordionTrigger className="text-sm font-medium text-gray-900">
@@ -406,7 +410,7 @@ export function ProductDetailPage({
           </div>
         )}
 
-        {/* Creator Reels Section */}
+        {/* Creator Contents Section */}
         {creatorContents && creatorContents.length > 0 && (
           <div className="bg-white mt-2 py-5">
             <div className="flex items-center gap-2 px-4 mb-3">
@@ -463,6 +467,28 @@ export function ProductDetailPage({
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Creator Reels Section */}
+        {reelsUrl && (
+          <div className="bg-white mt-2 py-5 px-4">
+            <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2 mb-3">
+              <Play className="w-4 h-4" />
+              {(creator as any).displayName || (creator as any).shopId}의 릴스 리뷰
+            </h2>
+            {reelsCaption && (
+              <p className="text-sm text-gray-600 mb-3">{reelsCaption}</p>
+            )}
+            <a
+              href={reelsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 w-full h-12 border border-gray-200 rounded-xl text-sm font-medium text-gray-900 hover:bg-gray-50 transition-colors"
+            >
+              <Play className="w-4 h-4" />
+              인스타그램에서 보기
+            </a>
           </div>
         )}
 

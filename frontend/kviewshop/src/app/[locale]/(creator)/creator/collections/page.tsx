@@ -29,6 +29,7 @@ import {
   EyeOff,
   Package,
   X,
+  Film,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -41,6 +42,7 @@ import {
   addItemToCollection,
   removeItemFromCollection,
   updateItemOrder,
+  updateShopItemReels,
 } from '@/lib/actions/creator';
 
 interface ProductData {
@@ -57,6 +59,8 @@ interface ShopItem {
   type: string;
   displayOrder: number;
   isVisible: boolean;
+  reelsUrl?: string | null;
+  reelsCaption?: string | null;
   product?: ProductData;
 }
 
@@ -85,6 +89,12 @@ export default function CreatorCollectionsPage() {
   // Add product dialog
   const [addProductOpen, setAddProductOpen] = useState(false);
   const [addToCollectionId, setAddToCollectionId] = useState<string | null>(null);
+
+  // Reels dialog
+  const [reelsTarget, setReelsTarget] = useState<ShopItem | null>(null);
+  const [reelsUrl, setReelsUrl] = useState('');
+  const [reelsCaption, setReelsCaption] = useState('');
+  const [reelsSaving, setReelsSaving] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -242,6 +252,61 @@ export default function CreatorCollectionsPage() {
 
     for (const item of updatedItems) {
       await updateItemOrder(item.id, item.displayOrder);
+    }
+  };
+
+  const handleOpenReels = (item: ShopItem) => {
+    setReelsTarget(item);
+    setReelsUrl(item.reelsUrl || '');
+    setReelsCaption(item.reelsCaption || '');
+  };
+
+  const handleSaveReels = async () => {
+    if (!reelsTarget) return;
+    setReelsSaving(true);
+    try {
+      await updateShopItemReels(
+        reelsTarget.id,
+        reelsUrl.trim() || null,
+        reelsCaption.trim() || undefined
+      );
+      // Update local state
+      const updateItem = (item: ShopItem) =>
+        item.id === reelsTarget.id
+          ? { ...item, reelsUrl: reelsUrl.trim() || null, reelsCaption: reelsCaption.trim() || null }
+          : item;
+      setCollections((prev) =>
+        prev.map((c) => ({ ...c, items: (c.items ?? []).map(updateItem) }))
+      );
+      setAvailableItems((prev) => prev.map(updateItem));
+      toast.success('릴스 정보가 저장되었습니다');
+      setReelsTarget(null);
+    } catch (error: any) {
+      toast.error(error?.message || '저장에 실패했습니다');
+    } finally {
+      setReelsSaving(false);
+    }
+  };
+
+  const handleDeleteReels = async () => {
+    if (!reelsTarget) return;
+    setReelsSaving(true);
+    try {
+      await updateShopItemReels(reelsTarget.id, null);
+      const updateItem = (item: ShopItem) =>
+        item.id === reelsTarget.id
+          ? { ...item, reelsUrl: null, reelsCaption: null }
+          : item;
+      setCollections((prev) =>
+        prev.map((c) => ({ ...c, items: (c.items ?? []).map(updateItem) }))
+      );
+      setAvailableItems((prev) => prev.map(updateItem));
+      toast.success('릴스 정보가 삭제되었습니다');
+      setReelsTarget(null);
+    } catch (error: any) {
+      toast.error(error?.message || '삭제에 실패했습니다');
+    } finally {
+      setReelsSaving(false);
     }
   };
 
@@ -456,6 +521,16 @@ export default function CreatorCollectionsPage() {
                           {item.type === 'GONGGU' ? '공구' : '픽'}
                         </Badge>
                       </div>
+                      {/* Reels button */}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={`h-8 w-8 p-0 ${item.reelsUrl ? 'text-pink-500' : 'text-muted-foreground'}`}
+                        onClick={() => handleOpenReels(item)}
+                        title="릴스 연결"
+                      >
+                        <Film className="h-4 w-4" />
+                      </Button>
                       {/* Remove button */}
                       <Button
                         variant="ghost"
@@ -487,6 +562,60 @@ export default function CreatorCollectionsPage() {
           </Card>
         ))
       )}
+
+      {/* Reels Dialog */}
+      <Dialog open={!!reelsTarget} onOpenChange={(open) => !open && setReelsTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>릴스 연결</DialogTitle>
+            <DialogDescription>
+              {reelsTarget?.product?.name ?? '상품'}에 인스타그램 릴스를 연결하세요
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>릴스 URL</Label>
+              <Input
+                placeholder="https://www.instagram.com/reel/..."
+                value={reelsUrl}
+                onChange={(e) => setReelsUrl(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>한줄 소개 (선택)</Label>
+              <Input
+                placeholder="이 제품 진짜 좋아요!"
+                value={reelsCaption}
+                onChange={(e) => setReelsCaption(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter className="flex-row gap-2 sm:justify-between">
+            {reelsTarget?.reelsUrl && (
+              <Button
+                variant="outline"
+                className="text-destructive hover:text-destructive"
+                onClick={handleDeleteReels}
+                disabled={reelsSaving}
+              >
+                삭제
+              </Button>
+            )}
+            <div className="flex gap-2 ml-auto">
+              <Button variant="outline" onClick={() => setReelsTarget(null)}>
+                취소
+              </Button>
+              <Button onClick={handleSaveReels} disabled={reelsSaving}>
+                {reelsSaving ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />저장 중...</>
+                ) : (
+                  '저장'
+                )}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Add Product to Collection Dialog */}
       <Dialog open={addProductOpen} onOpenChange={setAddProductOpen}>

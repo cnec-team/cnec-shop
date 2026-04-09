@@ -976,6 +976,32 @@ export async function deleteRoutine(routineId: string) {
 
 // ==================== Auth Helper (exposed for client) ====================
 
+// ==================== Reels ====================
+
+export async function updateShopItemReels(
+  shopItemId: string,
+  reelsUrl: string | null,
+  reelsCaption?: string
+) {
+  const { creator } = await requireCreator()
+
+  const shopItem = await prisma.creatorShopItem.findFirst({
+    where: { id: shopItemId, creatorId: creator.id },
+  })
+  if (!shopItem) throw new Error('상품을 찾을 수 없습니다')
+
+  if (reelsUrl && !reelsUrl.includes('instagram.com/reel')) {
+    throw new Error('인스타그램 릴스 URL만 입력 가능합니다')
+  }
+
+  return prisma.creatorShopItem.update({
+    where: { id: shopItemId },
+    data: { reelsUrl, reelsCaption: reelsCaption || null },
+  })
+}
+
+// ==================== Auth Helper (exposed for client) ====================
+
 export async function getCreatorSession() {
   const session = await auth()
   if (!session?.user) return null
