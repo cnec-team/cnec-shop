@@ -14,6 +14,8 @@ import {
   Minus,
   Plus,
   X,
+  Clock,
+  Landmark,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -43,9 +45,17 @@ interface CartItemWithProduct {
   product?: any;
 }
 
+interface BankInfo {
+  bankName: string;
+  accountNumber: string;
+  accountHolder: string;
+}
+
 interface OrderResult {
   orderNumber: string;
   totalAmount: number;
+  isBankTransfer?: boolean;
+  bankInfo?: BankInfo;
 }
 
 const DELIVERY_MEMOS = [
@@ -61,6 +71,7 @@ const PAYMENT_METHODS = [
   { value: 'kakao', label: '카카오페이', payMethod: 'EASY_PAY' as const, easyPayProvider: 'KAKAOPAY' as const },
   { value: 'naver', label: '네이버페이', payMethod: 'EASY_PAY' as const, easyPayProvider: 'NAVERPAY' as const },
   { value: 'toss', label: '토스페이', payMethod: 'EASY_PAY' as const, easyPayProvider: 'TOSSPAY' as const },
+  { value: 'bank_transfer', label: '무통장입금', payMethod: 'BANK_TRANSFER' as const, easyPayProvider: undefined },
 ];
 
 // =============================================
@@ -84,6 +95,7 @@ export default function CheckoutPage() {
   const [selectedPayment, setSelectedPayment] = useState('card');
   const [deliveryMemo, setDeliveryMemo] = useState('선택하세요');
 
+  const [depositorName, setDepositorName] = useState('');
   const [form, setForm] = useState({
     name: '',
     phone: '',
@@ -215,56 +227,86 @@ export default function CheckoutPage() {
     return true;
   };
 
+  const isBankTransfer = selectedPayment === 'bank_transfer';
+
+  // 공통: 주문 생성 (prepare API 호출)
+  const createOrder = async () => {
+    const prepareRes = await fetch('/api/payments/prepare', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        items: cartItems.map((item) => ({
+          productId: item.productId,
+          campaignId: item.campaignId || undefined,
+          quantity: item.quantity,
+          unitPrice: Number(item.unitPrice),
+        })),
+        creatorId: creator.id,
+        buyer: {
+          name: form.name,
+          phone: form.phone,
+          email: form.email,
+        },
+        shipping: {
+          address: form.address,
+          zipcode: form.zipcode,
+          detail: form.addressDetail || undefined,
+          memo: deliveryMemo !== '선택하세요' ? deliveryMemo : undefined,
+        },
+        ...(isBankTransfer && {
+          paymentMethod: 'BANK_TRANSFER',
+          depositorName: depositorName.trim() || undefined,
+        }),
+      }),
+    });
+
+    if (!prepareRes.ok) {
+      const err = await prepareRes.json();
+      if (prepareRes.status === 409) {
+        throw new Error('재고가 부족한 상품이 있습니다. 수량을 확인해주세요.');
+      }
+      throw new Error(err.error || '주문 생성에 실패했습니다.');
+    }
+
+    return prepareRes.json();
+  };
+
   const handleCheckout = async () => {
     if (!validateForm() || !creator || isProcessing) return;
 
-    const storeId = process.env.NEXT_PUBLIC_PORTONE_STORE_ID;
-    const channelKey = process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY;
-    if (!storeId || !channelKey) {
-      toast.error('결제 시스템 설정이 완료되지 않았습니다. 관리자에게 문의해주세요.');
-      return;
+    // 무통장입금이 아닌 경우에만 PortOne 설정 확인
+    if (!isBankTransfer) {
+      const storeId = process.env.NEXT_PUBLIC_PORTONE_STORE_ID;
+      const channelKey = process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY;
+      if (!storeId || !channelKey) {
+        toast.error('결제 시스템 설정이 완료되지 않았습니다. 관리자에게 문의해주세요.');
+        return;
+      }
     }
 
     setIsProcessing(true);
 
     try {
       // 1. 서버에서 주문 생성 + 재고 차감
-      const prepareRes = await fetch('/api/payments/prepare', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          items: cartItems.map((item) => ({
-            productId: item.productId,
-            campaignId: item.campaignId || undefined,
-            quantity: item.quantity,
-            unitPrice: Number(item.unitPrice),
-          })),
-          creatorId: creator.id,
-          buyer: {
-            name: form.name,
-            phone: form.phone,
-            email: form.email,
-          },
-          shipping: {
-            address: form.address,
-            zipcode: form.zipcode,
-            detail: form.addressDetail || undefined,
-            memo: deliveryMemo !== '선택하세요' ? deliveryMemo : undefined,
-          },
-        }),
-      });
+      const prepareData = await createOrder();
+      const { orderId, orderNumber, totalAmount: serverTotal, bankInfo } = prepareData;
 
-      if (!prepareRes.ok) {
-        const err = await prepareRes.json();
-        if (prepareRes.status === 409) {
-          throw new Error('재고가 부족한 상품이 있습니다. 수량을 확인해주세요.');
-        }
-        throw new Error(err.error || '주문 생성에 실패했습니다.');
+      // 무통장입금: PortOne 스킵, 바로 주문 완료 표시
+      if (isBankTransfer) {
+        clearCart();
+        setOrderResult({
+          orderNumber,
+          totalAmount: Number(serverTotal),
+          isBankTransfer: true,
+          bankInfo: bankInfo || undefined,
+        });
+        return;
       }
 
-      const { orderId, orderNumber, totalAmount: serverTotal } = await prepareRes.json();
-
       // 2. 포트원 SDK 로드 및 결제 요청
+      const storeId = process.env.NEXT_PUBLIC_PORTONE_STORE_ID!;
+      const channelKey = process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY!;
+
       let PortOne;
       try {
         PortOne = await import('@portone/browser-sdk/v2');
@@ -289,7 +331,7 @@ export default function CheckoutPage() {
         orderName,
         totalAmount: Number(serverTotal),
         currency: 'KRW',
-        payMethod: selectedMethod.payMethod,
+        payMethod: selectedMethod.payMethod as 'CARD' | 'EASY_PAY',
         redirectUrl: `${window.location.origin}/${locale}/payment/success?orderId=${orderId}`,
         customer: {
           fullName: form.name,
@@ -390,15 +432,21 @@ export default function CheckoutPage() {
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-lg mx-auto px-4 py-16">
           <div className="text-center">
-            <CheckCircle className="h-16 w-16 mx-auto mb-4 text-emerald-500" />
+            {orderResult.isBankTransfer ? (
+              <Clock className="h-16 w-16 mx-auto mb-4 text-amber-500" />
+            ) : (
+              <CheckCircle className="h-16 w-16 mx-auto mb-4 text-emerald-500" />
+            )}
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              결제가 완료되었습니다
+              {orderResult.isBankTransfer ? '주문이 접수되었습니다' : '결제가 완료되었습니다'}
             </h1>
             <p className="text-sm text-gray-400 mb-8">
-              주문 내역은 이메일로 전송됩니다.
+              {orderResult.isBankTransfer
+                ? '아래 계좌로 입금해주시면 주문이 확정됩니다.'
+                : '주문 내역은 이메일로 전송됩니다.'}
             </p>
 
-            <div className="bg-white rounded-2xl p-5 text-left">
+            <div className="bg-white rounded-2xl p-5 text-left space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-400">주문번호</span>
                 <div className="flex items-center gap-2">
@@ -413,18 +461,57 @@ export default function CheckoutPage() {
                   </button>
                 </div>
               </div>
-              <div className="h-px bg-gray-100 my-4" />
+              <div className="h-px bg-gray-100" />
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-400">결제금액</span>
+                <span className="text-sm text-gray-400">
+                  {orderResult.isBankTransfer ? '입금금액' : '결제금액'}
+                </span>
                 <span className="text-xl font-bold text-gray-900">
                   {formatKRW(orderResult.totalAmount)}
                 </span>
               </div>
+
+              {/* 무통장입금 계좌 안내 */}
+              {orderResult.isBankTransfer && orderResult.bankInfo && (
+                <>
+                  <div className="h-px bg-gray-100" />
+                  <div className="bg-amber-50 rounded-xl p-4 space-y-2">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Landmark className="w-4 h-4 text-amber-600" />
+                      <span className="text-sm font-semibold text-amber-900">입금 계좌 안내</span>
+                    </div>
+                    {orderResult.bankInfo.bankName && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-amber-700">은행</span>
+                        <span className="font-medium text-amber-900">{orderResult.bankInfo.bankName}</span>
+                      </div>
+                    )}
+                    {orderResult.bankInfo.accountNumber && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-amber-700">계좌번호</span>
+                        <span className="font-mono font-medium text-amber-900">{orderResult.bankInfo.accountNumber}</span>
+                      </div>
+                    )}
+                    {orderResult.bankInfo.accountHolder && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-amber-700">예금주</span>
+                        <span className="font-medium text-amber-900">{orderResult.bankInfo.accountHolder}</span>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
 
-            <p className="text-xs text-gray-400 mt-4">
-              배송은 브랜드에서 직접 처리합니다. 문의사항은 크넥에 연락해주세요.
-            </p>
+            {orderResult.isBankTransfer ? (
+              <p className="text-xs text-gray-400 mt-4">
+                입금 확인 후 주문이 확정되며, 확인까지 영업일 기준 1~2일 소요될 수 있습니다.
+              </p>
+            ) : (
+              <p className="text-xs text-gray-400 mt-4">
+                배송은 브랜드에서 직접 처리합니다. 문의사항은 크넥에 연락해주세요.
+              </p>
+            )}
 
             <div className="mt-8 space-y-3">
               <Link
@@ -648,6 +735,20 @@ export default function CheckoutPage() {
               </label>
             ))}
           </div>
+
+          {/* 무통장입금 선택 시 입금자명 입력 */}
+          {isBankTransfer && (
+            <div className="mt-4 space-y-1.5">
+              <label className="text-xs font-medium text-gray-500">입금자명</label>
+              <input
+                type="text"
+                value={depositorName}
+                onChange={(e) => setDepositorName(e.target.value)}
+                placeholder="주문자와 다를 경우 입력해주세요"
+                className="w-full h-11 px-4 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-300"
+              />
+            </div>
+          )}
         </div>
 
         {/* Total Amount */}
@@ -692,10 +793,12 @@ export default function CheckoutPage() {
             {isProcessing ? (
               <>
                 <Loader2 className="h-5 w-5 animate-spin" />
-                결제 처리중...
+                {isBankTransfer ? '주문 접수중...' : '결제 처리중...'}
               </>
             ) : (
-              <>총 {formatKRW(totalAmount)} 결제하기</>
+              isBankTransfer
+                ? <>총 {formatKRW(totalAmount)} 주문하기</>
+                : <>총 {formatKRW(totalAmount)} 결제하기</>
             )}
           </button>
         </div>

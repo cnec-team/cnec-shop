@@ -31,6 +31,8 @@ interface PrepareRequestBody {
   creatorId: string;
   buyer: PrepareRequestBuyer;
   shipping: PrepareRequestShipping;
+  paymentMethod?: string;
+  depositorName?: string;
 }
 
 function generateOrderNumber(): string {
@@ -145,24 +147,34 @@ export async function POST(request: NextRequest) {
     const buyerId = session?.user?.id || null;
 
     // Create order record
+    const isBankTransfer = body.paymentMethod === 'BANK_TRANSFER';
+    const orderData: Record<string, unknown> = {
+      orderNumber,
+      creatorId,
+      brandId,
+      buyerId,
+      buyerName: buyer.name,
+      buyerPhone: buyer.phone,
+      buyerEmail: buyer.email,
+      shippingAddress: shipping.address,
+      shippingZipcode: shipping.zipcode,
+      shippingDetail: shipping.detail || null,
+      shippingMemo: shipping.memo || null,
+      totalAmount,
+      productAmount,
+      shippingFee,
+      status,
+    };
+
+    if (isBankTransfer) {
+      orderData.paymentMethod = 'BANK_TRANSFER';
+      if (body.depositorName) {
+        orderData.notes = `입금자명: ${body.depositorName}`;
+      }
+    }
+
     const order = await prisma.order.create({
-      data: {
-        orderNumber,
-        creatorId,
-        brandId,
-        buyerId,
-        buyerName: buyer.name,
-        buyerPhone: buyer.phone,
-        buyerEmail: buyer.email,
-        shippingAddress: shipping.address,
-        shippingZipcode: shipping.zipcode,
-        shippingDetail: shipping.detail || null,
-        shippingMemo: shipping.memo || null,
-        totalAmount,
-        productAmount,
-        shippingFee,
-        status,
-      },
+      data: orderData as any,
       select: { id: true, orderNumber: true, totalAmount: true },
     });
 
@@ -217,11 +229,23 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({
+    // Build response
+    const responseData: Record<string, unknown> = {
       orderId: order.id,
       orderNumber: order.orderNumber,
       totalAmount: order.totalAmount,
-    });
+    };
+
+    // 무통장입금인 경우 계좌 정보 포함
+    if (isBankTransfer) {
+      responseData.bankInfo = {
+        bankName: process.env.BANK_TRANSFER_BANK_NAME || '',
+        accountNumber: process.env.BANK_TRANSFER_ACCOUNT_NUMBER || '',
+        accountHolder: process.env.BANK_TRANSFER_ACCOUNT_HOLDER || '',
+      };
+    }
+
+    return NextResponse.json(responseData);
   } catch (error: unknown) {
     console.error('Payment prepare error:', error);
     const message = error instanceof Error ? error.message : 'Internal server error';
