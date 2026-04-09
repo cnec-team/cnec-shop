@@ -42,6 +42,10 @@ type TrialProduct = {
   category: string | null
   description: string | null
   descriptionKo: string | null
+  price: string | number | null
+  originalPrice: string | number | null
+  salePrice: string | number | null
+  volume: string | null
   brand: { id: string; companyName: string | null; logoUrl: string | null }
   existingTrial: { id: string; status: string } | null
 }
@@ -55,6 +59,22 @@ const CATEGORIES = [
   { value: 'fragrance', label: '향수' },
   { value: 'supplement', label: '이너뷰티' },
 ]
+
+const CATEGORY_LABEL: Record<string, string> = {
+  skincare: '스킨케어',
+  makeup: '메이크업',
+  haircare: '헤어케어',
+  bodycare: '바디케어',
+  fragrance: '향수',
+  supplement: '이너뷰티',
+}
+
+function formatPrice(val: string | number | null | undefined): string | null {
+  if (val == null) return null
+  const n = Number(val)
+  if (isNaN(n) || n === 0) return null
+  return n.toLocaleString('ko-KR') + '원'
+}
 
 const STATUS_LABEL: Record<string, { text: string; className: string; icon: React.ElementType }> = {
   pending: { text: '신청중', className: 'bg-yellow-50 text-yellow-700', icon: Clock },
@@ -192,9 +212,9 @@ export default function CreatorTrialCatalogPage() {
 
       {/* Products Grid */}
       {loading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-72 rounded-2xl" />
+            <Skeleton key={i} className="h-64 rounded-2xl" />
           ))}
         </div>
       ) : products.length === 0 ? (
@@ -205,7 +225,7 @@ export default function CreatorTrialCatalogPage() {
         </div>
       ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
             {products.map((product) => (
               <ProductCard
                 key={product.id}
@@ -315,32 +335,52 @@ function ProductCard({
 }) {
   const existing = product.existingTrial
   const statusInfo = existing ? STATUS_LABEL[existing.status] : null
+  const imgSrc = product.thumbnailUrl || product.imageUrl || product.images?.[0]
+  const price = formatPrice(product.salePrice) || formatPrice(product.price)
+  const originalPrice = formatPrice(product.originalPrice)
+  const categoryLabel = product.category ? CATEGORY_LABEL[product.category] : null
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-      <div className="aspect-square bg-gray-50 relative">
-        {product.thumbnailUrl || product.imageUrl || product.images?.[0] ? (
+      <div className="aspect-[4/3] bg-gray-50 relative">
+        {imgSrc ? (
           <Image
-            src={product.thumbnailUrl || product.imageUrl || product.images?.[0] || ''}
+            src={imgSrc}
             alt={product.nameKo || product.name || ''}
             fill
             className="object-cover"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <Package className="w-12 h-12 text-gray-300" />
+            <Package className="w-10 h-10 text-gray-300" />
           </div>
         )}
+        {categoryLabel && (
+          <span className="absolute top-2 left-2 bg-white/90 backdrop-blur-sm text-xs text-gray-600 rounded-full px-2 py-0.5">
+            {categoryLabel}
+          </span>
+        )}
       </div>
-      <div className="p-4 space-y-2">
+      <div className="p-3 space-y-1.5">
         <p className="text-xs text-gray-500">{product.brand.companyName}</p>
-        <p className="text-sm font-medium text-gray-900 line-clamp-2">
+        <p className="text-sm font-medium text-gray-900 line-clamp-2 leading-tight">
           {product.nameKo || product.name}
         </p>
+        <div className="flex items-center gap-2 flex-wrap">
+          {price && (
+            <p className="text-sm font-bold text-gray-900">{price}</p>
+          )}
+          {originalPrice && price && originalPrice !== price && (
+            <p className="text-xs text-gray-400 line-through">{originalPrice}</p>
+          )}
+          {product.volume && (
+            <span className="text-xs text-gray-400">{product.volume}</span>
+          )}
+        </div>
 
         {existing && statusInfo ? (
           <div className="pt-1">
-            <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${statusInfo.className}`}>
+            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${statusInfo.className}`}>
               <statusInfo.icon className="w-3 h-3" />
               {statusInfo.text}
             </span>
@@ -348,9 +388,9 @@ function ProductCard({
         ) : (
           <Button
             onClick={() => onApply(product)}
-            className="w-full bg-gray-900 text-white rounded-xl h-10 text-sm font-medium mt-2"
+            className="w-full bg-gray-900 text-white rounded-xl h-9 text-sm font-medium mt-1"
           >
-            체험 신청하기
+            체험 신청
           </Button>
         )}
       </div>

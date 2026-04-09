@@ -271,7 +271,10 @@ export async function getMyTrials(filters?: {
             nameKo: true,
             imageUrl: true,
             thumbnailUrl: true,
+            images: true,
             category: true,
+            price: true,
+            volume: true,
           },
         },
         brand: {
@@ -555,6 +558,10 @@ export async function getTrialableProducts(filters?: {
         category: true,
         description: true,
         descriptionKo: true,
+        price: true,
+        originalPrice: true,
+        salePrice: true,
+        volume: true,
         brand: {
           select: {
             id: true,

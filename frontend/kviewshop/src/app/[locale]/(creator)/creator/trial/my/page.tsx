@@ -46,6 +46,7 @@ interface Trial {
   status: string
   decision: string | null
   message: string | null
+  feedback: string | null
   trackingNumber: string | null
   passReason: string | null
   createdAt: Date | string
@@ -60,7 +61,10 @@ interface Trial {
     nameKo: string | null
     imageUrl: string | null
     thumbnailUrl: string | null
+    images: string[]
     category: string | null
+    price: string | number | null
+    volume: string | null
   } | null
   brand: {
     id: string
@@ -370,7 +374,7 @@ function TrialCard({
   const StatusIcon = status.icon
   const isLoading = actionLoading === trial.id
   const productName = trial.product?.nameKo || trial.product?.name || '상품'
-  const imgSrc = trial.product?.thumbnailUrl || trial.product?.imageUrl
+  const imgSrc = trial.product?.thumbnailUrl || trial.product?.imageUrl || trial.product?.images?.[0]
 
   const decidedProceed = trial.status === 'decided' && trial.decision === 'PROCEED'
   const decidedPass = trial.status === 'decided' && trial.decision === 'PASS'
@@ -403,6 +407,9 @@ function TrialCard({
         <div className="flex-1 min-w-0">
           <p className="text-xs text-gray-500">{trial.brand.companyName}</p>
           <p className="text-sm font-medium text-gray-900 truncate">{productName}</p>
+          {trial.product?.volume && (
+            <p className="text-xs text-gray-400">{trial.product.volume}</p>
+          )}
           <span className={`inline-flex items-center gap-1 rounded-full px-3 py-0.5 text-xs font-medium mt-1 ${statusBadgeClass}`}>
             <StatusIcon className="w-3 h-3" />
             {statusText}
@@ -410,12 +417,30 @@ function TrialCard({
         </div>
       </div>
 
+      {/* Shipping info - prominent for shipped/approved */}
+      {(trial.status === 'shipped' || trial.status === 'approved') && trial.trackingNumber && (
+        <div className="bg-purple-50 rounded-xl p-3 flex items-center gap-2">
+          <Truck className="w-4 h-4 text-purple-600 shrink-0" />
+          <div>
+            <p className="text-xs text-purple-600 font-medium">송장번호</p>
+            <p className="text-sm font-medium text-purple-900">{trial.trackingNumber}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Feedback display */}
+      {trial.feedback && (
+        <div className="bg-blue-50 rounded-xl p-3">
+          <p className="text-xs text-blue-600 font-medium mb-0.5">내 피드백</p>
+          <p className="text-sm text-blue-900">{trial.feedback}</p>
+        </div>
+      )}
+
       {/* Timeline */}
       <div className="text-xs text-gray-500 space-y-0.5">
         <p>신청일: {formatDate(trial.createdAt)}</p>
         {trial.respondedAt && <p>응답일: {formatDate(trial.respondedAt)}</p>}
         {trial.shippedAt && <p>발송일: {formatDate(trial.shippedAt)}</p>}
-        {trial.trackingNumber && <p>송장: {trial.trackingNumber}</p>}
         {trial.receivedAt && <p>수령일: {formatDate(trial.receivedAt)}</p>}
         {trial.decidedAt && <p>결정일: {formatDate(trial.decidedAt)}</p>}
       </div>
@@ -441,7 +466,7 @@ function TrialCard({
         <Button
           onClick={() => onReceived(trial.id)}
           disabled={isLoading}
-          className="bg-gray-900 text-white rounded-xl h-10 text-sm font-medium"
+          className="w-full bg-gray-900 text-white rounded-xl h-10 text-sm font-medium"
         >
           {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : '수령 확인'}
         </Button>
