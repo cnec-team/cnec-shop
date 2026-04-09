@@ -177,11 +177,11 @@ export default function LandingPage() {
             </span>
 
             <h1
-              className={`mt-4 text-[2.5rem] sm:text-5xl md:text-[3.5rem] font-black leading-[1.1] tracking-tight text-gray-900 ${anim(hero.isInView, 'animate-fade-in-up delay-100')}`}
+              className={`mt-4 text-[2.5rem] sm:text-5xl md:text-[3.5rem] font-black leading-[1.1] tracking-tight ${anim(hero.isInView, 'animate-fade-in-up delay-100')}`}
             >
-              뷰티 공동구매,
+              <span style={gradientText}>뷰티 공동구매,</span>
               <br />
-              내 샵에서 바로 오픈
+              <span className="text-gray-900">내 샵에서 바로 오픈</span>
             </h1>
 
             <p
