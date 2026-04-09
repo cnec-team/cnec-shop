@@ -226,97 +226,17 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Right — Phone Mockup */}
+          {/* Right — Phone Mockup Image */}
           <div className={`relative ${anim(hero.isInView, 'animate-fade-in-right delay-300')}`}>
             <div className="relative mx-auto w-[300px] md:w-[340px]">
-              <div className="rounded-[3rem] border-[6px] border-gray-900 bg-white shadow-2xl shadow-gray-900/10 overflow-hidden">
-                {/* Notch */}
-                <div className="relative flex justify-center">
-                  <div className="w-[100px] h-[26px] bg-gray-900 rounded-b-2xl" />
-                </div>
-
-                {/* Header */}
-                <div className="px-5 pt-3 pb-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-[10px] text-blue-600 font-semibold tracking-wider">크넥샵 공동구매</p>
-                      <p className="text-lg font-bold text-gray-900 mt-0.5">지나빅 뷰티 마켓</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="bg-rose-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
-                        LIVE
-                      </span>
-                      <span className="text-[10px] text-gray-400 font-medium">공구마감 D-1</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Product cards */}
-                <div className="px-4 pb-3 space-y-3">
-                  {/* Featured product */}
-                  <div className="bg-gray-50 rounded-2xl p-3">
-                    <div className="flex items-center gap-1 mb-2">
-                      <span className="bg-blue-600 text-white text-[9px] font-bold px-2 py-0.5 rounded">할인특가</span>
-                    </div>
-                    <div className="flex gap-3">
-                      <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0">
-                        <Image src="/images/creators/product_serum.jpg" alt="세럼" width={128} height={128} className="w-full h-full object-cover" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[10px] text-gray-400">한절기 필수 진정 앰플</p>
-                        <p className="text-xs font-semibold text-gray-900 mt-0.5">센서티브 카밍 앰플 대용량 세트</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-sm font-bold text-gray-900">₩32,000</span>
-                          <span className="text-[10px] text-gray-300 line-through">₩48,000</span>
-                          <span className="text-[10px] font-bold text-rose-500">33%</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Second product */}
-                  <div className="bg-gray-50 rounded-2xl p-3">
-                    <div className="flex items-center gap-1 mb-2">
-                      <span className="bg-blue-600 text-white text-[9px] font-bold px-2 py-0.5 rounded">BEST</span>
-                    </div>
-                    <div className="flex gap-3">
-                      <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0">
-                        <Image src="/images/creators/product_ampoule.jpg" alt="크림" width={128} height={128} className="w-full h-full object-cover" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[10px] text-gray-400">속당김 없는 깊은 보습</p>
-                        <p className="text-xs font-semibold text-gray-900 mt-0.5">콜라겐 수분 크림 100ml</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-sm font-bold text-gray-900">₩28,500</span>
-                          <span className="text-[10px] text-gray-300 line-through">₩42,000</span>
-                          <span className="text-[10px] font-bold text-rose-500">32%</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Bottom nav */}
-                <div className="px-5 py-2.5 border-t border-gray-100 flex justify-around">
-                  {[
-                    { icon: Home, label: '홈', active: true },
-                    { icon: ShoppingBag, label: '상품', active: false },
-                    { icon: BarChart3, label: '매출', active: false },
-                    { icon: User, label: '마이', active: false },
-                  ].map((tab) => (
-                    <div key={tab.label} className={`flex flex-col items-center gap-0.5 ${tab.active ? 'text-blue-600' : 'text-gray-300'}`}>
-                      <tab.icon className="h-4 w-4" />
-                      <span className="text-[9px] font-medium">{tab.label}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Home indicator */}
-                <div className="flex justify-center pb-2">
-                  <div className="w-[120px] h-[4px] bg-gray-900 rounded-full" />
-                </div>
-              </div>
+              <Image
+                src="/images/creators/hero_phone.png"
+                alt="공동구매 마켓 미리보기"
+                width={834}
+                height={1534}
+                className="w-full h-auto drop-shadow-2xl"
+                priority
+              />
             </div>
           </div>
         </div>
