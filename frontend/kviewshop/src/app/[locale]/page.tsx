@@ -617,10 +617,10 @@ export default function LandingPage() {
 
           <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-5 max-w-5xl mx-auto">
             {[
-              { initial: 'S', name: '수아뷰티', handle: '@sua_beauty', category: '스킨케어', followers: '45.2K', color: 'from-rose-400 to-pink-500', products: 12 },
-              { initial: 'M', name: '미니뷰티랩', handle: '@mini_beautylab', category: '메이크업', followers: '32.1K', color: 'from-violet-400 to-purple-500', products: 8 },
-              { initial: 'J', name: '제이스킨', handle: '@j_skin_official', category: '더마', followers: '28.7K', color: 'from-blue-400 to-indigo-500', products: 15 },
-              { initial: 'H', name: '혜린픽', handle: '@hyerin_pick', category: '클린뷰티', followers: '19.5K', color: 'from-emerald-400 to-teal-500', products: 6 },
+              { initial: 'S', name: '수아뷰티', handle: '@sua_beauty', category: '스킨케어', followers: '45.2K', color: 'from-rose-400 to-pink-500', products: 12, sales: '1,847' },
+              { initial: 'M', name: '미니뷰티랩', handle: '@mini_beautylab', category: '메이크업', followers: '32.1K', color: 'from-violet-400 to-purple-500', products: 8, sales: '1,203' },
+              { initial: 'J', name: '제이스킨', handle: '@j_skin_official', category: '더마', followers: '28.7K', color: 'from-blue-400 to-indigo-500', products: 15, sales: '2,156' },
+              { initial: 'H', name: '혜린픽', handle: '@hyerin_pick', category: '클린뷰티', followers: '19.5K', color: 'from-emerald-400 to-teal-500', products: 6, sales: '892' },
             ].map((c, i) => (
               <div
                 key={c.handle}
@@ -634,15 +634,18 @@ export default function LandingPage() {
                 <span className="inline-block mt-3 px-3 py-1 rounded-full bg-blue-50 text-xs font-semibold text-blue-600">
                   {c.category}
                 </span>
-                <div className="flex items-center justify-center gap-4 mt-4 pt-4 border-t border-gray-50">
+                <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-gray-50">
                   <div>
                     <p className="text-sm font-bold text-gray-900">{c.followers}</p>
                     <p className="text-[10px] text-gray-400">팔로워</p>
                   </div>
-                  <div className="w-px h-6 bg-gray-100" />
-                  <div>
+                  <div className="border-x border-gray-100">
                     <p className="text-sm font-bold text-gray-900">{c.products}개</p>
                     <p className="text-[10px] text-gray-400">상품</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-blue-600">{c.sales}</p>
+                    <p className="text-[10px] text-gray-400">판매량</p>
                   </div>
                 </div>
               </div>
