@@ -3,8 +3,10 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* CNEC Design System */
-/* Premium Minimalist — Blue primary, neutral accent */
+/* ─────────────────────────────────────────────────
+   CNEC Design System v2 — Premium Minimalist
+   Inspired by Toss / Baemin design language
+   ───────────────────────────────────────────────── */
 
 @theme inline {
   --color-background: var(--background);
@@ -56,148 +58,142 @@
   --radius-4xl: calc(var(--radius) + 16px);
 }
 
-/* Light-first: default for all pages */
+/* ─── Light Mode ─── */
 :root {
-  --radius: 0.5rem;
-  /* Light Base */
-  --background: #FAFAFA;
-  --foreground: #09090B;
-  /* Cards */
+  --radius: 0.625rem;
+  --background: #FFFFFF;
+  --foreground: #191F28;
   --card: #FFFFFF;
-  --card-foreground: #09090B;
+  --card-foreground: #191F28;
   --popover: #FFFFFF;
-  --popover-foreground: #09090B;
-  /* Point Color: Deep Blue */
-  --primary: #2563EB;
+  --popover-foreground: #191F28;
+  /* Primary: Toss Blue */
+  --primary: #3182F6;
   --primary-foreground: #FFFFFF;
-  /* Neutral Secondary */
-  --secondary: #F4F4F5;
-  --secondary-foreground: #09090B;
-  /* Muted */
-  --muted: #F4F4F5;
-  --muted-foreground: #71717A;
-  /* Accent: Slate (neutral, not rose) */
-  --accent: #6366F1;
+  --secondary: #F2F4F6;
+  --secondary-foreground: #191F28;
+  --muted: #F2F4F6;
+  --muted-foreground: #8B95A1;
+  --accent: #4E5968;
   --accent-foreground: #FFFFFF;
-  --destructive: #EF4444;
-  --border: #E4E4E7;
-  --input: #E4E4E7;
-  --ring: #2563EB;
-  /* Legacy compat */
-  --gold: #2563EB;
+  --destructive: #F04452;
+  --border: #E5E8EB;
+  --input: #E5E8EB;
+  --ring: #3182F6;
+  --gold: #3182F6;
   --gold-foreground: #FFFFFF;
   --bronze: #6366F1;
-  --success: #22C55E;
+  --success: #03B26C;
   --warning: #F59E0B;
-  /* Earnings accent (purple) */
   --earnings: #7C3AED;
   --earnings-foreground: #FFFFFF;
-  /* Charts */
-  --chart-1: #2563EB;
+  --chart-1: #3182F6;
   --chart-2: #6366F1;
-  --chart-3: #22C55E;
+  --chart-3: #03B26C;
   --chart-4: #F59E0B;
   --chart-5: #8B5CF6;
-  /* Sidebar */
   --sidebar: #FFFFFF;
-  --sidebar-foreground: #71717A;
-  --sidebar-primary: #2563EB;
+  --sidebar-foreground: #8B95A1;
+  --sidebar-primary: #3182F6;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #F4F4F5;
-  --sidebar-accent-foreground: #09090B;
-  --sidebar-border: #E4E4E7;
-  --sidebar-ring: #2563EB;
+  --sidebar-accent: #F2F4F6;
+  --sidebar-accent-foreground: #191F28;
+  --sidebar-border: #E5E8EB;
+  --sidebar-ring: #3182F6;
 }
 
-/* Dark mode */
+/* ─── Dark Mode ─── */
 .dark {
-  --background: #030712;
-  --foreground: #F9FAFB;
-  /* Cards: neutral gray, NOT pink/red */
-  --card: #111827;
-  --card-foreground: #F9FAFB;
-  --popover: #111827;
-  --popover-foreground: #F9FAFB;
-  --primary: #3B82F6;
+  --background: #0A0E14;
+  --foreground: #F2F4F6;
+  --card: #141921;
+  --card-foreground: #F2F4F6;
+  --popover: #141921;
+  --popover-foreground: #F2F4F6;
+  --primary: #4C9AFF;
   --primary-foreground: #FFFFFF;
-  --secondary: #1F2937;
-  --secondary-foreground: #F9FAFB;
-  --muted: #1F2937;
-  --muted-foreground: #9CA3AF;
-  /* Accent: Indigo (neutral, not rose) */
+  --secondary: #1C2230;
+  --secondary-foreground: #F2F4F6;
+  --muted: #1C2230;
+  --muted-foreground: #8B95A1;
   --accent: #818CF8;
   --accent-foreground: #FFFFFF;
-  --destructive: #EF4444;
-  --border: #1F2937;
-  --input: #1F2937;
-  --ring: #3B82F6;
-  --gold: #3B82F6;
+  --destructive: #F04452;
+  --border: #1C2230;
+  --input: #1C2230;
+  --ring: #4C9AFF;
+  --gold: #4C9AFF;
   --gold-foreground: #FFFFFF;
   --bronze: #818CF8;
-  --success: #22C55E;
+  --success: #03B26C;
   --warning: #F59E0B;
   --earnings: #A78BFA;
   --earnings-foreground: #FFFFFF;
-  --chart-1: #3B82F6;
+  --chart-1: #4C9AFF;
   --chart-2: #818CF8;
-  --chart-3: #22C55E;
+  --chart-3: #03B26C;
   --chart-4: #F59E0B;
   --chart-5: #A78BFA;
-  --sidebar: #030712;
-  --sidebar-foreground: #9CA3AF;
-  --sidebar-primary: #3B82F6;
+  --sidebar: #0A0E14;
+  --sidebar-foreground: #8B95A1;
+  --sidebar-primary: #4C9AFF;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #111827;
-  --sidebar-accent-foreground: #F9FAFB;
-  --sidebar-border: #1F2937;
-  --sidebar-ring: #3B82F6;
+  --sidebar-accent: #141921;
+  --sidebar-accent-foreground: #F2F4F6;
+  --sidebar-border: #1C2230;
+  --sidebar-ring: #4C9AFF;
 }
 
+/* ─── Base Layer ─── */
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Inter', 'Montserrat', var(--font-geist-sans), sans-serif;
-    letter-spacing: -0.011em;
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', Roboto, sans-serif;
+    letter-spacing: -0.02em;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Inter', 'Montserrat', var(--font-geist-sans), sans-serif;
-    @apply tracking-tight font-semibold;
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    @apply tracking-tight font-bold;
+    letter-spacing: -0.03em;
   }
 }
 
-/* Typography */
+/* ─── Typography ─── */
 .font-headline {
-  font-family: 'Inter', 'Montserrat', var(--font-geist-sans), sans-serif;
-  font-weight: 700;
-  letter-spacing: -0.025em;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.04em;
 }
 
 .font-body {
-  font-family: 'Inter', 'Montserrat', var(--font-geist-sans), sans-serif;
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 }
 
-/* Logo gradient - blue to indigo */
+/* ─── Logo ─── */
 .text-gold-gradient {
-  background: linear-gradient(135deg, #2563EB 0%, #7C3AED 50%, #6366F1 100%);
+  background: linear-gradient(135deg, #3182F6 0%, #6366F1 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-/* Card hover — subtle lift */
+/* ─── Card Hover ─── */
 .card-hover {
-  @apply transition-all duration-200 ease-out;
+  @apply transition-all duration-300 ease-out;
 }
 
 .card-hover:hover {
-  @apply shadow-md -translate-y-0.5;
+  @apply shadow-lg -translate-y-1;
   border-color: var(--primary);
 }
 
-/* MoCRA Traffic Light */
+/* ─── MoCRA Traffic Light ─── */
 .mocra-green {
   @apply bg-success/10 text-success border-success/20;
 }
@@ -210,7 +206,7 @@
   @apply bg-destructive/10 text-destructive border-destructive/20;
 }
 
-/* Minimal scrollbar */
+/* ─── Scrollbar ─── */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -229,7 +225,7 @@
   background: var(--muted-foreground);
 }
 
-/* Shimmer animation */
+/* ─── Shimmer Animation ─── */
 @keyframes shimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
@@ -241,27 +237,98 @@
   animation: shimmer 2s infinite;
 }
 
-/* Primary CTA button */
+/* ─── Primary CTA Button ─── */
 .btn-gold {
-  @apply bg-primary text-primary-foreground font-medium transition-all duration-200;
+  @apply bg-primary text-primary-foreground font-semibold transition-all duration-300;
+  box-shadow: 0 2px 8px 0 rgba(49, 130, 246, 0.2);
 }
 
 .btn-gold:hover {
-  @apply bg-primary/90 shadow-md;
-  box-shadow: 0 4px 14px 0 rgba(37, 99, 235, 0.25);
+  @apply bg-primary/90;
+  box-shadow: 0 8px 24px 0 rgba(49, 130, 246, 0.35);
+  transform: translateY(-1px);
 }
 
-/* Accent badge/highlight */
+/* ─── Badge ─── */
 .badge-accent {
   @apply bg-accent/10 text-accent border-accent/20;
 }
 
-/* Stat card number styling */
+/* ─── Stat Value ─── */
 .stat-value {
   @apply text-2xl font-bold tracking-tight;
 }
 
-/* Table row hover */
+/* ─── Table Row Hover ─── */
 .table-row-hover:hover {
   @apply bg-muted/50;
+}
+
+/* ─── Premium Glow Effect ─── */
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+.glow-pulse {
+  animation: glow-pulse 4s ease-in-out infinite;
+}
+
+/* ─── Floating Animation ─── */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-12px); }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* ─── Gradient Text ─── */
+.gradient-text {
+  background: linear-gradient(135deg, #3182F6 0%, #6366F1 50%, #3182F6 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Glass Card ─── */
+.glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.dark .glass-card {
+  background: rgba(20, 25, 33, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ─── Section Divider ─── */
+.section-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border), transparent);
+}
+
+/* ─── Number Counter Animation ─── */
+@keyframes count-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-count-up {
+  animation: count-up 0.6s ease-out forwards;
+}
+
+/* ─── Smooth Scroll ─── */
+html {
+  scroll-behavior: smooth;
+}
+
+/* ─── Selection Color ─── */
+::selection {
+  background: rgba(49, 130, 246, 0.15);
+  color: inherit;
 }
