@@ -478,6 +478,7 @@ model Creator {
   sampleRequests       SampleRequest[]
   buyerWishlists       BuyerWishlist[]
   buyerCarts           BuyerCart[]
+  productContents      CreatorProductContent[]
 
   @@index([country])
   @@map("creators")
@@ -553,6 +554,7 @@ model Product {
   buyerWishlists     BuyerWishlist[]
   buyerCarts         BuyerCart[]
   liveChatMessages   LiveChatMessage[]
+  creatorContents    CreatorProductContent[]
 
   @@index([isActive])
   @@index([status])
@@ -575,6 +577,30 @@ model CreatorProduct {
 
   @@unique([creatorId, productId])
   @@map("creator_products")
+}
+
+// ============================================================
+// CREATOR PRODUCT CONTENT (reels, shorts, etc.)
+// ============================================================
+
+model CreatorProductContent {
+  id          String   @id @default(cuid())
+  creatorId   String   @map("creator_id")
+  productId   String   @map("product_id")
+  type        String   @default("INSTAGRAM_REEL") @db.VarChar(30)
+  url         String
+  embedUrl    String?  @map("embed_url")
+  caption     String?
+  sortOrder   Int      @default(0) @map("sort_order")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  creator     Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([creatorId, productId, url])
+  @@map("creator_product_contents")
 }
 
 // ============================================================

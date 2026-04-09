@@ -65,6 +65,30 @@ async function getCampaignProduct(productId: string, campaignId: string) {
   return campaignProduct;
 }
 
+async function getCreatorProductContents(creatorId: string, productId: string) {
+  try {
+    const contents = await prisma.creatorProductContent.findMany({
+      where: {
+        creatorId,
+        productId,
+        isActive: true,
+      },
+      orderBy: { sortOrder: 'asc' },
+      take: 5,
+    });
+    return contents.map((c) => ({
+      id: c.id,
+      type: c.type,
+      url: c.url,
+      embedUrl: c.embedUrl,
+      caption: c.caption,
+      sortOrder: c.sortOrder,
+    }));
+  } catch {
+    return [];
+  }
+}
+
 async function getOtherProducts(creatorId: string, excludeProductId: string) {
   try {
     const shopItems = await prisma.creatorShopItem.findMany({
@@ -186,8 +210,11 @@ export default async function ProductPage({ params, searchParams }: ProductPageP
     campaignProduct = await getCampaignProduct(productId, campaignId);
   }
 
-  // Fetch other products from same creator
-  const otherProducts = await getOtherProducts(creator.id, productId);
+  // Fetch other products and creator contents in parallel
+  const [otherProducts, creatorContents] = await Promise.all([
+    getOtherProducts(creator.id, productId),
+    getCreatorProductContents(creator.id, productId),
+  ]);
 
   // Serialize Decimal fields before passing to client components
   const serializedProduct = {
@@ -234,6 +261,7 @@ export default async function ProductPage({ params, searchParams }: ProductPageP
         locale={locale}
         username={username}
         otherProducts={otherProducts}
+        creatorContents={creatorContents}
       />
     </>
   );

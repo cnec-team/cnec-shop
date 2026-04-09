@@ -18,13 +18,6 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -32,8 +25,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
+import { toast } from 'sonner';
 import {
   Download,
   ChevronDown,
@@ -44,6 +46,13 @@ import {
   XCircle,
   Clock,
   ShoppingCart,
+  User,
+  MapPin,
+  Phone,
+  Mail,
+  CreditCard,
+  Send,
+  AlertTriangle,
 } from 'lucide-react';
 
 const COURIERS = [
@@ -64,6 +73,9 @@ interface OrderWithDetails {
   buyerName: string;
   buyerPhone: string;
   buyerEmail: string;
+  customerName?: string | null;
+  customerPhone?: string | null;
+  customerEmail?: string | null;
   totalAmount: number;
   shippingFee: number;
   status: OrderStatus;
@@ -75,8 +87,9 @@ interface OrderWithDetails {
   shippingAddress?: string;
   shippingDetail?: string | null;
   shippingZipcode?: string | null;
+  shippingMemo?: string | null;
   createdAt: string;
-  items?: { id: string; quantity: number; totalPrice: number; product?: { name: string; thumbnailUrl?: string | null } | null }[];
+  items?: { id: string; quantity: number; unitPrice: number; totalPrice: number; product?: { name: string; thumbnailUrl?: string | null; images?: string[] } | null }[];
   creator?: { displayName: string | null } | null;
 }
 
@@ -86,35 +99,46 @@ function formatCurrency(num: number): string {
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('ko-KR', {
+    year: 'numeric',
     month: 'short',
+    day: 'numeric',
+    weekday: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function formatDateShort(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString('ko-KR', {
+    month: 'long',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
   });
 }
 
-function getStatusColor(status: OrderStatus): string {
+function getStatusStyle(status: OrderStatus) {
   switch (status) {
-    case 'PAID': return 'bg-blue-500/10 text-blue-600 border-blue-200';
-    case 'PREPARING': return 'bg-yellow-500/10 text-yellow-600 border-yellow-200';
-    case 'SHIPPING': return 'bg-purple-500/10 text-purple-600 border-purple-200';
-    case 'DELIVERED': return 'bg-green-500/10 text-green-600 border-green-200';
-    case 'CONFIRMED': return 'bg-gray-500/10 text-gray-600 border-gray-200';
-    case 'CANCELLED': return 'bg-red-500/10 text-red-600 border-red-200';
-    case 'REFUNDED': return 'bg-red-500/10 text-red-600 border-red-200';
-    default: return '';
+    case 'PAID': return { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', dot: 'bg-blue-500' };
+    case 'PREPARING': return { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', dot: 'bg-amber-500' };
+    case 'SHIPPING': return { bg: 'bg-violet-50', text: 'text-violet-700', border: 'border-violet-200', dot: 'bg-violet-500' };
+    case 'DELIVERED': return { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', dot: 'bg-emerald-500' };
+    case 'CONFIRMED': return { bg: 'bg-gray-50', text: 'text-gray-600', border: 'border-gray-200', dot: 'bg-gray-400' };
+    case 'CANCELLED': return { bg: 'bg-red-50', text: 'text-red-600', border: 'border-red-200', dot: 'bg-red-500' };
+    case 'REFUNDED': return { bg: 'bg-red-50', text: 'text-red-600', border: 'border-red-200', dot: 'bg-red-500' };
+    default: return { bg: 'bg-gray-50', text: 'text-gray-600', border: 'border-gray-200', dot: 'bg-gray-400' };
   }
 }
 
 function getStatusIcon(status: OrderStatus) {
   switch (status) {
-    case 'PAID': return <Clock className="h-4 w-4" />;
-    case 'PREPARING': return <Package className="h-4 w-4" />;
-    case 'SHIPPING': return <Truck className="h-4 w-4" />;
-    case 'DELIVERED': return <CheckCircle className="h-4 w-4" />;
-    case 'CONFIRMED': return <CheckCircle className="h-4 w-4" />;
-    case 'CANCELLED': return <XCircle className="h-4 w-4" />;
-    case 'REFUNDED': return <XCircle className="h-4 w-4" />;
+    case 'PAID': return <Clock className="h-3.5 w-3.5" />;
+    case 'PREPARING': return <Package className="h-3.5 w-3.5" />;
+    case 'SHIPPING': return <Truck className="h-3.5 w-3.5" />;
+    case 'DELIVERED': return <CheckCircle className="h-3.5 w-3.5" />;
+    case 'CONFIRMED': return <CheckCircle className="h-3.5 w-3.5" />;
+    case 'CANCELLED': return <XCircle className="h-3.5 w-3.5" />;
+    case 'REFUNDED': return <XCircle className="h-3.5 w-3.5" />;
     default: return null;
   }
 }
@@ -127,8 +151,8 @@ const NEXT_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
 };
 
 const NEXT_STATUS_LABEL: Partial<Record<OrderStatus, string>> = {
-  PAID: '배송준비',
-  PREPARING: '배송 시작',
+  PAID: '승인 (배송준비)',
+  PREPARING: '발송 처리',
   SHIPPING: '배송완료 처리',
   DELIVERED: '구매확정 처리',
 };
@@ -154,6 +178,15 @@ export default function BrandOrdersPage() {
   const [showCancelForm, setShowCancelForm] = useState<Record<string, boolean>>({});
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
+  // Confirmation dialog
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    variant: 'default' | 'destructive';
+    onConfirm: () => void;
+  }>({ open: false, title: '', description: '', variant: 'default', onConfirm: () => {} });
+
   useEffect(() => {
     async function init() {
       const brandData = await getBrandSession();
@@ -169,11 +202,11 @@ export default function BrandOrdersPage() {
       try {
         const data = await getBrandOrders(brand!.id, statusFilter);
         setOrders(
-          (data ?? []).map((o: any) => ({
+          (data ?? []).map((o: Record<string, unknown>) => ({
             ...o,
-            createdAt: o.createdAt?.toISOString?.() ?? o.createdAt,
-            shippedAt: o.shippedAt?.toISOString?.() ?? o.shippedAt,
-            deliveredAt: o.deliveredAt?.toISOString?.() ?? o.deliveredAt,
+            createdAt: (o.createdAt as Date)?.toISOString?.() ?? o.createdAt,
+            shippedAt: (o.shippedAt as Date)?.toISOString?.() ?? o.shippedAt,
+            deliveredAt: (o.deliveredAt as Date)?.toISOString?.() ?? o.deliveredAt,
           })) as OrderWithDetails[]
         );
       } catch (error) {
@@ -185,6 +218,10 @@ export default function BrandOrdersPage() {
     fetchOrders();
   }, [brand?.id, statusFilter]);
 
+  function showConfirm(title: string, description: string, onConfirm: () => void, variant: 'default' | 'destructive' = 'default') {
+    setConfirmDialog({ open: true, title, description, variant, onConfirm });
+  }
+
   async function handleStatusChange(orderId: string, newStatus: OrderStatus) {
     setUpdatingId(orderId);
     try {
@@ -192,7 +229,11 @@ export default function BrandOrdersPage() {
       const courierCode = newStatus === 'SHIPPING' ? courierInputs[orderId] : undefined;
       await updateOrderStatus(orderId, newStatus, trackingNumber, courierCode);
       setOrders(orders.map((o) => o.id === orderId ? { ...o, status: newStatus, ...(trackingNumber ? { trackingNumber } : {}), ...(courierCode ? { courierCode } : {}) } : o));
-    } catch (error) { console.error('Failed to update order status:', error); }
+      toast.success('주문 상태가 변경되었습니다');
+    } catch (error) {
+      console.error('Failed to update order status:', error);
+      toast.error('상태 변경에 실패했습니다');
+    }
     setUpdatingId(null);
   }
 
@@ -205,7 +246,11 @@ export default function BrandOrdersPage() {
       setOrders(orders.map((o) => o.id === orderId ? { ...o, status: 'CANCELLED' as OrderStatus, cancelReason: reason } : o));
       setShowCancelForm({ ...showCancelForm, [orderId]: false });
       setCancelReasonInputs({ ...cancelReasonInputs, [orderId]: '' });
-    } catch (error) { console.error('Failed to cancel order:', error); }
+      toast.success('주문이 취소되었습니다');
+    } catch (error) {
+      console.error('Failed to cancel order:', error);
+      toast.error('주문 취소에 실패했습니다');
+    }
     setUpdatingId(null);
   }
 
@@ -217,7 +262,11 @@ export default function BrandOrdersPage() {
     try {
       await shippingStartAction(orderId, trackingNumber, courierCode);
       setOrders(orders.map((o) => o.id === orderId ? { ...o, status: 'SHIPPING' as OrderStatus, trackingNumber: trackingNumber.trim(), ...(courierCode ? { courierCode } : {}) } : o));
-    } catch (error) { console.error('Failed to start shipping:', error); }
+      toast.success('발송 처리되었습니다');
+    } catch (error) {
+      console.error('Failed to start shipping:', error);
+      toast.error('발송 처리에 실패했습니다');
+    }
     setUpdatingId(null);
   }
 
@@ -228,10 +277,15 @@ export default function BrandOrdersPage() {
     try {
       await updateTrackingInfo(orderId, trackingNumber, courierCode);
       setOrders(orders.map((o) => o.id === orderId ? { ...o, trackingNumber, ...(courierCode ? { courierCode } : {}) } : o));
-    } catch (error) { console.error('Failed to save tracking info:', error); }
+      toast.success('송장 정보가 저장되었습니다');
+    } catch (error) {
+      console.error('Failed to save tracking info:', error);
+      toast.error('송장 저장에 실패했습니다');
+    }
   }
 
-  const statusCounts = orders.reduce((acc, o) => {
+  const allOrders = orders;
+  const statusCounts = allOrders.reduce((acc, o) => {
     acc[o.status] = (acc[o.status] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
@@ -247,10 +301,18 @@ export default function BrandOrdersPage() {
         '상품명': productNames,
         '수량': totalQuantity,
         '결제금액': order.totalAmount,
-        '주문자명': order.buyerName,
+        '주문자명': order.buyerName || order.customerName || '',
+        '주문자 연락처': order.buyerPhone || order.customerPhone || '',
+        '주문자 이메일': order.buyerEmail || order.customerEmail || '',
+        '수령인': order.buyerName || '',
+        '수령인 연락처': order.buyerPhone || '',
         '배송지': `${order.shippingAddress ?? ''} ${order.shippingDetail ?? ''}`.trim(),
+        '우편번호': order.shippingZipcode ?? '',
+        '배송 메모': order.shippingMemo ?? '',
         '주문상태': ORDER_STATUS_LABELS[order.status as keyof typeof ORDER_STATUS_LABELS],
-        '크리에이터명': order.creator?.displayName ?? '-',
+        '크리에이터': order.creator?.displayName ?? '-',
+        '택배사': order.courierCode ? COURIER_MAP[order.courierCode] ?? order.courierCode : '',
+        '송장번호': order.trackingNumber ?? '',
       };
     });
     const ws = XLSX.utils.json_to_sheet(rows);
@@ -259,41 +321,65 @@ export default function BrandOrdersPage() {
     XLSX.writeFile(wb, `cnec_orders_${new Date().toISOString().slice(0, 10)}.xlsx`);
   }
 
+  // Summary stats for header
+  const newOrderCount = statusCounts['PAID'] ?? 0;
+  const preparingCount = statusCounts['PREPARING'] ?? 0;
+  const shippingCount = statusCounts['SHIPPING'] ?? 0;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-5xl">
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">주문 관리</h1>
-          <p className="text-sm text-gray-400 mt-0.5">주문 {orders.length}건</p>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">주문 관리</h1>
+          <p className="text-sm text-gray-400 mt-1">총 {orders.length}건의 주문</p>
         </div>
-        <Button variant="outline" size="sm" onClick={handleDownloadExcel} disabled={orders.length === 0} className="h-9">
-          <Download className="h-4 w-4 mr-1.5" />
+        <Button variant="outline" size="sm" onClick={handleDownloadExcel} disabled={orders.length === 0} className="h-10 rounded-xl px-4">
+          <Download className="h-4 w-4 mr-2" />
           엑셀 다운로드
         </Button>
       </div>
 
-      {/* Status tabs */}
-      <div className="flex flex-wrap gap-2">
+      {/* Quick stats */}
+      {(newOrderCount > 0 || preparingCount > 0 || shippingCount > 0) && (
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-blue-50 rounded-2xl p-4 text-center border border-blue-100">
+            <p className="text-2xl font-bold text-blue-700">{newOrderCount}</p>
+            <p className="text-xs text-blue-500 mt-0.5">신규 주문</p>
+          </div>
+          <div className="bg-amber-50 rounded-2xl p-4 text-center border border-amber-100">
+            <p className="text-2xl font-bold text-amber-700">{preparingCount}</p>
+            <p className="text-xs text-amber-500 mt-0.5">배송 준비중</p>
+          </div>
+          <div className="bg-violet-50 rounded-2xl p-4 text-center border border-violet-100">
+            <p className="text-2xl font-bold text-violet-700">{shippingCount}</p>
+            <p className="text-xs text-violet-500 mt-0.5">배송중</p>
+          </div>
+        </div>
+      )}
+
+      {/* Status filter tabs */}
+      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
         {STATUS_TABS.map((tab) => {
           const count = tab.value === 'ALL' ? orders.length :
             tab.value === 'CANCELLED' ? (statusCounts['CANCELLED'] ?? 0) + (statusCounts['REFUNDED'] ?? 0) :
             statusCounts[tab.value] ?? 0;
+          const isActive = statusFilter === tab.value;
           return (
             <button
               key={tab.value}
               onClick={() => setStatusFilter(tab.value)}
-              className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                statusFilter === tab.value
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'bg-white border text-muted-foreground hover:bg-gray-50'
+              className={`shrink-0 inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-all ${
+                isActive
+                  ? 'bg-gray-900 text-white shadow-sm'
+                  : 'bg-white border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-700'
               }`}
             >
               {tab.label}
               {count > 0 && (
-                <span className={`inline-flex min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold ${
-                  statusFilter === tab.value ? 'bg-white/20 text-primary-foreground' :
-                  tab.value === 'PAID' ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-600'
+                <span className={`inline-flex min-w-[20px] items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none ${
+                  isActive ? 'bg-white/20 text-white' :
+                  tab.value === 'PAID' ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-500'
                 }`}>
                   {count}
                 </span>
@@ -305,227 +391,421 @@ export default function BrandOrdersPage() {
 
       {/* Orders list */}
       {isLoading ? (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-20 w-full rounded-xl" />
+            <div key={i} className="bg-white rounded-2xl border border-gray-100 p-5">
+              <div className="flex gap-4">
+                <Skeleton className="h-14 w-14 rounded-xl shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-5 w-48" />
+                  <Skeleton className="h-3 w-40" />
+                </div>
+                <Skeleton className="h-5 w-20" />
+              </div>
+            </div>
           ))}
         </div>
       ) : orders.length === 0 ? (
-        <Card className="bg-white rounded-xl border shadow-sm">
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <ShoppingCart className="h-16 w-16 text-muted-foreground/20 mb-4" />
-            <p className="text-lg font-medium mb-1">아직 주문이 없어요</p>
-            <p className="text-sm text-muted-foreground">
-              캠페인을 시작하면 주문이 들어와요
-            </p>
-          </CardContent>
-        </Card>
+        <div className="bg-white rounded-2xl border border-gray-100 flex flex-col items-center justify-center py-20">
+          <div className="w-16 h-16 rounded-2xl bg-gray-50 flex items-center justify-center mb-4">
+            <ShoppingCart className="h-8 w-8 text-gray-300" />
+          </div>
+          <p className="text-lg font-semibold text-gray-900 mb-1">아직 주문이 없어요</p>
+          <p className="text-sm text-gray-400">캠페인을 시작하면 주문이 들어와요</p>
+        </div>
       ) : (
         <div className="space-y-3">
           {orders.map((order) => {
             const isExpanded = expandedOrderId === order.id;
             const totalQuantity = (order.items ?? []).reduce((sum, item) => sum + item.quantity, 0);
+            const style = getStatusStyle(order.status);
+            const contactName = order.buyerName || order.customerName || '';
+            const contactPhone = order.buyerPhone || order.customerPhone || '';
+            const contactEmail = order.buyerEmail || order.customerEmail || '';
+            const firstItemImg = order.items?.[0]?.product?.thumbnailUrl || order.items?.[0]?.product?.images?.[0];
 
             return (
-              <Card key={order.id} className="bg-white rounded-xl border shadow-sm hover:shadow-md transition-shadow overflow-hidden">
-                {/* Order row */}
+              <div key={order.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden transition-shadow hover:shadow-md">
+                {/* Order summary row */}
                 <div
-                  className="flex items-center gap-4 p-4 cursor-pointer"
+                  className="flex items-center gap-4 p-4 sm:p-5 cursor-pointer"
                   onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}
                 >
                   {/* Product thumbnail */}
-                  <div className="hidden sm:block h-12 w-12 rounded-lg bg-gray-100 shrink-0 overflow-hidden">
-                    {order.items?.[0]?.product?.thumbnailUrl ? (
-                      <img src={order.items[0].product.thumbnailUrl} alt="" className="h-full w-full object-cover" />
+                  <div className="hidden sm:flex h-14 w-14 rounded-xl bg-gray-50 shrink-0 overflow-hidden items-center justify-center">
+                    {firstItemImg ? (
+                      <img src={firstItemImg} alt="" className="h-full w-full object-cover" />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center">
-                        <Package className="h-5 w-5 text-muted-foreground/30" />
-                      </div>
+                      <Package className="h-6 w-6 text-gray-300" />
                     )}
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs font-mono text-muted-foreground">{order.orderNumber}</span>
-                      <Badge variant="outline" className={getStatusColor(order.status)}>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="text-[11px] font-mono text-gray-400">{order.orderNumber}</span>
+                      <Badge variant="outline" className={`${style.bg} ${style.text} ${style.border} text-[11px] gap-1 rounded-full px-2 py-0.5`}>
+                        {getStatusIcon(order.status)}
                         {ORDER_STATUS_LABELS[order.status]}
                       </Badge>
                     </div>
-                    <p className="text-sm font-medium truncate">
+                    <p className="text-sm font-semibold text-gray-900 truncate leading-snug">
                       {order.items?.[0]?.product?.name ?? '상품'}
                       {(order.items?.length ?? 0) > 1 && (
-                        <span className="text-muted-foreground"> 외 {(order.items?.length ?? 1) - 1}건</span>
+                        <span className="text-gray-400 font-normal"> 외 {(order.items?.length ?? 1) - 1}건</span>
                       )}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {order.buyerName} · {formatDate(order.createdAt)}
-                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-xs text-gray-500">{contactName}</span>
+                      {contactPhone && (
+                        <>
+                          <span className="text-gray-200">|</span>
+                          <span className="text-xs text-gray-400">{contactPhone}</span>
+                        </>
+                      )}
+                      <span className="text-gray-200">|</span>
+                      <span className="text-xs text-gray-400">{formatDateShort(order.createdAt)}</span>
+                    </div>
                   </div>
 
                   <div className="text-right shrink-0">
-                    <p className="text-sm font-bold">{formatCurrency(order.totalAmount)}</p>
-                    <p className="text-xs text-muted-foreground">{totalQuantity}개</p>
+                    <p className="text-base font-bold text-gray-900">{formatCurrency(order.totalAmount)}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{totalQuantity}개</p>
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
-                    {/* Quick action buttons — visible on all screens */}
-                    {order.status === 'PREPARING' && (
-                      <Button size="sm" variant="default" className="h-8 text-xs"
+                    {order.status === 'PAID' && (
+                      <Button
+                        size="sm"
+                        className="h-9 rounded-xl text-xs bg-blue-600 hover:bg-blue-700 text-white"
                         disabled={updatingId === order.id}
+                        onClick={() => showConfirm(
+                          '주문을 승인하시겠습니까?',
+                          `${order.orderNumber} — ${contactName}님의 주문을 배송준비 상태로 변경합니다.`,
+                          () => handleStatusChange(order.id, 'PREPARING'),
+                        )}
+                      >
+                        승인
+                      </Button>
+                    )}
+                    {order.status === 'PREPARING' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-9 rounded-xl text-xs"
                         onClick={() => setExpandedOrderId(order.id)}
                       >
                         송장입력
                       </Button>
                     )}
-                    {order.status === 'PAID' && (
-                      <Button size="sm" variant="outline" className="h-8 text-xs"
-                        disabled={updatingId === order.id}
-                        onClick={() => handleStatusChange(order.id, 'PREPARING')}
-                      >
-                        배송준비
-                      </Button>
-                    )}
-                    {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                    {isExpanded ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
                   </div>
                 </div>
 
                 {/* Expanded detail */}
                 {isExpanded && (
-                  <div className="border-t bg-gray-50/50 p-4 space-y-4">
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <div>
-                        <p className="text-sm font-medium mb-2">배송지 정보</p>
-                        <div className="rounded-lg bg-white border p-3 text-sm text-muted-foreground space-y-0.5">
-                          <p className="font-medium text-foreground">{order.buyerName} ({order.buyerPhone})</p>
-                          <p>{order.shippingAddress}</p>
-                          {order.shippingDetail && <p>{order.shippingDetail}</p>}
-                          {order.shippingZipcode && <p>우편번호: {order.shippingZipcode}</p>}
-                        </div>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium mb-2">주문 상품</p>
-                        <div className="rounded-lg bg-white border p-3 space-y-2">
-                          {(order.items ?? []).map((item) => (
-                            <div key={item.id} className="flex justify-between text-sm">
-                              <span>{item.product?.name ?? '상품'} x {item.quantity}</span>
-                              <span className="text-muted-foreground">{formatCurrency(item.totalPrice)}</span>
+                  <div className="border-t border-gray-100 bg-gray-50/30">
+                    <div className="p-4 sm:p-5 space-y-5">
+                      {/* Info grid */}
+                      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                        {/* Orderer + Recipient Info */}
+                        <div className="space-y-3">
+                          {/* 주문자 정보 */}
+                          <div>
+                            <div className="flex items-center gap-1.5 mb-2">
+                              <User className="h-4 w-4 text-gray-400" />
+                              <p className="text-sm font-semibold text-gray-900">주문자 정보</p>
                             </div>
-                          ))}
-                          <Separator />
-                          <div className="flex justify-between text-sm">
-                            <span>배송비</span><span>{formatCurrency(order.shippingFee)}</span>
+                            <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-gray-900">{contactName || '-'}</span>
+                              </div>
+                              {contactPhone && (
+                                <div className="flex items-center gap-2 text-sm text-gray-500">
+                                  <Phone className="h-3.5 w-3.5 text-gray-400" />
+                                  <span>{contactPhone}</span>
+                                </div>
+                              )}
+                              {contactEmail && (
+                                <div className="flex items-center gap-2 text-sm text-gray-500">
+                                  <Mail className="h-3.5 w-3.5 text-gray-400" />
+                                  <span>{contactEmail}</span>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex justify-between text-sm font-semibold">
-                            <span>총 결제금액</span><span>{formatCurrency(order.totalAmount)}</span>
+
+                          {/* 수령자 / 배송지 정보 */}
+                          <div>
+                            <div className="flex items-center gap-1.5 mb-2">
+                              <MapPin className="h-4 w-4 text-gray-400" />
+                              <p className="text-sm font-semibold text-gray-900">배송지 정보</p>
+                            </div>
+                            <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-gray-900">{contactName || '-'}</span>
+                                {contactPhone && (
+                                  <span className="text-sm text-gray-400">{contactPhone}</span>
+                                )}
+                              </div>
+                              <p className="text-sm text-gray-600">
+                                {order.shippingAddress || '-'}
+                              </p>
+                              {order.shippingDetail && (
+                                <p className="text-sm text-gray-500">{order.shippingDetail}</p>
+                              )}
+                              {order.shippingZipcode && (
+                                <p className="text-xs text-gray-400">우편번호: {order.shippingZipcode}</p>
+                              )}
+                              {order.shippingMemo && (
+                                <div className="pt-2 border-t border-gray-50">
+                                  <p className="text-xs text-gray-400">배송 메모</p>
+                                  <p className="text-sm text-gray-600 mt-0.5">{order.shippingMemo}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Order items + Payment */}
+                        <div>
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <CreditCard className="h-4 w-4 text-gray-400" />
+                            <p className="text-sm font-semibold text-gray-900">주문 상품</p>
+                          </div>
+                          <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
+                            {(order.items ?? []).map((item) => (
+                              <div key={item.id} className="flex items-center gap-3">
+                                <div className="h-10 w-10 rounded-lg bg-gray-50 overflow-hidden shrink-0">
+                                  {(item.product?.thumbnailUrl || item.product?.images?.[0]) ? (
+                                    <img src={item.product?.thumbnailUrl || item.product?.images?.[0]} alt="" className="h-full w-full object-cover" />
+                                  ) : (
+                                    <div className="h-full w-full flex items-center justify-center">
+                                      <Package className="h-4 w-4 text-gray-300" />
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm text-gray-900 truncate">{item.product?.name ?? '상품'}</p>
+                                  <p className="text-xs text-gray-400">{formatCurrency(Number(item.unitPrice))} x {item.quantity}</p>
+                                </div>
+                                <span className="text-sm font-medium text-gray-900 shrink-0">{formatCurrency(Number(item.totalPrice))}</span>
+                              </div>
+                            ))}
+                            <Separator />
+                            <div className="space-y-1.5">
+                              <div className="flex justify-between text-sm">
+                                <span className="text-gray-400">배송비</span>
+                                <span className="text-gray-600">{order.shippingFee > 0 ? formatCurrency(order.shippingFee) : '무료'}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-sm font-semibold text-gray-900">총 결제금액</span>
+                                <span className="text-base font-bold text-gray-900">{formatCurrency(order.totalAmount)}</span>
+                              </div>
+                            </div>
+                            {order.creator?.displayName && (
+                              <>
+                                <Separator />
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-gray-400">크리에이터</span>
+                                  <span className="text-gray-600">{order.creator.displayName}</span>
+                                </div>
+                              </>
+                            )}
                           </div>
                         </div>
                       </div>
+
+                      {/* Tracking info — if exists */}
+                      {order.trackingNumber && (
+                        <div className="bg-white rounded-xl border border-gray-100 p-4">
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <Truck className="h-4 w-4 text-gray-400" />
+                            <p className="text-sm font-semibold text-gray-900">배송 추적</p>
+                          </div>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                            {order.courierCode && (
+                              <div>
+                                <p className="text-xs text-gray-400 mb-0.5">택배사</p>
+                                <p className="font-medium text-gray-900">{COURIER_MAP[order.courierCode] ?? order.courierCode}</p>
+                              </div>
+                            )}
+                            <div>
+                              <p className="text-xs text-gray-400 mb-0.5">송장번호</p>
+                              <p className="font-medium text-gray-900 font-mono">{order.trackingNumber}</p>
+                            </div>
+                            {order.shippedAt && (
+                              <div>
+                                <p className="text-xs text-gray-400 mb-0.5">발송일</p>
+                                <p className="font-medium text-gray-700">{formatDateShort(order.shippedAt)}</p>
+                              </div>
+                            )}
+                            {order.deliveredAt && (
+                              <div>
+                                <p className="text-xs text-gray-400 mb-0.5">배송완료</p>
+                                <p className="font-medium text-gray-700">{formatDateShort(order.deliveredAt)}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Cancel reason */}
+                      {order.status === 'CANCELLED' && order.cancelReason && (
+                        <div className="bg-red-50 rounded-xl border border-red-100 p-4">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <AlertTriangle className="h-4 w-4 text-red-500" />
+                            <p className="text-sm font-semibold text-red-700">취소 사유</p>
+                          </div>
+                          <p className="text-sm text-red-600">{order.cancelReason}</p>
+                        </div>
+                      )}
+
+                      {/* Shipping actions */}
+                      {order.status !== 'CANCELLED' && order.status !== 'CONFIRMED' && order.status !== 'REFUNDED' && (
+                        <div className="bg-white rounded-xl border border-gray-100 p-4">
+                          <div className="flex items-center gap-1.5 mb-3">
+                            <Send className="h-4 w-4 text-gray-400" />
+                            <p className="text-sm font-semibold text-gray-900">배송 처리</p>
+                          </div>
+                          <div className="flex flex-wrap items-end gap-3">
+                            <div className="space-y-1.5">
+                              <Label className="text-xs text-gray-500">택배사</Label>
+                              <Select
+                                value={courierInputs[order.id] ?? order.courierCode ?? ''}
+                                onValueChange={(value) => setCourierInputs({ ...courierInputs, [order.id]: value })}
+                              >
+                                <SelectTrigger className="w-40 h-10 rounded-xl"><SelectValue placeholder="택배사 선택" /></SelectTrigger>
+                                <SelectContent>
+                                  {COURIERS.map((c) => (<SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs text-gray-500">송장번호</Label>
+                              <Input
+                                value={trackingInputs[order.id] ?? order.trackingNumber ?? ''}
+                                onChange={(e) => setTrackingInputs({ ...trackingInputs, [order.id]: e.target.value })}
+                                placeholder="송장번호 입력"
+                                className="w-56 h-10 rounded-xl"
+                              />
+                            </div>
+                            {order.status === 'PREPARING' && (
+                              <Button
+                                className="h-10 rounded-xl bg-violet-600 hover:bg-violet-700 text-white px-5"
+                                disabled={updatingId === order.id || !trackingInputs[order.id]?.trim()}
+                                onClick={() => showConfirm(
+                                  '발송 처리하시겠습니까?',
+                                  `송장번호 "${trackingInputs[order.id]}"로 발송 처리합니다. 구매자에게 배송 시작 알림이 전송됩니다.`,
+                                  () => handleShippingStart(order.id),
+                                )}
+                              >
+                                <Truck className="h-4 w-4 mr-1.5" />
+                                {updatingId === order.id ? '처리 중...' : '발송하기'}
+                              </Button>
+                            )}
+                            {(order.status === 'SHIPPING' || order.status === 'DELIVERED') && (
+                              <Button variant="outline" className="h-10 rounded-xl" onClick={() => handleTrackingSave(order.id)}>
+                                송장 저장
+                              </Button>
+                            )}
+                            {NEXT_STATUS[order.status] && order.status !== 'PREPARING' && (
+                              <Button
+                                className="h-10 rounded-xl"
+                                disabled={updatingId === order.id}
+                                onClick={() => showConfirm(
+                                  `${NEXT_STATUS_LABEL[order.status]}하시겠습니까?`,
+                                  `주문 ${order.orderNumber}의 상태를 변경합니다.`,
+                                  () => handleStatusChange(order.id, NEXT_STATUS[order.status]!),
+                                )}
+                              >
+                                {updatingId === order.id ? '처리 중...' : NEXT_STATUS_LABEL[order.status]}
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Cancel form */}
+                      {order.status === 'PAID' && (
+                        <div>
+                          {!showCancelForm[order.id] ? (
+                            <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600 hover:bg-red-50 rounded-xl"
+                              disabled={updatingId === order.id}
+                              onClick={() => setShowCancelForm({ ...showCancelForm, [order.id]: true })}>
+                              <XCircle className="h-4 w-4 mr-1.5" />
+                              주문 취소
+                            </Button>
+                          ) : (
+                            <div className="bg-red-50 rounded-xl border border-red-100 p-4 space-y-3">
+                              <div className="flex items-center gap-1.5">
+                                <AlertTriangle className="h-4 w-4 text-red-500" />
+                                <p className="text-sm font-semibold text-red-700">주문을 취소합니다</p>
+                              </div>
+                              <Textarea
+                                value={cancelReasonInputs[order.id] ?? ''}
+                                onChange={(e) => setCancelReasonInputs({ ...cancelReasonInputs, [order.id]: e.target.value })}
+                                placeholder="취소 사유를 입력하세요 (구매자에게 전달됩니다)"
+                                rows={2}
+                                className="rounded-xl"
+                              />
+                              <div className="flex gap-2">
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  className="rounded-xl"
+                                  disabled={updatingId === order.id || !cancelReasonInputs[order.id]?.trim()}
+                                  onClick={() => showConfirm(
+                                    '정말 주문을 취소하시겠습니까?',
+                                    '이 작업은 되돌릴 수 없습니다. 재고가 복원되고 구매자에게 취소 알림이 전송됩니다.',
+                                    () => handleCancelOrder(order.id),
+                                    'destructive',
+                                  )}
+                                >
+                                  {updatingId === order.id ? '처리 중...' : '취소 확정'}
+                                </Button>
+                                <Button variant="outline" size="sm" className="rounded-xl"
+                                  onClick={() => setShowCancelForm({ ...showCancelForm, [order.id]: false })}>
+                                  닫기
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-
-                    {/* Tracking info */}
-                    {order.trackingNumber && (
-                      <div className="rounded-lg bg-white border p-3">
-                        <p className="text-sm font-medium mb-1">배송 추적 정보</p>
-                        <div className="text-sm text-muted-foreground space-y-0.5">
-                          {order.courierCode && <p>택배사: {COURIER_MAP[order.courierCode] ?? order.courierCode}</p>}
-                          <p>송장번호: {order.trackingNumber}</p>
-                          {order.shippedAt && <p>발송일시: {formatDate(order.shippedAt)}</p>}
-                          {order.deliveredAt && <p>배송완료: {formatDate(order.deliveredAt)}</p>}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Cancel reason */}
-                    {order.status === 'CANCELLED' && order.cancelReason && (
-                      <div className="rounded-lg bg-red-50 border border-red-100 p-3">
-                        <p className="text-sm font-medium text-red-600 mb-1">취소 사유</p>
-                        <p className="text-sm text-red-500">{order.cancelReason}</p>
-                      </div>
-                    )}
-
-                    {/* Shipping actions */}
-                    {order.status !== 'CANCELLED' && order.status !== 'CONFIRMED' && order.status !== 'REFUNDED' && (
-                      <div className="rounded-lg bg-white border p-3 space-y-3">
-                        <p className="text-sm font-medium">배송 처리</p>
-                        <div className="flex flex-wrap items-end gap-3">
-                          <div className="space-y-1">
-                            <Label className="text-xs">택배사</Label>
-                            <Select
-                              value={courierInputs[order.id] ?? order.courierCode ?? ''}
-                              onValueChange={(value) => setCourierInputs({ ...courierInputs, [order.id]: value })}
-                            >
-                              <SelectTrigger className="w-40 h-9"><SelectValue placeholder="택배사 선택" /></SelectTrigger>
-                              <SelectContent>
-                                {COURIERS.map((c) => (<SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">송장번호</Label>
-                            <Input
-                              value={trackingInputs[order.id] ?? order.trackingNumber ?? ''}
-                              onChange={(e) => setTrackingInputs({ ...trackingInputs, [order.id]: e.target.value })}
-                              placeholder="송장번호 입력"
-                              className="w-52 h-9"
-                            />
-                          </div>
-                          {(order.status === 'SHIPPING' || order.status === 'DELIVERED') && (
-                            <Button variant="outline" size="sm" className="h-9" onClick={() => handleTrackingSave(order.id)}>송장 저장</Button>
-                          )}
-                          {order.status === 'PREPARING' && (
-                            <Button size="sm" className="h-9" disabled={updatingId === order.id || !trackingInputs[order.id]?.trim()}
-                              onClick={() => handleShippingStart(order.id)}>
-                              {updatingId === order.id ? '처리 중...' : '배송 시작'}
-                            </Button>
-                          )}
-                          {NEXT_STATUS[order.status] && order.status !== 'PREPARING' && (
-                            <Button size="sm" className="h-9" disabled={updatingId === order.id}
-                              onClick={() => handleStatusChange(order.id, NEXT_STATUS[order.status]!)}>
-                              {updatingId === order.id ? '처리 중...' : NEXT_STATUS_LABEL[order.status]}
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Cancel form */}
-                    {order.status === 'PAID' && (
-                      <div>
-                        {!showCancelForm[order.id] ? (
-                          <Button variant="destructive" size="sm" disabled={updatingId === order.id}
-                            onClick={() => setShowCancelForm({ ...showCancelForm, [order.id]: true })}>
-                            주문 취소
-                          </Button>
-                        ) : (
-                          <div className="rounded-lg border border-red-200 bg-red-50 p-3 space-y-2">
-                            <p className="text-sm font-medium text-red-600">주문 취소</p>
-                            <Textarea
-                              value={cancelReasonInputs[order.id] ?? ''}
-                              onChange={(e) => setCancelReasonInputs({ ...cancelReasonInputs, [order.id]: e.target.value })}
-                              placeholder="취소 사유를 입력하세요"
-                              rows={2}
-                            />
-                            <div className="flex gap-2">
-                              <Button variant="destructive" size="sm" disabled={updatingId === order.id || !cancelReasonInputs[order.id]?.trim()}
-                                onClick={() => handleCancelOrder(order.id)}>
-                                {updatingId === order.id ? '처리 중...' : '취소 확인'}
-                              </Button>
-                              <Button variant="outline" size="sm"
-                                onClick={() => setShowCancelForm({ ...showCancelForm, [order.id]: false })}>
-                                닫기
-                              </Button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
                   </div>
                 )}
-              </Card>
+              </div>
             );
           })}
         </div>
       )}
+
+      {/* Confirmation Dialog */}
+      <Dialog open={confirmDialog.open} onOpenChange={(open) => setConfirmDialog((prev) => ({ ...prev, open }))}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{confirmDialog.title}</DialogTitle>
+            <DialogDescription>{confirmDialog.description}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-row gap-2 sm:justify-end">
+            <Button variant="outline" className="flex-1 sm:flex-none rounded-xl h-11" onClick={() => setConfirmDialog((prev) => ({ ...prev, open: false }))}>
+              취소
+            </Button>
+            <Button
+              variant={confirmDialog.variant === 'destructive' ? 'destructive' : 'default'}
+              className="flex-1 sm:flex-none rounded-xl h-11"
+              onClick={() => {
+                confirmDialog.onConfirm();
+                setConfirmDialog((prev) => ({ ...prev, open: false }));
+              }}
+            >
+              확인
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

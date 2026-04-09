@@ -26,6 +26,7 @@ import {
   BookOpen,
   HelpCircle,
   Gift,
+  ShoppingBag,
 } from 'lucide-react';
 import type { UserRole } from '@/types/database';
 import type { Locale } from '@/lib/i18n/config';
@@ -105,6 +106,7 @@ export function Sidebar({ role, locale }: SidebarProps) {
           {
             label: '내 셀렉트샵',
             items: [
+              { title: '내 샵 상품', href: `${base}/creator/shop/products`, icon: ShoppingBag },
               { title: '샵 정보', href: `${base}/creator/shop`, icon: Palette },
               { title: '배너 관리', href: `${base}/creator/banners`, icon: ImageIcon },
             ],

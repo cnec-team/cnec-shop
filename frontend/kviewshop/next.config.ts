@@ -25,7 +25,7 @@ const securityHeaders = [
       "img-src 'self' data: blob: https:",
       "font-src 'self' https://fonts.gstatic.com",
       "connect-src 'self' https://api.tosspayments.com https://api.portone.io https://kapi.kakao.com https://*.r2.dev https://*.cloudflarestorage.com https://storage.cnec.kr https://cnecshop.com https://*.cnecshop.com",
-      "frame-src https://js.tosspayments.com https://accounts.kakao.com https://service.portone.io",
+      "frame-src https://js.tosspayments.com https://accounts.kakao.com https://service.portone.io https://www.instagram.com https://www.tiktok.com",
     ].join('; '),
   },
 ];

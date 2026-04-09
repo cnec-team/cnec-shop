@@ -32,7 +32,10 @@ import {
   Check,
   AlertTriangle,
   Gift,
+  Play,
+  Trash2,
 } from 'lucide-react';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { BrandBadge } from '@/components/common/BrandBadge';
 import { SafeImage } from '@/components/common/SafeImage';
@@ -90,6 +93,23 @@ export default function CreatorProductsPage() {
 
   // Category overlap warning
   const [overlapWarning, setOverlapWarning] = useState<{ product: ProductWithCampaign; existingBrand: string } | null>(null);
+
+  // Content (reels) modal
+  interface ContentItem {
+    id: string;
+    type: string;
+    url: string;
+    embedUrl: string | null;
+    caption: string | null;
+    sortOrder: number;
+  }
+  const [contentModalProduct, setContentModalProduct] = useState<ProductWithCampaign | null>(null);
+  const [contents, setContents] = useState<ContentItem[]>([]);
+  const [contentUrl, setContentUrl] = useState('');
+  const [contentCaption, setContentCaption] = useState('');
+  const [contentSubmitting, setContentSubmitting] = useState(false);
+  const [contentLoading, setContentLoading] = useState(false);
+  const [deletingContentId, setDeletingContentId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -226,6 +246,80 @@ export default function CreatorProductsPage() {
       return Math.round(price * Number(campaign.commissionRate));
     }
     return Math.round(Number(product.salePrice) * Number(product.defaultCommissionRate));
+  };
+
+  const fetchContents = async (productId: string) => {
+    setContentLoading(true);
+    try {
+      const res = await fetch(`/api/creator/products/${productId}/content`);
+      if (res.ok) {
+        const data = await res.json();
+        setContents(data);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setContentLoading(false);
+    }
+  };
+
+  const openContentModal = (product: ProductWithCampaign) => {
+    setContentModalProduct(product);
+    setContentUrl('');
+    setContentCaption('');
+    setContents([]);
+    fetchContents(product.id);
+  };
+
+  const handleContentSubmit = async () => {
+    if (!contentModalProduct || !contentUrl.trim()) {
+      toast.error('URL을 입력해주세요');
+      return;
+    }
+    setContentSubmitting(true);
+    try {
+      const res = await fetch(`/api/creator/products/${contentModalProduct.id}/content`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: contentUrl.trim(),
+          caption: contentCaption.trim() || undefined,
+        }),
+      });
+      if (res.ok) {
+        toast.success('리뷰 영상이 등록되었습니다');
+        setContentUrl('');
+        setContentCaption('');
+        fetchContents(contentModalProduct.id);
+      } else {
+        const data = await res.json();
+        toast.error(data.error || '등록에 실패했습니다');
+      }
+    } catch {
+      toast.error('등록에 실패했습니다');
+    } finally {
+      setContentSubmitting(false);
+    }
+  };
+
+  const handleContentDelete = async (contentId: string) => {
+    if (!contentModalProduct) return;
+    setDeletingContentId(contentId);
+    try {
+      const res = await fetch(`/api/creator/products/${contentModalProduct.id}/content/${contentId}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        toast.success('삭제되었습니다');
+        setContents((prev) => prev.filter((c) => c.id !== contentId));
+      } else {
+        toast.error('삭제에 실패했습니다');
+      }
+    } catch {
+      toast.error('삭제에 실패했습니다');
+    } finally {
+      setDeletingContentId(null);
+    }
   };
 
   if (loading) {
@@ -423,6 +517,17 @@ export default function CreatorProductsPage() {
                         </Button>
                       </Link>
                     )}
+                    {isAdded && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full h-9 text-xs rounded-xl text-gray-600 border-gray-200 hover:bg-gray-50"
+                        onClick={() => openContentModal(product)}
+                      >
+                        <Play className="h-3.5 w-3.5 mr-1" />
+                        리뷰 영상
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -456,6 +561,84 @@ export default function CreatorProductsPage() {
               그래도 추가
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Creator Content (Reels) Modal */}
+      <Dialog open={!!contentModalProduct} onOpenChange={() => setContentModalProduct(null)}>
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Play className="h-5 w-5 text-gray-600" />
+              리뷰 영상 관리
+            </DialogTitle>
+            <DialogDescription>
+              {contentModalProduct?.name} — 인스타그램 릴스나 틱톡 영상을 등록하세요 (최대 5개)
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Add new content */}
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label className="text-sm">URL</Label>
+                <Input
+                  value={contentUrl}
+                  onChange={(e) => setContentUrl(e.target.value)}
+                  placeholder="인스타그램 릴스 또는 틱톡 URL을 붙여넣으세요"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm">한줄 코멘트 (선택)</Label>
+                <Input
+                  value={contentCaption}
+                  onChange={(e) => setContentCaption(e.target.value)}
+                  placeholder="이 제품에 대한 한마디"
+                />
+              </div>
+              <Button
+                onClick={handleContentSubmit}
+                disabled={contentSubmitting || !contentUrl.trim()}
+                className="w-full bg-gray-900 text-white rounded-xl h-10 font-medium text-sm"
+              >
+                {contentSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : '추가'}
+              </Button>
+            </div>
+
+            {/* Existing contents */}
+            {contentLoading ? (
+              <div className="flex justify-center py-4">
+                <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+              </div>
+            ) : contents.length > 0 ? (
+              <div className="space-y-3 pt-2 border-t border-gray-100">
+                <p className="text-xs font-medium text-gray-500">등록된 영상 ({contents.length}/5)</p>
+                {contents.map((c) => (
+                  <div key={c.id} className="flex items-start gap-3 bg-gray-50 rounded-xl p-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-gray-900 truncate">{c.url}</p>
+                      {c.caption && (
+                        <p className="text-xs text-gray-400 mt-0.5 truncate">{c.caption}</p>
+                      )}
+                      <span className="text-[10px] text-gray-400 bg-gray-200 rounded px-1.5 py-0.5 mt-1 inline-block">
+                        {c.type === 'INSTAGRAM_REEL' ? '인스타그램' : c.type === 'TIKTOK' ? '틱톡' : c.type}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => handleContentDelete(c.id)}
+                      disabled={deletingContentId === c.id}
+                      className="shrink-0 p-1.5 text-gray-400 hover:text-red-500 transition-colors"
+                    >
+                      {deletingContentId === c.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

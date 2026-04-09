@@ -16,7 +16,15 @@ import {
   Share2,
   ShoppingBag,
   Flame,
+  Play,
+  ExternalLink,
 } from 'lucide-react';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 import { ShareSheet } from '@/components/shop/ShareSheet';
 import { BrandBadge } from '@/components/common/BrandBadge';
 import { calculateDDay, getDDayLabel, getTimeRemaining, hasCampaignStarted } from '@/lib/utils/date';
@@ -31,6 +39,15 @@ import type {
 // Props
 // =============================================
 
+interface CreatorContentItem {
+  id: string;
+  type: string;
+  url: string;
+  embedUrl: string | null;
+  caption: string | null;
+  sortOrder: number;
+}
+
 interface ProductDetailPageProps {
   product: Product;
   campaignProduct: CampaignProduct | null;
@@ -38,6 +55,7 @@ interface ProductDetailPageProps {
   locale: string;
   username: string;
   otherProducts?: { id: string; name: string; images?: string[]; salePrice?: number; originalPrice?: number }[];
+  creatorContents?: CreatorContentItem[];
 }
 
 // =============================================
@@ -69,14 +87,15 @@ export function ProductDetailPage({
   locale,
   username,
   otherProducts,
+  creatorContents,
 }: ProductDetailPageProps) {
   const router = useRouter();
   const { addItem } = useCartStore();
   const [quantity, setQuantity] = useState(1);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [descriptionOpen, setDescriptionOpen] = useState(false);
   const [shippingOpen, setShippingOpen] = useState(false);
   const [returnOpen, setReturnOpen] = useState(false);
+  const [iframeLoaded, setIframeLoaded] = useState<Record<string, boolean>>({});
 
   const campaign = campaignProduct?.campaign as Campaign | undefined;
   const startAt = (campaign as any)?.start_at ?? (campaign as any)?.startAt;
@@ -324,26 +343,124 @@ export function ProductDetailPage({
           </div>
         </div>
 
-        {/* Product Description Accordion */}
-        {product.description && (
-          <div className="bg-white mt-2">
-            <button
-              onClick={() => setDescriptionOpen(!descriptionOpen)}
-              className="w-full px-4 py-4 flex items-center justify-between text-left"
-            >
-              <span className="text-sm font-medium text-gray-900">상품 상세</span>
-              <ChevronDown
-                className={`w-4 h-4 text-gray-400 transition-transform ${
-                  descriptionOpen ? 'rotate-180' : ''
-                }`}
-              />
-            </button>
-            {descriptionOpen && (
-              <div className="px-4 pb-4">
-                <div
-                  className="text-sm text-gray-600 leading-relaxed prose prose-sm max-w-none"
-                  dangerouslySetInnerHTML={{ __html: product.description }}
-                />
+        {/* Brand Product Detail Accordion */}
+        {(p.description || p.descriptionKo || p.howToUse || p.how_to_use || p.ingredients) && (
+          <div className="bg-white mt-2 px-4">
+            <Accordion type="multiple" defaultValue={["description"]}>
+              {(p.description || p.descriptionKo) && (
+                <AccordionItem value="description">
+                  <AccordionTrigger className="text-sm font-medium text-gray-900">
+                    상품 설명
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div
+                      className="text-sm text-gray-600 leading-relaxed whitespace-pre-line"
+                      dangerouslySetInnerHTML={{
+                        __html: (p.descriptionKo || p.description || '').replace(/\n/g, '<br />'),
+                      }}
+                    />
+                  </AccordionContent>
+                </AccordionItem>
+              )}
+              {(p.howToUse || p.how_to_use) && (
+                <AccordionItem value="howToUse">
+                  <AccordionTrigger className="text-sm font-medium text-gray-900">
+                    사용법
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div
+                      className="text-sm text-gray-600 leading-relaxed whitespace-pre-line"
+                      dangerouslySetInnerHTML={{
+                        __html: (p.howToUse || p.how_to_use || '').replace(/\n/g, '<br />'),
+                      }}
+                    />
+                  </AccordionContent>
+                </AccordionItem>
+              )}
+              {p.ingredients && (
+                <AccordionItem value="ingredients">
+                  <AccordionTrigger className="text-sm font-medium text-gray-900">
+                    전성분
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <p className="text-xs text-gray-400 leading-relaxed whitespace-pre-line">
+                      {p.ingredients}
+                    </p>
+                  </AccordionContent>
+                </AccordionItem>
+              )}
+            </Accordion>
+            {(p.detailUrl || p.detail_url) && (
+              <div className="py-3 border-t border-gray-100">
+                <a
+                  href={p.detailUrl || p.detail_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm text-primary font-medium hover:underline"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  브랜드 상세페이지 보기
+                </a>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Creator Reels Section */}
+        {creatorContents && creatorContents.length > 0 && (
+          <div className="bg-white mt-2 py-5">
+            <div className="flex items-center gap-2 px-4 mb-3">
+              <Play className="w-4 h-4 text-gray-600" />
+              <h2 className="text-base font-semibold text-gray-900">크리에이터 리뷰</h2>
+            </div>
+            {creatorContents.length === 1 ? (
+              <div className="px-4">
+                <div className="relative w-full overflow-hidden rounded-xl" style={{ aspectRatio: '9/16', maxHeight: '500px' }}>
+                  {!iframeLoaded[creatorContents[0].id] && (
+                    <div className="absolute inset-0 bg-secondary animate-pulse rounded-xl" />
+                  )}
+                  {creatorContents[0].embedUrl && (
+                    <iframe
+                      src={creatorContents[0].embedUrl}
+                      className="w-full h-full"
+                      frameBorder="0"
+                      allowFullScreen
+                      scrolling="no"
+                      onLoad={() => setIframeLoaded((prev) => ({ ...prev, [creatorContents[0].id]: true }))}
+                    />
+                  )}
+                </div>
+                {creatorContents[0].caption && (
+                  <p className="text-sm text-gray-500 mt-2">{creatorContents[0].caption}</p>
+                )}
+              </div>
+            ) : (
+              <div
+                className="flex gap-3 overflow-x-auto px-4 pb-2"
+                style={{ scrollbarWidth: 'none' }}
+              >
+                {creatorContents.map((content) => (
+                  <div key={content.id} className="flex-shrink-0" style={{ width: '280px' }}>
+                    <div className="relative overflow-hidden rounded-xl" style={{ aspectRatio: '9/16', maxHeight: '500px' }}>
+                      {!iframeLoaded[content.id] && (
+                        <div className="absolute inset-0 bg-secondary animate-pulse rounded-xl" />
+                      )}
+                      {content.embedUrl && (
+                        <iframe
+                          src={content.embedUrl}
+                          className="w-full h-full"
+                          frameBorder="0"
+                          allowFullScreen
+                          scrolling="no"
+                          onLoad={() => setIframeLoaded((prev) => ({ ...prev, [content.id]: true }))}
+                        />
+                      )}
+                    </div>
+                    {content.caption && (
+                      <p className="text-sm text-gray-500 mt-2 line-clamp-2">{content.caption}</p>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
           </div>

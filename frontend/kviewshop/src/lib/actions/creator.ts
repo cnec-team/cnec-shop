@@ -393,6 +393,19 @@ export async function toggleCollectionVisibility(collectionId: string, isVisible
   })
 }
 
+export async function toggleShopItemVisibility(itemId: string, isVisible: boolean) {
+  const { creator } = await requireCreator()
+  const item = await prisma.creatorShopItem.findUnique({
+    where: { id: itemId },
+    select: { creatorId: true },
+  })
+  if (!item || item.creatorId !== creator.id) throw new Error('Forbidden')
+  return prisma.creatorShopItem.update({
+    where: { id: itemId },
+    data: { isVisible },
+  })
+}
+
 export async function deleteCollection(collectionId: string) {
   await requireCreator()
 

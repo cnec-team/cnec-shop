@@ -14,6 +14,8 @@ import {
   Plus,
   Check,
   Loader2,
+  Play,
+  Trash2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/i18n/config'
@@ -89,6 +91,23 @@ export default function CreatorProductDetailPage() {
   const [savedAddress, setSavedAddress] = useState('')
   const [trialMessage, setTrialMessage] = useState('')
   const [trialSubmitting, setTrialSubmitting] = useState(false)
+
+  // Content (reels) management
+  interface ContentItem {
+    id: string
+    type: string
+    url: string
+    embedUrl: string | null
+    caption: string | null
+    sortOrder: number
+  }
+  const [contentOpen, setContentOpen] = useState(false)
+  const [contents, setContents] = useState<ContentItem[]>([])
+  const [contentUrl, setContentUrl] = useState('')
+  const [contentCaption, setContentCaption] = useState('')
+  const [contentSubmitting, setContentSubmitting] = useState(false)
+  const [contentLoading, setContentLoading] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -190,6 +209,78 @@ export default function CreatorProductDetailPage() {
       toast.error('신청에 실패했어요.')
     } finally {
       setTrialSubmitting(false)
+    }
+  }
+
+  const fetchContents = async () => {
+    setContentLoading(true)
+    try {
+      const res = await fetch(`/api/creator/products/${productId}/content`)
+      if (res.ok) {
+        const data = await res.json()
+        setContents(data)
+      }
+    } catch {
+      // ignore
+    } finally {
+      setContentLoading(false)
+    }
+  }
+
+  const openContentModal = () => {
+    setContentUrl('')
+    setContentCaption('')
+    setContentOpen(true)
+    fetchContents()
+  }
+
+  const handleContentSubmit = async () => {
+    if (!contentUrl.trim()) {
+      toast.error('URL을 입력해주세요')
+      return
+    }
+    setContentSubmitting(true)
+    try {
+      const res = await fetch(`/api/creator/products/${productId}/content`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: contentUrl.trim(),
+          caption: contentCaption.trim() || undefined,
+        }),
+      })
+      if (res.ok) {
+        toast.success('리뷰 영상이 등록되었습니다')
+        setContentUrl('')
+        setContentCaption('')
+        fetchContents()
+      } else {
+        const data = await res.json()
+        toast.error(data.error || '등록에 실패했습니다')
+      }
+    } catch {
+      toast.error('등록에 실패했습니다')
+    } finally {
+      setContentSubmitting(false)
+    }
+  }
+
+  const handleContentDelete = async (contentId: string) => {
+    setDeletingId(contentId)
+    try {
+      const res = await fetch(`/api/creator/products/${productId}/content/${contentId}`, {
+        method: 'DELETE',
+      })
+      if (res.ok) {
+        toast.success('삭제되었습니다')
+        setContents((prev) => prev.filter((c) => c.id !== contentId))
+      } else {
+        toast.error('삭제에 실패했습니다')
+      }
+    } catch {
+      toast.error('삭제에 실패했습니다')
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -313,6 +404,99 @@ export default function CreatorProductDetailPage() {
           </p>
         </div>
       )}
+
+      {/* Content (Reels) Management */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Play className="w-4 h-4 text-gray-600" />
+            <h3 className="text-sm font-semibold text-gray-900">리뷰 영상</h3>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-xl text-xs"
+            onClick={openContentModal}
+          >
+            <Plus className="w-3.5 h-3.5 mr-1" />
+            영상 추가
+          </Button>
+        </div>
+        <p className="text-xs text-gray-400 mt-1">인스타그램 릴스나 틱톡 영상을 등록하세요 (최대 5개)</p>
+      </div>
+
+      {/* Content Modal */}
+      <Dialog open={contentOpen} onOpenChange={setContentOpen}>
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>리뷰 영상 관리</DialogTitle>
+            <DialogDescription>이 상품에 대한 리뷰 영상을 등록하세요</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Add new */}
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label>URL</Label>
+                <Input
+                  value={contentUrl}
+                  onChange={(e) => setContentUrl(e.target.value)}
+                  placeholder="인스타그램 릴스 또는 틱톡 URL을 붙여넣으세요"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>한줄 코멘트 (선택)</Label>
+                <Input
+                  value={contentCaption}
+                  onChange={(e) => setContentCaption(e.target.value)}
+                  placeholder="이 제품에 대한 한마디"
+                />
+              </div>
+              <Button
+                onClick={handleContentSubmit}
+                disabled={contentSubmitting || !contentUrl.trim()}
+                className="w-full bg-gray-900 text-white rounded-xl h-10 font-medium text-sm"
+              >
+                {contentSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : '추가'}
+              </Button>
+            </div>
+
+            {/* Existing contents */}
+            {contentLoading ? (
+              <div className="flex justify-center py-4">
+                <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+              </div>
+            ) : contents.length > 0 ? (
+              <div className="space-y-3 pt-2 border-t border-gray-100">
+                <p className="text-xs font-medium text-gray-500">등록된 영상 ({contents.length}/5)</p>
+                {contents.map((c) => (
+                  <div key={c.id} className="flex items-start gap-3 bg-gray-50 rounded-xl p-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-gray-900 truncate">{c.url}</p>
+                      {c.caption && (
+                        <p className="text-xs text-gray-400 mt-0.5 truncate">{c.caption}</p>
+                      )}
+                      <span className="text-[10px] text-gray-400 bg-gray-200 rounded px-1.5 py-0.5 mt-1 inline-block">
+                        {c.type === 'INSTAGRAM_REEL' ? '인스타그램' : c.type === 'TIKTOK' ? '틱톡' : c.type}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => handleContentDelete(c.id)}
+                      disabled={deletingId === c.id}
+                      className="shrink-0 p-1.5 text-gray-400 hover:text-red-500 transition-colors"
+                    >
+                      {deletingId === c.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Fixed Bottom Actions */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 z-50">
