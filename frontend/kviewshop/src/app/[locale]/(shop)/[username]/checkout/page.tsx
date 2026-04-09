@@ -9,13 +9,9 @@ import {
   Loader2,
   ArrowLeft,
   ShoppingBag,
-  CheckCircle,
-  Copy,
   Minus,
   Plus,
   X,
-  Clock,
-  Landmark,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -43,19 +39,6 @@ interface CartItemWithProduct {
   creatorId: string;
   unitPrice: number;
   product?: any;
-}
-
-interface BankInfo {
-  bankName: string;
-  accountNumber: string;
-  accountHolder: string;
-}
-
-interface OrderResult {
-  orderNumber: string;
-  totalAmount: number;
-  isBankTransfer?: boolean;
-  bankInfo?: BankInfo;
 }
 
 const DELIVERY_MEMOS = [
@@ -92,7 +75,6 @@ export default function CheckoutPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [creator, setCreator] = useState<any>(null);
   const [cartItems, setCartItems] = useState<CartItemWithProduct[]>([]);
-  const [orderResult, setOrderResult] = useState<OrderResult | null>(null);
   const [selectedPayment, setSelectedPayment] = useState('card');
   const [deliveryMemo, setDeliveryMemo] = useState('선택하세요');
 
@@ -292,16 +274,18 @@ export default function CheckoutPage() {
       const prepareData = await createOrder();
       const { orderId, orderNumber, totalAmount: serverTotal, bankInfo } = prepareData;
 
-      // 무통장입금: PortOne 스킵, 바로 주문 완료 표시
+      // 무통장입금: PortOne 스킵, 바로 주문 완료 페이지로 이동
       if (isBankTransfer) {
-        checkoutDoneRef.current = true;
-        clearCart();
-        setOrderResult({
+        sessionStorage.setItem('cnec-order-complete', JSON.stringify({
           orderNumber,
           totalAmount: Number(serverTotal),
           isBankTransfer: true,
           bankInfo: bankInfo || undefined,
-        });
+          shopUsername: username,
+        }));
+        checkoutDoneRef.current = true;
+        clearCart();
+        router.push(`/${locale}/order-complete`);
         return;
       }
 
@@ -377,25 +361,20 @@ export default function CheckoutPage() {
 
       const completeData = await completeRes.json();
 
-      // 5. 결제 성공 — 장바구니 비우고 결과 표시
-      checkoutDoneRef.current = true;
-      clearCart();
-      setOrderResult({
+      // 5. 결제 성공 — 장바구니 비우고 완료 페이지로 이동
+      sessionStorage.setItem('cnec-order-complete', JSON.stringify({
         orderNumber: completeData.orderNumber || orderNumber,
         totalAmount: Number(serverTotal),
-      });
+        shopUsername: username,
+      }));
+      checkoutDoneRef.current = true;
+      clearCart();
+      router.push(`/${locale}/order-complete`);
     } catch (error: any) {
       console.error('Checkout failed:', error);
       toast.error(error.message || '네트워크 오류가 발생했어요. 다시 시도해주세요.');
     } finally {
       setIsProcessing(false);
-    }
-  };
-
-  const handleCopyOrderNumber = () => {
-    if (orderResult) {
-      navigator.clipboard.writeText(orderResult.orderNumber);
-      toast.success('주문번호가 복사되었습니다.');
     }
   };
 
@@ -424,113 +403,6 @@ export default function CheckoutPage() {
           >
             쇼핑 계속하기
           </Link>
-        </div>
-      </div>
-    );
-  }
-
-  // Order completion state
-  if (orderResult) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-lg mx-auto px-4 py-16">
-          <div className="text-center">
-            {orderResult.isBankTransfer ? (
-              <Clock className="h-16 w-16 mx-auto mb-4 text-amber-500" />
-            ) : (
-              <CheckCircle className="h-16 w-16 mx-auto mb-4 text-emerald-500" />
-            )}
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              {orderResult.isBankTransfer ? '주문이 접수되었습니다' : '결제가 완료되었습니다'}
-            </h1>
-            <p className="text-sm text-gray-400 mb-8">
-              {orderResult.isBankTransfer
-                ? '아래 계좌로 입금해주시면 주문이 확정됩니다.'
-                : '주문 내역은 이메일로 전송됩니다.'}
-            </p>
-
-            <div className="bg-white rounded-2xl p-5 text-left space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-400">주문번호</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-mono font-medium text-gray-900">
-                    {orderResult.orderNumber}
-                  </span>
-                  <button
-                    onClick={handleCopyOrderNumber}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    <Copy className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-              <div className="h-px bg-gray-100" />
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-400">
-                  {orderResult.isBankTransfer ? '입금금액' : '결제금액'}
-                </span>
-                <span className="text-xl font-bold text-gray-900">
-                  {formatKRW(orderResult.totalAmount)}
-                </span>
-              </div>
-
-              {/* 무통장입금 계좌 안내 */}
-              {orderResult.isBankTransfer && orderResult.bankInfo && (
-                <>
-                  <div className="h-px bg-gray-100" />
-                  <div className="bg-amber-50 rounded-xl p-4 space-y-2">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Landmark className="w-4 h-4 text-amber-600" />
-                      <span className="text-sm font-semibold text-amber-900">입금 계좌 안내</span>
-                    </div>
-                    {orderResult.bankInfo.bankName && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-amber-700">은행</span>
-                        <span className="font-medium text-amber-900">{orderResult.bankInfo.bankName}</span>
-                      </div>
-                    )}
-                    {orderResult.bankInfo.accountNumber && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-amber-700">계좌번호</span>
-                        <span className="font-mono font-medium text-amber-900">{orderResult.bankInfo.accountNumber}</span>
-                      </div>
-                    )}
-                    {orderResult.bankInfo.accountHolder && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-amber-700">예금주</span>
-                        <span className="font-medium text-amber-900">{orderResult.bankInfo.accountHolder}</span>
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-
-            {orderResult.isBankTransfer ? (
-              <p className="text-xs text-gray-400 mt-4">
-                입금 확인 후 주문이 확정되며, 확인까지 영업일 기준 1~2일 소요될 수 있습니다.
-              </p>
-            ) : (
-              <p className="text-xs text-gray-400 mt-4">
-                배송은 브랜드에서 직접 처리합니다. 문의사항은 크넥에 연락해주세요.
-              </p>
-            )}
-
-            <div className="mt-8 space-y-3">
-              <Link
-                href={`/${locale}/buyer/orders`}
-                className="block w-full h-12 bg-gray-900 text-white rounded-xl font-semibold flex items-center justify-center"
-              >
-                주문 내역 보기
-              </Link>
-              <Link
-                href={`/${locale}/${username}`}
-                className="block w-full h-12 border border-gray-200 text-gray-900 rounded-xl font-semibold flex items-center justify-center hover:bg-gray-50"
-              >
-                쇼핑 계속하기
-              </Link>
-            </div>
-          </div>
         </div>
       </div>
     );
