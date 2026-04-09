@@ -663,8 +663,8 @@ export default function LandingPage() {
                 key={c.handle}
                 className={`group bg-white rounded-2xl border border-gray-100 p-6 text-center hover:shadow-lg hover:-translate-y-1 transition-all duration-500 ${anim(recommendedCreators.isInView, `animate-fade-in-up delay-${(i + 3) * 100}`)}`}
               >
-                <div className={`w-16 h-16 rounded-full bg-gradient-to-br ${c.color} overflow-hidden mx-auto mb-4`}>
-                  <Image src={c.img} alt={c.name} width={64} height={64} className="w-full h-full object-cover" />
+                <div className={`w-20 h-20 rounded-full bg-gradient-to-br ${c.color} overflow-hidden mx-auto mb-4 ring-2 ring-gray-100`}>
+                  <Image src={c.img} alt={c.name} width={80} height={80} className="w-full h-full object-cover" />
                 </div>
                 <h3 className="text-base font-bold text-gray-900">{c.name}</h3>
                 <p className="text-xs text-gray-400 mt-1">{c.handle}</p>
