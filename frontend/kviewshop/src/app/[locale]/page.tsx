@@ -364,71 +364,75 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
             {/* BRAND Card */}
             <div className={`${anim(steps.isInView, 'animate-fade-in-up delay-300')}`}>
-              <div className="bg-gray-50/80 rounded-3xl p-8 md:p-10 h-full">
-                <div className="flex items-center justify-between mb-8">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">FOR BRAND</p>
-                    <h3 className="text-3xl font-black text-gray-900 mt-1">BRAND</h3>
-                  </div>
-                  <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center shadow-sm">
-                    <Building2 className="h-6 w-6 text-gray-600" />
-                  </div>
-                </div>
-
-                <div className="w-full h-px bg-gray-200 mb-8" />
-
-                <div className="space-y-8">
-                  {[
-                    { title: '상품 등록', desc: '— 상품 정보 + 이미지' },
-                    { title: '캠페인 생성', desc: '— 공구 기간·특별가·수수료 설정' },
-                    { title: '크리에이터 선정', desc: '— 승인하면 셀렉트샵에 자동 추가' },
-                  ].map((item) => (
-                    <div key={item.title} className="flex items-start gap-4">
-                      <div className="w-2.5 h-2.5 rounded-full border-2 border-blue-400 mt-1.5 shrink-0" />
-                      <div>
-                        <p className="text-base font-bold text-gray-900">{item.title}</p>
-                        <p className="text-sm text-gray-400 mt-0.5">{item.desc}</p>
-                      </div>
+              <Link href="/ko/brand/login">
+                <div className="bg-gray-50/80 rounded-3xl p-10 md:p-12 h-full cursor-pointer hover:scale-[1.02] hover:shadow-xl transition-all duration-500">
+                  <div className="flex items-center justify-between mb-10">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">FOR BRAND</p>
+                      <h3 className="text-4xl font-black text-gray-900 mt-1">BRAND</h3>
                     </div>
-                  ))}
+                    <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center shadow-sm">
+                      <Building2 className="h-7 w-7 text-gray-600" />
+                    </div>
+                  </div>
+
+                  <div className="w-full h-px bg-gray-200 mb-10" />
+
+                  <div className="space-y-9">
+                    {[
+                      { title: '상품 등록', desc: '— 상품 정보 + 이미지' },
+                      { title: '캠페인 생성', desc: '— 공구 기간·특별가·수수료 설정' },
+                      { title: '크리에이터 선정', desc: '— 승인하면 셀렉트샵에 자동 추가' },
+                    ].map((item) => (
+                      <div key={item.title} className="flex items-start gap-4">
+                        <div className="w-3 h-3 rounded-full border-2 border-blue-400 mt-1.5 shrink-0" />
+                        <div>
+                          <p className="text-lg font-bold text-gray-900">{item.title}</p>
+                          <p className="text-sm text-gray-400 mt-1">{item.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              </Link>
             </div>
 
             {/* CREATOR Card — highlighted */}
             <div className={`${anim(steps.isInView, 'animate-fade-in-up delay-400')}`}>
-              <div className="rounded-3xl p-8 md:p-10 h-full text-white" style={blueGradientBg}>
-                <div className="flex items-center justify-between mb-8">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-widest text-blue-200">FOR CREATOR</p>
-                    <h3 className="text-3xl font-black mt-1">CREATOR</h3>
-                  </div>
-                  <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center">
-                    <Store className="h-6 w-6 text-white" />
-                  </div>
-                </div>
-
-                <div className="w-full h-px bg-white/20 mb-8" />
-
-                <div className="space-y-8">
-                  {[
-                    { title: '셀렉트샵 개설', desc: '— SNS 프로필 링크 하나로 완성' },
-                    { title: '캠페인 선택', desc: '— 내 채널에 맞는 브랜드' },
-                    { title: 'SNS 공유', desc: '— 판매 시작, 수익 실시간 확인' },
-                  ].map((item) => (
-                    <div key={item.title} className="flex items-start gap-4">
-                      <div className="w-2.5 h-2.5 rounded-full border-2 border-blue-300 mt-1.5 shrink-0" />
-                      <div>
-                        <p className="text-base font-bold text-white">{item.title}</p>
-                        <p className="text-sm text-white/60 mt-0.5">{item.desc}</p>
-                      </div>
+              <Link href="/ko/creator/login">
+                <div className="rounded-3xl p-10 md:p-12 h-full text-white cursor-pointer hover:scale-[1.02] hover:shadow-2xl transition-all duration-500" style={blueGradientBg}>
+                  <div className="flex items-center justify-between mb-10">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-widest text-blue-200">FOR CREATOR</p>
+                      <h3 className="text-4xl font-black mt-1">CREATOR</h3>
                     </div>
-                  ))}
+                    <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center">
+                      <Store className="h-7 w-7 text-white" />
+                    </div>
+                  </div>
+
+                  <div className="w-full h-px bg-white/20 mb-10" />
+
+                  <div className="space-y-9">
+                    {[
+                      { title: '셀렉트샵 개설', desc: '— SNS 프로필 링크 하나로 완성' },
+                      { title: '캠페인 선택', desc: '— 내 채널에 맞는 브랜드' },
+                      { title: 'SNS 공유', desc: '— 판매 시작, 수익 실시간 확인' },
+                    ].map((item) => (
+                      <div key={item.title} className="flex items-start gap-4">
+                        <div className="w-3 h-3 rounded-full border-2 border-blue-300 mt-1.5 shrink-0" />
+                        <div>
+                          <p className="text-lg font-bold text-white">{item.title}</p>
+                          <p className="text-sm text-white/60 mt-1">{item.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              </Link>
             </div>
           </div>
         </div>
