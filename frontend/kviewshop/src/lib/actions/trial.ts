@@ -33,6 +33,19 @@ async function requireBrand() {
 
 // ==================== 크리에이터용 ====================
 
+/** 0. 크리에이터 배송지 조회 */
+export async function getCreatorShippingAddress() {
+  const { creator } = await requireCreator()
+
+  const data = await prisma.creator.findUnique({
+    where: { id: creator.id },
+    select: { defaultShippingAddress: true },
+  })
+
+  const addr = data?.defaultShippingAddress as { address?: string } | null
+  return { address: addr?.address ?? '' }
+}
+
 /** 1. 체험 신청 */
 export async function requestProductTrial(data: {
   productId: string
@@ -70,6 +83,20 @@ export async function requestProductTrial(data: {
       shippingAddress: data.shippingAddress ?? Prisma.JsonNull,
     },
   })
+
+  // 크리에이터 기본 배송지가 없으면 저장
+  if (data.shippingAddress) {
+    const current = await prisma.creator.findUnique({
+      where: { id: creator.id },
+      select: { defaultShippingAddress: true },
+    })
+    if (!current?.defaultShippingAddress) {
+      await prisma.creator.update({
+        where: { id: creator.id },
+        data: { defaultShippingAddress: data.shippingAddress },
+      })
+    }
+  }
 
   // 브랜드에게 알림
   try {
@@ -135,6 +162,7 @@ export async function decideProductTrial(data: {
   trialId: string
   decision: 'PROCEED' | 'PASS'
   passReason?: string
+  feedback?: string
   convertTo?: 'campaign' | 'pick'
   campaignId?: string
 }) {
@@ -183,6 +211,7 @@ export async function decideProductTrial(data: {
       decision,
       decidedAt: new Date(),
       passReason: data.decision === 'PASS' ? (data.passReason ?? null) : null,
+      feedback: data.feedback ?? null,
       convertedTo,
     },
   })
@@ -295,6 +324,7 @@ export async function getBrandTrialRequests(filters?: {
             profileImageUrl: true,
             instagramHandle: true,
             skinType: true,
+            phone: true,
           },
         },
         product: {
@@ -304,6 +334,7 @@ export async function getBrandTrialRequests(filters?: {
             nameKo: true,
             imageUrl: true,
             thumbnailUrl: true,
+            images: true,
           },
         },
       },
@@ -315,6 +346,55 @@ export async function getBrandTrialRequests(filters?: {
   ])
 
   return { trials, total }
+}
+
+/** 6-1. 체험 신청 엑셀 데이터 (브랜드) */
+export async function exportBrandTrialRequests(filters?: {
+  status?: string
+}) {
+  const { brand } = await requireBrand()
+
+  const where: Record<string, unknown> = { brandId: brand.id }
+  if (filters?.status) {
+    where.status = filters.status
+  }
+
+  const trials = await prisma.sampleRequest.findMany({
+    where,
+    include: {
+      creator: {
+        select: {
+          displayName: true,
+          username: true,
+          instagramHandle: true,
+          phone: true,
+        },
+      },
+      product: {
+        select: {
+          name: true,
+          nameKo: true,
+        },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  })
+
+  return trials.map((t) => {
+    const addr = t.shippingAddress as { address?: string } | null
+    return {
+      creatorName: t.creator.displayName || t.creator.username || '',
+      instagram: t.creator.instagramHandle || '',
+      phone: t.creator.phone || '',
+      productName: t.product?.nameKo || t.product?.name || '',
+      shippingAddress: addr?.address || '',
+      status: t.status,
+      trackingNumber: t.trackingNumber || '',
+      feedback: t.feedback || '',
+      decision: t.decision || '',
+      createdAt: t.createdAt.toISOString(),
+    }
+  })
 }
 
 /** 7. 체험 승인 */
@@ -471,6 +551,7 @@ export async function getTrialableProducts(filters?: {
         nameKo: true,
         imageUrl: true,
         thumbnailUrl: true,
+        images: true,
         category: true,
         description: true,
         descriptionKo: true,

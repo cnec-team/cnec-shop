@@ -430,6 +430,7 @@ model Creator {
   // Contact
   email                String?
   phone                String?
+  defaultShippingAddress Json? @map("default_shipping_address") @db.JsonB
   // Shop design
   themeColor           String    @default("#1a1a1a") @map("theme_color")
   backgroundColor      String    @default("#1a1a1a") @map("background_color")
@@ -1026,6 +1027,7 @@ model SampleRequest {
   decision        SampleRequestDecision?
   rejectReason    String?  @map("reject_reason")
   passReason      String?  @map("pass_reason")
+  feedback        String?
   respondedAt     DateTime? @map("responded_at") @db.Timestamptz
   shippedAt       DateTime? @map("shipped_at") @db.Timestamptz
   receivedAt      DateTime? @map("received_at") @db.Timestamptz

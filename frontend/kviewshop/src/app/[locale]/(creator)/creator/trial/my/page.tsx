@@ -110,6 +110,7 @@ export default function MyTrialsPage() {
   const [decideTarget, setDecideTarget] = useState<Trial | null>(null)
   const [passSheetOpen, setPassSheetOpen] = useState(false)
   const [passReason, setPassReason] = useState('')
+  const [feedback, setFeedback] = useState('')
 
   const fetchTrials = useCallback(async () => {
     setLoading(true)
@@ -170,6 +171,7 @@ export default function MyTrialsPage() {
         trialId: decideTarget.id,
         decision,
         passReason: decision === 'PASS' ? passReason || undefined : undefined,
+        feedback: feedback || undefined,
         convertTo,
       })
       if (res.success) {
@@ -177,6 +179,7 @@ export default function MyTrialsPage() {
         setDecideTarget(null)
         setPassSheetOpen(false)
         setPassReason('')
+        setFeedback('')
         fetchTrials()
       } else {
         toast.error(res.error ?? '처리에 실패했어요.')
@@ -248,7 +251,7 @@ export default function MyTrialsPage() {
               actionLoading={actionLoading}
               onCancel={handleCancel}
               onReceived={handleReceived}
-              onDecide={setDecideTarget}
+              onDecide={(t) => { setFeedback(''); setDecideTarget(t) }}
             />
           ))}
         </div>
@@ -265,6 +268,15 @@ export default function MyTrialsPage() {
               <p className="text-sm text-gray-600">
                 <strong>{decideTarget.product?.nameKo || decideTarget.product?.name}</strong> 제품을 체험해보셨나요?
               </p>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-gray-700">피드백 (브랜드에게 전달됩니다)</p>
+                <Textarea
+                  value={feedback}
+                  onChange={(e) => setFeedback(e.target.value)}
+                  placeholder="제품 사용 후기, 팔로워 반응, 개선점 등을 자유롭게 작성해주세요"
+                  rows={3}
+                />
+              </div>
               <div className="space-y-2">
                 <Button
                   onClick={() => handleDecide('PROCEED', 'pick')}

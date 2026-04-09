@@ -31,6 +31,10 @@ import {
   User,
   Send,
   TrendingUp,
+  Download,
+  MapPin,
+  Phone,
+  MessageSquare,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -39,6 +43,7 @@ import {
   rejectTrialRequest,
   shipTrialSample,
   getTrialStats,
+  exportBrandTrialRequests,
 } from '@/lib/actions/trial'
 
 interface TrialRequest {
@@ -46,6 +51,8 @@ interface TrialRequest {
   status: string
   decision: string | null
   message: string | null
+  shippingAddress: { address?: string } | null
+  feedback: string | null
   trackingNumber: string | null
   rejectReason: string | null
   passReason: string | null
@@ -62,6 +69,7 @@ interface TrialRequest {
     profileImageUrl: string | null
     instagramHandle: string | null
     skinType: string | null
+    phone: string | null
   }
   product: {
     id: string
@@ -69,6 +77,7 @@ interface TrialRequest {
     nameKo: string | null
     imageUrl: string | null
     thumbnailUrl: string | null
+    images: string[]
   } | null
 }
 
@@ -112,6 +121,16 @@ const REJECT_REASONS = [
   '기타',
 ]
 
+const STATUS_LABEL_KO: Record<string, string> = {
+  pending: '대기중',
+  approved: '승인',
+  shipped: '발송',
+  received: '수령완료',
+  decided: '결정완료',
+  rejected: '거절',
+  cancelled: '취소',
+}
+
 export default function BrandTrialPage() {
   const [trials, setTrials] = useState<TrialRequest[]>([])
   const [total, setTotal] = useState(0)
@@ -119,10 +138,10 @@ export default function BrandTrialPage() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('')
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [exporting, setExporting] = useState(false)
 
-  // Ship modal
-  const [shipTarget, setShipTarget] = useState<TrialRequest | null>(null)
-  const [trackingNumber, setTrackingNumber] = useState('')
+  // Ship tracking inputs (inline per card)
+  const [trackingInputs, setTrackingInputs] = useState<Record<string, string>>({})
 
   // Reject dialog
   const [rejectTarget, setRejectTarget] = useState<TrialRequest | null>(null)
@@ -189,18 +208,22 @@ export default function BrandTrialPage() {
     }
   }
 
-  const handleShip = async () => {
-    if (!shipTarget || !trackingNumber.trim()) return
-    setActionLoading(shipTarget.id)
+  const handleShip = async (trialId: string) => {
+    const tracking = trackingInputs[trialId]?.trim()
+    if (!tracking) {
+      toast.error('송장번호를 입력해주세요.')
+      return
+    }
+    setActionLoading(trialId)
     try {
-      const res = await shipTrialSample({
-        trialId: shipTarget.id,
-        trackingNumber: trackingNumber.trim(),
-      })
+      const res = await shipTrialSample({ trialId, trackingNumber: tracking })
       if (res.success) {
         toast.success('발송 처리를 완료했어요.')
-        setShipTarget(null)
-        setTrackingNumber('')
+        setTrackingInputs((prev) => {
+          const next = { ...prev }
+          delete next[trialId]
+          return next
+        })
         fetchData()
       } else {
         toast.error(res.error ?? '발송 처리에 실패했어요.')
@@ -212,14 +235,77 @@ export default function BrandTrialPage() {
     }
   }
 
+  const handleExportExcel = async () => {
+    setExporting(true)
+    try {
+      const data = await exportBrandTrialRequests({
+        status: filter || undefined,
+      })
+      if (data.length === 0) {
+        toast.error('다운로드할 데이터가 없어요.')
+        return
+      }
+      const headers = [
+        '크리에이터', '인스타그램', '연락처', '상품명',
+        '배송지', '상태', '송장번호', '피드백', '결정', '신청일',
+      ]
+      const rows = data.map((row) => [
+        row.creatorName,
+        row.instagram,
+        row.phone,
+        row.productName,
+        row.shippingAddress,
+        STATUS_LABEL_KO[row.status] || row.status,
+        row.trackingNumber,
+        row.feedback,
+        row.decision === 'PROCEED' ? '공구전환' : row.decision === 'PASS' ? '패스' : '',
+        row.createdAt.split('T')[0],
+      ])
+
+      const bom = '\uFEFF'
+      const csv = bom + [headers, ...rows].map((r) =>
+        r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')
+      ).join('\n')
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `체험신청_${new Date().toISOString().split('T')[0]}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success('엑셀 파일을 다운로드했어요.')
+    } catch {
+      toast.error('다운로드에 실패했어요.')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">체험 신청 관리</h1>
-        {stats && stats.pendingCount > 0 && (
-          <p className="text-sm text-gray-500 mt-1">총 {stats.pendingCount}건 대기중</p>
-        )}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">체험 신청 관리</h1>
+          {stats && stats.pendingCount > 0 && (
+            <p className="text-sm text-gray-500 mt-1">총 {stats.pendingCount}건 대기중</p>
+          )}
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="rounded-xl"
+          onClick={handleExportExcel}
+          disabled={exporting}
+        >
+          {exporting ? (
+            <Loader2 className="w-4 h-4 animate-spin mr-1" />
+          ) : (
+            <Download className="w-4 h-4 mr-1" />
+          )}
+          엑셀 다운로드
+        </Button>
       </div>
 
       {/* Stats */}
@@ -290,9 +376,13 @@ export default function BrandTrialPage() {
               key={trial.id}
               trial={trial}
               actionLoading={actionLoading}
+              trackingValue={trackingInputs[trial.id] ?? ''}
+              onTrackingChange={(val) =>
+                setTrackingInputs((prev) => ({ ...prev, [trial.id]: val }))
+              }
               onApprove={handleApprove}
               onReject={setRejectTarget}
-              onShip={setShipTarget}
+              onShip={handleShip}
             />
           ))}
           {total > trials.length && (
@@ -333,34 +423,6 @@ export default function BrandTrialPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Ship Dialog */}
-      <Dialog open={!!shipTarget} onOpenChange={(open) => !open && setShipTarget(null)}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>샘플 발송</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <p className="text-sm text-gray-600">송장번호를 입력해주세요.</p>
-            <Input
-              value={trackingNumber}
-              onChange={(e) => setTrackingNumber(e.target.value)}
-              placeholder="송장번호 입력"
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              onClick={handleShip}
-              disabled={!!actionLoading || !trackingNumber.trim()}
-              className="w-full bg-gray-900 text-white rounded-xl h-11 font-medium"
-            >
-              {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (
-                <><Send className="w-4 h-4 mr-2" />발송 처리</>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
@@ -368,15 +430,19 @@ export default function BrandTrialPage() {
 function TrialRequestCard({
   trial,
   actionLoading,
+  trackingValue,
+  onTrackingChange,
   onApprove,
   onReject,
   onShip,
 }: {
   trial: TrialRequest
   actionLoading: string | null
+  trackingValue: string
+  onTrackingChange: (val: string) => void
   onApprove: (id: string) => void
   onReject: (t: TrialRequest) => void
-  onShip: (t: TrialRequest) => void
+  onShip: (id: string) => void
 }) {
   const status = STATUS_MAP[trial.status] ?? STATUS_MAP.pending
   const StatusIcon = status.icon
@@ -384,13 +450,15 @@ function TrialRequestCard({
   const creatorName = trial.creator.displayName || trial.creator.username || '크리에이터'
   const productName = trial.product?.nameKo || trial.product?.name || '상품'
   const profileImg = trial.creator.profileImageUrl || trial.creator.profileImage
+  const productImg = trial.product?.thumbnailUrl || trial.product?.imageUrl || trial.product?.images?.[0]
+  const shippingAddr = (trial.shippingAddress as { address?: string } | null)?.address
 
   const decidedProceed = trial.status === 'decided' && trial.decision === 'PROCEED'
   const decidedPass = trial.status === 'decided' && trial.decision === 'PASS'
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
-      {/* Creator Info */}
+      {/* Header: Creator + Status */}
       <div className="flex gap-3">
         <div className="w-11 h-11 rounded-full bg-gray-100 overflow-hidden shrink-0 flex items-center justify-center">
           {profileImg ? (
@@ -401,10 +469,15 @@ function TrialRequestCard({
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-gray-900">{creatorName}</p>
-          {trial.creator.instagramHandle && (
-            <p className="text-xs text-gray-500">@{trial.creator.instagramHandle}</p>
-          )}
-          <div className="flex flex-wrap gap-2 mt-1">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-0.5">
+            {trial.creator.instagramHandle && (
+              <p className="text-xs text-gray-500">@{trial.creator.instagramHandle}</p>
+            )}
+            {trial.creator.phone && (
+              <p className="text-xs text-gray-500 flex items-center gap-0.5">
+                <Phone className="w-3 h-3" />{trial.creator.phone}
+              </p>
+            )}
             {trial.creator.skinType && (
               <span className="text-xs bg-gray-50 text-gray-600 rounded px-2 py-0.5">
                 {trial.creator.skinType}
@@ -422,34 +495,47 @@ function TrialRequestCard({
         </span>
       </div>
 
-      {/* Product Info */}
-      <div className="flex gap-3 items-center bg-gray-50 rounded-xl p-3">
+      {/* Product + Shipping Address */}
+      <div className="flex gap-3 items-start bg-gray-50 rounded-xl p-3">
         <div className="w-10 h-10 rounded-lg bg-white overflow-hidden shrink-0">
-          {trial.product?.thumbnailUrl || trial.product?.imageUrl ? (
-            <Image
-              src={trial.product.thumbnailUrl || trial.product.imageUrl || ''}
-              alt=""
-              width={40}
-              height={40}
-              className="w-full h-full object-cover"
-            />
+          {productImg ? (
+            <Image src={productImg} alt="" width={40} height={40} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
               <Package className="w-4 h-4 text-gray-300" />
             </div>
           )}
         </div>
-        <div className="min-w-0">
-          <p className="text-xs text-gray-500">신청 상품</p>
-          <p className="text-sm font-medium text-gray-900 truncate">{productName}</p>
+        <div className="flex-1 min-w-0 space-y-1">
+          <div>
+            <p className="text-xs text-gray-500">신청 상품</p>
+            <p className="text-sm font-medium text-gray-900 truncate">{productName}</p>
+          </div>
+          {shippingAddr && (
+            <p className="text-xs text-gray-600 flex items-start gap-1">
+              <MapPin className="w-3 h-3 mt-0.5 shrink-0 text-gray-400" />
+              <span>{shippingAddr}</span>
+            </p>
+          )}
         </div>
       </div>
 
-      {/* Message */}
+      {/* Application Message */}
       {trial.message && (
         <p className="text-sm text-gray-600 bg-gray-50 rounded-xl p-3 italic">
           &ldquo;{trial.message}&rdquo;
         </p>
+      )}
+
+      {/* Creator Feedback (after trial) */}
+      {trial.feedback && (
+        <div className="bg-blue-50 rounded-xl p-3 space-y-1">
+          <p className="text-xs font-medium text-blue-700 flex items-center gap-1">
+            <MessageSquare className="w-3 h-3" />
+            크리에이터 피드백
+          </p>
+          <p className="text-sm text-blue-900">{trial.feedback}</p>
+        </div>
       )}
 
       {/* Timeline */}
@@ -469,7 +555,7 @@ function TrialRequestCard({
         <p className="text-xs text-gray-400">패스 사유: {trial.passReason}</p>
       )}
 
-      {/* Actions */}
+      {/* Actions: Pending -> Approve/Reject */}
       {trial.status === 'pending' && (
         <div className="flex gap-2">
           <Button
@@ -490,18 +576,39 @@ function TrialRequestCard({
         </div>
       )}
 
+      {/* Actions: Approved -> Inline tracking input + Ship */}
       {trial.status === 'approved' && (
-        <Button
-          onClick={() => onShip(trial)}
-          disabled={isLoading}
-          className="w-full bg-gray-900 text-white rounded-xl h-10 text-sm font-medium"
-        >
-          {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (
-            <><Send className="w-4 h-4 mr-2" />발송 처리</>
+        <div className="space-y-2">
+          {shippingAddr && (
+            <div className="bg-yellow-50 rounded-xl p-3">
+              <p className="text-xs font-medium text-yellow-700 flex items-center gap-1 mb-1">
+                <MapPin className="w-3 h-3" />
+                발송 주소
+              </p>
+              <p className="text-sm text-yellow-900">{shippingAddr}</p>
+            </div>
           )}
-        </Button>
+          <div className="flex gap-2">
+            <Input
+              value={trackingValue}
+              onChange={(e) => onTrackingChange(e.target.value)}
+              placeholder="송장번호 입력"
+              className="flex-1 rounded-xl h-10"
+            />
+            <Button
+              onClick={() => onShip(trial.id)}
+              disabled={isLoading || !trackingValue.trim()}
+              className="bg-gray-900 text-white rounded-xl h-10 text-sm font-medium px-4"
+            >
+              {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (
+                <><Send className="w-4 h-4 mr-1" />발송</>
+              )}
+            </Button>
+          </div>
+        </div>
       )}
 
+      {/* Decided: show result */}
       {decidedProceed && (
         <div className="bg-emerald-50 rounded-xl p-3 text-center">
           <p className="text-sm font-medium text-emerald-700">공구/픽 전환 완료</p>
