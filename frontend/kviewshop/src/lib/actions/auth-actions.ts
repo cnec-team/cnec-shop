@@ -78,6 +78,7 @@ export async function updateCreatorPersona(data: {
 export async function registerBuyer(data: {
   email: string
   nickname: string
+  phone?: string
   locale: string
   marketingConsent: boolean
 }) {
@@ -89,6 +90,7 @@ export async function registerBuyer(data: {
     data: {
       userId: session.user.id,
       nickname: data.nickname,
+      phone: data.phone || null,
       preferredLanguage: data.locale,
     },
   })

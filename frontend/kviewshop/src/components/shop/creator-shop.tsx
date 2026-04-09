@@ -3,9 +3,10 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { Clock, ShoppingBag, Instagram, Share2 } from 'lucide-react';
+import { Clock, ShoppingBag, Instagram, Share2, User, UserPlus } from 'lucide-react';
 import { ShareSheet } from '@/components/shop/ShareSheet';
 import { VisitTracker } from '@/components/shop/VisitTracker';
+import { useAuthStore } from '@/lib/store/auth';
 
 // =============================================
 // Types matching Prisma camelCase output
@@ -150,7 +151,7 @@ export function CreatorShopPage({
       <VisitTracker creatorId={creator.id} />
 
       {/* Header / Profile Section */}
-      <ShopHeader creator={creator} shopUrl={shopUrl} />
+      <ShopHeader creator={creator} shopUrl={shopUrl} locale={locale} />
 
       {/* Tab Navigation */}
       <div className="max-w-lg mx-auto bg-white border-b border-gray-100">
@@ -250,8 +251,9 @@ export { CreatorShopPage as CreatorShop };
 // Sub-components
 // =============================================
 
-function ShopHeader({ creator, shopUrl }: { creator: ShopCreator; shopUrl: string }) {
+function ShopHeader({ creator, shopUrl, locale }: { creator: ShopCreator; shopUrl: string; locale: string }) {
   const shopDesc = creator.bio || 'K-뷰티 크리에이터 셀렉트샵';
+  const buyer = useAuthStore((s) => s.buyer);
 
   return (
     <div className="bg-white">
@@ -260,17 +262,34 @@ function ShopHeader({ creator, shopUrl }: { creator: ShopCreator; shopUrl: strin
         <h1 className="text-lg font-bold text-gray-900">
           {creator.displayName}
         </h1>
-        <ShareSheet
-          url={shopUrl}
-          title={`${creator.displayName}의 셀렉트샵`}
-          description={shopDesc}
-          imageUrl={creator.profileImageUrl || undefined}
-          trigger={
-            <button className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
-              <Share2 className="h-4 w-4 text-gray-500" />
-            </button>
-          }
-        />
+        <div className="flex items-center gap-1">
+          {buyer ? (
+            <Link
+              href={`/${locale}/buyer/dashboard`}
+              className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+            >
+              <User className="h-4 w-4 text-gray-500" />
+            </Link>
+          ) : (
+            <Link
+              href={`/${locale}/buyer/login`}
+              className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+            >
+              <UserPlus className="h-4 w-4 text-gray-500" />
+            </Link>
+          )}
+          <ShareSheet
+            url={shopUrl}
+            title={`${creator.displayName}의 셀렉트샵`}
+            description={shopDesc}
+            imageUrl={creator.profileImageUrl || undefined}
+            trigger={
+              <button className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
+                <Share2 className="h-4 w-4 text-gray-500" />
+              </button>
+            }
+          />
+        </div>
       </div>
 
       {/* Horizontal profile: photo left + text right */}

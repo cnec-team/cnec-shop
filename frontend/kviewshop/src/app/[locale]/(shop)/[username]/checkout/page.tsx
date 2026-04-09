@@ -11,6 +11,7 @@ import {
   ShoppingBag,
   CheckCircle,
   Copy,
+  Lightbulb,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -81,6 +82,8 @@ export default function CheckoutPage() {
   const [selectedPayment, setSelectedPayment] = useState('card');
   const [deliveryMemo, setDeliveryMemo] = useState('선택하세요');
 
+  const [returnUrl, setReturnUrl] = useState('');
+
   const [form, setForm] = useState({
     name: '',
     phone: '',
@@ -89,6 +92,11 @@ export default function CheckoutPage() {
     addressDetail: '',
     zipcode: '',
   });
+
+  // Set returnUrl on client side
+  useEffect(() => {
+    setReturnUrl(window.location.pathname);
+  }, []);
 
   // Load checkout data
   useEffect(() => {
@@ -487,6 +495,26 @@ export default function CheckoutPage() {
             ))}
           </div>
         </div>
+
+        {/* Login Banner */}
+        {!buyer && (
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
+            <div className="flex items-start gap-3">
+              <Lightbulb className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm text-blue-800">
+                  회원이시면 로그인하고 배송지를 자동으로 입력하세요
+                </p>
+                <Link
+                  href={`/${locale}/buyer/login?returnUrl=${encodeURIComponent(returnUrl)}`}
+                  className="inline-flex items-center mt-2 text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors"
+                >
+                  로그인하기
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Delivery Info */}
         <div className="bg-white rounded-2xl p-5">
