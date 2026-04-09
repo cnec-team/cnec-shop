@@ -444,14 +444,68 @@ export default function LandingPage() {
       <section ref={creators.ref} className="py-24 md:py-32 bg-gray-50/30">
         <div className="max-w-[1200px] mx-auto px-5 grid lg:grid-cols-2 gap-16 items-center">
           {/* Left — Phone Mockup */}
-          <div className={`relative max-w-[380px] mx-auto lg:mx-0 ${anim(creators.isInView, 'animate-fade-in-left')}`}>
-            <Image
-              src="/images/creators/phone_mockup.png"
-              alt="셀렉트샵 미리보기"
-              width={1760}
-              height={2426}
-              className="w-full h-auto drop-shadow-2xl"
-            />
+          <div className={`relative max-w-[340px] mx-auto lg:mx-0 ${anim(creators.isInView, 'animate-fade-in-left')}`}>
+            <div className="rounded-[3rem] border-[6px] border-gray-900 bg-white shadow-2xl shadow-gray-900/10 overflow-hidden">
+              {/* Notch */}
+              <div className="relative flex justify-center">
+                <div className="w-[100px] h-[26px] bg-gray-900 rounded-b-2xl" />
+              </div>
+
+              {/* Phone content */}
+              <div className="px-5 pt-4 pb-3">
+                {/* Header */}
+                <p className="text-[10px] text-gray-400 tracking-wider">MY SELECT SHOP</p>
+                <div className="flex items-center justify-between mt-1">
+                  <p className="text-lg font-bold text-gray-900">뷰티 크리에이터 샵</p>
+                  <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center">
+                    <Heart className="h-4 w-4 text-white fill-white" />
+                  </div>
+                </div>
+
+                {/* Product grid */}
+                <div className="grid grid-cols-2 gap-3 mt-4">
+                  {[
+                    { img: '/images/creators/product_serum.jpg', name: '글로우 세럼', price: '₩38,000', badge: 'BEST', badgeColor: 'bg-blue-600' },
+                    { img: '/images/creators/product_ampoule.jpg', name: '톤업 크림', price: '₩29,000', badge: 'NEW', badgeColor: 'bg-gray-900' },
+                    { img: '/images/creators/product_cream.jpg', name: '립 틴트', price: '₩18,000', badge: 'HOT', badgeColor: 'bg-rose-500' },
+                    { img: '/images/creators/product_toner.jpg', name: '클렌징 오일', price: '₩25,000', badge: '', badgeColor: '' },
+                  ].map((p) => (
+                    <div key={p.name}>
+                      <div className="relative rounded-xl overflow-hidden bg-gray-50 aspect-square">
+                        <Image src={p.img} alt={p.name} width={256} height={256} className="w-full h-full object-cover" />
+                        {p.badge && (
+                          <span className={`absolute top-2 left-2 ${p.badgeColor} text-white text-[10px] font-bold px-2 py-0.5 rounded-md`}>
+                            {p.badge}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm font-semibold text-gray-900 mt-2">{p.name}</p>
+                      <p className="text-sm font-bold text-blue-600">{p.price}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Bottom nav */}
+              <div className="px-5 py-3 border-t border-gray-100 flex justify-around">
+                {[
+                  { icon: Home, label: '홈', active: true },
+                  { icon: ShoppingBag, label: '상품', active: false },
+                  { icon: BarChart3, label: '매출', active: false },
+                  { icon: User, label: '마이', active: false },
+                ].map((tab) => (
+                  <div key={tab.label} className={`flex flex-col items-center gap-0.5 ${tab.active ? 'text-blue-600' : 'text-gray-300'}`}>
+                    <tab.icon className="h-5 w-5" />
+                    <span className="text-[10px] font-medium">{tab.label}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Home indicator */}
+              <div className="flex justify-center pb-2">
+                <div className="w-[120px] h-[4px] bg-gray-900 rounded-full" />
+              </div>
+            </div>
           </div>
 
           {/* Right — Text */}
