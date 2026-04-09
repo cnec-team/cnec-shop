@@ -238,25 +238,61 @@ export default function LandingPage() {
 
                   {/* Product grid */}
                   <div className="grid grid-cols-2 gap-2.5 mt-3">
-                    {[
-                      { bg: 'from-amber-100 to-orange-50', name: '비타민 세럼', price: '38,000', badge: 'BEST', badgeColor: 'bg-blue-600' },
-                      { bg: 'from-sky-50 to-blue-50', name: '수분 크림', price: '42,000', badge: 'NEW', badgeColor: 'bg-gray-900' },
-                      { bg: 'from-rose-100 to-pink-50', name: '틴트 립밤', price: '18,000', badge: 'HOT', badgeColor: 'bg-rose-500' },
-                      { bg: 'from-yellow-50 to-amber-50', name: '페이스 오일', price: '55,000', badge: null, badgeColor: '' },
-                    ].map((p) => (
-                      <div key={p.name} className="bg-gray-50 rounded-xl p-2.5 relative">
-                        <div className={`h-[90px] rounded-lg bg-gradient-to-br ${p.bg} flex items-center justify-center`}>
-                          <div className="w-10 h-14 rounded-lg bg-white/60" />
+                    {/* Vitamin C Serum */}
+                    <div className="bg-gray-50 rounded-xl p-2.5 relative">
+                      <div className="h-[90px] rounded-lg bg-gradient-to-br from-amber-100 to-orange-50 flex flex-col items-center justify-center relative overflow-hidden">
+                        <div className="w-6 h-10 rounded-sm bg-amber-700/60 relative">
+                          <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-2 h-3 bg-amber-900/50 rounded-t-sm" />
                         </div>
-                        {p.badge && (
-                          <span className={`absolute top-1.5 left-1.5 ${p.badgeColor} text-white text-[9px] font-bold px-1.5 py-0.5 rounded`}>
-                            {p.badge}
-                          </span>
-                        )}
-                        <p className="text-xs font-medium text-gray-700 mt-2">{p.name}</p>
-                        <p className="text-xs font-bold text-blue-600">{p.price}원</p>
+                        <span className="text-[6px] font-bold text-amber-800/70 mt-1 tracking-tight">VITAMIN C SERUM</span>
                       </div>
-                    ))}
+                      <span className="absolute top-1.5 left-1.5 bg-blue-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">BEST</span>
+                      <p className="text-xs font-medium text-gray-700 mt-2">비타민 세럼</p>
+                      <p className="text-xs font-bold text-blue-600">38,000원</p>
+                    </div>
+
+                    {/* Moisture Cream */}
+                    <div className="bg-gray-50 rounded-xl p-2.5 relative">
+                      <div className="h-[90px] rounded-lg bg-gradient-to-br from-sky-50 to-blue-50 flex flex-col items-center justify-center relative overflow-hidden">
+                        <div className="w-10 h-6 rounded-md bg-white/80 border border-sky-200/60 shadow-sm" />
+                        <div className="w-11 h-1.5 rounded-b-md bg-sky-100/80 -mt-0.5" />
+                        <span className="text-[6px] font-bold text-sky-700/70 mt-1.5 tracking-tight">MOISTURE CREAM</span>
+                      </div>
+                      <span className="absolute top-1.5 left-1.5 bg-gray-900 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">NEW</span>
+                      <p className="text-xs font-medium text-gray-700 mt-2">수분 크림</p>
+                      <p className="text-xs font-bold text-blue-600">42,000원</p>
+                    </div>
+
+                    {/* Tinted Lip Balm */}
+                    <div className="bg-gray-50 rounded-xl p-2.5 relative">
+                      <div className="h-[90px] rounded-lg bg-gradient-to-br from-rose-100 to-pink-50 flex flex-col items-center justify-center relative overflow-hidden">
+                        <div className="flex items-end gap-1">
+                          <div className="w-3 h-11 rounded-full bg-rose-300/70 relative">
+                            <div className="absolute top-0 w-3 h-3 rounded-full bg-rose-400/80" />
+                          </div>
+                          <div className="w-3 h-9 rounded-full bg-rose-200/60" />
+                        </div>
+                        <span className="text-[6px] font-bold text-rose-700/70 mt-1 tracking-tight">TINTED LIP BALM</span>
+                      </div>
+                      <span className="absolute top-1.5 left-1.5 bg-rose-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">HOT</span>
+                      <p className="text-xs font-medium text-gray-700 mt-2">틴트 립밤</p>
+                      <p className="text-xs font-bold text-blue-600">18,000원</p>
+                    </div>
+
+                    {/* Face Oil */}
+                    <div className="bg-gray-50 rounded-xl p-2.5 relative">
+                      <div className="h-[90px] rounded-lg bg-gradient-to-br from-yellow-50 to-amber-50 flex flex-col items-center justify-center relative overflow-hidden">
+                        <div className="w-6 h-9 rounded-sm bg-amber-600/40 relative">
+                          <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-1.5 h-3 bg-amber-800/40 rounded-t-sm" />
+                          <div className="absolute top-1 left-1/2 -translate-x-1/2 w-4 h-3 rounded-sm bg-amber-100/60 flex items-center justify-center">
+                            <span className="text-[4px] font-bold text-amber-800/60">OIL</span>
+                          </div>
+                        </div>
+                        <span className="text-[6px] font-bold text-amber-700/70 mt-1 tracking-tight">FACE OIL</span>
+                      </div>
+                      <p className="text-xs font-medium text-gray-700 mt-2">페이스 오일</p>
+                      <p className="text-xs font-bold text-blue-600">55,000원</p>
+                    </div>
                   </div>
 
                   {/* Bottom nav */}
