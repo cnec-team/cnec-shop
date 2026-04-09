@@ -25,6 +25,11 @@ import {
   Link2,
   Instagram,
   Youtube,
+  Gift,
+  Zap,
+  Building2,
+  Store,
+  ClipboardCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -114,7 +119,10 @@ export default function LandingPage() {
   const hero = useInView();
   const stats = useInView();
   const steps = useInView();
+  const products = useInView();
+  const creatorSteps = useInView();
   const creators = useInView();
+  const recommendedCreators = useInView();
   const brands = useInView();
   const benefits = useInView();
   const cta = useInView();
@@ -323,39 +331,165 @@ export default function LandingPage() {
               HOW IT WORKS
             </p>
             <h2 className={`text-3xl md:text-5xl font-black tracking-tight leading-[1.08] text-gray-900 mt-4 ${anim(steps.isInView, 'animate-fade-in-up delay-100')}`}>
-              이렇게 시작하세요
+              클릭 한 번으로,
+              <br />
+              공동구매가 시작됩니다
+            </h2>
+            <p className={`text-base md:text-lg text-gray-400 mt-4 max-w-2xl mx-auto ${anim(steps.isInView, 'animate-fade-in-up delay-200')}`}>
+              브랜드가 상품을 등록하면, 크리에이터가 내 셀렉트샵에 추가하여 팔로워에게 직접 판매합니다.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto relative">
+            {/* BRAND Card */}
+            <div className={`relative ${anim(steps.isInView, 'animate-fade-in-up delay-300')}`}>
+              <div className="group bg-white rounded-3xl border border-gray-100 p-8 shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-blue-100 transition-all duration-500 h-full">
+                <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center mb-6">
+                  <Building2 className="h-7 w-7 text-blue-600" />
+                </div>
+                <p className="text-xs font-bold uppercase tracking-widest text-blue-600 mb-2">BRAND</p>
+                <h3 className="text-xl font-bold text-gray-900 mb-4">상품 등록 + 캠페인</h3>
+                <p className="text-sm text-gray-400 leading-relaxed">
+                  상품을 등록하고 공구/상시 캠페인을 생성합니다. 크리에이터가 선택하면 판매가 시작됩니다.
+                </p>
+              </div>
+              <div className="hidden md:flex absolute top-1/2 -right-3 z-10 -translate-y-1/2">
+                <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center">
+                  <ChevronRight className="h-3.5 w-3.5 text-white" />
+                </div>
+              </div>
+            </div>
+
+            {/* CNEC Card — highlighted */}
+            <div className={`relative ${anim(steps.isInView, 'animate-fade-in-up delay-400')}`}>
+              <div className="group rounded-3xl p-8 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-500 h-full text-white" style={blueGradientBg}>
+                <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center mb-6">
+                  <Zap className="h-7 w-7 text-white" />
+                </div>
+                <p className="text-xs font-bold uppercase tracking-widest text-blue-200 mb-2">CNEC</p>
+                <h3 className="text-xl font-bold mb-4">플랫폼 운영</h3>
+                <div className="space-y-3 mt-4">
+                  {['결제(PG) 처리', '전환 추적', '수수료 정산', '크리에이터-브랜드 매칭'].map((item) => (
+                    <div key={item} className="flex items-center gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-blue-200 shrink-0" />
+                      <span className="text-sm text-white/90">{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="hidden md:flex absolute top-1/2 -right-3 z-10 -translate-y-1/2">
+                <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center">
+                  <ChevronRight className="h-3.5 w-3.5 text-white" />
+                </div>
+              </div>
+            </div>
+
+            {/* CREATOR Card */}
+            <div className={`relative ${anim(steps.isInView, 'animate-fade-in-up delay-500')}`}>
+              <div className="group bg-white rounded-3xl border border-gray-100 p-8 shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-blue-100 transition-all duration-500 h-full">
+                <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center mb-6">
+                  <Store className="h-7 w-7 text-blue-600" />
+                </div>
+                <p className="text-xs font-bold uppercase tracking-widest text-blue-600 mb-2">CREATOR</p>
+                <h3 className="text-xl font-bold text-gray-900 mb-4">셀렉트샵 운영</h3>
+                <p className="text-sm text-gray-400 leading-relaxed">
+                  내 셀렉트샵에 상품을 추가하고 SNS로 팔로워에게 홍보하세요
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ──── Products Section ──── */}
+      <section ref={products.ref} className="py-24 md:py-32 bg-gray-50/50">
+        <div className="max-w-[1200px] mx-auto px-5">
+          <div className="text-center mb-14">
+            <h2 className={`text-3xl md:text-5xl font-black tracking-tight leading-[1.08] text-gray-900 ${anim(products.isInView, 'animate-fade-in-up')}`}>
+              지금 공구 가능한 상품
+            </h2>
+            <p className={`text-base md:text-lg text-gray-400 mt-4 ${anim(products.isInView, 'animate-fade-in-up delay-100')}`}>
+              브랜드가 등록한 검증된 상품을 내 셀렉트샵에 추가하세요
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-5 max-w-5xl mx-auto">
+            {[
+              { brand: '하우파파', name: '리페어 에센스 세럼', original: '48,000', price: '33,600', discount: 30, bg: 'from-amber-100 to-orange-50', badgeColor: 'bg-rose-500', badge: 'BEST' },
+              { brand: '누씨오', name: '비타민C 브라이트닝 앰플', original: '52,000', price: '36,400', discount: 30, bg: 'from-sky-100 to-blue-50', badgeColor: 'bg-blue-600', badge: 'NEW' },
+              { brand: '하우파파', name: '콜라겐 수분 크림', original: '45,000', price: '31,500', discount: 30, bg: 'from-emerald-50 to-teal-50', badgeColor: 'bg-emerald-500', badge: 'HOT' },
+              { brand: '누씨오', name: '히알루론산 토너 패드', original: '38,000', price: '26,600', discount: 30, bg: 'from-violet-50 to-purple-50', badgeColor: '', badge: '' },
+            ].map((p, i) => (
+              <div
+                key={p.name}
+                className={`group bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-500 ${anim(products.isInView, `animate-fade-in-up delay-${(i + 2) * 100}`)}`}
+              >
+                <div className={`relative h-[180px] md:h-[200px] bg-gradient-to-br ${p.bg} flex items-center justify-center`}>
+                  <div className="w-16 h-24 rounded-xl bg-white/70 shadow-sm" />
+                  {p.badge && (
+                    <span className={`absolute top-3 left-3 ${p.badgeColor} text-white text-[10px] font-bold px-2 py-1 rounded-md`}>
+                      {p.badge}
+                    </span>
+                  )}
+                  {p.discount > 0 && (
+                    <span className="absolute top-3 right-3 bg-gray-900 text-white text-[10px] font-bold px-2 py-1 rounded-md">
+                      {p.discount}%
+                    </span>
+                  )}
+                </div>
+                <div className="p-4">
+                  <p className="text-[11px] text-gray-400 font-medium">{p.brand}</p>
+                  <p className="text-sm font-semibold text-gray-900 mt-1 leading-snug">{p.name}</p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="text-xs text-gray-300 line-through">{p.original}원</span>
+                    <span className="text-sm font-bold text-blue-600">{p.price}원</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className={`text-center mt-12 ${anim(products.isInView, 'animate-fade-in-up delay-700')}`}>
+            <Link href="/ko/shop">
+              <Button variant="outline" className="group rounded-full px-8 py-5 text-base font-semibold border-gray-200 hover:border-gray-300 hover:bg-gray-50/80">
+                공구 상품 둘러보기
+                <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ──── Creator 4 Steps ──── */}
+      <section ref={creatorSteps.ref} className="py-24 md:py-32">
+        <div className="max-w-[1200px] mx-auto px-5">
+          <div className="text-center mb-16">
+            <h2 className={`text-3xl md:text-5xl font-black tracking-tight leading-[1.08] text-gray-900 ${anim(creatorSteps.isInView, 'animate-fade-in-up')}`}>
+              크리에이터 4단계
             </h2>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto relative">
+          <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-6 max-w-5xl mx-auto">
             {[
-              { num: '01', Icon: UserPlus, title: '가입 및 심사', desc: '가입하고 심사를 받아 셀렉트샵을 개설하세요.' },
-              { num: '02', Icon: ShoppingBag, title: '상품 선택', desc: '다양한 브랜드의 상품을 내 샵에 담으세요.' },
-              { num: '03', Icon: Wallet, title: '판매 및 수익', desc: '상품이 판매되면 자동으로 수익이 정산됩니다.' },
+              { num: '01', Icon: ClipboardCheck, title: '상품 선택', desc: '마음에 드는 상품을 골라 내 셀렉트샵에 추가' },
+              { num: '02', Icon: Gift, title: '샘플 체험', desc: '써보고 싶은 제품은 체험 신청. 브랜드가 샘플을 보내드려요' },
+              { num: '03', Icon: Megaphone, title: 'SNS 홍보', desc: '내 샵 링크를 공유하고 팔로워에게 직접 판매' },
+              { num: '04', Icon: Wallet, title: '자동 정산', desc: '판매 수수료가 매월 자동으로 정산됩니다' },
             ].map((card, i) => (
-              <div key={card.num} className="relative">
-                <div
-                  className={`group bg-white rounded-3xl border border-gray-100 p-8 shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-blue-100 transition-all duration-500 ${anim(steps.isInView, `animate-fade-in-up delay-${(i + 3) * 100}`)}`}
-                >
-                  <div className="flex items-center gap-4 mb-6">
-                    <span className="text-6xl font-black text-gray-100 group-hover:text-blue-50 transition-colors duration-500">
-                      {card.num}
-                    </span>
-                    <div className="w-12 h-12 rounded-2xl shadow-sm flex items-center justify-center" style={blueGradientBg}>
-                      <card.Icon className="h-6 w-6 text-white" />
-                    </div>
+              <div
+                key={card.num}
+                className={`group bg-white rounded-3xl border border-gray-100 p-7 shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-blue-100 transition-all duration-500 relative overflow-hidden ${anim(creatorSteps.isInView, `animate-fade-in-up delay-${(i + 2) * 100}`)}`}
+              >
+                <span className="absolute top-4 right-4 text-[4rem] font-black text-gray-50 group-hover:text-blue-50 transition-colors duration-500 leading-none select-none">
+                  {card.num}
+                </span>
+                <div className="relative z-10">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center mb-5">
+                    <card.Icon className="h-6 w-6 text-blue-600" />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-3">{card.title}</h3>
+                  <h3 className="text-lg font-bold text-gray-900 mb-3">{card.title}</h3>
                   <p className="text-sm text-gray-400 leading-relaxed">{card.desc}</p>
                 </div>
-                {/* Arrow between cards */}
-                {i < 2 && (
-                  <div className="hidden md:flex absolute top-1/2 -right-4 z-10 -translate-y-1/2">
-                    <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center">
-                      <ChevronRight className="h-4 w-4 text-blue-400" />
-                    </div>
-                  </div>
-                )}
               </div>
             ))}
           </div>
@@ -378,18 +512,22 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              <div className="flex gap-3 mt-4">
+              <div className="flex gap-3 mt-5">
                 {[
-                  { bg: 'from-amber-100 to-orange-50', name: '글로우 세럼', price: '38,000' },
-                  { bg: 'from-sky-50 to-blue-50', name: '수분 크림', price: '42,000' },
-                  { bg: 'from-rose-100 to-pink-50', name: '틴트 립밤', price: '18,000' },
+                  { bg: 'from-amber-100 to-orange-50', brand: '하우파파', name: '리페어 세럼', price: '33,600', original: '48,000' },
+                  { bg: 'from-sky-100 to-blue-50', brand: '누씨오', name: '비타민C 앰플', price: '36,400', original: '52,000' },
+                  { bg: 'from-rose-100 to-pink-50', brand: '하우파파', name: '수분 크림', price: '31,500', original: '45,000' },
                 ].map((p) => (
                   <div key={p.name} className="bg-gray-50 rounded-xl p-3 flex-1">
                     <div className={`h-[80px] rounded-lg bg-gradient-to-br ${p.bg} flex items-center justify-center`}>
                       <div className="w-8 h-12 rounded-md bg-white/60" />
                     </div>
-                    <p className="text-xs font-medium mt-2 text-gray-700">{p.name}</p>
-                    <p className="text-xs font-bold text-blue-600">{p.price}원</p>
+                    <p className="text-[10px] text-gray-400 mt-2">{p.brand}</p>
+                    <p className="text-xs font-medium text-gray-700">{p.name}</p>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <span className="text-[10px] text-gray-300 line-through">{p.original}</span>
+                      <span className="text-xs font-bold text-blue-600">{p.price}원</span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -430,9 +568,10 @@ export default function LandingPage() {
               운영하세요
             </h2>
 
-            <div className="mt-10 space-y-8">
+            <div className="mt-10 space-y-7">
               {[
                 { Icon: ShoppingBag, title: '상품을 골라 내 샵에 추가', desc: '브랜드 상품을 검색하고 마음에 드는 상품을 내 셀렉트샵에 추가하세요' },
+                { Icon: Gift, title: '써보고 공구 결정', desc: '체험 신청하면 브랜드가 샘플을 보내드려요. 직접 써보고 마음에 드는 제품만 공구하세요' },
                 { Icon: Megaphone, title: 'SNS에 내 샵 링크 공유', desc: '인스타, 유튜브, 틱톡에 내 셀렉트샵 링크를 공유하고 팔로워에게 직접 판매하세요' },
                 { Icon: Wallet, title: '판매 수수료 자동 정산', desc: '직접 전환 + 간접 전환(3%), 매월 20일 자동 정산됩니다' },
               ].map((f) => (
@@ -457,6 +596,57 @@ export default function LandingPage() {
                 <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ──── Recommended Creators ──── */}
+      <section ref={recommendedCreators.ref} className="py-24 md:py-32">
+        <div className="max-w-[1200px] mx-auto px-5">
+          <div className="text-center mb-14">
+            <p className={`text-sm font-semibold uppercase tracking-[0.15em] text-blue-600 ${anim(recommendedCreators.isInView, 'animate-fade-in-up')}`}>
+              CREATORS
+            </p>
+            <h2 className={`text-3xl md:text-5xl font-black tracking-tight leading-[1.08] text-gray-900 mt-4 ${anim(recommendedCreators.isInView, 'animate-fade-in-up delay-100')}`}>
+              추천 크리에이터
+            </h2>
+            <p className={`text-base md:text-lg text-gray-400 mt-4 ${anim(recommendedCreators.isInView, 'animate-fade-in-up delay-200')}`}>
+              검증된 뷰티 크리에이터들의 셀렉트샵을 만나보세요
+            </p>
+          </div>
+
+          <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-5 max-w-5xl mx-auto">
+            {[
+              { initial: 'S', name: '수아뷰티', handle: '@sua_beauty', category: '스킨케어', followers: '45.2K', color: 'from-rose-400 to-pink-500', products: 12 },
+              { initial: 'M', name: '미니뷰티랩', handle: '@mini_beautylab', category: '메이크업', followers: '32.1K', color: 'from-violet-400 to-purple-500', products: 8 },
+              { initial: 'J', name: '제이스킨', handle: '@j_skin_official', category: '더마', followers: '28.7K', color: 'from-blue-400 to-indigo-500', products: 15 },
+              { initial: 'H', name: '혜린픽', handle: '@hyerin_pick', category: '클린뷰티', followers: '19.5K', color: 'from-emerald-400 to-teal-500', products: 6 },
+            ].map((c, i) => (
+              <div
+                key={c.handle}
+                className={`group bg-white rounded-2xl border border-gray-100 p-6 text-center hover:shadow-lg hover:-translate-y-1 transition-all duration-500 ${anim(recommendedCreators.isInView, `animate-fade-in-up delay-${(i + 3) * 100}`)}`}
+              >
+                <div className={`w-16 h-16 rounded-full bg-gradient-to-br ${c.color} flex items-center justify-center mx-auto mb-4`}>
+                  <span className="text-white text-xl font-bold">{c.initial}</span>
+                </div>
+                <h3 className="text-base font-bold text-gray-900">{c.name}</h3>
+                <p className="text-xs text-gray-400 mt-1">{c.handle}</p>
+                <span className="inline-block mt-3 px-3 py-1 rounded-full bg-blue-50 text-xs font-semibold text-blue-600">
+                  {c.category}
+                </span>
+                <div className="flex items-center justify-center gap-4 mt-4 pt-4 border-t border-gray-50">
+                  <div>
+                    <p className="text-sm font-bold text-gray-900">{c.followers}</p>
+                    <p className="text-[10px] text-gray-400">팔로워</p>
+                  </div>
+                  <div className="w-px h-6 bg-gray-100" />
+                  <div>
+                    <p className="text-sm font-bold text-gray-900">{c.products}개</p>
+                    <p className="text-[10px] text-gray-400">상품</p>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
