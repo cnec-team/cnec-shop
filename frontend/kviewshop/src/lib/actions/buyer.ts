@@ -2,6 +2,8 @@
 
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
+import bcrypt from 'bcryptjs'
+import { randomUUID } from 'crypto'
 
 async function requireBuyer() {
   const session = await auth()
@@ -482,5 +484,198 @@ export async function unsubscribeFromCreator(subId: string) {
   return prisma.mallSubscription.update({
     where: { id: subId },
     data: { status: 'cancelled' },
+  })
+}
+
+// ==================== Settings: Shipping Addresses ====================
+
+export interface ShippingAddress {
+  id: string
+  label: string
+  name: string
+  phone: string
+  address: string
+  addressDetail: string
+  zipcode: string
+  isDefault: boolean
+}
+
+export async function getShippingAddresses(
+  buyerId: string
+): Promise<ShippingAddress[]> {
+  const { buyer } = await requireBuyer()
+  if (buyer.id !== buyerId) throw new Error('Forbidden')
+
+  try {
+    const raw = buyer.defaultShippingAddress as any
+    if (!raw || !Array.isArray(raw)) return []
+    return raw as ShippingAddress[]
+  } catch {
+    return []
+  }
+}
+
+export async function addShippingAddress(
+  buyerId: string,
+  address: Omit<ShippingAddress, 'id'>
+): Promise<ShippingAddress> {
+  const { buyer } = await requireBuyer()
+  if (buyer.id !== buyerId) throw new Error('Forbidden')
+
+  const existing = (buyer.defaultShippingAddress as any as ShippingAddress[]) || []
+  const newAddress: ShippingAddress = {
+    ...address,
+    id: randomUUID(),
+  }
+
+  let updated: ShippingAddress[]
+  if (newAddress.isDefault) {
+    updated = existing.map((a) => ({ ...a, isDefault: false }))
+  } else {
+    updated = [...existing]
+  }
+  updated.push(newAddress)
+
+  // If this is the first address, make it default
+  if (updated.length === 1) {
+    updated[0].isDefault = true
+  }
+
+  await prisma.buyer.update({
+    where: { id: buyer.id },
+    data: { defaultShippingAddress: updated as any },
+  })
+
+  return newAddress
+}
+
+export async function updateShippingAddress(
+  buyerId: string,
+  addressId: string,
+  data: Partial<ShippingAddress>
+) {
+  const { buyer } = await requireBuyer()
+  if (buyer.id !== buyerId) throw new Error('Forbidden')
+
+  const existing = (buyer.defaultShippingAddress as any as ShippingAddress[]) || []
+  const index = existing.findIndex((a) => a.id === addressId)
+  if (index === -1) throw new Error('배송지를 찾을 수 없습니다')
+
+  let updated = existing.map((a, i) => {
+    if (i === index) return { ...a, ...data }
+    return a
+  })
+
+  // If the updated address is set to default, un-default others
+  if (data.isDefault) {
+    updated = updated.map((a) =>
+      a.id === addressId ? a : { ...a, isDefault: false }
+    )
+  }
+
+  await prisma.buyer.update({
+    where: { id: buyer.id },
+    data: { defaultShippingAddress: updated as any },
+  })
+}
+
+export async function deleteShippingAddress(
+  buyerId: string,
+  addressId: string
+) {
+  const { buyer } = await requireBuyer()
+  if (buyer.id !== buyerId) throw new Error('Forbidden')
+
+  const existing = (buyer.defaultShippingAddress as any as ShippingAddress[]) || []
+  const updated = existing.filter((a) => a.id !== addressId)
+
+  // If we deleted the default, make the first one default
+  if (updated.length > 0 && !updated.some((a) => a.isDefault)) {
+    updated[0].isDefault = true
+  }
+
+  await prisma.buyer.update({
+    where: { id: buyer.id },
+    data: { defaultShippingAddress: updated as any },
+  })
+}
+
+export async function setDefaultShippingAddress(
+  buyerId: string,
+  addressId: string
+) {
+  const { buyer } = await requireBuyer()
+  if (buyer.id !== buyerId) throw new Error('Forbidden')
+
+  const existing = (buyer.defaultShippingAddress as any as ShippingAddress[]) || []
+  const updated = existing.map((a) => ({
+    ...a,
+    isDefault: a.id === addressId,
+  }))
+
+  await prisma.buyer.update({
+    where: { id: buyer.id },
+    data: { defaultShippingAddress: updated as any },
+  })
+}
+
+// ==================== Settings: Profile ====================
+
+export async function updateBuyerProfile(data: {
+  nickname?: string
+  phone?: string
+}) {
+  const { buyer } = await requireBuyer()
+
+  await prisma.buyer.update({
+    where: { id: buyer.id },
+    data: {
+      ...(data.nickname !== undefined && { nickname: data.nickname }),
+      ...(data.phone !== undefined && { phone: data.phone }),
+    },
+  })
+}
+
+// ==================== Settings: Password ====================
+
+export async function updateBuyerPassword(data: {
+  currentPassword: string
+  newPassword: string
+}) {
+  const { user } = await requireBuyer()
+
+  const dbUser = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { passwordHash: true },
+  })
+
+  if (!dbUser || !dbUser.passwordHash) {
+    throw new Error('비밀번호를 변경할 수 없습니다')
+  }
+
+  const isValid = await bcrypt.compare(data.currentPassword, dbUser.passwordHash)
+  if (!isValid) {
+    throw new Error('현재 비밀번호가 일치하지 않습니다')
+  }
+
+  const hashedPassword = await bcrypt.hash(data.newPassword, 12)
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { passwordHash: hashedPassword },
+  })
+}
+
+// ==================== Settings: Marketing ====================
+
+export async function updateMarketingConsent(
+  buyerId: string,
+  consent: boolean
+) {
+  const { buyer } = await requireBuyer()
+  if (buyer.id !== buyerId) throw new Error('Forbidden')
+
+  await prisma.buyer.update({
+    where: { id: buyer.id },
+    data: { marketingConsent: consent },
   })
 }
