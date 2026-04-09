@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -331,24 +332,24 @@ export default function CreatorProductsPage() {
 
             return (
               <div key={product.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
-                <div className="aspect-square bg-gray-50 relative overflow-hidden">
-                  <SafeImage
-                    src={product.images?.[0] || product.imageUrl}
-                    alt={product.name}
-                    fill
-                    className="object-cover"
-                    fallbackClassName="w-full h-full"
-                    sizes="(max-width: 768px) 50vw, 25vw"
-                  />
-                  {isGonggu && (
-                    <span className="absolute top-2 left-2 bg-blue-50 text-blue-700 text-[10px] font-medium px-2 py-0.5 rounded-full">
-                      공구
-                    </span>
-                  )}
-                </div>
+                <Link href={`/${locale}/creator/products/${product.id}`} className="block">
+                  <div className="aspect-square bg-gray-50 relative overflow-hidden">
+                    <SafeImage
+                      src={product.images?.[0] || product.imageUrl}
+                      alt={product.name}
+                      fill
+                      className="object-cover"
+                      fallbackClassName="w-full h-full"
+                      sizes="(max-width: 768px) 50vw, 25vw"
+                    />
+                    {isGonggu && (
+                      <span className="absolute top-2 left-2 bg-blue-50 text-blue-700 text-[10px] font-medium px-2 py-0.5 rounded-full">
+                        공구
+                      </span>
+                    )}
+                  </div>
 
-                <div className="p-3 flex-1 flex flex-col">
-                  <div className="flex-1">
+                  <div className="p-3">
                     {product.brand && (
                       <BrandBadge brandName={product.brand.brandName} />
                     )}
@@ -370,6 +371,9 @@ export default function CreatorProductsPage() {
                       팔면 ₩{earnings.toLocaleString()}
                     </p>
                   </div>
+                </Link>
+
+                <div className="px-3 flex-1 flex flex-col justify-end">
 
                   <div className="mt-2.5">
                     {isAdded ? (
