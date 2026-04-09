@@ -13,6 +13,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog'
 import {
@@ -253,6 +254,7 @@ export default function CreatorTrialCatalogPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>체험 신청</DialogTitle>
+            <DialogDescription>샘플을 받아보고 공구 여부를 결정하세요</DialogDescription>
           </DialogHeader>
           {selectedProduct && (
             <div className="space-y-4">

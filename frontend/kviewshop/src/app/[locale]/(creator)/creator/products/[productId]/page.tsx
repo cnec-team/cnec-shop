@@ -30,6 +30,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -359,6 +360,7 @@ export default function CreatorProductDetailPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>체험 신청</DialogTitle>
+            <DialogDescription>샘플을 받아보고 공구 여부를 결정하세요</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="flex gap-3 items-center">
