@@ -22,6 +22,8 @@ import {
   Settings,
   Video,
   ChevronRight,
+  Gift,
+  Package,
 } from 'lucide-react';
 import {
   Sheet,
@@ -63,6 +65,13 @@ export function MobileBottomNav() {
       label: '내 셀렉트샵',
       items: [
         { title: '배너 관리', description: '샵 배너 이미지 설정', href: `${base}/banners`, icon: ImageIcon },
+      ],
+    },
+    {
+      label: '제품 체험',
+      items: [
+        { title: '체험 가능 상품', description: '샘플 받고 공구 결정', href: `${base}/trial`, icon: Gift },
+        { title: '내 체험 현황', description: '신청 및 진행 상황', href: `${base}/trial/my`, icon: Package },
       ],
     },
     {

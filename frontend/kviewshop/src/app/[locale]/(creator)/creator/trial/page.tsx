@@ -30,7 +30,7 @@ import { toast } from 'sonner'
 import {
   getTrialableProducts,
   requestProductTrial,
-  getCreatorShippingAddress,
+  getCreatorShippingInfo,
 } from '@/lib/actions/trial'
 
 type TrialProduct = {
@@ -97,6 +97,8 @@ export default function CreatorTrialCatalogPage() {
   const [message, setMessage] = useState('')
   const [address, setAddress] = useState('')
   const [savedAddress, setSavedAddress] = useState('')
+  const [savedName, setSavedName] = useState('')
+  const [savedPhone, setSavedPhone] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   const fetchProducts = useCallback(async () => {
@@ -121,10 +123,10 @@ export default function CreatorTrialCatalogPage() {
   }, [fetchProducts])
 
   useEffect(() => {
-    getCreatorShippingAddress().then((res) => {
-      if (res.address) {
-        setSavedAddress(res.address)
-      }
+    getCreatorShippingInfo().then((res) => {
+      if (res.address) setSavedAddress(res.address)
+      if (res.name) setSavedName(res.name)
+      if (res.phone) setSavedPhone(res.phone)
     })
   }, [])
 
@@ -282,6 +284,22 @@ export default function CreatorTrialCatalogPage() {
                 </div>
               </div>
 
+              {/* Shipping Info Confirmation */}
+              <div className="bg-gray-50 rounded-xl p-3 space-y-2">
+                <p className="text-xs font-medium text-gray-700">배송 정보</p>
+                <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-sm">
+                  <span className="text-gray-400">이름</span>
+                  <span className="text-gray-900 font-medium">{savedName || '미입력'}</span>
+                  <span className="text-gray-400">연락처</span>
+                  <span className="text-gray-900 font-medium">{savedPhone || '미입력'}</span>
+                  <span className="text-gray-400">주소</span>
+                  <span className="text-gray-900 font-medium">{address || '미입력'}</span>
+                </div>
+                {(!savedName || !savedPhone) && (
+                  <p className="text-xs text-red-500">설정에서 이름과 연락처를 입력해주세요</p>
+                )}
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="trial-address">
                   배송지 <span className="text-red-500">*</span>
@@ -292,9 +310,6 @@ export default function CreatorTrialCatalogPage() {
                   onChange={(e) => setAddress(e.target.value)}
                   placeholder="배송 받을 주소를 입력하세요"
                 />
-                {savedAddress && address === savedAddress && (
-                  <p className="text-xs text-gray-400">내 프로필에 저장된 주소입니다</p>
-                )}
               </div>
 
               <div className="space-y-2">

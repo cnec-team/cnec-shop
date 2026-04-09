@@ -32,6 +32,7 @@ import {
   Gift,
   ShoppingBag,
   Plus,
+  CalendarClock,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -39,6 +40,7 @@ import {
   cancelProductTrial,
   confirmTrialReceived,
   decideProductTrial,
+  requestScheduleChange,
 } from '@/lib/actions/trial'
 
 interface Trial {
@@ -55,6 +57,9 @@ interface Trial {
   receivedAt: Date | string | null
   decidedAt: Date | string | null
   convertedTo: string | null
+  scheduleChangeRequest: string | null
+  scheduleChangeBy: string | null
+  scheduleChangeStatus: string | null
   product: {
     id: string
     name: string | null
@@ -110,6 +115,10 @@ export default function MyTrialsPage() {
   const [filter, setFilter] = useState('')
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
+  // Schedule change
+  const [scheduleTarget, setScheduleTarget] = useState<Trial | null>(null)
+  const [scheduleMessage, setScheduleMessage] = useState('')
+
   // Decision modal
   const [decideTarget, setDecideTarget] = useState<Trial | null>(null)
   const [passSheetOpen, setPassSheetOpen] = useState(false)
@@ -132,6 +141,29 @@ export default function MyTrialsPage() {
   useEffect(() => {
     fetchTrials()
   }, [fetchTrials])
+
+  const handleScheduleChange = async () => {
+    if (!scheduleTarget || !scheduleMessage.trim()) return
+    setActionLoading(scheduleTarget.id)
+    try {
+      const res = await requestScheduleChange({
+        trialId: scheduleTarget.id,
+        message: scheduleMessage.trim(),
+      })
+      if (res.success) {
+        toast.success('일정 변경을 요청했어요.')
+        setScheduleTarget(null)
+        setScheduleMessage('')
+        fetchTrials()
+      } else {
+        toast.error(res.error ?? '요청에 실패했어요.')
+      }
+    } catch {
+      toast.error('요청에 실패했어요.')
+    } finally {
+      setActionLoading(null)
+    }
+  }
 
   const handleCancel = async (trialId: string) => {
     setActionLoading(trialId)
@@ -256,6 +288,7 @@ export default function MyTrialsPage() {
               onCancel={handleCancel}
               onReceived={handleReceived}
               onDecide={(t) => { setFeedback(''); setDecideTarget(t) }}
+              onScheduleChange={(t) => { setScheduleMessage(''); setScheduleTarget(t) }}
             />
           ))}
         </div>
@@ -353,6 +386,35 @@ export default function MyTrialsPage() {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Schedule Change Dialog */}
+      <Dialog open={!!scheduleTarget} onOpenChange={(open) => !open && setScheduleTarget(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>일정 변경 요청</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-gray-600">
+              브랜드에게 일정 변경을 요청합니다.
+            </p>
+            <Textarea
+              value={scheduleMessage}
+              onChange={(e) => setScheduleMessage(e.target.value)}
+              placeholder="변경하고 싶은 일정과 사유를 알려주세요"
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={handleScheduleChange}
+              disabled={!!actionLoading || !scheduleMessage.trim()}
+              className="w-full bg-gray-900 text-white rounded-xl h-11 font-medium"
+            >
+              {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : '요청하기'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -363,12 +425,14 @@ function TrialCard({
   onCancel,
   onReceived,
   onDecide,
+  onScheduleChange,
 }: {
   trial: Trial
   actionLoading: string | null
   onCancel: (id: string) => void
   onReceived: (id: string) => void
   onDecide: (t: Trial) => void
+  onScheduleChange: (t: Trial) => void
 }) {
   const status = STATUS_MAP[trial.status] ?? STATUS_MAP.pending
   const StatusIcon = status.icon
@@ -449,6 +513,23 @@ function TrialCard({
         <p className="text-xs text-gray-400">사유: {trial.passReason}</p>
       )}
 
+      {/* Schedule Change */}
+      {trial.scheduleChangeRequest && (
+        <div className={`rounded-xl p-3 text-sm ${
+          trial.scheduleChangeStatus === 'accepted' ? 'bg-green-50 text-green-700' :
+          trial.scheduleChangeStatus === 'rejected' ? 'bg-red-50 text-red-700' :
+          'bg-amber-50 text-amber-700'
+        }`}>
+          <p className="text-xs font-medium flex items-center gap-1">
+            <CalendarClock className="w-3 h-3" />
+            일정 변경 {trial.scheduleChangeBy === 'creator' ? '요청' : '(브랜드 요청)'}
+            {trial.scheduleChangeStatus === 'accepted' && ' - 수락됨'}
+            {trial.scheduleChangeStatus === 'rejected' && ' - 거절됨'}
+          </p>
+          <p className="mt-0.5">{trial.scheduleChangeRequest}</p>
+        </div>
+      )}
+
       {/* Actions */}
       {trial.status === 'pending' && (
         <Button
@@ -482,6 +563,19 @@ function TrialCard({
             체험 후 결정하기
           </Button>
         </div>
+      )}
+
+      {/* Schedule change button for active trials */}
+      {['approved', 'shipped', 'received'].includes(trial.status) && !trial.scheduleChangeRequest && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="rounded-xl text-xs"
+          onClick={() => onScheduleChange(trial)}
+        >
+          <CalendarClock className="w-3.5 h-3.5 mr-1" />
+          일정 변경 요청
+        </Button>
       )}
     </div>
   )

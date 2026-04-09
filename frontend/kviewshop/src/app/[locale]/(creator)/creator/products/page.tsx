@@ -31,6 +31,7 @@ import {
   SlidersHorizontal,
   Check,
   AlertTriangle,
+  Gift,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { BrandBadge } from '@/components/common/BrandBadge';
@@ -59,6 +60,7 @@ interface ProductWithCampaign {
   defaultCommissionRate: number;
   brandId: string;
   brand: { brandName: string } | null;
+  allowTrial: boolean;
   activeCampaign: {
     id: string;
     type: string;
@@ -375,7 +377,7 @@ export default function CreatorProductsPage() {
 
                 <div className="px-3 flex-1 flex flex-col justify-end">
 
-                  <div className="mt-2.5">
+                  <div className="mt-2.5 space-y-1.5">
                     {isAdded ? (
                       <Button variant="outline" size="sm" className="w-full h-9 text-xs rounded-xl" disabled>
                         <Check className="h-3.5 w-3.5 mr-1" /> 추가됨
@@ -408,6 +410,18 @@ export default function CreatorProductsPage() {
                         )}
                         내 샵에 추가
                       </Button>
+                    )}
+                    {product.allowTrial && (
+                      <Link href={`/${locale}/creator/products/${product.id}`}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full h-9 text-xs rounded-xl text-purple-700 border-purple-200 hover:bg-purple-50"
+                        >
+                          <Gift className="h-3.5 w-3.5 mr-1" />
+                          샘플 신청
+                        </Button>
+                      </Link>
                     )}
                   </div>
                 </div>

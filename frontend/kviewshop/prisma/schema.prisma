@@ -1033,6 +1033,10 @@ model SampleRequest {
   receivedAt      DateTime? @map("received_at") @db.Timestamptz
   decidedAt       DateTime? @map("decided_at") @db.Timestamptz
   convertedTo     String?  @map("converted_to")
+  // 일정 변경 요청
+  scheduleChangeRequest  String?  @map("schedule_change_request")
+  scheduleChangeBy       String?  @map("schedule_change_by")
+  scheduleChangeStatus   String?  @map("schedule_change_status")  // pending, accepted, rejected
 
   @@index([status])
   @@index([brandId, status])
