@@ -228,6 +228,29 @@ export default function LandingPage() {
                 className="w-full h-auto drop-shadow-2xl"
                 priority
               />
+
+              {/* Floating earnings card */}
+              <div className="absolute -bottom-5 -left-5 md:-left-8 animate-float">
+                <div className="bg-white rounded-2xl p-4 shadow-xl shadow-blue-100/40 border border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center" style={blueGradientBg}>
+                      <TrendingUp className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400">이번 달 수익</p>
+                      <p className="text-lg font-bold text-gray-900">₩2,450,000</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Floating star badge */}
+              <div className="absolute -top-3 -right-3 md:-right-6 animate-float" style={{ animationDelay: '2s' }}>
+                <div className="bg-white rounded-2xl px-4 py-3 shadow-xl border border-gray-100 flex items-center gap-2">
+                  <Star className="h-4 w-4 text-amber-400 fill-amber-400" />
+                  <span className="text-sm font-semibold text-gray-700">검증된 브랜드만</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
