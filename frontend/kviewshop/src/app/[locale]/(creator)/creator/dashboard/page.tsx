@@ -263,27 +263,31 @@ export default function CreatorDashboardPage() {
               return (
                 <div key={product.id} className="flex-shrink-0 w-[160px] md:w-auto">
                   <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                    <div className="aspect-square bg-gray-50 relative overflow-hidden">
-                      <SafeImage
-                        src={product.images?.[0]}
-                        alt={product.name}
-                        fill
-                        className="object-cover"
-                        fallbackClassName="w-full h-full"
-                        sizes="160px"
-                      />
-                    </div>
-                    <div className="p-3">
-                      {product.brand && (
-                        <BrandBadge brandName={product.brand.brandName} size="sm" />
-                      )}
-                      <p className="text-xs font-medium text-gray-900 line-clamp-2 mt-0.5 leading-tight min-h-[32px]">{product.name}</p>
-                      <p className="text-sm font-bold text-gray-900 mt-1">{formatCurrency(Number(product.salePrice), 'KRW')}</p>
-                      <p className="text-xs text-earnings font-semibold mt-0.5">
-                        팔면 ₩{earnings.toLocaleString()}
-                      </p>
+                    <Link href={`/${locale}/creator/products/${product.id}`} className="block">
+                      <div className="aspect-square bg-gray-50 relative overflow-hidden">
+                        <SafeImage
+                          src={product.images?.[0]}
+                          alt={product.name}
+                          fill
+                          className="object-cover"
+                          fallbackClassName="w-full h-full"
+                          sizes="160px"
+                        />
+                      </div>
+                      <div className="p-3 pb-0">
+                        {product.brand && (
+                          <BrandBadge brandName={product.brand.brandName} size="sm" />
+                        )}
+                        <p className="text-xs font-medium text-gray-900 line-clamp-2 mt-0.5 leading-tight min-h-[32px]">{product.name}</p>
+                        <p className="text-sm font-bold text-gray-900 mt-1">{formatCurrency(Number(product.salePrice), 'KRW')}</p>
+                        <p className="text-xs text-earnings font-semibold mt-0.5">
+                          팔면 ₩{earnings.toLocaleString()}
+                        </p>
+                      </div>
+                    </Link>
+                    <div className="p-3 pt-2">
                       <Button
-                        className="w-full mt-2 h-9 text-xs bg-gray-900 text-white hover:bg-gray-800 rounded-xl"
+                        className="w-full h-9 text-xs bg-gray-900 text-white hover:bg-gray-800 rounded-xl"
                         onClick={() => handleQuickAdd(product)}
                         disabled={addingId === product.id}
                       >

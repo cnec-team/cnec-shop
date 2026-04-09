@@ -64,6 +64,7 @@ export function MobileBottomNav() {
     {
       label: '내 셀렉트샵',
       items: [
+        { title: '내 샵 상품', description: '담은 상품 관리 및 리뷰 영상', href: `${base}/shop/products`, icon: Package },
         { title: '배너 관리', description: '샵 배너 이미지 설정', href: `${base}/banners`, icon: ImageIcon },
       ],
     },
