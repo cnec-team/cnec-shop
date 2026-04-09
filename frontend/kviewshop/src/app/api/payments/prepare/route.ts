@@ -148,28 +148,33 @@ export async function POST(request: NextRequest) {
 
     // Create order record
     const isBankTransfer = body.paymentMethod === 'BANK_TRANSFER';
+    const orderData: Record<string, unknown> = {
+      orderNumber,
+      creatorId,
+      brandId,
+      buyerId,
+      buyerName: buyer.name,
+      buyerPhone: buyer.phone,
+      buyerEmail: buyer.email,
+      shippingAddress: shipping.address,
+      shippingZipcode: shipping.zipcode,
+      shippingDetail: shipping.detail || null,
+      shippingMemo: shipping.memo || null,
+      totalAmount,
+      productAmount,
+      shippingFee,
+      status,
+    };
+
+    if (isBankTransfer) {
+      orderData.paymentMethod = 'BANK_TRANSFER';
+      if (body.depositorName) {
+        orderData.notes = `입금자명: ${body.depositorName}`;
+      }
+    }
+
     const order = await prisma.order.create({
-      data: {
-        orderNumber,
-        creatorId,
-        brandId,
-        buyerId,
-        buyerName: buyer.name,
-        buyerPhone: buyer.phone,
-        buyerEmail: buyer.email,
-        shippingAddress: shipping.address,
-        shippingZipcode: shipping.zipcode,
-        shippingDetail: shipping.detail || null,
-        shippingMemo: shipping.memo || null,
-        totalAmount,
-        productAmount,
-        shippingFee,
-        status,
-        ...(isBankTransfer && {
-          paymentMethod: 'BANK_TRANSFER',
-          notes: body.depositorName ? `입금자명: ${body.depositorName}` : null,
-        }),
-      },
+      data: orderData as any,
       select: { id: true, orderNumber: true, totalAmount: true },
     });
 
