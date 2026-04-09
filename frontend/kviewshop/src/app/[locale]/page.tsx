@@ -217,123 +217,17 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Right — Phone Mockup */}
+          {/* Right — Phone Mockup Image */}
           <div className={`relative ${anim(hero.isInView, 'animate-fade-in-right delay-300')}`}>
-            <div className="relative mx-auto w-[280px] md:w-[320px]">
-              {/* Phone frame */}
-              <div className="rounded-[2.5rem] border-[8px] border-gray-900 bg-white shadow-2xl shadow-gray-900/10 overflow-hidden">
-                {/* Notch */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[120px] h-[28px] bg-gray-900 rounded-b-2xl z-10" />
-
-                {/* Phone content */}
-                <div className="pt-8 px-4 pb-4">
-                  {/* Header */}
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-[10px] text-gray-400 tracking-wider">MY SELECT SHOP</p>
-                      <p className="text-base font-bold text-gray-900">뷰티 크리에이터 샵</p>
-                    </div>
-                    <Heart className="h-5 w-5 text-blue-500" />
-                  </div>
-
-                  {/* Product grid */}
-                  <div className="grid grid-cols-2 gap-2.5 mt-3">
-                    {/* Vitamin C Serum */}
-                    <div className="bg-gray-50 rounded-xl p-2.5 relative">
-                      <div className="h-[90px] rounded-lg bg-gradient-to-br from-amber-100 to-orange-50 flex flex-col items-center justify-center relative overflow-hidden">
-                        <div className="w-6 h-10 rounded-sm bg-amber-700/60 relative">
-                          <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-2 h-3 bg-amber-900/50 rounded-t-sm" />
-                        </div>
-                        <span className="text-[6px] font-bold text-amber-800/70 mt-1 tracking-tight">VITAMIN C SERUM</span>
-                      </div>
-                      <span className="absolute top-1.5 left-1.5 bg-blue-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">BEST</span>
-                      <p className="text-xs font-medium text-gray-700 mt-2">비타민 세럼</p>
-                      <p className="text-xs font-bold text-blue-600">38,000원</p>
-                    </div>
-
-                    {/* Moisture Cream */}
-                    <div className="bg-gray-50 rounded-xl p-2.5 relative">
-                      <div className="h-[90px] rounded-lg bg-gradient-to-br from-sky-50 to-blue-50 flex flex-col items-center justify-center relative overflow-hidden">
-                        <div className="w-10 h-6 rounded-md bg-white/80 border border-sky-200/60 shadow-sm" />
-                        <div className="w-11 h-1.5 rounded-b-md bg-sky-100/80 -mt-0.5" />
-                        <span className="text-[6px] font-bold text-sky-700/70 mt-1.5 tracking-tight">MOISTURE CREAM</span>
-                      </div>
-                      <span className="absolute top-1.5 left-1.5 bg-gray-900 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">NEW</span>
-                      <p className="text-xs font-medium text-gray-700 mt-2">수분 크림</p>
-                      <p className="text-xs font-bold text-blue-600">42,000원</p>
-                    </div>
-
-                    {/* Tinted Lip Balm */}
-                    <div className="bg-gray-50 rounded-xl p-2.5 relative">
-                      <div className="h-[90px] rounded-lg bg-gradient-to-br from-rose-100 to-pink-50 flex flex-col items-center justify-center relative overflow-hidden">
-                        <div className="flex items-end gap-1">
-                          <div className="w-3 h-11 rounded-full bg-rose-300/70 relative">
-                            <div className="absolute top-0 w-3 h-3 rounded-full bg-rose-400/80" />
-                          </div>
-                          <div className="w-3 h-9 rounded-full bg-rose-200/60" />
-                        </div>
-                        <span className="text-[6px] font-bold text-rose-700/70 mt-1 tracking-tight">TINTED LIP BALM</span>
-                      </div>
-                      <span className="absolute top-1.5 left-1.5 bg-rose-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">HOT</span>
-                      <p className="text-xs font-medium text-gray-700 mt-2">틴트 립밤</p>
-                      <p className="text-xs font-bold text-blue-600">18,000원</p>
-                    </div>
-
-                    {/* Face Oil */}
-                    <div className="bg-gray-50 rounded-xl p-2.5 relative">
-                      <div className="h-[90px] rounded-lg bg-gradient-to-br from-yellow-50 to-amber-50 flex flex-col items-center justify-center relative overflow-hidden">
-                        <div className="w-6 h-9 rounded-sm bg-amber-600/40 relative">
-                          <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-1.5 h-3 bg-amber-800/40 rounded-t-sm" />
-                          <div className="absolute top-1 left-1/2 -translate-x-1/2 w-4 h-3 rounded-sm bg-amber-100/60 flex items-center justify-center">
-                            <span className="text-[4px] font-bold text-amber-800/60">OIL</span>
-                          </div>
-                        </div>
-                        <span className="text-[6px] font-bold text-amber-700/70 mt-1 tracking-tight">FACE OIL</span>
-                      </div>
-                      <p className="text-xs font-medium text-gray-700 mt-2">페이스 오일</p>
-                      <p className="text-xs font-bold text-blue-600">55,000원</p>
-                    </div>
-                  </div>
-
-                  {/* Bottom nav */}
-                  <div className="mt-3 pt-2.5 border-t border-gray-100 flex justify-around">
-                    {[
-                      { icon: Home, label: '홈', active: true },
-                      { icon: Package, label: '상품', active: false },
-                      { icon: BarChart3, label: '분석', active: false },
-                      { icon: User, label: '마이', active: false },
-                    ].map((tab) => (
-                      <div key={tab.label} className={`flex flex-col items-center gap-0.5 ${tab.active ? 'text-blue-600' : 'text-gray-300'}`}>
-                        <tab.icon className="h-4 w-4" />
-                        <span className="text-[9px]">{tab.label}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Floating earnings card */}
-              <div className="absolute -bottom-5 -left-5 md:-left-8 animate-float">
-                <div className="bg-white rounded-2xl p-4 shadow-xl shadow-blue-100/40 border border-gray-100">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center" style={blueGradientBg}>
-                      <TrendingUp className="h-5 w-5 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-400">이번 달 수익</p>
-                      <p className="text-lg font-bold text-gray-900">₩2,450,000</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Floating star badge */}
-              <div className="absolute -top-3 -right-3 md:-right-6 animate-float" style={{ animationDelay: '2s' }}>
-                <div className="bg-white rounded-2xl px-4 py-3 shadow-xl border border-gray-100 flex items-center gap-2">
-                  <Star className="h-4 w-4 text-amber-400 fill-amber-400" />
-                  <span className="text-sm font-semibold text-gray-700">검증된 브랜드만</span>
-                </div>
-              </div>
+            <div className="relative mx-auto w-[300px] md:w-[380px]">
+              <Image
+                src="/images/creators/phone_mockup.png"
+                alt="셀렉트샵 미리보기"
+                width={1760}
+                height={2426}
+                className="w-full h-auto drop-shadow-2xl"
+                priority
+              />
             </div>
           </div>
         </div>
