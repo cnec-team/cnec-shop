@@ -879,6 +879,31 @@ export async function updateTrackingInfo(
   })
 }
 
+export async function bulkShippingStart(
+  orders: Array<{ orderId: string; trackingNumber: string; courierCode: string }>
+) {
+  await requireBrand()
+
+  const results: Array<{ orderId: string; success: boolean; error?: string }> = []
+  for (const order of orders) {
+    try {
+      await prisma.order.update({
+        where: { id: order.orderId },
+        data: {
+          status: 'SHIPPING',
+          trackingNumber: order.trackingNumber.trim(),
+          courierCode: order.courierCode,
+          shippedAt: new Date(),
+        },
+      })
+      results.push({ orderId: order.orderId, success: true })
+    } catch (error) {
+      results.push({ orderId: order.orderId, success: false, error: String(error) })
+    }
+  }
+  return results
+}
+
 // ==================== Products ====================
 
 export async function getBrandProducts(

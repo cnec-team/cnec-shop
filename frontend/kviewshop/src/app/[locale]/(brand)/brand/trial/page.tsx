@@ -143,6 +143,9 @@ export default function BrandTrialPage() {
   // Ship tracking inputs (inline per card)
   const [trackingInputs, setTrackingInputs] = useState<Record<string, string>>({})
 
+  // Approve confirmation
+  const [approveTarget, setApproveTarget] = useState<TrialRequest | null>(null)
+
   // Reject dialog
   const [rejectTarget, setRejectTarget] = useState<TrialRequest | null>(null)
   const [rejectReason, setRejectReason] = useState('')
@@ -380,7 +383,10 @@ export default function BrandTrialPage() {
               onTrackingChange={(val) =>
                 setTrackingInputs((prev) => ({ ...prev, [trial.id]: val }))
               }
-              onApprove={handleApprove}
+              onApprove={(id) => {
+                const t = trials.find((t) => t.id === id)
+                if (t) setApproveTarget(t)
+              }}
               onReject={setRejectTarget}
               onShip={handleShip}
             />
@@ -392,6 +398,38 @@ export default function BrandTrialPage() {
           )}
         </div>
       )}
+
+      {/* Approve Confirmation Dialog */}
+      <Dialog open={!!approveTarget} onOpenChange={(open) => !open && setApproveTarget(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>체험 신청을 승인하시겠습니까?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-gray-600">
+            {approveTarget?.creator.displayName || approveTarget?.creator.username || '크리에이터'}님의
+            &ldquo;{approveTarget?.product?.nameKo || approveTarget?.product?.name || '상품'}&rdquo; 체험 신청을 승인합니다.
+          </p>
+          <DialogFooter className="flex-row gap-2 sm:justify-end">
+            <Button
+              variant="outline"
+              className="flex-1 sm:flex-none rounded-xl h-11"
+              onClick={() => setApproveTarget(null)}
+            >
+              취소
+            </Button>
+            <Button
+              onClick={() => {
+                if (approveTarget) handleApprove(approveTarget.id)
+                setApproveTarget(null)
+              }}
+              disabled={!!actionLoading}
+              className="flex-1 sm:flex-none bg-emerald-500 text-white rounded-xl h-11 font-medium hover:bg-emerald-600"
+            >
+              {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : '승인하기'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Reject Dialog */}
       <Dialog open={!!rejectTarget} onOpenChange={(open) => !open && setRejectTarget(null)}>
