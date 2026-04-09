@@ -679,32 +679,35 @@ export default function LandingPage() {
 
       {/* ──── CTA ──── */}
       <section ref={cta.ref} className="py-24 md:py-32">
-        <div className="max-w-4xl mx-auto px-5">
-          <div
-            className="rounded-3xl p-12 md:p-16 text-center"
-            style={{
-              background: 'linear-gradient(135deg, #2563EB, #1D4ED8)',
-              backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(135deg, #2563EB, #1D4ED8)',
-              backgroundSize: '20px 20px, 100% 100%',
-            }}
-          >
-            <h2 className={`text-white text-3xl md:text-5xl font-black ${anim(cta.isInView, 'animate-fade-in-up')}`}>
-              지금 시작하세요
-            </h2>
-            <p className={`text-white/70 text-lg mt-4 whitespace-pre-line ${anim(cta.isInView, 'animate-fade-in-up delay-100')}`}>
-              {'크리에이터와 브랜드 모두를 위한\nK-뷰티 셀렉트샵 플랫폼'}
-            </p>
-            <div className={`mt-10 flex flex-col sm:flex-row gap-4 justify-center ${anim(cta.isInView, 'animate-fade-in-up delay-200')}`}>
-              <Link href="/ko/creator/login">
-                <Button className="bg-white text-blue-600 hover:bg-blue-50 rounded-full px-8 py-4 font-bold shadow-lg shadow-blue-900/20 border-0">
-                  크리에이터 시작하기
-                </Button>
-              </Link>
-              <Link href="/ko/brand/login">
-                <Button className="border border-white/30 text-white hover:bg-white/10 rounded-full px-8 py-4 font-semibold bg-transparent">
-                  브랜드 입점하기
-                </Button>
-              </Link>
+        <div className="max-w-5xl mx-auto px-5">
+          <div className="relative rounded-3xl overflow-hidden">
+            <Image
+              src="/images/creators/cta_bottom.png"
+              alt="지금 시작하세요"
+              width={3100}
+              height={800}
+              className="w-full h-auto"
+            />
+            {/* Overlay buttons */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <h2 className={`text-white text-3xl md:text-5xl font-black ${anim(cta.isInView, 'animate-fade-in-up')}`}>
+                지금 시작하세요
+              </h2>
+              <p className={`text-white/70 text-base md:text-lg mt-4 text-center whitespace-pre-line ${anim(cta.isInView, 'animate-fade-in-up delay-100')}`}>
+                {'크리에이터와 브랜드 모두를 위한\nK-뷰티 셀렉트샵 플랫폼'}
+              </p>
+              <div className={`mt-8 flex flex-col sm:flex-row gap-4 justify-center ${anim(cta.isInView, 'animate-fade-in-up delay-200')}`}>
+                <Link href="/ko/creator/login">
+                  <Button className="bg-white text-blue-600 hover:bg-blue-50 rounded-full px-8 py-4 font-bold shadow-lg shadow-blue-900/20 border-0">
+                    크리에이터 시작하기
+                  </Button>
+                </Link>
+                <Link href="/ko/brand/login">
+                  <Button className="border border-white/30 text-white hover:bg-white/10 rounded-full px-8 py-4 font-semibold bg-transparent">
+                    브랜드 입점하기
+                  </Button>
+                </Link>
+              </div>
             </div>
           </div>
         </div>
