@@ -143,8 +143,16 @@ export async function POST(request: NextRequest) {
     const status: OrderStatus = 'PENDING';
 
     // Set buyerId if user is logged in (guest checkout leaves it null)
+    // session.user.id is User ID, but Order.buyerId references Buyer table
     const session = await auth();
-    const buyerId = session?.user?.id || null;
+    let buyerId: string | null = null;
+    if (session?.user?.id) {
+      const buyerRecord = await prisma.buyer.findUnique({
+        where: { userId: session.user.id },
+        select: { id: true },
+      });
+      buyerId = buyerRecord?.id || null;
+    }
 
     // Create order record
     const isBankTransfer = body.paymentMethod === 'BANK_TRANSFER';
