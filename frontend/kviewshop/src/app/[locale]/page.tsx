@@ -443,60 +443,15 @@ export default function LandingPage() {
       {/* ──── For Creators ──── */}
       <section ref={creators.ref} className="py-24 md:py-32 bg-gray-50/30">
         <div className="max-w-[1200px] mx-auto px-5 grid lg:grid-cols-2 gap-16 items-center">
-          {/* Left — Shop Card UI */}
-          <div className={`relative max-w-[480px] mx-auto lg:mx-0 ${anim(creators.isInView, 'animate-fade-in-left')}`}>
-            <div className="bg-white rounded-3xl p-6 shadow-2xl shadow-blue-100/20 border border-gray-100">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full flex items-center justify-center" style={blueGradientBg}>
-                  <span className="text-white font-bold text-lg">C</span>
-                </div>
-                <div>
-                  <p className="text-lg font-bold text-gray-900">크리에이터 셀렉트샵</p>
-                  <p className="text-sm text-gray-400">@beauty_creator</p>
-                </div>
-              </div>
-
-              <div className="flex gap-3 mt-5">
-                {[
-                  { bg: 'from-amber-100 to-orange-50', brand: '하우파파', name: '리페어 세럼', price: '33,600', original: '48,000' },
-                  { bg: 'from-sky-100 to-blue-50', brand: '누씨오', name: '비타민C 앰플', price: '36,400', original: '52,000' },
-                  { bg: 'from-rose-100 to-pink-50', brand: '하우파파', name: '수분 크림', price: '31,500', original: '45,000' },
-                ].map((p) => (
-                  <div key={p.name} className="bg-gray-50 rounded-xl p-3 flex-1">
-                    <div className={`h-[80px] rounded-lg bg-gradient-to-br ${p.bg} flex items-center justify-center`}>
-                      <div className="w-8 h-12 rounded-md bg-white/60" />
-                    </div>
-                    <p className="text-[10px] text-gray-400 mt-2">{p.brand}</p>
-                    <p className="text-xs font-medium text-gray-700">{p.name}</p>
-                    <div className="flex items-center gap-1 mt-0.5">
-                      <span className="text-[10px] text-gray-300 line-through">{p.original}</span>
-                      <span className="text-xs font-bold text-blue-600">{p.price}원</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-4 bg-gray-50 rounded-xl px-4 py-3 flex items-center justify-between">
-                <span className="text-sm text-gray-400">cnecshop.com/creator/myshop</span>
-                <Link2 className="h-4 w-4 text-gray-300" />
-              </div>
-            </div>
-
-            {/* Floating IG badge */}
-            <div className="absolute -left-4 bottom-1/3 animate-float">
-              <div className="bg-white rounded-xl px-3 py-2 shadow-lg border border-gray-100 flex items-center gap-2">
-                <Instagram className="h-4 w-4 text-pink-500" />
-                <span className="text-sm font-bold text-gray-700">12.3K</span>
-              </div>
-            </div>
-
-            {/* Floating YT badge */}
-            <div className="absolute -right-4 top-1/4 animate-float delay-200">
-              <div className="bg-white rounded-xl px-3 py-2 shadow-lg border border-gray-100 flex items-center gap-2">
-                <Youtube className="h-4 w-4 text-red-500" />
-                <span className="text-sm font-bold text-gray-700">8.7K</span>
-              </div>
-            </div>
+          {/* Left — Phone Mockup */}
+          <div className={`relative max-w-[380px] mx-auto lg:mx-0 ${anim(creators.isInView, 'animate-fade-in-left')}`}>
+            <Image
+              src="/images/creators/phone_mockup.png"
+              alt="셀렉트샵 미리보기"
+              width={1760}
+              height={2426}
+              className="w-full h-auto drop-shadow-2xl"
+            />
           </div>
 
           {/* Right — Text */}
