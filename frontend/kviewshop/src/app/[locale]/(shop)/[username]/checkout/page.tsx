@@ -282,10 +282,23 @@ export default function CheckoutPage() {
           isBankTransfer: true,
           bankInfo: bankInfo || undefined,
           shopUsername: username,
+          items: cartItems.map((item) => ({
+            id: item.productId,
+            productName: item.product?.name || item.product?.nameKo || '상품',
+            productImage: item.product?.images?.[0] || item.product?.imageUrl || null,
+            quantity: item.quantity,
+            unitPrice: Number(item.unitPrice),
+            totalPrice: Number(item.unitPrice) * item.quantity,
+          })),
+          shippingAddress: form.address + (form.addressDetail ? ' ' + form.addressDetail : ''),
+          buyerName: form.name,
+          buyerPhone: form.phone,
+          shippingFee,
+          brandName: cartItems[0]?.product?.brand?.brandName || undefined,
         }));
         checkoutDoneRef.current = true;
         clearCart();
-        router.push(`/${locale}/order-complete`);
+        router.push(`/${locale}/order-complete?orderNumber=${orderNumber}`);
         return;
       }
 
@@ -362,14 +375,28 @@ export default function CheckoutPage() {
       const completeData = await completeRes.json();
 
       // 5. 결제 성공 — 장바구니 비우고 완료 페이지로 이동
+      const completeOrderNumber = completeData.orderNumber || orderNumber;
       sessionStorage.setItem('cnec-order-complete', JSON.stringify({
-        orderNumber: completeData.orderNumber || orderNumber,
+        orderNumber: completeOrderNumber,
         totalAmount: Number(serverTotal),
         shopUsername: username,
+        items: cartItems.map((item) => ({
+          id: item.productId,
+          productName: item.product?.name || item.product?.nameKo || '상품',
+          productImage: item.product?.images?.[0] || item.product?.imageUrl || null,
+          quantity: item.quantity,
+          unitPrice: Number(item.unitPrice),
+          totalPrice: Number(item.unitPrice) * item.quantity,
+        })),
+        shippingAddress: form.address + (form.addressDetail ? ' ' + form.addressDetail : ''),
+        buyerName: form.name,
+        buyerPhone: form.phone,
+        shippingFee,
+        brandName: cartItems[0]?.product?.brand?.brandName || undefined,
       }));
       checkoutDoneRef.current = true;
       clearCart();
-      router.push(`/${locale}/order-complete`);
+      router.push(`/${locale}/order-complete?orderNumber=${completeOrderNumber}`);
     } catch (error: any) {
       console.error('Checkout failed:', error);
       toast.error(error.message || '네트워크 오류가 발생했어요. 다시 시도해주세요.');

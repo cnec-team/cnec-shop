@@ -251,6 +251,53 @@ export async function createOrder(data: {
   return { id: order.id, orderNumber: order.orderNumber }
 }
 
+// ==================== Order Complete ====================
+
+export async function getOrderComplete(orderNumber: string) {
+  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000)
+
+  const order = await prisma.order.findFirst({
+    where: {
+      orderNumber: orderNumber.trim(),
+      status: { in: ['PAID', 'PENDING'] },
+      createdAt: { gte: tenMinutesAgo },
+    },
+    include: {
+      items: {
+        include: {
+          product: {
+            select: {
+              id: true,
+              name: true,
+              nameKo: true,
+              thumbnailUrl: true,
+              images: true,
+            },
+          },
+        },
+      },
+      brand: {
+        select: {
+          id: true,
+          brandName: true,
+          companyName: true,
+          contactPhone: true,
+          contactEmail: true,
+        },
+      },
+      creator: {
+        select: {
+          id: true,
+          shopId: true,
+          displayName: true,
+        },
+      },
+    },
+  })
+
+  return order
+}
+
 // ==================== Order Lookup ====================
 
 export async function lookupOrder(orderNumber: string, buyerPhone: string) {
