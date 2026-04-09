@@ -33,17 +33,27 @@ async function requireBrand() {
 
 // ==================== 크리에이터용 ====================
 
-/** 0. 크리에이터 배송지 조회 */
-export async function getCreatorShippingAddress() {
+/** 0. 크리에이터 배송 정보 조회 (이름, 전화번호, 주소) */
+export async function getCreatorShippingInfo() {
   const { creator } = await requireCreator()
 
   const data = await prisma.creator.findUnique({
     where: { id: creator.id },
-    select: { defaultShippingAddress: true },
+    select: { displayName: true, username: true, phone: true, defaultShippingAddress: true },
   })
 
   const addr = data?.defaultShippingAddress as { address?: string } | null
-  return { address: addr?.address ?? '' }
+  return {
+    name: data?.displayName || data?.username || '',
+    phone: data?.phone || '',
+    address: addr?.address ?? '',
+  }
+}
+
+/** @deprecated Use getCreatorShippingInfo instead */
+export async function getCreatorShippingAddress() {
+  const info = await getCreatorShippingInfo()
+  return { address: info.address }
 }
 
 /** 1. 체험 신청 */
@@ -110,7 +120,7 @@ export async function requestProductTrial(data: {
         type: 'CAMPAIGN',
         title: '제품 체험 신청',
         message: `${creator.displayName ?? creator.username ?? '크리에이터'}님이 "${product.name ?? '상품'}" 체험을 신청했습니다.`,
-        linkUrl: '/brand/trials',
+        linkUrl: '/brand/trial',
       })
     }
   } catch {
@@ -233,7 +243,7 @@ export async function decideProductTrial(data: {
         type: 'CAMPAIGN',
         title: data.decision === 'PROCEED' ? '체험 후 전환' : '체험 후 패스',
         message: msg,
-        linkUrl: '/brand/trials',
+        linkUrl: '/brand/trial',
       })
     }
   } catch {
@@ -428,7 +438,7 @@ export async function approveTrialRequest(trialId: string) {
         type: 'CAMPAIGN',
         title: '체험 신청 승인',
         message: '체험 신청이 승인되었습니다! 브랜드에서 샘플을 보내드립니다.',
-        linkUrl: '/creator/trials',
+        linkUrl: '/creator/trial/my',
       })
     }
   } catch {
@@ -470,7 +480,7 @@ export async function rejectTrialRequest(data: {
         type: 'CAMPAIGN',
         title: '체험 신청 결과',
         message: '이번 체험은 아쉽게 매칭되지 않았어요.',
-        linkUrl: '/creator/trials',
+        linkUrl: '/creator/trial/my',
       })
     }
   } catch {
@@ -512,7 +522,7 @@ export async function shipTrialSample(data: {
         type: 'CAMPAIGN',
         title: '샘플 발송 완료',
         message: `샘플이 발송되었습니다. 송장번호: ${data.trackingNumber}`,
-        linkUrl: '/creator/trials',
+        linkUrl: '/creator/trial/my',
       })
     }
   } catch {
@@ -663,4 +673,117 @@ export async function getTrialStats(brandId?: string) {
       avgResponseTimeHours,
     },
   }
+}
+
+// ==================== 일정 변경 요청 ====================
+
+/** 12. 일정 변경 요청 (크리에이터 또는 브랜드) */
+export async function requestScheduleChange(data: {
+  trialId: string
+  message: string
+}) {
+  const session = await auth()
+  if (!session?.user) throw new Error('Unauthorized')
+
+  const trial = await prisma.sampleRequest.findUnique({
+    where: { id: data.trialId },
+    include: {
+      creator: { select: { userId: true, displayName: true, username: true } },
+      brand: { select: { userId: true, companyName: true } },
+      product: { select: { name: true } },
+    },
+  })
+  if (!trial) return { success: false, error: '신청을 찾을 수 없습니다.' }
+
+  const isCreator = trial.creator?.userId === session.user.id
+  const isBrand = trial.brand?.userId === session.user.id
+  if (!isCreator && !isBrand) return { success: false, error: '권한이 없습니다.' }
+
+  await prisma.sampleRequest.update({
+    where: { id: data.trialId },
+    data: {
+      scheduleChangeRequest: data.message,
+      scheduleChangeBy: isCreator ? 'creator' : 'brand',
+      scheduleChangeStatus: 'pending',
+    },
+  })
+
+  // 상대방에게 알림
+  try {
+    const targetUserId = isCreator ? trial.brand?.userId : trial.creator?.userId
+    const requesterName = isCreator
+      ? (trial.creator?.displayName ?? trial.creator?.username ?? '크리에이터')
+      : (trial.brand?.companyName ?? '브랜드')
+    const productName = trial.product?.name ?? '상품'
+
+    if (targetUserId) {
+      sendNotification({
+        userId: targetUserId,
+        type: 'CAMPAIGN',
+        title: '일정 변경 요청',
+        message: `${requesterName}님이 "${productName}" 체험 일정 변경을 요청했습니다: ${data.message}`,
+        linkUrl: isCreator ? '/brand/trial' : '/creator/trial/my',
+      })
+    }
+  } catch {
+    // 알림 실패가 주요 로직에 영향 주지 않음
+  }
+
+  return { success: true }
+}
+
+/** 13. 일정 변경 응답 (수락/거절) */
+export async function respondScheduleChange(data: {
+  trialId: string
+  accept: boolean
+}) {
+  const session = await auth()
+  if (!session?.user) throw new Error('Unauthorized')
+
+  const trial = await prisma.sampleRequest.findUnique({
+    where: { id: data.trialId },
+    include: {
+      creator: { select: { userId: true } },
+      brand: { select: { userId: true } },
+    },
+  })
+  if (!trial) return { success: false, error: '신청을 찾을 수 없습니다.' }
+  if (trial.scheduleChangeStatus !== 'pending') return { success: false, error: '대기중인 요청이 아닙니다.' }
+
+  const isCreator = trial.creator?.userId === session.user.id
+  const isBrand = trial.brand?.userId === session.user.id
+  if (!isCreator && !isBrand) return { success: false, error: '권한이 없습니다.' }
+
+  // 요청자 본인이 아닌 상대방만 응답 가능
+  if (trial.scheduleChangeBy === 'creator' && isCreator) return { success: false, error: '본인의 요청에는 응답할 수 없습니다.' }
+  if (trial.scheduleChangeBy === 'brand' && isBrand) return { success: false, error: '본인의 요청에는 응답할 수 없습니다.' }
+
+  await prisma.sampleRequest.update({
+    where: { id: data.trialId },
+    data: {
+      scheduleChangeStatus: data.accept ? 'accepted' : 'rejected',
+    },
+  })
+
+  // 요청자에게 알림
+  try {
+    const requesterUserId = trial.scheduleChangeBy === 'creator'
+      ? trial.creator?.userId
+      : trial.brand?.userId
+    if (requesterUserId) {
+      sendNotification({
+        userId: requesterUserId,
+        type: 'CAMPAIGN',
+        title: data.accept ? '일정 변경 수락' : '일정 변경 거절',
+        message: data.accept
+          ? '일정 변경 요청이 수락되었습니다.'
+          : '일정 변경 요청이 거절되었습니다.',
+        linkUrl: trial.scheduleChangeBy === 'creator' ? '/creator/trial/my' : '/brand/trial',
+      })
+    }
+  } catch {
+    // 알림 실패가 주요 로직에 영향 주지 않음
+  }
+
+  return { success: true }
 }
