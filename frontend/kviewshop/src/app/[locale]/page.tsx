@@ -452,27 +452,17 @@ export default function LandingPage() {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-5 max-w-5xl mx-auto">
             {[
-              { brand: '하우파파', name: '리페어 에센스 세럼', original: '48,000', price: '33,600', discount: 30, bg: 'from-amber-100 to-orange-50', badgeColor: 'bg-rose-500', badge: 'BEST' },
-              { brand: '누씨오', name: '비타민C 브라이트닝 앰플', original: '52,000', price: '36,400', discount: 30, bg: 'from-sky-100 to-blue-50', badgeColor: 'bg-blue-600', badge: 'NEW' },
-              { brand: '하우파파', name: '콜라겐 수분 크림', original: '45,000', price: '31,500', discount: 30, bg: 'from-emerald-50 to-teal-50', badgeColor: 'bg-emerald-500', badge: 'HOT' },
-              { brand: '누씨오', name: '히알루론산 토너 패드', original: '38,000', price: '26,600', discount: 30, bg: 'from-violet-50 to-purple-50', badgeColor: '', badge: '' },
+              { brand: '하우파파', name: '리페어 에센스 세럼', original: '48,000', price: '33,600', discount: 30, img: '/images/creators/product_serum.jpg', badgeColor: 'bg-rose-500', badge: 'BEST' },
+              { brand: '누씨오', name: '비타민C 브라이트닝 앰플', original: '52,000', price: '36,400', discount: 30, img: '/images/creators/product_ampoule.jpg', badgeColor: 'bg-blue-600', badge: 'NEW' },
+              { brand: '하우파파', name: '콜라겐 수분 크림', original: '45,000', price: '31,500', discount: 30, img: '/images/creators/product_cream.jpg', badgeColor: 'bg-emerald-500', badge: 'HOT' },
+              { brand: '누씨오', name: '히알루론산 토너 패드', original: '38,000', price: '26,600', discount: 30, img: '/images/creators/product_toner.jpg', badgeColor: '', badge: '' },
             ].map((p, i) => (
               <div
                 key={p.name}
                 className={`group bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-500 ${anim(products.isInView, `animate-fade-in-up delay-${(i + 2) * 100}`)}`}
               >
-                <div className={`relative h-[180px] md:h-[200px] bg-gradient-to-br ${p.bg} flex items-center justify-center`}>
-                  <div className="w-16 h-24 rounded-xl bg-white/70 shadow-sm" />
-                  {p.badge && (
-                    <span className={`absolute top-3 left-3 ${p.badgeColor} text-white text-[10px] font-bold px-2 py-1 rounded-md`}>
-                      {p.badge}
-                    </span>
-                  )}
-                  {p.discount > 0 && (
-                    <span className="absolute top-3 right-3 bg-gray-900 text-white text-[10px] font-bold px-2 py-1 rounded-md">
-                      {p.discount}%
-                    </span>
-                  )}
+                <div className="relative h-[180px] md:h-[200px] overflow-hidden rounded-t-2xl">
+                  <Image src={p.img} alt={p.name} width={512} height={512} className="w-full h-full object-cover" />
                 </div>
                 <div className="p-4">
                   <p className="text-[11px] text-gray-400 font-medium">{p.brand}</p>
