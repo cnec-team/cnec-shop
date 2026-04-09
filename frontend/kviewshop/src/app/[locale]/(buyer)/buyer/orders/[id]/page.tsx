@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useUser } from '@/lib/hooks/use-user';
-import { getBuyerOrderDetail } from '@/lib/actions/buyer';
+import { getBuyerOrderDetail, confirmOrder } from '@/lib/actions/buyer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -25,20 +25,43 @@ import {
   Copy,
   Loader2,
   Star,
+  Store,
+  ExternalLink,
 } from 'lucide-react';
+import { toast } from 'sonner';
+import { getTrackingUrl, getCourierLabel } from '@/lib/utils/courier';
 
 const statusConfig: Record<string, { icon: typeof Clock; color: string; bgColor: string; label: string }> = {
-  PENDING: { icon: Clock, color: 'text-yellow-600', bgColor: 'bg-yellow-500/10', label: 'Pending Payment' },
-  PAID: { icon: CheckCircle, color: 'text-green-600', bgColor: 'bg-green-500/10', label: 'Payment Confirmed' },
-  PREPARING: { icon: Package, color: 'text-blue-600', bgColor: 'bg-blue-500/10', label: 'Preparing' },
-  SHIPPING: { icon: Truck, color: 'text-purple-600', bgColor: 'bg-purple-500/10', label: 'Shipped' },
-  DELIVERED: { icon: CheckCircle, color: 'text-green-600', bgColor: 'bg-green-500/10', label: 'Delivered' },
-  CONFIRMED: { icon: CheckCircle, color: 'text-green-700', bgColor: 'bg-green-600/10', label: 'Confirmed' },
-  CANCELLED: { icon: XCircle, color: 'text-red-600', bgColor: 'bg-red-500/10', label: 'Cancelled' },
-  REFUNDED: { icon: XCircle, color: 'text-gray-600', bgColor: 'bg-gray-500/10', label: 'Refunded' },
+  PENDING: { icon: Clock, color: 'text-yellow-600', bgColor: 'bg-yellow-500/10', label: '결제대기' },
+  PAID: { icon: CheckCircle, color: 'text-green-600', bgColor: 'bg-green-500/10', label: '결제완료' },
+  PREPARING: { icon: Package, color: 'text-blue-600', bgColor: 'bg-blue-500/10', label: '배송준비중' },
+  SHIPPING: { icon: Truck, color: 'text-purple-600', bgColor: 'bg-purple-500/10', label: '배송중' },
+  DELIVERED: { icon: CheckCircle, color: 'text-green-600', bgColor: 'bg-green-500/10', label: '배송완료' },
+  CONFIRMED: { icon: CheckCircle, color: 'text-green-700', bgColor: 'bg-green-600/10', label: '구매확정' },
+  CANCELLED: { icon: XCircle, color: 'text-red-600', bgColor: 'bg-red-500/10', label: '주문취소' },
+  REFUNDED: { icon: XCircle, color: 'text-gray-600', bgColor: 'bg-gray-500/10', label: '환불완료' },
 };
 
-const shippingStatusSteps = ['PENDING', 'PAID', 'PREPARING', 'SHIPPING', 'DELIVERED'];
+// 구매자 상세에선 PAID부터 시작 (PENDING은 결제 전이라 제외)
+const shippingStatusSteps = ['PAID', 'PREPARING', 'SHIPPING', 'DELIVERED', 'CONFIRMED'];
+const stepLabels: Record<string, string> = {
+  PAID: '결제완료',
+  PREPARING: '배송준비',
+  SHIPPING: '배송중',
+  DELIVERED: '배송완료',
+  CONFIRMED: '구매확정',
+};
+
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  CARD: '신용카드',
+  EASY_PAY: '간편결제',
+  BANK_TRANSFER: '무통장입금',
+  card: '신용카드',
+  kakao: '카카오페이',
+  naver: '네이버페이',
+  toss: '토스페이',
+  bank_transfer: '무통장입금',
+};
 
 export default function OrderDetailPage() {
   const params = useParams();
@@ -49,6 +72,7 @@ export default function OrderDetailPage() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [order, setOrder] = useState<any>(null);
+  const [isConfirming, setIsConfirming] = useState(false);
 
   useEffect(() => {
     const loadOrder = async () => {
@@ -78,7 +102,7 @@ export default function OrderDetailPage() {
 
   const formatDate = (dateString: string | Date | null) => {
     if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString(locale, {
+    return new Date(dateString).toLocaleDateString('ko-KR', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -93,10 +117,11 @@ export default function OrderDetailPage() {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
+    toast.success('복사되었습니다');
   };
 
   const getItemName = (item: any): string => {
-    return item.productName || item.product?.name || 'Unknown Product';
+    return item.productName || item.product?.name || '상품';
   };
 
   const getItemImage = (item: any): string | null => {
@@ -117,6 +142,25 @@ export default function OrderDetailPage() {
     return shippingStatusSteps.indexOf(order.status);
   };
 
+  const getPaymentMethodLabel = () => {
+    if (!order?.paymentMethod) return null;
+    return PAYMENT_METHOD_LABELS[order.paymentMethod] || order.paymentMethod;
+  };
+
+  const handleConfirmOrder = async () => {
+    if (isConfirming) return;
+    setIsConfirming(true);
+    try {
+      await confirmOrder(order.id);
+      toast.success('구매가 확정되었습니다');
+      setOrder({ ...order, status: 'CONFIRMED', confirmedAt: new Date().toISOString() });
+    } catch (error: any) {
+      toast.error(error.message || '구매확정에 실패했습니다');
+    } finally {
+      setIsConfirming(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -129,9 +173,9 @@ export default function OrderDetailPage() {
     return (
       <div className="flex flex-col items-center justify-center h-64">
         <ShoppingBag className="h-16 w-16 text-muted-foreground/30 mb-4" />
-        <h2 className="text-xl font-semibold mb-2">Order not found</h2>
+        <h2 className="text-xl font-semibold mb-2">주문을 찾을 수 없습니다</h2>
         <Link href={'/' + locale + '/buyer/orders'}>
-          <Button>Back to Orders</Button>
+          <Button>주문내역으로</Button>
         </Link>
       </div>
     );
@@ -141,6 +185,7 @@ export default function OrderDetailPage() {
   const StatusIcon = status.icon;
   const currentStep = getCurrentStep();
   const subtotal = Number(order.totalAmount) - Number(order.shippingFee || 0);
+  const trackingUrl = getTrackingUrl(order.courierCode, order.trackingNumber);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -150,14 +195,14 @@ export default function OrderDetailPage() {
         className="inline-flex items-center text-muted-foreground hover:text-foreground transition-colors"
       >
         <ChevronLeft className="h-4 w-4 mr-1" />
-        Back to Orders
+        주문내역으로
       </Link>
 
       {/* Order Header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-headline font-bold flex items-center gap-2">
-            Order {order.orderNumber}
+            주문번호 {order.orderNumber}
             <Button
               variant="ghost"
               size="icon"
@@ -167,7 +212,7 @@ export default function OrderDetailPage() {
               <Copy className="h-3 w-3" />
             </Button>
           </h1>
-          <p className="text-muted-foreground">Placed on {formatDate(order.createdAt)}</p>
+          <p className="text-muted-foreground">주문일 {formatDate(order.createdAt)}</p>
         </div>
         <Badge className={'text-sm px-3 py-1 ' + status.bgColor + ' ' + status.color + ' border-0'}>
           <StatusIcon className="h-4 w-4 mr-1" />
@@ -184,7 +229,6 @@ export default function OrderDetailPage() {
                 {shippingStatusSteps.map((step, index) => {
                   const isCompleted = index <= currentStep;
                   const isCurrent = index === currentStep;
-                  const stepLabel = statusConfig[step]?.label || step;
                   return (
                     <div key={step} className="flex flex-col items-center flex-1">
                       <div
@@ -207,7 +251,7 @@ export default function OrderDetailPage() {
                           (isCurrent ? 'font-semibold text-primary' : 'text-muted-foreground')
                         }
                       >
-                        {stepLabel}
+                        {stepLabels[step] || step}
                       </span>
                     </div>
                   );
@@ -233,7 +277,7 @@ export default function OrderDetailPage() {
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <Package className="h-5 w-5" />
-                  Order Items
+                  주문 상품
                 </CardTitle>
                 {getCreatorSlug() && (
                   <Link
@@ -250,7 +294,7 @@ export default function OrderDetailPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {order.orderItems?.map((item: any) => (
+              {order.items?.map((item: any) => (
                 <div key={item.id} className="flex gap-4">
                   <div className="relative w-20 h-20 rounded-md overflow-hidden bg-muted flex-shrink-0">
                     {getItemImage(item) ? (
@@ -269,7 +313,7 @@ export default function OrderDetailPage() {
                   <div className="flex-1 min-w-0">
                     <h3 className="font-medium">{getItemName(item)}</h3>
                     <p className="text-sm text-muted-foreground">
-                      Qty: {item.quantity} x {formatCurrency(Number(item.unitPrice))}
+                      수량: {item.quantity} x {formatCurrency(Number(item.unitPrice))}
                     </p>
                   </div>
                   <div className="text-right">
@@ -283,16 +327,16 @@ export default function OrderDetailPage() {
               {/* Order Summary */}
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Subtotal</span>
+                  <span className="text-muted-foreground">상품금액</span>
                   <span>{formatCurrency(subtotal)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Shipping</span>
-                  <span>{Number(order.shippingFee || 0) > 0 ? formatCurrency(Number(order.shippingFee)) : 'Free'}</span>
+                  <span className="text-muted-foreground">배송비</span>
+                  <span>{Number(order.shippingFee || 0) > 0 ? formatCurrency(Number(order.shippingFee)) : '무료'}</span>
                 </div>
                 <Separator />
                 <div className="flex justify-between font-semibold text-lg">
-                  <span>Total</span>
+                  <span>총 결제금액</span>
                   <span>{formatCurrency(Number(order.totalAmount))}</span>
                 </div>
               </div>
@@ -305,25 +349,40 @@ export default function OrderDetailPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Truck className="h-5 w-5" />
-                  Tracking Information
+                  배송 추적
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Tracking Number</p>
-                    <p className="font-mono font-semibold flex items-center gap-2">
-                      {order.trackingNumber}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6"
-                        onClick={() => copyToClipboard(order.trackingNumber || '')}
-                      >
-                        <Copy className="h-3 w-3" />
-                      </Button>
-                    </p>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">택배사</p>
+                      <p className="font-medium">{getCourierLabel(order.courierCode)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-muted-foreground">운송장번호</p>
+                      <p className="font-mono font-semibold flex items-center gap-2">
+                        {order.trackingNumber}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => copyToClipboard(order.trackingNumber || '')}
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </p>
+                    </div>
                   </div>
+                  {trackingUrl && (
+                    <a href={trackingUrl} target="_blank" rel="noopener noreferrer">
+                      <Button variant="outline" className="w-full gap-2 mt-2">
+                        <Truck className="h-4 w-4" />
+                        배송 조회
+                        <ExternalLink className="h-3 w-3" />
+                      </Button>
+                    </a>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -337,7 +396,7 @@ export default function OrderDetailPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <MapPin className="h-4 w-4" />
-                Shipping Address
+                배송지
               </CardTitle>
             </CardHeader>
             <CardContent className="text-sm space-y-1">
@@ -360,38 +419,95 @@ export default function OrderDetailPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <CreditCard className="h-4 w-4" />
-                Payment Information
+                결제 정보
               </CardTitle>
             </CardHeader>
             <CardContent className="text-sm space-y-2">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Status</span>
+                <span className="text-muted-foreground">결제상태</span>
                 <Badge variant="outline" className="text-xs">
-                  {order.paidAt ? 'Paid' : 'Pending'}
+                  {order.paidAt ? '결제완료' : '결제대기'}
                 </Badge>
               </div>
+              {getPaymentMethodLabel() && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">결제수단</span>
+                  <span>{getPaymentMethodLabel()}</span>
+                </div>
+              )}
               {order.paidAt && (
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Paid At</span>
+                  <span className="text-muted-foreground">결제일시</span>
                   <span>{formatDate(order.paidAt)}</span>
                 </div>
               )}
             </CardContent>
           </Card>
 
+          {/* Brand CS Info */}
+          {order.brand && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Store className="h-4 w-4" />
+                  판매자 정보
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm space-y-2">
+                <p className="font-medium">{order.brand.brandName || order.brand.companyName}</p>
+                {order.brand.contactPhone && (
+                  <a
+                    href={'tel:' + order.brand.contactPhone}
+                    className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <Phone className="h-3 w-3" />
+                    {order.brand.contactPhone}
+                  </a>
+                )}
+                {order.brand.contactEmail && (
+                  <a
+                    href={'mailto:' + order.brand.contactEmail}
+                    className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <Mail className="h-3 w-3" />
+                    {order.brand.contactEmail}
+                  </a>
+                )}
+                <Separator className="my-2" />
+                <p className="text-xs text-muted-foreground">
+                  배송/교환/환불은 {order.brand.brandName || order.brand.companyName}이 처리합니다
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Actions */}
           <div className="space-y-2">
             {order.status === 'DELIVERED' && (
-              <Link href={'/' + locale + '/buyer/reviews?orderId=' + order.id} className="block">
-                <Button className="w-full gap-2">
-                  <Star className="h-4 w-4" />
-                  Write a Review
+              <>
+                <Button
+                  className="w-full gap-2"
+                  onClick={handleConfirmOrder}
+                  disabled={isConfirming}
+                >
+                  {isConfirming ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <CheckCircle className="h-4 w-4" />
+                  )}
+                  구매 확정
                 </Button>
-              </Link>
+                <Link href={'/' + locale + '/buyer/reviews?orderId=' + order.id} className="block">
+                  <Button variant="outline" className="w-full gap-2">
+                    <Star className="h-4 w-4" />
+                    리뷰 작성
+                  </Button>
+                </Link>
+              </>
             )}
             {['PENDING', 'PAID'].includes(order.status) && (
               <Button variant="outline" className="w-full text-destructive">
-                Cancel Order
+                주문 취소 문의
               </Button>
             )}
           </div>

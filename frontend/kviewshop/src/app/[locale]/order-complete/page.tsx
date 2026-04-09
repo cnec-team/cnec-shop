@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   CheckCircle,
   Clock,
@@ -10,8 +11,11 @@ import {
   Landmark,
   Package,
   ShoppingBag,
+  Store,
+  Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getOrderComplete } from '@/lib/actions/shop';
 
 function formatKRW(amount: number): string {
   return new Intl.NumberFormat('ko-KR', {
@@ -28,35 +32,113 @@ interface BankInfo {
   accountHolder: string;
 }
 
+interface OrderItem {
+  id: string;
+  productName?: string | null;
+  productImage?: string | null;
+  quantity: number;
+  unitPrice: number | string;
+  totalPrice: number | string;
+  product?: {
+    name?: string | null;
+    nameKo?: string | null;
+    thumbnailUrl?: string | null;
+    images?: string[];
+  } | null;
+}
+
 interface OrderCompleteData {
   orderNumber: string;
   totalAmount: number;
   isBankTransfer?: boolean;
   bankInfo?: BankInfo;
   shopUsername?: string;
+  items?: OrderItem[];
+  shippingAddress?: string;
+  buyerName?: string;
+  buyerPhone?: string;
+  brandName?: string;
+  brandPhone?: string;
+  brandEmail?: string;
+  shippingFee?: number;
 }
 
 export default function OrderCompletePage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const locale = params.locale as string;
   const [data, setData] = useState<OrderCompleteData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    try {
-      const stored = sessionStorage.getItem('cnec-order-complete');
-      if (stored) {
-        setData(JSON.parse(stored));
-        sessionStorage.removeItem('cnec-order-complete');
+    const loadData = async () => {
+      try {
+        // 1차: sessionStorage에서 데이터 로드
+        const stored = sessionStorage.getItem('cnec-order-complete');
+        if (stored) {
+          setData(JSON.parse(stored));
+          sessionStorage.removeItem('cnec-order-complete');
+          setIsLoading(false);
+          return;
+        }
+      } catch {
+        // sessionStorage not available
       }
-    } catch {
-      // sessionStorage not available
-    }
-  }, []);
+
+      // 2차: URL 쿼리 파라미터(orderNumber)로 서버 조회
+      const orderNumber = searchParams.get('orderNumber');
+      if (orderNumber) {
+        try {
+          const order = await getOrderComplete(orderNumber);
+          if (order) {
+            const items: OrderItem[] = (order.items || []).map((item: any) => ({
+              id: item.id,
+              productName: item.productName,
+              productImage: item.productImage,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              totalPrice: item.totalPrice,
+              product: item.product,
+            }));
+
+            setData({
+              orderNumber: order.orderNumber || orderNumber,
+              totalAmount: Number(order.totalAmount),
+              isBankTransfer: order.paymentMethod === 'BANK_TRANSFER',
+              items,
+              shippingAddress: order.shippingAddress || undefined,
+              buyerName: order.buyerName || undefined,
+              buyerPhone: order.buyerPhone || undefined,
+              brandName: order.brand?.brandName || order.brand?.companyName || undefined,
+              brandPhone: order.brand?.contactPhone || undefined,
+              brandEmail: order.brand?.contactEmail || undefined,
+              shippingFee: Number(order.shippingFee || 0),
+              shopUsername: order.creator?.shopId || undefined,
+            });
+          }
+        } catch {
+          // 서버 조회 실패
+        }
+      }
+
+      setIsLoading(false);
+    };
+
+    loadData();
+  }, [searchParams]);
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
-    toast.success('복사되었습니다.');
+    toast.success('복사되었습니다');
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+      </div>
+    );
+  }
 
   if (!data) {
     return (
@@ -177,6 +259,75 @@ export default function OrderCompletePage() {
             )}
           </div>
 
+          {/* Order Items */}
+          {data.items && data.items.length > 0 && (
+            <div className="bg-white rounded-2xl p-5 mt-3 text-left">
+              <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2 mb-4">
+                <Package className="w-4 h-4" />
+                주문 상품
+              </h3>
+              <div className="space-y-3">
+                {data.items.map((item) => {
+                  const itemName = item.productName || item.product?.name || item.product?.nameKo || '상품';
+                  const itemImage = item.productImage || item.product?.thumbnailUrl || (item.product?.images && item.product.images.length > 0 ? item.product.images[0] : null);
+                  return (
+                    <div key={item.id} className="flex gap-3">
+                      <div className="w-14 h-14 rounded-xl bg-gray-100 flex-shrink-0 overflow-hidden">
+                        {itemImage ? (
+                          <Image
+                            src={itemImage}
+                            alt={itemName}
+                            width={56}
+                            height={56}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Package className="w-5 h-5 text-gray-300" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{itemName}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          수량: {item.quantity}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-semibold text-gray-900">
+                          {formatKRW(Number(item.totalPrice))}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {data.shippingFee !== undefined && (
+                <>
+                  <div className="h-px bg-gray-100 my-3" />
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">배송비</span>
+                    <span className="text-gray-600">
+                      {data.shippingFee === 0 ? '무료' : formatKRW(data.shippingFee)}
+                    </span>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Shipping Info */}
+          {data.shippingAddress && (
+            <div className="bg-white rounded-2xl p-5 mt-3 text-left">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">배송지</h3>
+              <div className="space-y-1 text-sm">
+                {data.buyerName && <p className="font-medium text-gray-900">{data.buyerName}</p>}
+                <p className="text-gray-600">{data.shippingAddress}</p>
+                {data.buyerPhone && <p className="text-gray-400">{data.buyerPhone}</p>}
+              </div>
+            </div>
+          )}
+
           {/* Status info */}
           <div className="bg-white rounded-2xl p-4 mt-3">
             {isBankTransfer ? (
@@ -206,9 +357,23 @@ export default function OrderCompletePage() {
             )}
           </div>
 
-          <p className="text-xs text-gray-400 mt-4">
-            배송은 브랜드에서 직접 처리합니다. 문의사항은 크넥에 연락해주세요.
-          </p>
+          {/* Brand CS Info */}
+          {data.brandName && (
+            <div className="bg-white rounded-2xl p-4 mt-3 text-left">
+              <div className="flex items-center gap-2 text-sm">
+                <Store className="h-4 w-4 text-gray-400 shrink-0" />
+                <span className="text-gray-600">
+                  배송/교환/환불은 <span className="font-medium text-gray-900">{data.brandName}</span>이 처리합니다
+                </span>
+              </div>
+            </div>
+          )}
+
+          {!data.brandName && (
+            <p className="text-xs text-gray-400 mt-4">
+              배송은 브랜드에서 직접 처리합니다. 문의사항은 크넥에 연락해주세요.
+            </p>
+          )}
 
           {/* Actions */}
           <div className="mt-8 space-y-3">

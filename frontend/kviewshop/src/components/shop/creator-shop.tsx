@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { Clock, ShoppingBag, Instagram, Share2, CalendarDays } from 'lucide-react';
+import { Clock, ShoppingBag, Instagram, Share2, CalendarDays, Package } from 'lucide-react';
 import { ShareSheet } from '@/components/shop/ShareSheet';
 import { VisitTracker } from '@/components/shop/VisitTracker';
 import { calculateDDay, calculateDDayUntilStart, getDDayLabel, getDDayStartLabel, formatCampaignPeriod, hasCampaignStarted } from '@/lib/utils/date';
@@ -173,7 +173,7 @@ export function CreatorShopPage({
       <VisitTracker creatorId={creator.id} />
 
       {/* Header / Profile Section */}
-      <ShopHeader creator={creator} shopUrl={shopUrl} />
+      <ShopHeader creator={creator} shopUrl={shopUrl} locale={locale} />
 
       {/* Tab Navigation */}
       <div className="max-w-lg mx-auto bg-white border-b border-gray-100">
@@ -273,27 +273,36 @@ export { CreatorShopPage as CreatorShop };
 // Sub-components
 // =============================================
 
-function ShopHeader({ creator, shopUrl }: { creator: ShopCreator; shopUrl: string }) {
+function ShopHeader({ creator, shopUrl, locale }: { creator: ShopCreator; shopUrl: string; locale: string }) {
   const shopDesc = creator.bio || 'K-뷰티 크리에이터 셀렉트샵';
 
   return (
     <div className="bg-white">
-      {/* Top bar: page title + share */}
+      {/* Top bar: page title + share + order lookup */}
       <div className="max-w-lg mx-auto px-4 pt-4 pb-2 flex items-center justify-between">
         <h1 className="text-lg font-bold text-gray-900">
           {creator.displayName}
         </h1>
-        <ShareSheet
-          url={shopUrl}
-          title={`${creator.displayName}의 셀렉트샵`}
-          description={shopDesc}
-          imageUrl={creator.profileImageUrl || undefined}
-          trigger={
-            <button className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
-              <Share2 className="h-4 w-4 text-gray-500" />
-            </button>
-          }
-        />
+        <div className="flex items-center gap-1">
+          <Link
+            href={`/${locale}/orders`}
+            className="flex h-8 items-center gap-1.5 px-2.5 rounded-full hover:bg-gray-100 transition-colors text-gray-500 hover:text-gray-700"
+          >
+            <Package className="h-4 w-4" />
+            <span className="text-xs font-medium">주문조회</span>
+          </Link>
+          <ShareSheet
+            url={shopUrl}
+            title={`${creator.displayName}의 셀렉트샵`}
+            description={shopDesc}
+            imageUrl={creator.profileImageUrl || undefined}
+            trigger={
+              <button className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-gray-100 transition-colors">
+                <Share2 className="h-4 w-4 text-gray-500" />
+              </button>
+            }
+          />
+        </div>
       </div>
 
       {/* Horizontal profile: photo left + text right */}

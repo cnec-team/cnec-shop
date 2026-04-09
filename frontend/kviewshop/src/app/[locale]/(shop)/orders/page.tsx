@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Search, Package, Truck, Loader2, ShoppingBag } from 'lucide-react';
 import { lookupOrder } from '@/lib/actions/shop';
+import { getCourierLabel, getTrackingUrl } from '@/lib/utils/courier';
 
 type OrderStatus = 'PENDING' | 'PAID' | 'PREPARING' | 'SHIPPING' | 'DELIVERED' | 'CONFIRMED' | 'CANCELLED' | 'REFUNDED';
 
@@ -25,23 +26,6 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
   CONFIRMED: 'bg-emerald-50 text-emerald-700',
   CANCELLED: 'bg-red-50 text-red-700',
   REFUNDED: 'bg-gray-50 text-gray-600',
-};
-
-const COURIER_LABELS: Record<string, string> = {
-  cj: 'CJ대한통운',
-  hanjin: '한진택배',
-  logen: '로젠택배',
-  epost: '우체국택배',
-  lotte: '롯데택배',
-  etc: '기타',
-};
-
-const COURIER_TRACKING_URL: Record<string, string> = {
-  cj: 'https://www.cjlogistics.com/ko/tool/parcel/tracking?gnbInvcNo=',
-  hanjin: 'https://www.hanjin.com/kor/CMS/DeliveryMgr/WaybillResult.do?mession=&wblnum=',
-  logen: 'https://www.ilogen.com/web/personal/trace/',
-  epost: 'https://service.epost.go.kr/trace.RetrieveDomRi498.postal?sid1=',
-  lotte: 'https://www.lotteglogis.com/home/reservation/tracking/linkView?InvNo=',
 };
 
 function formatDate(dateString: string | Date | null): string {
@@ -96,13 +80,6 @@ export default function OrderLookupPage() {
     } finally {
       setLoading(false);
     }
-  }
-
-  function getTrackingUrl(courierCode: string | null, trackingNumber: string | null): string | null {
-    if (!courierCode || !trackingNumber) return null;
-    const baseUrl = COURIER_TRACKING_URL[courierCode];
-    if (!baseUrl) return null;
-    return baseUrl + trackingNumber;
   }
 
   return (
@@ -328,9 +305,7 @@ export default function OrderLookupPage() {
                     <div className="flex justify-between">
                       <span className="text-gray-400">택배사</span>
                       <span className="text-gray-900">
-                        {order.courierCode
-                          ? COURIER_LABELS[order.courierCode] || order.courierCode
-                          : '-'}
+                        {getCourierLabel(order.courierCode)}
                       </span>
                     </div>
                     <div className="flex justify-between">

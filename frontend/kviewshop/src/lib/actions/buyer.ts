@@ -292,6 +292,16 @@ export async function getBuyerOrderDetail(orderId: string, buyerId: string) {
           profileImageUrl: true,
         },
       },
+      brand: {
+        select: {
+          id: true,
+          brandName: true,
+          companyName: true,
+          logoUrl: true,
+          contactPhone: true,
+          contactEmail: true,
+        },
+      },
       items: {
         include: {
           product: {
@@ -304,6 +314,52 @@ export async function getBuyerOrderDetail(orderId: string, buyerId: string) {
       },
     },
   })
+}
+
+// ==================== Confirm Order ====================
+
+export async function confirmOrder(orderId: string) {
+  const { buyer } = await requireBuyer()
+
+  const order = await prisma.order.findFirst({
+    where: { id: orderId, buyerId: buyer.id, status: 'DELIVERED' },
+  })
+
+  if (!order) throw new Error('주문을 찾을 수 없습니다')
+
+  await prisma.$transaction([
+    prisma.order.update({
+      where: { id: orderId },
+      data: { status: 'CONFIRMED', confirmedAt: new Date() },
+    }),
+    prisma.conversion.updateMany({
+      where: { orderId, status: 'PENDING' },
+      data: { status: 'CONFIRMED', confirmedAt: new Date() },
+    }),
+  ])
+
+  // 크리에이터에게 구매확정 알림
+  if (order.creatorId) {
+    try {
+      const creator = await prisma.creator.findUnique({
+        where: { id: order.creatorId },
+        select: { userId: true },
+      })
+      if (creator) {
+        await sendNotification({
+          userId: creator.userId,
+          type: 'ORDER',
+          title: '구매가 확정되었어요',
+          message: `주문 ${order.orderNumber}의 구매가 확정되었습니다.`,
+          linkUrl: '/creator/sales',
+        })
+      }
+    } catch {
+      // 알림 실패가 주요 로직에 영향 주지 않도록
+    }
+  }
+
+  return { success: true }
 }
 
 // ==================== Points ====================

@@ -9,13 +9,13 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const buyerNavItems = [
-  { href: '/buyer/dashboard', label: 'Dashboard', icon: Home },
-  { href: '/buyer/orders', label: 'My Orders', icon: ShoppingBag },
-  { href: '/buyer/subscriptions', label: 'Subscriptions', icon: Heart },
-  { href: '/buyer/reviews', label: 'My Reviews', icon: Star },
-  { href: '/buyer/points', label: 'Points', icon: Gift },
-  { href: '/buyer/become-creator', label: 'Become Creator', icon: TrendingUp },
-  { href: '/buyer/settings', label: 'Settings', icon: Settings },
+  { href: '/buyer/dashboard', label: '홈', icon: Home },
+  { href: '/buyer/orders', label: '주문내역', icon: ShoppingBag },
+  { href: '/buyer/subscriptions', label: '구독', icon: Heart },
+  { href: '/buyer/reviews', label: '리뷰', icon: Star },
+  { href: '/buyer/points', label: '포인트', icon: Gift },
+  { href: '/buyer/become-creator', label: '크리에이터 되기', icon: TrendingUp },
+  { href: '/buyer/settings', label: '설정', icon: Settings },
 ];
 
 export default function BuyerLayout({
@@ -72,7 +72,7 @@ export default function BuyerLayout({
             {buyer && (
               <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
                 <Gift className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium">{buyer.points_balance.toLocaleString()} P</span>
+                <span className="text-sm font-medium">{(buyer.pointsBalance ?? 0).toLocaleString()} P</span>
               </div>
             )}
 
@@ -84,7 +84,7 @@ export default function BuyerLayout({
             {/* User Menu */}
             <div className="flex items-center gap-2">
               <Avatar className="h-8 w-8">
-                <AvatarImage src={buyer?.profile_image || ''} />
+                <AvatarImage src={buyer?.profileImage || ''} />
                 <AvatarFallback className="bg-primary/20 text-primary">
                   {buyer?.nickname?.charAt(0)?.toUpperCase() || 'B'}
                 </AvatarFallback>
@@ -143,7 +143,7 @@ export default function BuyerLayout({
                 }`}
               >
                 <item.icon className="h-5 w-5" />
-                <span className="text-xs">{item.label.split(' ')[0]}</span>
+                <span className="text-xs">{item.label}</span>
               </Link>
             );
           })}
