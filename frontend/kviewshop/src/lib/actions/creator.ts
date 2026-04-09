@@ -498,6 +498,10 @@ export async function getPickableProducts(creatorId: string) {
       brandId: p.brandId,
       brand: brandMap[p.brandId] ?? null,
       activeCampaign: campaignMap[p.id] ?? null,
+      allowTrial: p.allowTrial,
+      volume: p.volume,
+      description: p.description,
+      descriptionKo: p.descriptionKo,
     })),
     myShopItemProductIds: Array.from(myShopItemProductIds),
   }

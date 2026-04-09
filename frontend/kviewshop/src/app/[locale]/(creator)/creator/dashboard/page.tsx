@@ -19,6 +19,7 @@ import {
   Copy,
   Store,
   ShieldCheck,
+  Gift,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/i18n/config';
@@ -33,6 +34,7 @@ import {
   addProductToShop,
   triggerMissionCheck,
 } from '@/lib/actions/creator';
+import { getTrialableProducts } from '@/lib/actions/trial';
 
 interface DashboardStats {
   totalVisits: number;
@@ -54,6 +56,20 @@ interface RecommendedProduct {
   brand: { brandName: string } | null;
 }
 
+interface TrialProduct {
+  id: string;
+  name: string | null;
+  nameKo: string | null;
+  thumbnailUrl: string | null;
+  imageUrl: string | null;
+  images: string[];
+  price: string | number | null;
+  salePrice: string | number | null;
+  volume: string | null;
+  brand: { companyName: string | null };
+  existingTrial: { id: string; status: string } | null;
+}
+
 export default function CreatorDashboardPage() {
   const params = useParams();
   const locale = params.locale as string;
@@ -62,6 +78,7 @@ export default function CreatorDashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [recommendedProducts, setRecommendedProducts] = useState<RecommendedProduct[]>([]);
+  const [trialProducts, setTrialProducts] = useState<TrialProduct[]>([]);
   const [addingId, setAddingId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [showCsBanner, setShowCsBanner] = useState(false);
@@ -83,9 +100,10 @@ export default function CreatorDashboardPage() {
       setCreator(creatorData as any);
 
       try {
-        const [dashboardStats, productsData] = await Promise.all([
+        const [dashboardStats, productsData, trialData] = await Promise.all([
           getCreatorDashboardStats(creatorData.id),
           getPickableProducts(creatorData.id),
+          getTrialableProducts({ limit: 4 }),
         ]);
 
         if (cancelled) return;
@@ -93,6 +111,7 @@ export default function CreatorDashboardPage() {
         setRecommendedProducts(
           (productsData.products as unknown as RecommendedProduct[]).slice(0, 6)
         );
+        setTrialProducts(trialData.products as TrialProduct[]);
       } catch (error) {
         console.error('Failed to fetch dashboard stats:', error);
       } finally {
@@ -280,6 +299,68 @@ export default function CreatorDashboardPage() {
                     </div>
                   </div>
                 </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Trial Products */}
+      {trialProducts.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Gift className="h-4 w-4 text-purple-500" />
+              <h2 className="text-base font-bold text-gray-900">체험 신청 상품</h2>
+            </div>
+            <Link
+              href={`/${locale}/creator/trial`}
+              className="text-xs text-gray-400 font-medium flex items-center gap-0.5 hover:text-gray-600 transition-colors"
+            >
+              전체보기 <ChevronRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {trialProducts.map((product) => {
+              const imgSrc = product.thumbnailUrl || product.imageUrl || product.images?.[0];
+              const price = product.salePrice ?? product.price;
+              const priceNum = price ? Number(price) : 0;
+              return (
+                <Link
+                  key={product.id}
+                  href={`/${locale}/creator/trial`}
+                  className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
+                >
+                  <div className="aspect-[4/3] bg-gray-50 relative overflow-hidden">
+                    <SafeImage
+                      src={imgSrc}
+                      alt={product.nameKo || product.name || ''}
+                      fill
+                      className="object-cover"
+                      fallbackClassName="w-full h-full"
+                      sizes="(max-width: 768px) 50vw, 200px"
+                    />
+                    {product.existingTrial && (
+                      <span className="absolute top-2 left-2 bg-yellow-50 text-yellow-700 text-[10px] font-medium px-2 py-0.5 rounded-full">
+                        {product.existingTrial.status === 'pending' ? '신청중' : '진행중'}
+                      </span>
+                    )}
+                  </div>
+                  <div className="p-2.5">
+                    <p className="text-[10px] text-gray-400">{product.brand.companyName}</p>
+                    <p className="text-xs font-medium text-gray-900 line-clamp-1 mt-0.5">{product.nameKo || product.name}</p>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      {priceNum > 0 && (
+                        <span className="text-xs font-bold text-gray-900">
+                          {formatCurrency(priceNum, 'KRW')}
+                        </span>
+                      )}
+                      {product.volume && (
+                        <span className="text-[10px] text-gray-400">{product.volume}</span>
+                      )}
+                    </div>
+                  </div>
+                </Link>
               );
             })}
           </div>
