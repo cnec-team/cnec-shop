@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCartStore, useAuthStore } from '@/lib/store/auth';
@@ -86,6 +86,7 @@ export default function CheckoutPage() {
 
   const { items, clearCart, updateQuantity, removeItem } = useCartStore();
   const buyer = useAuthStore((s) => s.buyer);
+  const checkoutDoneRef = useRef(false);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -108,7 +109,7 @@ export default function CheckoutPage() {
   // Load checkout data
   useEffect(() => {
     const loadData = async () => {
-      if (!username) return;
+      if (!username || checkoutDoneRef.current) return;
 
       try {
         const creatorData = await getCreatorByShopId(username);
@@ -293,6 +294,7 @@ export default function CheckoutPage() {
 
       // 무통장입금: PortOne 스킵, 바로 주문 완료 표시
       if (isBankTransfer) {
+        checkoutDoneRef.current = true;
         clearCart();
         setOrderResult({
           orderNumber,
@@ -376,6 +378,7 @@ export default function CheckoutPage() {
       const completeData = await completeRes.json();
 
       // 5. 결제 성공 — 장바구니 비우고 결과 표시
+      checkoutDoneRef.current = true;
       clearCart();
       setOrderResult({
         orderNumber: completeData.orderNumber || orderNumber,
@@ -515,10 +518,10 @@ export default function CheckoutPage() {
 
             <div className="mt-8 space-y-3">
               <Link
-                href={`/${locale}/orders`}
+                href={`/${locale}/buyer/orders`}
                 className="block w-full h-12 bg-gray-900 text-white rounded-xl font-semibold flex items-center justify-center"
               >
-                주문 조회하기
+                주문 내역 보기
               </Link>
               <Link
                 href={`/${locale}/${username}`}
