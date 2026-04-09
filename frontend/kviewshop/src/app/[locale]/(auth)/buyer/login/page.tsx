@@ -61,12 +61,12 @@ export default function BuyerLoginPage() {
       const session = await sessionRes.json();
 
       if (session?.user?.role !== 'buyer') {
-        setLoginError('This account is not registered as a buyer.');
+        setLoginError('구매자로 등록되지 않은 계정입니다.');
         await nextAuthSignOut({ redirect: false });
         return;
       }
 
-      toast.success('Welcome back!');
+      toast.success('환영합니다!');
 
       if (returnUrl) {
         router.push(returnUrl);
@@ -91,10 +91,10 @@ export default function BuyerLoginPage() {
           </Link>
           <div className="flex items-center justify-center gap-2 mb-2">
             <ShoppingBag className="h-6 w-6 text-primary" />
-            <CardTitle className="text-2xl font-headline">Buyer Login</CardTitle>
+            <CardTitle className="text-2xl font-headline">로그인</CardTitle>
           </div>
           <CardDescription>
-            Sign in to access your favorite creator shops and manage your orders
+            크넥샵에 로그인하세요
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -140,10 +140,10 @@ export default function BuyerLoginPage() {
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Loading...
+                  로그인 중...
                 </>
               ) : (
-                'Sign In'
+                '로그인'
               )}
             </Button>
           </form>
@@ -155,7 +155,7 @@ export default function BuyerLoginPage() {
               </div>
               <div className="relative flex justify-center text-xs uppercase">
                 <span className="bg-background px-2 text-muted-foreground">
-                  New here?
+                  처음이신가요?
                 </span>
               </div>
             </div>
@@ -165,7 +165,7 @@ export default function BuyerLoginPage() {
               className="flex items-center justify-center gap-2 w-full rounded-lg border border-border p-3 text-sm font-medium hover:bg-accent transition-colors"
             >
               <ShoppingBag className="h-4 w-4 text-primary" />
-              Create Buyer Account
+              회원가입
             </Link>
 
             <div className="relative">
@@ -174,7 +174,7 @@ export default function BuyerLoginPage() {
               </div>
               <div className="relative flex justify-center text-xs uppercase">
                 <span className="bg-background px-2 text-muted-foreground">
-                  Are you a creator?
+                  크리에이터이신가요?
                 </span>
               </div>
             </div>
@@ -184,7 +184,7 @@ export default function BuyerLoginPage() {
               className="flex items-center justify-center gap-2 w-full rounded-lg border border-primary/30 p-3 text-sm font-medium hover:bg-primary/10 transition-colors"
             >
               <Sparkles className="h-4 w-4 text-primary" />
-              Creator Login
+              크리에이터 로그인
             </Link>
           </div>
         </CardContent>
