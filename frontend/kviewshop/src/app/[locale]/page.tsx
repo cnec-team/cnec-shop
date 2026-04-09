@@ -501,6 +501,17 @@ export default function LandingPage() {
                 ))}
               </div>
 
+              {/* VIP 누적 판매액 */}
+              <div className="mx-4 mb-3 rounded-2xl bg-gray-900 px-4 py-3.5 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center shrink-0">
+                  <TrendingUp className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <p className="text-[11px] text-gray-400">VIP 누적 판매액</p>
+                  <p className="text-lg font-black text-white">₩12,450,000</p>
+                </div>
+              </div>
+
               {/* Home indicator */}
               <div className="flex justify-center pb-2">
                 <div className="w-[120px] h-[4px] bg-gray-900 rounded-full" />
@@ -516,10 +527,16 @@ export default function LandingPage() {
             </span>
 
             <h2 className="text-3xl md:text-[2.75rem] font-black tracking-tight leading-tight mt-6 text-gray-900">
-              나만의 셀렉트샵을
+              팔로워들을 위한
               <br />
-              운영하세요
+              프라이빗 뷰티 라운지
             </h2>
+
+            <p className="text-base md:text-lg text-gray-500 leading-relaxed mt-5 max-w-md">
+              크리에이터의 안목으로 엄선한 프리미엄 뷰티 브랜드.
+              <br />
+              오직 내 팔로워에게만 허락된 시크릿 특가를 오픈하세요.
+            </p>
 
             <div className="mt-10 space-y-7">
               {[
