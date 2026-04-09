@@ -4,6 +4,12 @@
 
 CNEC Shop -- K-뷰티 크리에이터 커머스 플랫폼 (Next.js + Prisma + Railway PostgreSQL + NextAuth v5 + PortOne V2 + Cloudflare R2)
 
+## Package Manager
+- 이 프로젝트는 **pnpm** 사용. `npm install` 절대 금지.
+- 패키지 설치: `pnpm add [패키지명]`
+- 개발 의존성: `pnpm add -D [패키지명]`
+- `npm install` 사용 시 Vercel 빌드 실패함
+
 ## Tech Stack
 
 - **Framework**: Next.js 16 (App Router, TypeScript, Tailwind CSS v4)
