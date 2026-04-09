@@ -399,7 +399,7 @@ export default function NewProductPage() {
               1:1 정사각형 권장 · 최소 800×800px · JPG/PNG/WebP
             </p>
             <div className="max-w-xs">
-              <ImageUpload value={mainImage} onChange={setMainImage} placeholder="대표 이미지를 업로드하세요" folder="products" onFileSelected={handleMainImageValidation} />
+              <ImageUpload value={mainImage} onChange={setMainImage} placeholder="대표 이미지를 업로드하세요" folder="products" />
             </div>
           </div>
 

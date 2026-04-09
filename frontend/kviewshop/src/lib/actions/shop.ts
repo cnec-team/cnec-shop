@@ -1,6 +1,12 @@
 'use server'
 
 import { prisma } from '@/lib/db'
+import { sendNotification } from '@/lib/notifications'
+import {
+  orderCompleteMessage,
+  newOrderBrandMessage,
+  saleOccurredMessage,
+} from '@/lib/notifications/templates'
 
 // ==================== Checkout ====================
 
@@ -148,6 +154,100 @@ export async function createOrder(data: {
       }
     }),
   })
+
+  // --- 알림 발송 ---
+  try {
+    const firstItemName = data.items[0]?.productName || '상품'
+    const totalQty = data.items.reduce((sum, i) => sum + i.quantity, 0)
+
+    // 구매자 정보
+    const buyerUser = data.buyerId
+      ? await prisma.user.findUnique({ where: { id: data.buyerId }, select: { phone: true, email: true } })
+      : null
+
+    // 주문 완료 → 구매자
+    const orderTemplate = orderCompleteMessage({
+      buyerName: data.buyerName,
+      orderNumber: order.orderNumber ?? '',
+      productName: firstItemName ?? '상품',
+      totalAmount: Number(data.totalAmount),
+    })
+
+    if (data.buyerId) {
+      await sendNotification({
+        userId: data.buyerId,
+        type: orderTemplate.inApp.type,
+        title: orderTemplate.inApp.title,
+        message: orderTemplate.inApp.message,
+        linkUrl: orderTemplate.inApp.linkUrl,
+        phone: buyerUser?.phone ?? undefined,
+        email: data.buyerEmail || (buyerUser?.email ?? undefined),
+        receiverName: data.buyerName,
+        kakaoTemplate: orderTemplate.kakao,
+        emailTemplate: orderTemplate.email,
+      })
+    }
+
+    // 주문 발생 → 브랜드
+    const brand = await prisma.brand.findUnique({
+      where: { id: data.brandId },
+      select: { userId: true, brandName: true, contactPhone: true, contactEmail: true },
+    })
+    if (brand) {
+      const brandTemplate = newOrderBrandMessage({
+        brandName: brand.brandName ?? '',
+        orderNumber: order.orderNumber ?? '',
+        productName: firstItemName,
+        quantity: totalQty,
+        totalAmount: Number(data.totalAmount),
+        buyerName: data.buyerName,
+      })
+      await sendNotification({
+        userId: brand.userId,
+        type: brandTemplate.inApp.type,
+        title: brandTemplate.inApp.title,
+        message: brandTemplate.inApp.message,
+        linkUrl: brandTemplate.inApp.linkUrl,
+        phone: brand.contactPhone ?? undefined,
+        email: brand.contactEmail ?? undefined,
+        receiverName: brand.brandName ?? undefined,
+        kakaoTemplate: brandTemplate.kakao,
+        emailTemplate: brandTemplate.email,
+      })
+    }
+
+    // 판매 발생 → 크리에이터
+    const creator = await prisma.creator.findUnique({
+      where: { id: data.creatorId },
+      select: { userId: true, displayName: true, phone: true, email: true },
+    })
+    if (creator) {
+      const firstRate = orderItems.length > 0
+        ? getCommissionRate(data.items[0])
+        : 0
+      const commissionAmount = Math.round(Number(data.totalAmount) * firstRate)
+      const saleTemplate = saleOccurredMessage({
+        creatorName: creator.displayName ?? '',
+        productName: firstItemName,
+        orderAmount: Number(data.totalAmount),
+        commissionAmount,
+      })
+      await sendNotification({
+        userId: creator.userId,
+        type: saleTemplate.inApp.type,
+        title: saleTemplate.inApp.title,
+        message: saleTemplate.inApp.message,
+        linkUrl: saleTemplate.inApp.linkUrl,
+        phone: creator.phone ?? undefined,
+        email: creator.email ?? undefined,
+        receiverName: creator.displayName ?? undefined,
+        kakaoTemplate: saleTemplate.kakao,
+        emailTemplate: saleTemplate.email,
+      })
+    }
+  } catch (err) {
+    console.error('[shop/createOrder] 알림 발송 실패:', err)
+  }
 
   return { id: order.id, orderNumber: order.orderNumber }
 }
