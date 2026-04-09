@@ -2,818 +2,674 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
-import { motion, useScroll, useTransform, useInView } from 'framer-motion';
 import {
   ShoppingBag,
   Megaphone,
   Wallet,
   Headphones,
-  Truck,
-  BadgeCheck,
-  ArrowRight,
-  ChevronDown,
-  Globe,
   Package,
-  Store,
   BarChart3,
   Shield,
   Users,
   CheckCircle2,
   Sparkles,
   TrendingUp,
-  Zap,
+  ArrowRight,
+  ChevronRight,
+  UserPlus,
+  Target,
+  Heart,
+  Home,
+  User,
+  Star,
+  Link2,
+  Instagram,
+  Youtube,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { LegalFooter } from '@/components/shop/legal-footer';
-import { locales, localeNames, type Locale } from '@/lib/i18n/config';
-import { getPlatformStats } from '@/lib/actions/admin';
 
-/* ─── Animation Variants ─── */
-const fadeInUp = {
-  hidden: { opacity: 0, y: 32 },
-  visible: { opacity: 1, y: 0 },
-};
+/* ─── useInView hook ─── */
+function useInView(options?: IntersectionObserverInit) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [isInView, setIsInView] = useState(false);
 
-const fadeInScale = {
-  hidden: { opacity: 0, scale: 0.95 },
-  visible: { opacity: 1, scale: 1 },
-};
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsInView(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.15, ...options },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-const staggerContainer = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.1, delayChildren: 0.1 } },
-};
+  return { ref, isInView };
+}
 
-const staggerFast = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.06 } },
-};
-
-/* ─── Animated Counter Component ─── */
-function AnimatedNumber({ value, suffix = '' }: { value: number; suffix?: string }) {
+/* ─── CountUp component ─── */
+function CountUp({ target, suffix = '+' }: { target: number; suffix?: string }) {
   const [count, setCount] = useState(0);
-  const ref = useRef<HTMLSpanElement>(null);
-  const isInView = useInView(ref, { once: true, margin: '-100px' });
+  const { ref, isInView } = useInView();
 
   useEffect(() => {
     if (!isInView) return;
-    const duration = 1500;
-    const steps = 40;
-    const increment = value / steps;
+    const duration = 2000;
+    const steps = 60;
+    const increment = target / steps;
     let current = 0;
     const timer = setInterval(() => {
       current += increment;
-      if (current >= value) {
-        setCount(value);
+      if (current >= target) {
+        setCount(target);
         clearInterval(timer);
       } else {
         setCount(Math.floor(current));
       }
     }, duration / steps);
     return () => clearInterval(timer);
-  }, [isInView, value]);
+  }, [isInView, target]);
 
   return (
     <span ref={ref}>
-      {count.toLocaleString()}{suffix}
+      {count.toLocaleString()}
+      <span style={{ color: '#2563EB' }}>{suffix}</span>
     </span>
   );
 }
 
-export default function HomePage() {
-  const params = useParams();
-  const locale = (params.locale as string) || 'en';
-  const t = useTranslations('home');
-  const router = useRouter();
-  const [langOpen, setLangOpen] = useState(false);
-  const [platformStats, setPlatformStats] = useState<{ products: number; creators: number; brands: number; orders: number } | null>(null);
-  const langRef = useRef<HTMLDivElement>(null);
-  const heroRef = useRef<HTMLDivElement>(null);
+/* ─── Shared styles ─── */
+const gradientText: React.CSSProperties = {
+  background: 'linear-gradient(135deg, #2563EB, #3B82F6, #60A5FA)',
+  WebkitBackgroundClip: 'text',
+  WebkitTextFillColor: 'transparent',
+  backgroundClip: 'text',
+};
 
-  const { scrollYProgress } = useScroll({
-    target: heroRef,
-    offset: ['start start', 'end start'],
-  });
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
-  const heroY = useTransform(scrollYProgress, [0, 0.5], [0, -60]);
+const blueGradientBg: React.CSSProperties = {
+  background: 'linear-gradient(135deg, #2563EB, #1D4ED8)',
+};
 
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (langRef.current && !langRef.current.contains(e.target as Node)) {
-        setLangOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+const anim = (isInView: boolean, cls: string) =>
+  isInView ? cls : 'opacity-0';
+
+/* ═══════════════════════════════════════════════════
+   Landing Page
+   ═══════════════════════════════════════════════════ */
+export default function LandingPage() {
+  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    getPlatformStats()
-      .then(setPlatformStats)
-      .catch(() => {});
+    const onScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  function switchLocale(newLocale: Locale) {
-    setLangOpen(false);
-    router.push(`/${newLocale}`);
-  }
-
-  const steps = [
-    { icon: ShoppingBag, title: t('step1Title'), desc: t('step1Desc'), num: '01' },
-    { icon: Megaphone, title: t('step2Title'), desc: t('step2Desc'), num: '02' },
-    { icon: Wallet, title: t('step3Title'), desc: t('step3Desc'), num: '03' },
-  ];
-
-  const benefits = [
-    { icon: Headphones, title: t('benefit1Title'), desc: t('benefit1Desc') },
-    { icon: Truck, title: t('benefit2Title'), desc: t('benefit2Desc') },
-    { icon: Wallet, title: t('benefit3Title'), desc: t('benefit3Desc') },
-    { icon: BadgeCheck, title: t('benefit4Title'), desc: t('benefit4Desc') },
-  ];
-
-  const stats = platformStats
-    ? [
-        { value: String(platformStats.products), label: t('stats.products') },
-        { value: String(platformStats.creators), label: t('stats.creators') },
-        { value: String(platformStats.orders), label: t('stats.orders') },
-        { value: String(platformStats.brands), label: t('stats.brands') },
-      ]
-    : null;
-
-  const forCreators = [
-    { icon: ShoppingBag, title: t('forCreator1Title'), desc: t('forCreator1Desc') },
-    { icon: Megaphone, title: t('forCreator2Title'), desc: t('forCreator2Desc') },
-    { icon: Wallet, title: t('forCreator3Title'), desc: t('forCreator3Desc') },
-  ];
-
-  const forBrands = [
-    { icon: Store, title: t('forBrand1Title'), desc: t('forBrand1Desc') },
-    { icon: Users, title: t('forBrand2Title'), desc: t('forBrand2Desc') },
-    { icon: BarChart3, title: t('forBrand3Title'), desc: t('forBrand3Desc') },
-  ];
+  const hero = useInView();
+  const stats = useInView();
+  const steps = useInView();
+  const creators = useInView();
+  const brands = useInView();
+  const benefits = useInView();
+  const cta = useInView();
 
   return (
-    <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
-      {/* ═══════════════════════════════════════════
-          Header — Glassmorphism Sticky Nav
-          ═══════════════════════════════════════════ */}
-      <header className="fixed top-0 inset-x-0 z-50 bg-background/60 backdrop-blur-2xl border-b border-border/40">
-        <div className="mx-auto flex h-16 items-center justify-between px-6 max-w-[1200px]">
-          <Link href={`/${locale}`} className="text-xl font-extrabold tracking-tight text-gold-gradient">
+    <div className="min-h-screen bg-white">
+      {/* ──── Header ──── */}
+      <header
+        className={`fixed top-0 inset-x-0 z-50 transition-all duration-500 ${
+          scrolled
+            ? 'bg-white/80 backdrop-blur-xl shadow-sm border-b border-gray-100/50'
+            : 'bg-transparent'
+        }`}
+      >
+        <div className="max-w-[1200px] mx-auto px-5 h-16 md:h-[72px] flex items-center justify-between">
+          <Link href="/" className="text-xl md:text-2xl font-bold" style={gradientText}>
             CNEC
           </Link>
-          <div className="flex items-center gap-2">
-            {/* Language Switcher */}
-            <div className="relative" ref={langRef}>
-              <button
-                onClick={() => setLangOpen(!langOpen)}
-                className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-all duration-200"
-              >
-                <Globe className="h-4 w-4" />
-                <span className="hidden sm:inline">{localeNames[locale as Locale] || locale}</span>
-                <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${langOpen ? 'rotate-180' : ''}`} />
-              </button>
-              {langOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: -4, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -4 }}
-                  transition={{ duration: 0.15 }}
-                  className="absolute right-0 top-full mt-2 w-44 rounded-2xl border border-border bg-card shadow-xl py-2 z-50"
-                >
-                  {locales.map((l) => (
-                    <button
-                      key={l}
-                      onClick={() => switchLocale(l)}
-                      className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-secondary ${
-                        l === locale ? 'text-primary font-semibold' : 'text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      {localeNames[l]}
-                    </button>
-                  ))}
-                </motion.div>
-              )}
-            </div>
-            <Link href={`/${locale}/creator/login`}>
-              <Button variant="ghost" size="sm" className="rounded-full text-sm font-medium">
-                {t('creatorCta')}
+          <div className="flex items-center gap-3">
+            <Link href="/ko/creator/login" className="hidden sm:inline-flex">
+              <Button variant="ghost" className="rounded-full px-5 text-sm font-semibold text-gray-600 hover:text-gray-900">
+                크리에이터 시작하기
               </Button>
             </Link>
-            <Link href={`/${locale}/brand/login`}>
-              <Button size="sm" className="rounded-full text-sm font-semibold btn-gold px-5">
-                {t('brandCta')}
+            <Link href="/ko/brand/login">
+              <Button
+                className="rounded-full px-5 text-sm font-bold text-white border-0"
+                style={blueGradientBg}
+              >
+                브랜드 입점하기
               </Button>
             </Link>
           </div>
         </div>
       </header>
 
-      {/* ═══════════════════════════════════════════
-          Hero Section — Large Typography + Parallax
-          ═══════════════════════════════════════════ */}
-      <section ref={heroRef} className="relative min-h-[100vh] flex items-center justify-center overflow-hidden">
-        {/* Background Orbs */}
-        <div className="absolute inset-0 -z-10">
-          <div className="absolute top-[10%] left-[15%] w-[500px] h-[500px] rounded-full bg-primary/[0.04] blur-[100px] glow-pulse" />
-          <div className="absolute bottom-[10%] right-[10%] w-[400px] h-[400px] rounded-full bg-[#6366F1]/[0.04] blur-[100px] glow-pulse" style={{ animationDelay: '2s' }} />
-          <div className="absolute top-[40%] right-[30%] w-[300px] h-[300px] rounded-full bg-primary/[0.03] blur-[80px] glow-pulse" style={{ animationDelay: '1s' }} />
-        </div>
+      {/* ──── Hero ──── */}
+      <section ref={hero.ref} className="relative pt-28 pb-20 md:pt-36 md:pb-28 overflow-hidden">
+        {/* BG blobs */}
+        <div className="absolute -top-40 -right-40 w-[800px] h-[800px] rounded-full bg-gradient-to-br from-blue-50 to-blue-50/30 opacity-20 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-40 -left-40 w-[600px] h-[600px] rounded-full bg-gradient-to-tr from-blue-50/20 to-transparent blur-2xl pointer-events-none" />
 
-        <motion.div
-          style={{ opacity: heroOpacity, y: heroY }}
-          className="relative z-10 mx-auto max-w-[1200px] px-6 pt-24 pb-20"
-        >
-          <motion.div
-            className="mx-auto max-w-[800px] text-center"
-            initial="hidden"
-            animate="visible"
-            variants={staggerContainer}
-          >
-            {/* Badge */}
-            <motion.div
-              className="inline-flex items-center gap-2 rounded-full bg-primary/[0.06] px-5 py-2 text-[13px] font-medium text-primary mb-10"
-              variants={fadeInUp}
-              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        <div className="max-w-[1200px] mx-auto px-5 grid lg:grid-cols-2 gap-12 lg:gap-16 items-center relative">
+          {/* Left — Copy */}
+          <div>
+            <span
+              className={`inline-flex items-center gap-2 rounded-full bg-blue-50/80 border border-blue-100 px-4 py-2 text-sm font-semibold uppercase tracking-[0.15em] text-blue-600 ${anim(hero.isInView, 'animate-fade-in-up')}`}
             >
-              <Sparkles className="h-3.5 w-3.5" />
-              {t('badge')}
-            </motion.div>
+              SELECT SHOP
+            </span>
 
-            {/* Main Title */}
-            <motion.h1
-              className="font-headline text-[44px] leading-[1.15] font-extrabold tracking-tight md:text-[64px] lg:text-[72px]"
-              variants={fadeInUp}
-              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+            <h1
+              className={`mt-6 text-[2.75rem] sm:text-5xl md:text-6xl lg:text-[4.5rem] font-black leading-[1.05] tracking-tight text-gray-900 ${anim(hero.isInView, 'animate-fade-in-up delay-100')}`}
             >
-              {t('title').split('\n').map((line: string, i: number) => (
-                <span key={i}>
-                  {i === 1 ? (
-                    <>
-                      <span className="gradient-text">{line.split(',')[0]?.replace(/크넥/, '크넥')}</span>
-                      {line.includes('크넥') ? (
-                        <>
-                          <span className="gradient-text">크넥</span>
-                          <span>{line.split('크넥')[1]}</span>
-                        </>
-                      ) : (
-                        line
-                      )}
-                    </>
-                  ) : (
-                    line
-                  )}
-                  {i === 0 && <br />}
-                </span>
+              내 손안의
+              <br />
+              <span style={gradientText}>셀렉트샵</span>
+            </h1>
+
+            <p
+              className={`text-lg md:text-xl text-gray-500 leading-relaxed max-w-lg mt-6 ${anim(hero.isInView, 'animate-fade-in-up delay-200')}`}
+            >
+              크리에이터가 직접 큐레이션한 뷰티 제품을 팔로워에게 공유하세요.
+              모바일에서도 완벽하게 작동하는 셀렉트샵을 지금 바로 만들어보세요.
+            </p>
+
+            <div className={`mt-8 space-y-4 ${anim(hero.isInView, 'animate-fade-in-up delay-300')}`}>
+              {['나만의 브랜딩이 적용된 셀렉트샵', 'SNS 프로필 링크 하나로 시작', '실시간 판매 현황 확인'].map((t) => (
+                <div key={t} className="flex items-center gap-3">
+                  <CheckCircle2 className="h-5 w-5 text-blue-500 shrink-0" />
+                  <span className="text-base text-gray-600 font-medium">{t}</span>
+                </div>
               ))}
-            </motion.h1>
+            </div>
 
-            {/* Subtitle */}
-            <motion.p
-              className="mt-7 text-[17px] text-muted-foreground md:text-[19px] leading-[1.7] whitespace-pre-line max-w-[540px] mx-auto"
-              variants={fadeInUp}
-              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            >
-              {t('subtitle')}
-            </motion.p>
-
-            {/* CTA Buttons */}
-            <motion.div
-              className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4"
-              variants={fadeInUp}
-              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <Link href={`/${locale}/creator/login`}>
-                <Button size="lg" className="btn-gold w-full sm:w-auto text-[15px] px-8 py-6 rounded-2xl">
-                  {t('creatorCta')}
-                  <ArrowRight className="ml-2 h-4 w-4" />
+            <div className={`mt-10 flex flex-col sm:flex-row gap-4 ${anim(hero.isInView, 'animate-fade-in-up delay-400')}`}>
+              <Link href="/ko/creator/login">
+                <Button
+                  className="group rounded-full px-8 py-6 text-base font-bold text-white border-0 hover:shadow-lg hover:shadow-blue-200/40 transition-all duration-300"
+                  style={blueGradientBg}
+                >
+                  크리에이터 시작하기
+                  <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
-              <Link href={`/${locale}/brand/login`}>
-                <Button variant="outline" size="lg" className="w-full sm:w-auto text-[15px] px-8 py-6 rounded-2xl border-border/60 hover:bg-secondary transition-all duration-300">
-                  {t('brandCta')}
+              <Link href="/ko/brand/login">
+                <Button variant="outline" className="rounded-full px-8 py-6 text-base font-semibold border-gray-200 hover:border-gray-300 hover:bg-gray-50/80">
+                  브랜드 입점하기
                 </Button>
               </Link>
-            </motion.div>
+            </div>
+          </div>
 
-            {/* Trust Badges */}
-            <motion.div
-              className="mt-10 flex items-center justify-center gap-6 text-[13px] text-muted-foreground"
-              variants={fadeInUp}
-              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="h-3.5 w-3.5 text-primary/60" />
-                무료 시작
-              </span>
-              <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="h-3.5 w-3.5 text-primary/60" />
-                자동 정산
-              </span>
-              <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="h-3.5 w-3.5 text-primary/60" />
-                배송 걱정 없음
-              </span>
-            </motion.div>
+          {/* Right — Phone Mockup */}
+          <div className={`relative ${anim(hero.isInView, 'animate-fade-in-right delay-300')}`}>
+            <div className="relative mx-auto w-[280px] md:w-[320px]">
+              {/* Phone frame */}
+              <div className="rounded-[2.5rem] border-[8px] border-gray-900 bg-white shadow-2xl shadow-gray-900/10 overflow-hidden">
+                {/* Notch */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[120px] h-[28px] bg-gray-900 rounded-b-2xl z-10" />
 
-            {/* Login Link */}
-            <motion.p
-              className="mt-6 text-[13px] text-muted-foreground"
-              variants={fadeInUp}
-              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <Link
-                href={`/${locale}/buyer/login`}
-                className="hover:text-foreground transition-colors underline underline-offset-4 decoration-border"
-              >
-                {t('loginLink')}
-              </Link>
-            </motion.p>
-          </motion.div>
-        </motion.div>
+                {/* Phone content */}
+                <div className="pt-8 px-4 pb-4">
+                  {/* Header */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] text-gray-400 tracking-wider">MY SELECT SHOP</p>
+                      <p className="text-base font-bold text-gray-900">뷰티 크리에이터 샵</p>
+                    </div>
+                    <Heart className="h-5 w-5 text-blue-500" />
+                  </div>
 
-        {/* Scroll Indicator */}
-        <motion.div
-          className="absolute bottom-8 left-1/2 -translate-x-1/2"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.5, duration: 0.6 }}
-        >
-          <motion.div
-            animate={{ y: [0, 8, 0] }}
-            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-            className="w-6 h-10 rounded-full border-2 border-border/40 flex items-start justify-center p-1.5"
-          >
-            <motion.div className="w-1 h-2 rounded-full bg-muted-foreground/40" />
-          </motion.div>
-        </motion.div>
+                  {/* Product grid */}
+                  <div className="grid grid-cols-2 gap-2.5 mt-3">
+                    {[
+                      { bg: 'from-amber-100 to-orange-50', name: '비타민 세럼', price: '38,000', badge: 'BEST', badgeColor: 'bg-blue-600' },
+                      { bg: 'from-sky-50 to-blue-50', name: '수분 크림', price: '42,000', badge: 'NEW', badgeColor: 'bg-gray-900' },
+                      { bg: 'from-rose-100 to-pink-50', name: '틴트 립밤', price: '18,000', badge: 'HOT', badgeColor: 'bg-rose-500' },
+                      { bg: 'from-yellow-50 to-amber-50', name: '페이스 오일', price: '55,000', badge: null, badgeColor: '' },
+                    ].map((p) => (
+                      <div key={p.name} className="bg-gray-50 rounded-xl p-2.5 relative">
+                        <div className={`h-[90px] rounded-lg bg-gradient-to-br ${p.bg} flex items-center justify-center`}>
+                          <div className="w-10 h-14 rounded-lg bg-white/60" />
+                        </div>
+                        {p.badge && (
+                          <span className={`absolute top-1.5 left-1.5 ${p.badgeColor} text-white text-[9px] font-bold px-1.5 py-0.5 rounded`}>
+                            {p.badge}
+                          </span>
+                        )}
+                        <p className="text-xs font-medium text-gray-700 mt-2">{p.name}</p>
+                        <p className="text-xs font-bold text-blue-600">{p.price}원</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Bottom nav */}
+                  <div className="mt-3 pt-2.5 border-t border-gray-100 flex justify-around">
+                    {[
+                      { icon: Home, label: '홈', active: true },
+                      { icon: Package, label: '상품', active: false },
+                      { icon: BarChart3, label: '분석', active: false },
+                      { icon: User, label: '마이', active: false },
+                    ].map((tab) => (
+                      <div key={tab.label} className={`flex flex-col items-center gap-0.5 ${tab.active ? 'text-blue-600' : 'text-gray-300'}`}>
+                        <tab.icon className="h-4 w-4" />
+                        <span className="text-[9px]">{tab.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Floating earnings card */}
+              <div className="absolute -bottom-5 -left-5 md:-left-8 animate-float">
+                <div className="bg-white rounded-2xl p-4 shadow-xl shadow-blue-100/40 border border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center" style={blueGradientBg}>
+                      <TrendingUp className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400">이번 달 수익</p>
+                      <p className="text-lg font-bold text-gray-900">₩2,450,000</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Floating star badge */}
+              <div className="absolute -top-3 -right-3 md:-right-6 animate-float" style={{ animationDelay: '2s' }}>
+                <div className="bg-white rounded-2xl px-4 py-3 shadow-xl border border-gray-100 flex items-center gap-2">
+                  <Star className="h-4 w-4 text-amber-400 fill-amber-400" />
+                  <span className="text-sm font-semibold text-gray-700">검증된 브랜드만</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
 
-      {/* ═══════════════════════════════════════════
-          Stats — Animated Counters
-          ═══════════════════════════════════════════ */}
-      {stats && stats.some((s) => Number(s.value) > 0) && (
-        <section className="relative">
-          <div className="section-divider" />
-          <div className="mx-auto max-w-[1200px] px-6 py-20">
-            <motion.div
-              className="grid grid-cols-2 md:grid-cols-4 gap-8"
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: '-80px' }}
-              variants={staggerFast}
-            >
-              {stats.map((stat) => (
-                <motion.div
-                  key={stat.label}
-                  className="text-center"
-                  variants={fadeInUp}
-                  transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                >
-                  <p className="text-[40px] md:text-[48px] font-extrabold tracking-tight text-foreground">
-                    <AnimatedNumber value={Number(stat.value)} />
-                  </p>
-                  <p className="mt-2 text-[14px] text-muted-foreground font-medium">{stat.label}</p>
-                </motion.div>
-              ))}
-            </motion.div>
+      {/* ──── Stats ──── */}
+      <section ref={stats.ref} className="py-16 md:py-20 bg-gray-50/80 border-y border-gray-100/50">
+        <div className="max-w-[1200px] mx-auto px-5">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 text-center">
+            {[
+              { target: 150, label: '등록 상품' },
+              { target: 80, label: '활동 크리에이터' },
+              { target: 2500, label: '총 주문' },
+              { target: 30, label: '입점 브랜드' },
+            ].map((s) => (
+              <div key={s.label} className={anim(stats.isInView, 'animate-fade-in-up')}>
+                <div className="text-4xl md:text-5xl font-black tracking-tight text-gray-900">
+                  <CountUp target={s.target} />
+                </div>
+                <p className="mt-2 text-sm md:text-base text-gray-400 font-medium">{s.label}</p>
+              </div>
+            ))}
           </div>
-          <div className="section-divider" />
-        </section>
-      )}
+        </div>
+      </section>
 
-      {/* ═══════════════════════════════════════════
-          How It Works — Flow Visualization
-          ═══════════════════════════════════════════ */}
-      <section className="py-28 md:py-36">
-        <div className="mx-auto max-w-[1200px] px-6">
-          <motion.div
-            className="text-center mb-20"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-80px' }}
-            variants={fadeInUp}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <h2 className="font-headline text-[32px] font-extrabold md:text-[44px] tracking-tight">{t('howItWorks')}</h2>
-            <p className="mt-5 text-muted-foreground text-[16px] md:text-[17px] max-w-[560px] mx-auto leading-relaxed">
-              {t('howItWorksDesc')}
+      {/* ──── How It Works ──── */}
+      <section ref={steps.ref} className="py-24 md:py-32">
+        <div className="max-w-[1200px] mx-auto px-5">
+          <div className="text-center mb-16">
+            <p className={`text-sm font-semibold uppercase tracking-[0.15em] text-blue-600 ${anim(steps.isInView, 'animate-fade-in-up')}`}>
+              HOW IT WORKS
             </p>
-          </motion.div>
+            <h2 className={`text-3xl md:text-5xl font-black tracking-tight leading-[1.08] text-gray-900 mt-4 ${anim(steps.isInView, 'animate-fade-in-up delay-100')}`}>
+              이렇게 시작하세요
+            </h2>
+          </div>
 
-          {/* Flow: Brand → CNEC → Creator */}
-          <motion.div
-            className="grid md:grid-cols-3 gap-6 max-w-[960px] mx-auto items-stretch"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-80px' }}
-            variants={staggerContainer}
-          >
-            {/* Brand Side */}
-            <motion.div
-              className="relative rounded-3xl bg-secondary/50 p-8 text-center group hover:bg-secondary/80 transition-all duration-300"
-              variants={fadeInScale}
-              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#6366F1]/10 group-hover:scale-110 transition-transform duration-300">
-                <Package className="h-7 w-7 text-[#6366F1]" />
+          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto relative">
+            {[
+              { num: '01', Icon: UserPlus, title: '가입 및 심사', desc: '가입하고 심사를 받아 셀렉트샵을 개설하세요.' },
+              { num: '02', Icon: ShoppingBag, title: '상품 선택', desc: '다양한 브랜드의 상품을 내 샵에 담으세요.' },
+              { num: '03', Icon: Wallet, title: '판매 및 수익', desc: '상품이 판매되면 자동으로 수익이 정산됩니다.' },
+            ].map((card, i) => (
+              <div key={card.num} className="relative">
+                <div
+                  className={`group bg-white rounded-3xl border border-gray-100 p-8 shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-blue-100 transition-all duration-500 ${anim(steps.isInView, `animate-fade-in-up delay-${(i + 3) * 100}`)}`}
+                >
+                  <div className="flex items-center gap-4 mb-6">
+                    <span className="text-6xl font-black text-gray-100 group-hover:text-blue-50 transition-colors duration-500">
+                      {card.num}
+                    </span>
+                    <div className="w-12 h-12 rounded-2xl shadow-sm flex items-center justify-center" style={blueGradientBg}>
+                      <card.Icon className="h-6 w-6 text-white" />
+                    </div>
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-3">{card.title}</h3>
+                  <p className="text-sm text-gray-400 leading-relaxed">{card.desc}</p>
+                </div>
+                {/* Arrow between cards */}
+                {i < 2 && (
+                  <div className="hidden md:flex absolute top-1/2 -right-4 z-10 -translate-y-1/2">
+                    <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center">
+                      <ChevronRight className="h-4 w-4 text-blue-400" />
+                    </div>
+                  </div>
+                )}
               </div>
-              <span className="inline-block rounded-full bg-[#6366F1]/10 px-3 py-1 text-[11px] font-semibold text-[#6366F1] uppercase tracking-wider mb-4">
-                {t('brandLabel')}
-              </span>
-              <h3 className="text-[18px] font-bold mb-2 tracking-tight">
-                {t('brandFlowTitle')}
-              </h3>
-              <p className="text-[14px] text-muted-foreground leading-relaxed">
-                {t('brandFlowDesc')}
-              </p>
-              {/* Arrow */}
-              <div className="hidden md:flex absolute -right-3 top-1/2 -translate-y-1/2 z-10 w-6 h-6 items-center justify-center rounded-full bg-background border border-border shadow-sm">
-                <ArrowRight className="h-3 w-3 text-muted-foreground" />
-              </div>
-            </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
 
-            {/* Center - CNEC */}
-            <motion.div
-              className="relative rounded-3xl border-2 border-primary/20 bg-primary/[0.03] p-8 text-center"
-              variants={fadeInScale}
-              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
-                <Shield className="h-7 w-7 text-primary" />
+      {/* ──── For Creators ──── */}
+      <section ref={creators.ref} className="py-24 md:py-32 bg-gray-50/30">
+        <div className="max-w-[1200px] mx-auto px-5 grid lg:grid-cols-2 gap-16 items-center">
+          {/* Left — Shop Card UI */}
+          <div className={`relative max-w-[480px] mx-auto lg:mx-0 ${anim(creators.isInView, 'animate-fade-in-left')}`}>
+            <div className="bg-white rounded-3xl p-6 shadow-2xl shadow-blue-100/20 border border-gray-100">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center" style={blueGradientBg}>
+                  <span className="text-white font-bold text-lg">C</span>
+                </div>
+                <div>
+                  <p className="text-lg font-bold text-gray-900">크리에이터 셀렉트샵</p>
+                  <p className="text-sm text-gray-400">@beauty_creator</p>
+                </div>
               </div>
-              <span className="inline-block rounded-full bg-primary/10 px-3 py-1 text-[11px] font-semibold text-primary uppercase tracking-wider mb-4">
-                CNEC
-              </span>
-              <h3 className="text-[18px] font-bold mb-4 tracking-tight">
-                {t('kviewshopFlowTitle')}
-              </h3>
-              <div className="space-y-2.5 text-[13px] text-muted-foreground">
-                {[t('kviewshopFlowCS'), t('kviewshopFlowShipping'), t('kviewshopFlowSettlement'), t('kviewshopFlowReturns')].map((item) => (
-                  <div key={item} className="flex items-center justify-center gap-2">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />
-                    <span>{item}</span>
+
+              <div className="flex gap-3 mt-4">
+                {[
+                  { bg: 'from-amber-100 to-orange-50', name: '글로우 세럼', price: '38,000' },
+                  { bg: 'from-sky-50 to-blue-50', name: '수분 크림', price: '42,000' },
+                  { bg: 'from-rose-100 to-pink-50', name: '틴트 립밤', price: '18,000' },
+                ].map((p) => (
+                  <div key={p.name} className="bg-gray-50 rounded-xl p-3 flex-1">
+                    <div className={`h-[80px] rounded-lg bg-gradient-to-br ${p.bg} flex items-center justify-center`}>
+                      <div className="w-8 h-12 rounded-md bg-white/60" />
+                    </div>
+                    <p className="text-xs font-medium mt-2 text-gray-700">{p.name}</p>
+                    <p className="text-xs font-bold text-blue-600">{p.price}원</p>
                   </div>
                 ))}
               </div>
-              {/* Arrow */}
-              <div className="hidden md:flex absolute -right-3 top-1/2 -translate-y-1/2 z-10 w-6 h-6 items-center justify-center rounded-full bg-background border border-border shadow-sm">
-                <ArrowRight className="h-3 w-3 text-muted-foreground" />
-              </div>
-            </motion.div>
 
-            {/* Creator Side */}
-            <motion.div
-              className="rounded-3xl bg-secondary/50 p-8 text-center group hover:bg-secondary/80 transition-all duration-300"
-              variants={fadeInScale}
-              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 group-hover:scale-110 transition-transform duration-300">
-                <Megaphone className="h-7 w-7 text-primary" />
+              <div className="mt-4 bg-gray-50 rounded-xl px-4 py-3 flex items-center justify-between">
+                <span className="text-sm text-gray-400">cnecshop.com/creator/myshop</span>
+                <Link2 className="h-4 w-4 text-gray-300" />
               </div>
-              <span className="inline-block rounded-full bg-primary/10 px-3 py-1 text-[11px] font-semibold text-primary uppercase tracking-wider mb-4">
-                {t('creatorLabel')}
-              </span>
-              <h3 className="text-[18px] font-bold mb-2 tracking-tight">
-                {t('creatorFlowTitle')}
-              </h3>
-              <p className="text-[14px] text-muted-foreground leading-relaxed">
-                {t('creatorFlowDesc')}
-              </p>
-            </motion.div>
-          </motion.div>
-        </div>
-      </section>
+            </div>
 
-      {/* ═══════════════════════════════════════════
-          3-Step Process — Premium Cards
-          ═══════════════════════════════════════════ */}
-      <section className="py-28 md:py-36 bg-secondary/30">
-        <div className="mx-auto max-w-[1200px] px-6">
-          <motion.div
-            className="text-center mb-20"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-80px' }}
-            variants={fadeInUp}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <h2 className="font-headline text-[32px] font-extrabold md:text-[44px] tracking-tight">
-              {t('creatorStepsTitle')}
+            {/* Floating IG badge */}
+            <div className="absolute -left-4 bottom-1/3 animate-float">
+              <div className="bg-white rounded-xl px-3 py-2 shadow-lg border border-gray-100 flex items-center gap-2">
+                <Instagram className="h-4 w-4 text-pink-500" />
+                <span className="text-sm font-bold text-gray-700">12.3K</span>
+              </div>
+            </div>
+
+            {/* Floating YT badge */}
+            <div className="absolute -right-4 top-1/4 animate-float delay-200">
+              <div className="bg-white rounded-xl px-3 py-2 shadow-lg border border-gray-100 flex items-center gap-2">
+                <Youtube className="h-4 w-4 text-red-500" />
+                <span className="text-sm font-bold text-gray-700">8.7K</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Right — Text */}
+          <div className={anim(creators.isInView, 'animate-fade-in-right delay-200')}>
+            <span className="inline-flex items-center gap-2 rounded-full bg-blue-50 border border-blue-100 px-4 py-2 text-sm font-semibold text-blue-600">
+              <Sparkles className="h-4 w-4" />
+              크리에이터
+            </span>
+
+            <h2 className="text-3xl md:text-[2.75rem] font-black tracking-tight leading-tight mt-6 text-gray-900">
+              나만의 셀렉트샵을
+              <br />
+              운영하세요
             </h2>
-          </motion.div>
 
-          <motion.div
-            className="grid md:grid-cols-3 gap-6 max-w-[960px] mx-auto"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-80px' }}
-            variants={staggerContainer}
-          >
-            {steps.map((step, i) => (
-              <motion.div
-                key={step.title}
-                className="relative rounded-3xl bg-card border border-border/50 p-8 group hover:border-primary/30 hover:shadow-xl hover:shadow-primary/[0.04] transition-all duration-300"
-                variants={fadeInUp}
-                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              >
-                {/* Step Number */}
-                <span className="absolute top-7 right-8 text-[56px] font-extrabold text-secondary/80 leading-none select-none">
-                  {step.num}
-                </span>
-                <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/[0.06] group-hover:bg-primary/10 transition-colors duration-300">
-                  <step.icon className="h-6 w-6 text-primary" />
+            <div className="mt-10 space-y-8">
+              {[
+                { Icon: ShoppingBag, title: '상품을 골라 내 샵에 추가', desc: '브랜드 상품을 검색하고 마음에 드는 상품을 내 셀렉트샵에 추가하세요' },
+                { Icon: Megaphone, title: 'SNS에 내 샵 링크 공유', desc: '인스타, 유튜브, 틱톡에 내 셀렉트샵 링크를 공유하고 팔로워에게 직접 판매하세요' },
+                { Icon: Wallet, title: '판매 수수료 자동 정산', desc: '직접 전환 + 간접 전환(3%), 매월 20일 자동 정산됩니다' },
+              ].map((f) => (
+                <div key={f.title} className="flex items-start gap-5">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center shrink-0">
+                    <f.Icon className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">{f.title}</h3>
+                    <p className="text-sm text-gray-400 leading-relaxed mt-1">{f.desc}</p>
+                  </div>
                 </div>
-                <h3 className="text-[20px] font-bold mb-3 tracking-tight">{step.title}</h3>
-                <p className="text-[14px] text-muted-foreground leading-[1.7]">{step.desc}</p>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
+              ))}
+            </div>
 
-      {/* ═══════════════════════════════════════════
-          Featured Products — Skeleton Preview
-          ═══════════════════════════════════════════ */}
-      <section className="py-28 md:py-36">
-        <div className="mx-auto max-w-[1200px] px-6">
-          <motion.div
-            className="text-center mb-16"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-80px' }}
-            variants={fadeInUp}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <h2 className="font-headline text-[32px] font-extrabold md:text-[44px] tracking-tight">{t('featuredProducts')}</h2>
-            <p className="mt-5 text-muted-foreground text-[16px] md:text-[17px] max-w-[560px] mx-auto leading-relaxed">{t('featuredProductsDesc')}</p>
-          </motion.div>
-
-          <motion.div
-            className="grid grid-cols-2 md:grid-cols-4 gap-5 max-w-[960px] mx-auto"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-80px' }}
-            variants={staggerFast}
-          >
-            {Array.from({ length: 4 }).map((_, i) => (
-              <motion.div
-                key={i}
-                className="rounded-2xl bg-card border border-border/50 overflow-hidden group hover:shadow-lg hover:border-border transition-all duration-300"
-                variants={fadeInUp}
-                transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            <Link href="/ko/creator/login" className="inline-block mt-10">
+              <Button
+                className="group rounded-full px-8 py-6 text-base font-bold text-white border-0 hover:shadow-lg hover:shadow-blue-200/40 transition-all duration-300"
+                style={blueGradientBg}
               >
-                <div className="aspect-square bg-secondary animate-shimmer" />
-                <div className="p-4 space-y-2.5">
-                  <div className="h-4 w-3/4 rounded-lg bg-secondary animate-shimmer" />
-                  <div className="h-3 w-1/2 rounded-lg bg-secondary animate-shimmer" />
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
-
-          <motion.div
-            className="mt-12 text-center"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            variants={fadeInUp}
-            transition={{ duration: 0.5, delay: 0.3 }}
-          >
-            <Link href={`/${locale}/creator/login`}>
-              <Button variant="outline" size="lg" className="rounded-2xl text-[15px] px-8 py-6 border-border/60 hover:bg-secondary transition-all duration-300">
-                {t('browseProducts')}
-                <ArrowRight className="ml-2 h-4 w-4" />
+                크리에이터 시작하기
+                <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════════
-          For Creators / For Brands — Split Layout
-          ═══════════════════════════════════════════ */}
-      <section className="py-28 md:py-36 bg-secondary/30">
-        <div className="mx-auto max-w-[1200px] px-6">
-          <div className="grid lg:grid-cols-2 gap-16 max-w-[1080px] mx-auto">
-            {/* For Creators */}
-            <motion.div
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: '-80px' }}
-              variants={staggerContainer}
-            >
-              <motion.div variants={fadeInUp} transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/[0.06] px-4 py-1.5 text-[12px] font-semibold text-primary mb-6">
-                  <Zap className="h-3 w-3" />
-                  {t('forCreatorsLabel')}
-                </span>
-                <h3 className="font-headline text-[28px] font-extrabold md:text-[36px] mb-10 tracking-tight leading-tight">
-                  {t('forCreatorsTitle')}
-                </h3>
-              </motion.div>
-              <div className="space-y-7">
-                {forCreators.map((item) => (
-                  <motion.div
-                    key={item.title}
-                    className="flex gap-5 group"
-                    variants={fadeInUp}
-                    transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                  >
-                    <div className="shrink-0 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/[0.06] group-hover:bg-primary/10 transition-colors duration-300">
-                      <item.icon className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <h4 className="text-[16px] font-bold mb-1.5 tracking-tight">{item.title}</h4>
-                      <p className="text-[14px] text-muted-foreground leading-[1.7]">{item.desc}</p>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-              <motion.div variants={fadeInUp} transition={{ duration: 0.5 }} className="mt-10">
-                <Link href={`/${locale}/creator/login`}>
-                  <Button size="lg" className="btn-gold rounded-2xl text-[15px] px-8 py-6">
-                    {t('creatorCta')}
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </Link>
-              </motion.div>
-            </motion.div>
-
-            {/* For Brands */}
-            <motion.div
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: '-80px' }}
-              variants={staggerContainer}
-            >
-              <motion.div variants={fadeInUp} transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#6366F1]/[0.06] px-4 py-1.5 text-[12px] font-semibold text-[#6366F1] mb-6">
-                  <TrendingUp className="h-3 w-3" />
-                  {t('forBrandsLabel')}
-                </span>
-                <h3 className="font-headline text-[28px] font-extrabold md:text-[36px] mb-10 tracking-tight leading-tight">
-                  {t('forBrandsTitle')}
-                </h3>
-              </motion.div>
-              <div className="space-y-7">
-                {forBrands.map((item) => (
-                  <motion.div
-                    key={item.title}
-                    className="flex gap-5 group"
-                    variants={fadeInUp}
-                    transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                  >
-                    <div className="shrink-0 flex h-11 w-11 items-center justify-center rounded-xl bg-[#6366F1]/[0.06] group-hover:bg-[#6366F1]/10 transition-colors duration-300">
-                      <item.icon className="h-5 w-5 text-[#6366F1]" />
-                    </div>
-                    <div>
-                      <h4 className="text-[16px] font-bold mb-1.5 tracking-tight">{item.title}</h4>
-                      <p className="text-[14px] text-muted-foreground leading-[1.7]">{item.desc}</p>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-              <motion.div variants={fadeInUp} transition={{ duration: 0.5 }} className="mt-10">
-                <Link href={`/${locale}/brand/login`}>
-                  <Button variant="outline" size="lg" className="rounded-2xl text-[15px] px-8 py-6 border-border/60 hover:bg-secondary transition-all duration-300">
-                    {t('brandCta')}
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </Link>
-              </motion.div>
-            </motion.div>
           </div>
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════
-          Benefits — Icon Grid
-          ═══════════════════════════════════════════ */}
-      <section className="py-28 md:py-36">
-        <div className="mx-auto max-w-[1200px] px-6">
-          <motion.div
-            className="text-center mb-20"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-80px' }}
-            variants={fadeInUp}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <h2 className="font-headline text-[32px] font-extrabold md:text-[44px] tracking-tight">{t('whyKviewshop')}</h2>
-          </motion.div>
+      {/* ──── For Brands ──── */}
+      <section ref={brands.ref} className="py-24 md:py-32">
+        <div className="max-w-[1200px] mx-auto px-5 grid lg:grid-cols-2 gap-16 items-center">
+          {/* Left — Text */}
+          <div className={anim(brands.isInView, 'animate-fade-in-left')}>
+            <span className="inline-flex items-center gap-2 rounded-full bg-gray-100 border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700">
+              브랜드
+            </span>
 
-          <motion.div
-            className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-[1080px] mx-auto"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-80px' }}
-            variants={staggerFast}
-          >
-            {benefits.map((benefit) => (
-              <motion.div
-                key={benefit.title}
-                className="rounded-3xl bg-card border border-border/50 p-7 text-center group hover:border-primary/20 hover:shadow-lg hover:shadow-primary/[0.03] transition-all duration-300"
-                variants={fadeInUp}
-                transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-              >
-                <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/[0.06] group-hover:bg-primary/10 group-hover:scale-110 transition-all duration-300">
-                  <benefit.icon className="h-6 w-6 text-primary" />
+            <h2 className="text-3xl md:text-[2.75rem] font-black tracking-tight leading-tight mt-6 text-gray-900">
+              크리에이터가
+              <br />
+              내 브랜드를 팝니다
+            </h2>
+            <p className="text-lg text-gray-500 mt-4">사용료 0원. 팔린 만큼만 수수료.</p>
+
+            <div className="mt-10 space-y-6">
+              {[
+                { Icon: Target, title: '타겟 고객 확보', desc: 'K-뷰티에 관심 있는 크리에이터의 팔로워에게 자연스럽게 도달' },
+                { Icon: BarChart3, title: '브랜드 노출 증대', desc: '크리에이터 셀렉트샵을 통해 상시 노출' },
+                { Icon: Users, title: '검증된 크리에이터 매칭', desc: '클린스코어로 검증된 크리에이터만 활동' },
+                { Icon: Shield, title: '효율적인 판매 관리', desc: '주문, 배송, 정산 모두 크넥이 처리' },
+              ].map((f) => (
+                <div key={f.title} className="flex items-start gap-5">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center shrink-0">
+                    <f.Icon className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">{f.title}</h3>
+                    <p className="text-sm text-gray-400 leading-relaxed mt-1">{f.desc}</p>
+                  </div>
                 </div>
-                <h3 className="text-[17px] font-bold mb-2 tracking-tight">{benefit.title}</h3>
-                <p className="text-[13px] text-muted-foreground leading-[1.7]">{benefit.desc}</p>
-              </motion.div>
+              ))}
+            </div>
+
+            <Link href="/ko/brand/login" className="inline-block mt-10">
+              <Button variant="outline" className="group rounded-full px-8 py-6 text-base font-semibold border-gray-300 hover:border-gray-400 hover:bg-gray-50/80">
+                브랜드 입점하기
+                <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+              </Button>
+            </Link>
+          </div>
+
+          {/* Right — Dashboard Card */}
+          <div className={`max-w-[480px] mx-auto lg:mx-0 lg:ml-auto ${anim(brands.isInView, 'animate-fade-in-right delay-200')}`}>
+            <div className="bg-white rounded-3xl p-6 shadow-2xl shadow-gray-100/40 border border-gray-100">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold text-gray-900">브랜드 대시보드</h3>
+                <span className="text-sm text-gray-400">2026.04.09</span>
+              </div>
+
+              <div className="bg-blue-50 rounded-2xl p-5 mt-4">
+                <p className="text-sm text-blue-600 font-medium">이번 달 매출</p>
+                <div className="flex items-end gap-3 mt-1">
+                  <span className="text-3xl font-black text-gray-900">₩12,450,000</span>
+                  <span className="flex items-center gap-1 text-sm text-emerald-500 font-semibold mb-1">
+                    <TrendingUp className="h-4 w-4" />
+                    +23.5%
+                  </span>
+                </div>
+              </div>
+
+              {/* Mini bar chart */}
+              <div className="flex items-end gap-2 h-[80px] mt-4 px-1">
+                {[30, 45, 35, 55, 40, 65, 70].map((h, i) => (
+                  <div
+                    key={i}
+                    className={`flex-1 rounded-t-md ${i === 6 ? 'bg-blue-600' : 'bg-blue-200'}`}
+                    style={{ height: `${h}px` }}
+                  />
+                ))}
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 mt-4">
+                {[
+                  { label: '활성 크리에이터', value: '24명' },
+                  { label: '진행 중 캠페인', value: '3개' },
+                  { label: '총 주문', value: '847건' },
+                ].map((s) => (
+                  <div key={s.label} className="bg-gray-50 rounded-xl p-3 text-center">
+                    <p className="text-xs text-gray-400">{s.label}</p>
+                    <p className="text-base font-bold text-gray-900 mt-1">{s.value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ──── Benefits ──── */}
+      <section ref={benefits.ref} className="py-24 md:py-32 bg-gray-50/30">
+        <div className="max-w-[1200px] mx-auto px-5">
+          <div className="text-center mb-16">
+            <p className={`text-sm font-semibold uppercase tracking-[0.15em] text-blue-600 ${anim(benefits.isInView, 'animate-fade-in-up')}`}>
+              BENEFITS
+            </p>
+            <h2 className={`text-3xl md:text-5xl font-black tracking-tight leading-[1.08] text-gray-900 mt-4 ${anim(benefits.isInView, 'animate-fade-in-up delay-100')}`}>
+              크넥이 다 해드립니다
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-5xl mx-auto">
+            {[
+              { Icon: Headphones, title: '전문 CS 지원', desc: '고객 응대는 전담 CS 팀이 담당합니다.' },
+              { Icon: Package, title: '통합 배송 관리', desc: '복잡한 배송 과정을 크넥이 해결합니다.' },
+              { Icon: Wallet, title: '자동 정산 시스템', desc: '투명하고 빠른 정산으로 걱정 없습니다.' },
+              { Icon: Shield, title: '엄선된 브랜드', desc: '검증된 프리미엄 브랜드만 입점합니다.' },
+            ].map((card, i) => (
+              <div
+                key={card.title}
+                className={`bg-white rounded-2xl border border-gray-100 p-6 text-center hover:shadow-lg hover:-translate-y-1 transition-all duration-500 ${anim(benefits.isInView, `animate-fade-in-up delay-${(i + 3) * 100}`)}`}
+              >
+                <div className="mx-auto w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center mb-4">
+                  <card.Icon className="h-7 w-7 text-blue-600" />
+                </div>
+                <h3 className="text-base font-bold text-gray-900 mb-2">{card.title}</h3>
+                <p className="text-sm text-gray-400 leading-relaxed">{card.desc}</p>
+              </div>
             ))}
-          </motion.div>
+          </div>
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════
-          Global Reach — Minimal Banner
-          ═══════════════════════════════════════════ */}
-      <section className="bg-secondary/30">
-        <div className="section-divider" />
-        <div className="mx-auto max-w-[1200px] px-6 py-20">
-          <motion.div
-            className="flex flex-col md:flex-row items-center justify-center gap-6 text-center md:text-left"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-80px' }}
-            variants={fadeInUp}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+      {/* ──── CTA ──── */}
+      <section ref={cta.ref} className="py-24 md:py-32">
+        <div className="max-w-4xl mx-auto px-5">
+          <div
+            className="rounded-3xl p-12 md:p-16 text-center"
+            style={{
+              background: 'linear-gradient(135deg, #2563EB, #1D4ED8)',
+              backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(135deg, #2563EB, #1D4ED8)',
+              backgroundSize: '20px 20px, 100% 100%',
+            }}
           >
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/[0.06]">
-              <Globe className="h-7 w-7 text-primary" />
+            <h2 className={`text-white text-3xl md:text-5xl font-black ${anim(cta.isInView, 'animate-fade-in-up')}`}>
+              지금 시작하세요
+            </h2>
+            <p className={`text-white/70 text-lg mt-4 whitespace-pre-line ${anim(cta.isInView, 'animate-fade-in-up delay-100')}`}>
+              {'크리에이터와 브랜드 모두를 위한\nK-뷰티 셀렉트샵 플랫폼'}
+            </p>
+            <div className={`mt-10 flex flex-col sm:flex-row gap-4 justify-center ${anim(cta.isInView, 'animate-fade-in-up delay-200')}`}>
+              <Link href="/ko/creator/login">
+                <Button className="bg-white text-blue-600 hover:bg-blue-50 rounded-full px-8 py-4 font-bold shadow-lg shadow-blue-900/20 border-0">
+                  크리에이터 시작하기
+                </Button>
+              </Link>
+              <Link href="/ko/brand/login">
+                <Button className="border border-white/30 text-white hover:bg-white/10 rounded-full px-8 py-4 font-semibold bg-transparent">
+                  브랜드 입점하기
+                </Button>
+              </Link>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ──── Footer ──── */}
+      <footer className="py-16 border-t border-gray-100">
+        <div className="max-w-[1200px] mx-auto px-5">
+          <div className="grid md:grid-cols-4 gap-10">
+            {/* Logo + tagline */}
             <div>
-              <h3 className="text-[20px] font-bold tracking-tight">
-                {t('globalReachTitle')}
-              </h3>
-              <p className="text-muted-foreground mt-1.5 text-[15px] leading-relaxed max-w-[600px]">
-                {t('globalReachDesc')}
-              </p>
+              <span className="text-xl font-bold" style={gradientText}>CNEC</span>
+              <p className="text-sm text-gray-400 mt-2">K-뷰티 크리에이터 셀렉트샵 플랫폼</p>
             </div>
-          </motion.div>
-        </div>
-        <div className="section-divider" />
-      </section>
 
-      {/* ═══════════════════════════════════════════
-          Final CTA — Full-width Impact
-          ═══════════════════════════════════════════ */}
-      <section className="relative py-32 md:py-40 overflow-hidden">
-        {/* Background */}
-        <div className="absolute inset-0 -z-10">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-primary/[0.04] blur-[120px]" />
-        </div>
+            {/* 서비스 */}
+            <div>
+              <h4 className="text-sm font-semibold text-gray-900 mb-4">서비스</h4>
+              <div className="space-y-3">
+                <Link href="/ko/creator/login" className="block text-sm text-gray-400 hover:text-gray-600 transition-colors">
+                  크리에이터 시작하기
+                </Link>
+                <Link href="/ko/brand/login" className="block text-sm text-gray-400 hover:text-gray-600 transition-colors">
+                  브랜드 입점하기
+                </Link>
+              </div>
+            </div>
 
-        <div className="mx-auto max-w-[1200px] px-6">
-          <motion.div
-            className="mx-auto max-w-[640px] text-center"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-80px' }}
-            variants={staggerContainer}
-          >
-            <motion.h2
-              className="font-headline text-[36px] font-extrabold md:text-[52px] tracking-tight leading-[1.15]"
-              variants={fadeInUp}
-              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            >
-              {t('ctaTitle')}
-            </motion.h2>
-            <motion.p
-              className="mt-6 text-[17px] text-muted-foreground leading-relaxed max-w-[480px] mx-auto"
-              variants={fadeInUp}
-              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            >
-              {t('ctaDesc')}
-            </motion.p>
-            <motion.div
-              className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4"
-              variants={fadeInUp}
-              transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <Link href={`/${locale}/creator/login`}>
-                <Button size="lg" className="btn-gold w-full sm:w-auto text-[15px] px-10 py-7 rounded-2xl">
-                  {t('creatorCta')}
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
-              <Link href={`/${locale}/brand/login`}>
-                <Button variant="outline" size="lg" className="w-full sm:w-auto text-[15px] px-10 py-7 rounded-2xl border-border/60 hover:bg-secondary transition-all duration-300">
-                  {t('brandCta')}
-                </Button>
-              </Link>
-            </motion.div>
-          </motion.div>
-        </div>
-      </section>
+            {/* 고객지원 */}
+            <div>
+              <h4 className="text-sm font-semibold text-gray-900 mb-4">고객지원</h4>
+              <div className="space-y-3">
+                <span className="block text-sm text-gray-400">자주 묻는 질문</span>
+                <span className="block text-sm text-gray-400">문의하기</span>
+              </div>
+            </div>
 
-      {/* Footer */}
-      <LegalFooter locale={locale} variant="minimal" />
+            {/* 법적 고지 */}
+            <div>
+              <h4 className="text-sm font-semibold text-gray-900 mb-4">법적 고지</h4>
+              <div className="space-y-3">
+                <span className="block text-sm text-gray-400">이용약관</span>
+                <span className="block text-sm text-gray-400">개인정보처리방침</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-12 pt-8 border-t border-gray-100">
+            <p className="text-sm text-gray-300">
+              &copy; 2026 CNEC. All rights reserved.
+            </p>
+            <p className="text-sm text-gray-300 mt-1">
+              (주)하우파파 | 대표: 박현용 | 사업자등록번호: 575-81-02253
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
