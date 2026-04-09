@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import {
   ShoppingBag,
@@ -617,17 +618,17 @@ export default function LandingPage() {
 
           <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-5 max-w-5xl mx-auto">
             {[
-              { initial: 'S', name: '수아뷰티', handle: '@sua_beauty', category: '스킨케어', followers: '45.2K', color: 'from-rose-400 to-pink-500', products: 12, sales: '1,847' },
-              { initial: 'M', name: '미니뷰티랩', handle: '@mini_beautylab', category: '메이크업', followers: '32.1K', color: 'from-violet-400 to-purple-500', products: 8, sales: '1,203' },
-              { initial: 'J', name: '제이스킨', handle: '@j_skin_official', category: '더마', followers: '28.7K', color: 'from-blue-400 to-indigo-500', products: 15, sales: '2,156' },
-              { initial: 'H', name: '혜린픽', handle: '@hyerin_pick', category: '클린뷰티', followers: '19.5K', color: 'from-emerald-400 to-teal-500', products: 6, sales: '892' },
+              { img: '/images/creators/sua.jpg', name: '수아뷰티', handle: '@sua_beauty', category: '스킨케어', followers: '45.2K', color: 'from-rose-400 to-pink-500', products: 12, sales: '1,847' },
+              { img: '/images/creators/mini.jpg', name: '미니뷰티랩', handle: '@mini_beautylab', category: '메이크업', followers: '32.1K', color: 'from-violet-400 to-purple-500', products: 8, sales: '1,203' },
+              { img: '/images/creators/jskin.jpg', name: '제이스킨', handle: '@j_skin_official', category: '더마', followers: '28.7K', color: 'from-blue-400 to-indigo-500', products: 15, sales: '2,156' },
+              { img: '/images/creators/hyerin.jpg', name: '혜린픽', handle: '@hyerin_pick', category: '클린뷰티', followers: '19.5K', color: 'from-emerald-400 to-teal-500', products: 6, sales: '892' },
             ].map((c, i) => (
               <div
                 key={c.handle}
                 className={`group bg-white rounded-2xl border border-gray-100 p-6 text-center hover:shadow-lg hover:-translate-y-1 transition-all duration-500 ${anim(recommendedCreators.isInView, `animate-fade-in-up delay-${(i + 3) * 100}`)}`}
               >
-                <div className={`w-16 h-16 rounded-full bg-gradient-to-br ${c.color} flex items-center justify-center mx-auto mb-4`}>
-                  <span className="text-white text-xl font-bold">{c.initial}</span>
+                <div className={`w-16 h-16 rounded-full bg-gradient-to-br ${c.color} overflow-hidden mx-auto mb-4`}>
+                  <Image src={c.img} alt={c.name} width={64} height={64} className="w-full h-full object-cover" />
                 </div>
                 <h3 className="text-base font-bold text-gray-900">{c.name}</h3>
                 <p className="text-xs text-gray-400 mt-1">{c.handle}</p>
