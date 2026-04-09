@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { SampleRequestStatus, SampleRequestDecision, Prisma } from '@/generated/prisma/client'
+import { sendNotification } from '@/lib/notifications'
 
 // ==================== Auth Helpers ====================
 
@@ -77,14 +78,12 @@ export async function requestProductTrial(data: {
       select: { userId: true },
     })
     if (brand?.userId) {
-      await prisma.notification.create({
-        data: {
-          userId: brand.userId,
-          type: 'CAMPAIGN',
-          title: '제품 체험 신청',
-          message: `${creator.displayName ?? creator.username ?? '크리에이터'}님이 "${product.name ?? '상품'}" 체험을 신청했습니다.`,
-          linkUrl: '/brand/trials',
-        },
+      sendNotification({
+        userId: brand.userId,
+        type: 'CAMPAIGN',
+        title: '제품 체험 신청',
+        message: `${creator.displayName ?? creator.username ?? '크리에이터'}님이 "${product.name ?? '상품'}" 체험을 신청했습니다.`,
+        linkUrl: '/brand/trials',
       })
     }
   } catch {
@@ -200,14 +199,12 @@ export async function decideProductTrial(data: {
       const msg = data.decision === 'PROCEED'
         ? `${creatorName}님이 "${productName}" 체험 후 공구/픽 전환했습니다.`
         : `${creatorName}님이 "${productName}" 체험 후 패스했습니다.`
-      await prisma.notification.create({
-        data: {
-          userId: brand.userId,
-          type: 'CAMPAIGN',
-          title: data.decision === 'PROCEED' ? '체험 후 전환' : '체험 후 패스',
-          message: msg,
-          linkUrl: '/brand/trials',
-        },
+      sendNotification({
+        userId: brand.userId,
+        type: 'CAMPAIGN',
+        title: data.decision === 'PROCEED' ? '체험 후 전환' : '체험 후 패스',
+        message: msg,
+        linkUrl: '/brand/trials',
       })
     }
   } catch {
@@ -343,14 +340,12 @@ export async function approveTrialRequest(trialId: string) {
   // 크리에이터에게 알림
   try {
     if (trial.creator?.userId) {
-      await prisma.notification.create({
-        data: {
-          userId: trial.creator.userId,
-          type: 'CAMPAIGN',
-          title: '체험 신청 승인',
-          message: '체험 신청이 승인되었습니다! 브랜드에서 샘플을 보내드립니다.',
-          linkUrl: '/creator/trials',
-        },
+      sendNotification({
+        userId: trial.creator.userId,
+        type: 'CAMPAIGN',
+        title: '체험 신청 승인',
+        message: '체험 신청이 승인되었습니다! 브랜드에서 샘플을 보내드립니다.',
+        linkUrl: '/creator/trials',
       })
     }
   } catch {
@@ -387,14 +382,12 @@ export async function rejectTrialRequest(data: {
   // 크리에이터에게 알림
   try {
     if (trial.creator?.userId) {
-      await prisma.notification.create({
-        data: {
-          userId: trial.creator.userId,
-          type: 'CAMPAIGN',
-          title: '체험 신청 결과',
-          message: '이번 체험은 아쉽게 매칭되지 않았어요.',
-          linkUrl: '/creator/trials',
-        },
+      sendNotification({
+        userId: trial.creator.userId,
+        type: 'CAMPAIGN',
+        title: '체험 신청 결과',
+        message: '이번 체험은 아쉽게 매칭되지 않았어요.',
+        linkUrl: '/creator/trials',
       })
     }
   } catch {
@@ -431,14 +424,12 @@ export async function shipTrialSample(data: {
   // 크리에이터에게 알림
   try {
     if (trial.creator?.userId) {
-      await prisma.notification.create({
-        data: {
-          userId: trial.creator.userId,
-          type: 'CAMPAIGN',
-          title: '샘플 발송 완료',
-          message: `샘플이 발송되었습니다. 송장번호: ${data.trackingNumber}`,
-          linkUrl: '/creator/trials',
-        },
+      sendNotification({
+        userId: trial.creator.userId,
+        type: 'CAMPAIGN',
+        title: '샘플 발송 완료',
+        message: `샘플이 발송되었습니다. 송장번호: ${data.trackingNumber}`,
+        linkUrl: '/creator/trials',
       })
     }
   } catch {

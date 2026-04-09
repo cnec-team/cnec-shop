@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/db'
 import { ShippingFeeType } from '@/generated/prisma/client'
 import { auth } from '@/lib/auth'
+import { sendNotification } from '@/lib/notifications'
 
 async function requireBrand() {
   const session = await auth()
@@ -470,14 +471,12 @@ export async function handleParticipationAction(
     })
     if (creator?.userId) {
       const isApproved = action === 'APPROVED'
-      await prisma.notification.create({
-        data: {
-          userId: creator.userId,
-          type: 'CAMPAIGN',
-          title: isApproved ? '공구 참여 승인' : '공구 참여 거절',
-          message: `"${participation.campaign?.title ?? '공구'}" ${isApproved ? '참여가 승인되었습니다.' : '참여가 거절되었습니다.'}`,
-          linkUrl: isApproved ? '/creator/shop' : '/creator/campaigns',
-        },
+      sendNotification({
+        userId: creator.userId,
+        type: 'CAMPAIGN',
+        title: isApproved ? '공구 참여 승인' : '공구 참여 거절',
+        message: `"${participation.campaign?.title ?? '공구'}" ${isApproved ? '참여가 승인되었습니다.' : '참여가 거절되었습니다.'}`,
+        linkUrl: isApproved ? '/creator/shop' : '/creator/campaigns',
       })
     }
   } catch {
@@ -636,23 +635,86 @@ export async function updateOrderStatus(
     updateData.confirmedAt = new Date()
   }
 
-  return prisma.order.update({
+  const order = await prisma.order.update({
     where: { id: orderId },
     data: updateData,
+    select: { id: true, orderNumber: true, buyerId: true },
   })
+
+  // 구매자에게 주문 상태 변경 알림
+  if (order.buyerId) {
+    const buyer = await prisma.buyer.findUnique({
+      where: { id: order.buyerId },
+      select: { userId: true },
+    })
+    if (buyer?.userId) {
+      const statusLabel: Record<string, string> = {
+        SHIPPING: '배송이 시작되었어요',
+        DELIVERED: '배송이 완료되었어요',
+        CONFIRMED: '구매가 확정되었어요',
+      }
+      const msg = statusLabel[newStatus] ?? `주문 상태가 변경되었어요`
+      sendNotification({
+        userId: buyer.userId,
+        type: newStatus === 'SHIPPING' ? 'SHIPPING' : 'ORDER',
+        title: msg,
+        message: `주문번호 ${order.orderNumber}`,
+        linkUrl: `/buyer/orders/${order.id}`,
+      })
+    }
+  }
+
+  return order
 }
 
 export async function cancelOrder(orderId: string, cancelReason: string) {
   await requireBrand()
 
-  return prisma.order.update({
+  const order = await prisma.order.update({
     where: { id: orderId },
     data: {
       status: 'CANCELLED',
       cancelledAt: new Date(),
       cancelReason,
     },
+    select: { id: true, orderNumber: true, buyerId: true, creatorId: true },
   })
+
+  // 구매자에게 주문 취소 알림
+  if (order.buyerId) {
+    const buyer = await prisma.buyer.findUnique({
+      where: { id: order.buyerId },
+      select: { userId: true },
+    })
+    if (buyer?.userId) {
+      sendNotification({
+        userId: buyer.userId,
+        type: 'ORDER',
+        title: '주문이 취소되었어요',
+        message: `주문번호 ${order.orderNumber} (사유: ${cancelReason})`,
+        linkUrl: `/buyer/orders/${order.id}`,
+      })
+    }
+  }
+
+  // 크리에이터에게 주문 취소 알림
+  if (order.creatorId) {
+    const creator = await prisma.creator.findUnique({
+      where: { id: order.creatorId },
+      select: { userId: true },
+    })
+    if (creator?.userId) {
+      sendNotification({
+        userId: creator.userId,
+        type: 'ORDER',
+        title: '주문이 취소되었어요',
+        message: `주문번호 ${order.orderNumber}`,
+        linkUrl: '/creator/orders',
+      })
+    }
+  }
+
+  return order
 }
 
 export async function handleShippingStart(
@@ -671,10 +733,30 @@ export async function handleShippingStart(
     updateData.courierCode = courierCode
   }
 
-  return prisma.order.update({
+  const order = await prisma.order.update({
     where: { id: orderId },
     data: updateData,
+    select: { id: true, orderNumber: true, buyerId: true },
   })
+
+  // 구매자에게 배송 시작 알림
+  if (order.buyerId) {
+    const buyer = await prisma.buyer.findUnique({
+      where: { id: order.buyerId },
+      select: { userId: true },
+    })
+    if (buyer?.userId) {
+      sendNotification({
+        userId: buyer.userId,
+        type: 'SHIPPING',
+        title: '배송이 시작되었어요',
+        message: `주문번호 ${order.orderNumber} | 송장번호: ${trackingNumber.trim()}`,
+        linkUrl: `/buyer/orders/${order.id}`,
+      })
+    }
+  }
+
+  return order
 }
 
 export async function updateTrackingInfo(
@@ -1176,15 +1258,28 @@ export async function getBrandSupportTickets() {
 }
 
 export async function replySupportTicket(ticketId: string, response: string) {
-  await requireBrand()
+  const { brand } = await requireBrand()
 
-  return prisma.supportTicket.update({
+  const ticket = await prisma.supportTicket.update({
     where: { id: ticketId },
     data: {
       response,
       status: 'resolved',
     },
+    select: { id: true, subject: true, fromEmail: true, brandId: true },
   })
+
+  // 브랜드 담당자에게 티켓 답변 완료 알림 (어드민이 답변한 경우)
+  // 여기서는 브랜드가 직접 답변하므로, 어드민에게 알림
+  sendNotification({
+    userId: brand.userId,
+    type: 'SYSTEM',
+    title: '문의 답변 완료',
+    message: `"${ticket.subject}" 문의에 답변이 등록되었어요.`,
+    linkUrl: '/brand/support',
+  })
+
+  return ticket
 }
 
 // ==================== Campaign Status ====================
@@ -1270,10 +1365,33 @@ export async function updateCampaignStatus(
     })
   }
 
-  return prisma.campaign.update({
+  const updated = await prisma.campaign.update({
     where: { id: campaignId },
     data: { status: newStatus as any },
   })
+
+  // 참여 크리에이터들에게 캠페인 상태 변경 알림
+  if (['ACTIVE', 'ENDED'].includes(newStatus) && campaign.participations.length > 0) {
+    const creatorIds = campaign.participations.map((p) => p.creatorId)
+    const creators = await prisma.creator.findMany({
+      where: { id: { in: creatorIds } },
+      select: { userId: true },
+    })
+    const statusMsg = newStatus === 'ACTIVE'
+      ? `"${campaign.title}" 캠페인이 시작되었어요!`
+      : `"${campaign.title}" 캠페인이 종료되었어요.`
+    for (const c of creators) {
+      sendNotification({
+        userId: c.userId,
+        type: 'CAMPAIGN',
+        title: newStatus === 'ACTIVE' ? '캠페인 시작' : '캠페인 종료',
+        message: statusMsg,
+        linkUrl: '/creator/campaigns/my',
+      })
+    }
+  }
+
+  return updated
 }
 
 export async function getBrandCampaignById(campaignId: string) {

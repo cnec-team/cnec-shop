@@ -2,6 +2,7 @@
 
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
+import { sendNotification } from '@/lib/notifications'
 
 async function requireAdmin() {
   const session = await auth()
@@ -22,10 +23,24 @@ export async function getAdminBrands() {
 
 export async function approveBrand(id: string) {
   await requireAdmin()
-  return prisma.brand.update({
+  const brand = await prisma.brand.update({
     where: { id },
     data: { approved: true },
+    select: { id: true, userId: true, companyName: true },
   })
+
+  // 브랜드에게 승인 알림
+  if (brand.userId) {
+    sendNotification({
+      userId: brand.userId,
+      type: 'SYSTEM',
+      title: '브랜드 승인 완료',
+      message: `${brand.companyName ?? '브랜드'}가 승인되었어요. 지금 바로 상품을 등록해보세요!`,
+      linkUrl: '/brand/products/new',
+    })
+  }
+
+  return brand
 }
 
 // ==================== Creators ====================
