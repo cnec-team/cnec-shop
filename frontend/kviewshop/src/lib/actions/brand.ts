@@ -4,6 +4,12 @@ import { prisma } from '@/lib/db'
 import { ShippingFeeType } from '@/generated/prisma/client'
 import { auth } from '@/lib/auth'
 import { sendNotification } from '@/lib/notifications'
+import {
+  shippingStartMessage,
+  deliveryCompleteMessage,
+  campaignApprovedMessage,
+  campaignStartedMessage,
+} from '@/lib/notifications/templates'
 
 async function requireBrand() {
   const session = await auth()
@@ -467,17 +473,43 @@ export async function handleParticipationAction(
   try {
     const creator = await prisma.creator.findUnique({
       where: { id: participation.creatorId },
-      select: { userId: true },
+      select: { userId: true, displayName: true, phone: true, email: true },
     })
     if (creator?.userId) {
-      const isApproved = action === 'APPROVED'
-      sendNotification({
-        userId: creator.userId,
-        type: 'CAMPAIGN',
-        title: isApproved ? '공구 참여 승인' : '공구 참여 거절',
-        message: `"${participation.campaign?.title ?? '공구'}" ${isApproved ? '참여가 승인되었습니다.' : '참여가 거절되었습니다.'}`,
-        linkUrl: isApproved ? '/creator/shop' : '/creator/campaigns',
-      })
+      if (action === 'APPROVED') {
+        const campaign = await prisma.campaign.findUnique({
+          where: { id: participation.campaignId },
+          select: { title: true, brandId: true },
+        })
+        const brandInfo = campaign
+          ? await prisma.brand.findUnique({ where: { id: campaign.brandId }, select: { brandName: true } })
+          : null
+        const template = campaignApprovedMessage({
+          creatorName: creator.displayName ?? '',
+          brandName: brandInfo?.brandName ?? '',
+          campaignTitle: campaign?.title ?? '',
+        })
+        await sendNotification({
+          userId: creator.userId,
+          type: template.inApp.type,
+          title: template.inApp.title,
+          message: template.inApp.message,
+          linkUrl: template.inApp.linkUrl,
+          phone: creator.phone ?? undefined,
+          email: creator.email ?? undefined,
+          receiverName: creator.displayName ?? undefined,
+          kakaoTemplate: template.kakao,
+          emailTemplate: template.email,
+        })
+      } else {
+        sendNotification({
+          userId: creator.userId,
+          type: 'CAMPAIGN',
+          title: '공구 참여 거절',
+          message: `"${participation.campaign?.title ?? '공구'}" 참여가 거절되었습니다.`,
+          linkUrl: '/creator/campaigns',
+        })
+      }
     }
   } catch {
     // Don't fail the action if notification fails
@@ -638,30 +670,81 @@ export async function updateOrderStatus(
   const order = await prisma.order.update({
     where: { id: orderId },
     data: updateData,
-    select: { id: true, orderNumber: true, buyerId: true },
+    include: {
+      items: { select: { productName: true } },
+    },
   })
 
-  // 구매자에게 주문 상태 변경 알림
-  if (order.buyerId) {
-    const buyer = await prisma.buyer.findUnique({
-      where: { id: order.buyerId },
-      select: { userId: true },
-    })
-    if (buyer?.userId) {
-      const statusLabel: Record<string, string> = {
-        SHIPPING: '배송이 시작되었어요',
-        DELIVERED: '배송이 완료되었어요',
-        CONFIRMED: '구매가 확정되었어요',
-      }
-      const msg = statusLabel[newStatus] ?? `주문 상태가 변경되었어요`
-      sendNotification({
-        userId: buyer.userId,
-        type: newStatus === 'SHIPPING' ? 'SHIPPING' : 'ORDER',
-        title: msg,
-        message: `주문번호 ${order.orderNumber}`,
-        linkUrl: `/buyer/orders/${order.id}`,
+  // 구매자에게 주문 상태 변경 알림 (3채널)
+  try {
+    if (order.buyerId) {
+      const buyerUser = await prisma.user.findUnique({
+        where: { id: order.buyerId },
+        select: { phone: true, email: true },
       })
+
+      if (newStatus === 'SHIPPING') {
+        const productName = order.items[0]?.productName ?? '상품'
+        const template = shippingStartMessage({
+          buyerName: order.buyerName ?? '',
+          orderNumber: order.orderNumber ?? '',
+          productName,
+          trackingNumber: trackingNumber?.trim(),
+          courierName: courierCode,
+        })
+        await sendNotification({
+          userId: order.buyerId,
+          type: template.inApp.type,
+          title: template.inApp.title,
+          message: template.inApp.message,
+          linkUrl: template.inApp.linkUrl,
+          phone: order.buyerPhone ?? buyerUser?.phone ?? undefined,
+          email: order.buyerEmail ?? buyerUser?.email ?? undefined,
+          receiverName: order.buyerName ?? undefined,
+          kakaoTemplate: template.kakao,
+          emailTemplate: template.email,
+        })
+      } else if (newStatus === 'DELIVERED') {
+        const productName = order.items[0]?.productName ?? '상품'
+        const template = deliveryCompleteMessage({
+          buyerName: order.buyerName ?? '',
+          orderNumber: order.orderNumber ?? '',
+          productName,
+        })
+        await sendNotification({
+          userId: order.buyerId,
+          type: template.inApp.type,
+          title: template.inApp.title,
+          message: template.inApp.message,
+          linkUrl: template.inApp.linkUrl,
+          phone: order.buyerPhone ?? buyerUser?.phone ?? undefined,
+          email: order.buyerEmail ?? buyerUser?.email ?? undefined,
+          receiverName: order.buyerName ?? undefined,
+          kakaoTemplate: template.kakao,
+          emailTemplate: template.email,
+        })
+      } else {
+        const statusLabel: Record<string, string> = {
+          CONFIRMED: '구매가 확정되었어요',
+        }
+        const msg = statusLabel[newStatus] ?? '주문 상태가 변경되었어요'
+        const buyer = await prisma.buyer.findUnique({
+          where: { id: order.buyerId },
+          select: { userId: true },
+        })
+        if (buyer?.userId) {
+          sendNotification({
+            userId: buyer.userId,
+            type: 'ORDER',
+            title: msg,
+            message: `주문번호 ${order.orderNumber}`,
+            linkUrl: `/buyer/orders/${order.id}`,
+          })
+        }
+      }
     }
+  } catch {
+    // Don't fail the action if notification fails
   }
 
   return order
@@ -736,24 +819,41 @@ export async function handleShippingStart(
   const order = await prisma.order.update({
     where: { id: orderId },
     data: updateData,
-    select: { id: true, orderNumber: true, buyerId: true },
+    include: {
+      items: { select: { productName: true } },
+    },
   })
 
-  // 구매자에게 배송 시작 알림
-  if (order.buyerId) {
-    const buyer = await prisma.buyer.findUnique({
-      where: { id: order.buyerId },
-      select: { userId: true },
-    })
-    if (buyer?.userId) {
-      sendNotification({
-        userId: buyer.userId,
-        type: 'SHIPPING',
-        title: '배송이 시작되었어요',
-        message: `주문번호 ${order.orderNumber} | 송장번호: ${trackingNumber.trim()}`,
-        linkUrl: `/buyer/orders/${order.id}`,
+  // 구매자에게 배송 시작 알림 (3채널)
+  try {
+    if (order.buyerId) {
+      const buyerUser = await prisma.user.findUnique({
+        where: { id: order.buyerId },
+        select: { phone: true, email: true },
+      })
+      const productName = order.items[0]?.productName ?? '상품'
+      const template = shippingStartMessage({
+        buyerName: order.buyerName ?? '',
+        orderNumber: order.orderNumber ?? '',
+        productName,
+        trackingNumber: trackingNumber.trim(),
+        courierName: courierCode,
+      })
+      await sendNotification({
+        userId: order.buyerId,
+        type: template.inApp.type,
+        title: template.inApp.title,
+        message: template.inApp.message,
+        linkUrl: template.inApp.linkUrl,
+        phone: order.buyerPhone ?? buyerUser?.phone ?? undefined,
+        email: order.buyerEmail ?? buyerUser?.email ?? undefined,
+        receiverName: order.buyerName ?? undefined,
+        kakaoTemplate: template.kakao,
+        emailTemplate: template.email,
       })
     }
+  } catch {
+    // Don't fail the action if notification fails
   }
 
   return order
@@ -1370,24 +1470,49 @@ export async function updateCampaignStatus(
     data: { status: newStatus as any },
   })
 
-  // 참여 크리에이터들에게 캠페인 상태 변경 알림
+  // 참여 크리에이터들에게 캠페인 상태 변경 알림 (3채널)
   if (['ACTIVE', 'ENDED'].includes(newStatus) && campaign.participations.length > 0) {
-    const creatorIds = campaign.participations.map((p) => p.creatorId)
-    const creators = await prisma.creator.findMany({
-      where: { id: { in: creatorIds } },
-      select: { userId: true },
-    })
-    const statusMsg = newStatus === 'ACTIVE'
-      ? `"${campaign.title}" 캠페인이 시작되었어요!`
-      : `"${campaign.title}" 캠페인이 종료되었어요.`
-    for (const c of creators) {
-      sendNotification({
-        userId: c.userId,
-        type: 'CAMPAIGN',
-        title: newStatus === 'ACTIVE' ? '캠페인 시작' : '캠페인 종료',
-        message: statusMsg,
-        linkUrl: '/creator/campaigns/my',
+    try {
+      const creatorIds = campaign.participations.map((p) => p.creatorId)
+      const creators = await prisma.creator.findMany({
+        where: { id: { in: creatorIds } },
+        select: { id: true, userId: true, displayName: true, phone: true, email: true },
       })
+
+      if (newStatus === 'ACTIVE') {
+        for (const c of creators) {
+          const template = campaignStartedMessage({
+            creatorName: c.displayName ?? '',
+            brandName: brand.brandName ?? '',
+            campaignTitle: campaign.title ?? '',
+            endDate: campaign.endAt?.toISOString().slice(0, 10),
+          })
+          await sendNotification({
+            userId: c.userId,
+            type: template.inApp.type,
+            title: template.inApp.title,
+            message: template.inApp.message,
+            linkUrl: template.inApp.linkUrl,
+            phone: c.phone ?? undefined,
+            email: c.email ?? undefined,
+            receiverName: c.displayName ?? undefined,
+            kakaoTemplate: template.kakao,
+            emailTemplate: template.email,
+          })
+        }
+      } else {
+        for (const c of creators) {
+          sendNotification({
+            userId: c.userId,
+            type: 'CAMPAIGN',
+            title: '캠페인 종료',
+            message: `"${campaign.title}" 캠페인이 종료되었어요.`,
+            linkUrl: '/creator/campaigns/my',
+          })
+        }
+      }
+    } catch {
+      // Don't fail the action if notification fails
     }
   }
 
