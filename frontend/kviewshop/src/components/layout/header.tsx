@@ -100,7 +100,7 @@ export function Header({ locale }: HeaderProps) {
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link href={`/${locale}/settings`}>
+                      <Link href={`/${locale}/${user.role === 'super_admin' ? 'admin' : user.role === 'brand_admin' ? 'brand' : 'creator'}/settings`}>
                         <Settings className="mr-2 h-4 w-4" />
                         {t('nav.settings')}
                       </Link>
