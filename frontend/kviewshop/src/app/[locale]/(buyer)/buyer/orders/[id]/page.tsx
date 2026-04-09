@@ -27,6 +27,8 @@ import {
   Star,
   Store,
   ExternalLink,
+  AlertTriangle,
+  X as XIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getTrackingUrl, getCourierLabel } from '@/lib/utils/courier';
@@ -73,6 +75,9 @@ export default function OrderDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [order, setOrder] = useState<any>(null);
   const [isConfirming, setIsConfirming] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [isCancelling, setIsCancelling] = useState(false);
 
   useEffect(() => {
     const loadOrder = async () => {
@@ -158,6 +163,36 @@ export default function OrderDetailPage() {
       toast.error(error.message || '구매확정에 실패했습니다');
     } finally {
       setIsConfirming(false);
+    }
+  };
+
+  const handleCancelOrder = async () => {
+    if (!cancelReason.trim()) {
+      toast.error('취소 사유를 입력해주세요.');
+      return;
+    }
+
+    setIsCancelling(true);
+    try {
+      const res = await fetch(`/api/orders/${order.id}/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: cancelReason.trim() }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || '주문 취소에 실패했습니다.');
+      }
+
+      toast.success('주문이 취소되었습니다.');
+      setOrder({ ...order, status: 'CANCELLED', cancelReason: cancelReason.trim() });
+      setShowCancelDialog(false);
+      setCancelReason('');
+    } catch (error: any) {
+      toast.error(error.message || '주문 취소에 실패했습니다.');
+    } finally {
+      setIsCancelling(false);
     }
   };
 
@@ -505,14 +540,83 @@ export default function OrderDetailPage() {
                 </Link>
               </>
             )}
-            {['PENDING', 'PAID'].includes(order.status) && (
-              <Button variant="outline" className="w-full text-destructive">
-                주문 취소 문의
+            {['PENDING', 'PAID', 'PREPARING'].includes(order.status) && (
+              <Button
+                variant="outline"
+                className="w-full text-destructive"
+                onClick={() => setShowCancelDialog(true)}
+              >
+                주문 취소
               </Button>
+            )}
+            {['SHIPPING', 'DELIVERED'].includes(order.status) && !['CONFIRMED'].includes(order.status) && (
+              <div className="text-sm text-muted-foreground bg-muted/50 rounded-lg p-3 space-y-1">
+                <p className="flex items-center gap-1.5">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  배송 시작 후에는 취소가 불가합니다.
+                </p>
+                {(order.brand?.brandName || order.brand?.companyName) && (
+                  <p className="text-xs">
+                    교환/환불은 {order.brand.brandName || order.brand.companyName}에 문의해주세요.
+                  </p>
+                )}
+              </div>
             )}
           </div>
         </div>
       </div>
+
+      {/* Cancel Dialog */}
+      {showCancelDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-2xl w-full max-w-md mx-4 p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">주문을 취소하시겠습니까?</h3>
+              <button
+                onClick={() => { setShowCancelDialog(false); setCancelReason(''); }}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <XIcon className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-muted-foreground">취소 사유 *</label>
+              <textarea
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="취소 사유를 입력해주세요"
+                rows={3}
+                className="w-full px-3 py-2 border border-input rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => { setShowCancelDialog(false); setCancelReason(''); }}
+                disabled={isCancelling}
+              >
+                닫기
+              </Button>
+              <Button
+                variant="destructive"
+                className="flex-1"
+                onClick={handleCancelOrder}
+                disabled={isCancelling || !cancelReason.trim()}
+              >
+                {isCancelling ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                    처리중...
+                  </>
+                ) : (
+                  '취소하기'
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

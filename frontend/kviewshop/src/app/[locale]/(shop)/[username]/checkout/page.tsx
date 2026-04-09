@@ -12,6 +12,7 @@ import {
   Minus,
   Plus,
   X,
+  Search,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -31,6 +32,17 @@ function formatKRW(amount: number): string {
 // =============================================
 // Types
 // =============================================
+
+interface ShippingAddress {
+  id: string;
+  label: string;
+  name: string;
+  phone: string;
+  address: string;
+  addressDetail: string;
+  zipcode: string;
+  isDefault: boolean;
+}
 
 interface CartItemWithProduct {
   productId: string;
@@ -69,9 +81,13 @@ export default function CheckoutPage() {
 
   const { items, clearCart, updateQuantity, removeItem } = useCartStore();
   const buyer = useAuthStore((s) => s.buyer);
+  const user = useAuthStore((s) => s.user);
   const checkoutDoneRef = useRef(false);
+  const addressDetailRef = useRef<HTMLInputElement>(null);
 
   const [isLoading, setIsLoading] = useState(true);
+  const [savedAddresses, setSavedAddresses] = useState<ShippingAddress[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [creator, setCreator] = useState<any>(null);
   const [cartItems, setCartItems] = useState<CartItemWithProduct[]>([]);
@@ -135,6 +151,86 @@ export default function CheckoutPage() {
 
     loadData();
   }, [username, items, locale, router]);
+
+  // Auto-fill default shipping address for logged-in users
+  useEffect(() => {
+    if (!buyer) return;
+
+    try {
+      const raw = buyer.defaultShippingAddress;
+      if (!raw) return;
+
+      const addresses: ShippingAddress[] = Array.isArray(raw) ? raw : [];
+      if (addresses.length === 0) return;
+
+      setSavedAddresses(addresses);
+
+      const defaultAddr = addresses.find((a) => a.isDefault) || addresses[0];
+      setSelectedAddressId(defaultAddr.id || 'first');
+
+      setForm((prev) => ({
+        name: prev.name || defaultAddr.name || '',
+        phone: prev.phone || defaultAddr.phone || '',
+        email: prev.email || user?.email || '',
+        address: prev.address || defaultAddr.address || '',
+        addressDetail: prev.addressDetail || defaultAddr.addressDetail || '',
+        zipcode: prev.zipcode || defaultAddr.zipcode || '',
+      }));
+    } catch {
+      // defaultShippingAddress parsing failed
+    }
+  }, [buyer, user]);
+
+  // Daum Postcode API
+  const loadDaumPostcode = () => {
+    return new Promise<void>((resolve) => {
+      if ((window as any).daum?.Postcode) {
+        resolve();
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
+      script.onload = () => resolve();
+      document.head.appendChild(script);
+    });
+  };
+
+  const handleSearchAddress = async () => {
+    await loadDaumPostcode();
+    new (window as any).daum.Postcode({
+      oncomplete: (data: any) => {
+        setForm((prev) => ({
+          ...prev,
+          zipcode: data.zonecode,
+          address: data.roadAddress || data.jibunAddress,
+        }));
+        setTimeout(() => {
+          addressDetailRef.current?.focus();
+        }, 100);
+      },
+    }).open();
+  };
+
+  const handleAddressSelect = (addressId: string) => {
+    setSelectedAddressId(addressId);
+
+    if (addressId === 'new') {
+      setForm({ name: '', phone: '', email: user?.email || '', address: '', addressDetail: '', zipcode: '' });
+      return;
+    }
+
+    const addr = savedAddresses.find((a) => a.id === addressId);
+    if (!addr) return;
+
+    setForm({
+      name: addr.name || '',
+      phone: addr.phone || '',
+      email: user?.email || form.email || '',
+      address: addr.address || '',
+      addressDetail: addr.addressDetail || '',
+      zipcode: addr.zipcode || '',
+    });
+  };
 
   const handleUpdateQuantity = (productId: string, newQty: number) => {
     if (newQty < 1) return;
@@ -528,6 +624,25 @@ export default function CheckoutPage() {
         <div className="bg-white rounded-2xl p-5">
           <h2 className="text-base font-semibold text-gray-900 mb-4">배송 정보</h2>
           <div className="space-y-4">
+            {/* Saved address dropdown */}
+            {savedAddresses.length > 0 && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-gray-500">저장된 배송지</label>
+                <select
+                  value={selectedAddressId}
+                  onChange={(e) => handleAddressSelect(e.target.value)}
+                  className="w-full h-11 px-4 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-300 bg-white"
+                >
+                  {savedAddresses.map((addr) => (
+                    <option key={addr.id} value={addr.id}>
+                      {addr.label}{addr.isDefault ? ' (기본)' : ''}
+                    </option>
+                  ))}
+                  <option value="new">새 배송지 입력</option>
+                </select>
+              </div>
+            )}
+
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-gray-500">이름 *</label>
               <input
@@ -560,13 +675,23 @@ export default function CheckoutPage() {
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-gray-500">우편번호 *</label>
-              <input
-                type="text"
-                value={form.zipcode}
-                onChange={(e) => setForm({ ...form, zipcode: e.target.value })}
-                placeholder="12345"
-                className="w-full h-11 px-4 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-300"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={form.zipcode}
+                  onChange={(e) => setForm({ ...form, zipcode: e.target.value })}
+                  placeholder="12345"
+                  className="flex-1 h-11 px-4 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-300"
+                />
+                <button
+                  type="button"
+                  onClick={handleSearchAddress}
+                  className="h-11 px-4 border border-gray-200 rounded-xl text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-1.5 whitespace-nowrap"
+                >
+                  <Search className="w-3.5 h-3.5" />
+                  주소 검색
+                </button>
+              </div>
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-gray-500">주소 *</label>
@@ -575,12 +700,15 @@ export default function CheckoutPage() {
                 value={form.address}
                 onChange={(e) => setForm({ ...form, address: e.target.value })}
                 placeholder="서울특별시 강남구 테헤란로 123"
-                className="w-full h-11 px-4 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-300"
+                readOnly
+                className="w-full h-11 px-4 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-300 bg-gray-50 cursor-pointer"
+                onClick={handleSearchAddress}
               />
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-gray-500">상세주소</label>
               <input
+                ref={addressDetailRef}
                 type="text"
                 value={form.addressDetail}
                 onChange={(e) => setForm({ ...form, addressDetail: e.target.value })}

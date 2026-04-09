@@ -55,31 +55,42 @@ export default function BuyerDashboardPage() {
     );
   }
 
+  const ORDER_STATUS_LABELS: Record<string, string> = {
+    PENDING: '결제대기',
+    PAID: '결제완료',
+    PREPARING: '배송준비',
+    SHIPPING: '배송중',
+    DELIVERED: '배송완료',
+    CONFIRMED: '구매확정',
+    CANCELLED: '취소',
+    REFUNDED: '환불',
+  };
+
   const statCards = [
     {
-      label: 'Total Orders',
-      value: buyer?.total_orders || buyer?.totalOrders || 0,
+      label: '총 주문',
+      value: (buyer?.totalOrders ?? buyer?.total_orders ?? 0),
       icon: ShoppingBag,
       color: 'text-blue-500',
       bgColor: 'bg-blue-500/10',
     },
     {
-      label: 'Points Balance',
-      value: `${((buyer?.points_balance || buyer?.pointsBalance || 0) as number).toLocaleString()} P`,
+      label: '포인트',
+      value: `${(Number(buyer?.pointsBalance ?? buyer?.points_balance ?? 0)).toLocaleString()} P`,
       icon: Gift,
       color: 'text-primary',
       bgColor: 'bg-primary/10',
     },
     {
-      label: 'Subscriptions',
+      label: '구독',
       value: subscriptions.length,
       icon: Heart,
       color: 'text-pink-500',
       bgColor: 'bg-pink-500/10',
     },
     {
-      label: 'Reviews Written',
-      value: buyer?.total_reviews || buyer?.totalReviews || 0,
+      label: '작성한 리뷰',
+      value: (buyer?.totalReviews ?? buyer?.total_reviews ?? 0),
       icon: Star,
       color: 'text-yellow-500',
       bgColor: 'bg-yellow-500/10',
@@ -112,17 +123,17 @@ export default function BuyerDashboardPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-headline font-bold">
-            Welcome back, {buyer?.nickname || user?.name}!
+            {buyer?.nickname || user?.name}님, 안녕하세요!
           </h1>
           <p className="text-muted-foreground mt-1">
-            Discover new products from your favorite creators
+            크리에이터 추천 제품을 만나보세요
           </p>
         </div>
-        {(buyer?.eligible_for_creator || buyer?.eligibleForCreator) && (
+        {(buyer?.eligibleForCreator ?? buyer?.eligible_for_creator ?? false) && (
           <Link href={`/${locale}/buyer/become-creator`}>
             <Button className="btn-gold gap-2">
               <Sparkles className="h-4 w-4" />
-              Become a Creator
+              크리에이터 되기
             </Button>
           </Link>
         )}
@@ -152,13 +163,13 @@ export default function BuyerDashboardPage() {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Heart className="h-5 w-5 text-pink-500" />
-                My Subscriptions
+                구독 중인 샵
               </CardTitle>
-              <CardDescription>Creator shops you follow</CardDescription>
+              <CardDescription>팔로우 중인 크리에이터 샵</CardDescription>
             </div>
             <Link href={`/${locale}/buyer/subscriptions`}>
               <Button variant="ghost" size="sm">
-                View All <ChevronRight className="ml-1 h-4 w-4" />
+                전체 보기 <ChevronRight className="ml-1 h-4 w-4" />
               </Button>
             </Link>
           </CardHeader>
@@ -166,8 +177,8 @@ export default function BuyerDashboardPage() {
             {subscriptions.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Heart className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                <p>No subscriptions yet</p>
-                <p className="text-sm">Discover amazing creator shops!</p>
+                <p>아직 구독한 샵이 없어요</p>
+                <p className="text-sm">크리에이터 샵을 둘러보세요!</p>
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -207,13 +218,13 @@ export default function BuyerDashboardPage() {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Package className="h-5 w-5 text-blue-500" />
-                Recent Orders
+                최근 주문
               </CardTitle>
-              <CardDescription>Your latest purchases</CardDescription>
+              <CardDescription>최근 구매 내역</CardDescription>
             </div>
             <Link href={`/${locale}/buyer/orders`}>
               <Button variant="ghost" size="sm">
-                View All <ChevronRight className="ml-1 h-4 w-4" />
+                전체 보기 <ChevronRight className="ml-1 h-4 w-4" />
               </Button>
             </Link>
           </CardHeader>
@@ -221,8 +232,8 @@ export default function BuyerDashboardPage() {
             {recentOrders.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <ShoppingBag className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                <p>No orders yet</p>
-                <p className="text-sm">Start shopping from creator malls!</p>
+                <p>아직 주문 내역이 없어요</p>
+                <p className="text-sm">크리에이터 샵에서 쇼핑을 시작해보세요!</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -243,7 +254,7 @@ export default function BuyerDashboardPage() {
                         {Number(order.totalAmount).toLocaleString()}
                       </p>
                       <Badge variant="secondary" className={getStatusColor(order.status)}>
-                        {order.status}
+                        {ORDER_STATUS_LABELS[order.status] || order.status}
                       </Badge>
                     </div>
                   </Link>
@@ -261,13 +272,13 @@ export default function BuyerDashboardPage() {
             <TrendingUp className="h-6 w-6 text-primary" />
           </div>
           <div className="flex-1">
-            <h3 className="font-semibold">Earn More Points!</h3>
+            <h3 className="font-semibold">더 많은 포인트를 모으세요!</h3>
             <p className="text-sm text-muted-foreground">
-              Write a review and earn 500P. Share on Instagram and get 1,000P!
+              리뷰 작성 500P, 인스타그램 공유 1,000P 적립!
             </p>
           </div>
           <Link href={`/${locale}/buyer/reviews`}>
-            <Button variant="outline">Write Review</Button>
+            <Button variant="outline">리뷰 쓰기</Button>
           </Link>
         </CardContent>
       </Card>
