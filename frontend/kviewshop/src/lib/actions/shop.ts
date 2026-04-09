@@ -1,6 +1,7 @@
 'use server'
 
 import { prisma } from '@/lib/db'
+import { sendNotification } from '@/lib/notifications'
 
 // ==================== Checkout ====================
 
@@ -148,6 +149,36 @@ export async function createOrder(data: {
       }
     }),
   })
+
+  // 크리에이터에게 주문 알림
+  const creator = await prisma.creator.findUnique({
+    where: { id: data.creatorId },
+    select: { userId: true },
+  })
+  if (creator?.userId) {
+    sendNotification({
+      userId: creator.userId,
+      type: 'ORDER',
+      title: '새 주문이 들어왔어요',
+      message: `주문번호 ${order.orderNumber} (${data.items.length}건, ₩${Number(data.totalAmount).toLocaleString('ko-KR')})`,
+      linkUrl: '/creator/orders',
+    })
+  }
+
+  // 브랜드에게 주문 알림
+  const brand = await prisma.brand.findUnique({
+    where: { id: data.brandId },
+    select: { userId: true },
+  })
+  if (brand?.userId) {
+    sendNotification({
+      userId: brand.userId,
+      type: 'ORDER',
+      title: '새 주문이 들어왔어요',
+      message: `주문번호 ${order.orderNumber} (${data.items.length}건, ₩${Number(data.totalAmount).toLocaleString('ko-KR')})`,
+      linkUrl: '/brand/orders',
+    })
+  }
 
   return { id: order.id, orderNumber: order.orderNumber }
 }
