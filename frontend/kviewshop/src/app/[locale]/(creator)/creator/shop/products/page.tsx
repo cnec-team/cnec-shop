@@ -22,6 +22,7 @@ import {
   Eye,
   EyeOff,
   ExternalLink,
+  AlertCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { BrandBadge } from '@/components/common/BrandBadge';
@@ -40,6 +41,7 @@ interface ShopItemProduct {
   imageUrl: string | null;
   salePrice: unknown;
   originalPrice: unknown;
+  status?: string;
   brand?: { brandName: string } | null;
 }
 
@@ -47,6 +49,7 @@ interface ShopItem {
   id: string;
   productId: string;
   product: ShopItemProduct;
+  campaign?: { id: string; status: string; title: string } | null;
   type: string;
   isVisible: boolean;
   displayOrder: number;
@@ -238,6 +241,11 @@ export default function MyShopProductsPage() {
               : 0;
             const imgSrc = product.images?.[0] || product.imageUrl;
 
+            // Check if item is hidden from actual shop due to campaign/product status
+            const campaignInactive = item.campaign && item.campaign.status !== 'ACTIVE';
+            const productInactive = product.status && product.status !== 'ACTIVE';
+            const hiddenFromShop = campaignInactive || productInactive;
+
             return (
               <div
                 key={item.id}
@@ -281,6 +289,14 @@ export default function MyShopProductsPage() {
                         {formatCurrency(price, 'KRW')}
                       </span>
                     </div>
+                    {hiddenFromShop && item.isVisible && (
+                      <div className="flex items-center gap-1 mt-1.5 text-orange-600">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        <span className="text-[10px] leading-tight">
+                          {productInactive ? '상품 비활성 상태로 샵에 미노출' : '캠페인 종료/대기 중으로 샵에 미노출'}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </Link>
 

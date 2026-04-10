@@ -353,6 +353,7 @@ export async function getCreatorCollections(creatorId: string) {
       orderBy: { displayOrder: 'asc' },
       include: {
         product: true,
+        campaign: { select: { id: true, status: true, title: true } },
       },
     }),
   ])
@@ -458,10 +459,8 @@ export async function getPickableProducts(creatorId: string) {
   const { creator } = await requireCreator()
   if (creator.id !== creatorId) throw new Error('Forbidden')
 
-  const [products, brands, campaigns, campaignProducts, shopItems] = await Promise.all([
-    prisma.product.findMany({
-      where: { status: 'ACTIVE', allowCreatorPick: true },
-    }),
+  // Fetch active campaigns and their product IDs
+  const [brands, campaigns, campaignProducts, shopItems] = await Promise.all([
     prisma.brand.findMany(),
     prisma.campaign.findMany({
       where: { status: { in: ['RECRUITING', 'ACTIVE'] } },
@@ -475,12 +474,31 @@ export async function getPickableProducts(creatorId: string) {
     }),
   ])
 
+  // Build set of product IDs that have an active (RECRUITING/ACTIVE) campaign
+  const activeCampaignProductIds = new Set<string>()
+  for (const cp of campaignProducts) {
+    if (campaigns.some((c) => c.id === cp.campaignId)) {
+      activeCampaignProductIds.add(cp.productId)
+    }
+  }
+
+  // Fetch products: ACTIVE status AND (allowCreatorPick=true OR has active campaign)
+  const products = await prisma.product.findMany({
+    where: {
+      status: 'ACTIVE',
+      OR: [
+        { allowCreatorPick: true },
+        { id: { in: Array.from(activeCampaignProductIds) } },
+      ],
+    },
+  })
+
   const brandMap: Record<string, { brandName: string }> = {}
   for (const b of brands) {
     brandMap[b.id] = { brandName: b.brandName ?? '' }
   }
 
-  const campaignMap: Record<string, any> = {}
+  const campaignMap: Record<string, { id: string; type: string; commissionRate: unknown; recruitmentType: string | null; campaignProduct: { campaignPrice: unknown } }> = {}
   for (const cp of campaignProducts) {
     const campaign = campaigns.find((c) => c.id === cp.campaignId)
     if (campaign) {
