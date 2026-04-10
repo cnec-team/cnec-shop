@@ -122,7 +122,9 @@ export default function BuyerSignupPage() {
       }
 
       toast.success('가입이 완료되었습니다!');
-      router.push(returnUrl || `/${locale}/buyer/dashboard`);
+      // returnUrl이 있으면 그곳으로, 없으면 샵 홈으로 이동 (대시보드는 세션 동기화 레이스로 인해 제외)
+      router.push(returnUrl || `/${locale}`);
+      router.refresh();
     } catch {
       setSignupError('가입 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
     } finally {

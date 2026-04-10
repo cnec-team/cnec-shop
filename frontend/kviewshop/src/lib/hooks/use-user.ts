@@ -6,8 +6,18 @@ import { useAuthStore } from '@/lib/store/auth';
 
 export function useUser() {
   const { data: session, status } = useSession();
-  const { user, brand, creator, buyer, setUser, setBrand, setCreator, setBuyer, setLoading } =
-    useAuthStore();
+  const {
+    user,
+    brand,
+    creator,
+    buyer,
+    isLoading: storeLoading,
+    setUser,
+    setBrand,
+    setCreator,
+    setBuyer,
+    setLoading,
+  } = useAuthStore();
   const fetchingRef = useRef(false);
 
   useEffect(() => {
@@ -68,7 +78,7 @@ export function useUser() {
     brand,
     creator,
     buyer,
-    isLoading: status === 'loading' || useAuthStore.getState().isLoading,
+    isLoading: status === 'loading' || storeLoading,
     isAuthenticated: status === 'authenticated',
     signOut,
     refetch: session?.user?.id ? () => fetchUserData(session.user.id) : undefined,

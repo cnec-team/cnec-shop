@@ -22,17 +22,24 @@ import {
 } from 'lucide-react';
 
 export default function BuyerDashboardPage() {
-  const { user, buyer } = useUser();
+  const { user, buyer, isLoading: isUserLoading } = useUser();
   const params = useParams();
   const locale = params.locale as string;
-  const [isLoading, setIsLoading] = useState(true);
+  const [isDataLoading, setIsDataLoading] = useState(true);
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
 
   useEffect(() => {
-    const loadDashboardData = async () => {
-      if (!buyer) return;
+    // 유저 로딩이 끝날 때까지 대기
+    if (isUserLoading) return;
 
+    // 유저 로딩이 끝났는데 buyer가 없으면 로딩 종료 (빈 상태 표시)
+    if (!buyer) {
+      setIsDataLoading(false);
+      return;
+    }
+
+    const loadDashboardData = async () => {
       try {
         const data = await getBuyerDashboardData(buyer.id);
         setSubscriptions(data.subscriptions || []);
@@ -40,12 +47,14 @@ export default function BuyerDashboardPage() {
       } catch (error) {
         console.error('Failed to load dashboard data:', error);
       } finally {
-        setIsLoading(false);
+        setIsDataLoading(false);
       }
     };
 
     loadDashboardData();
-  }, [buyer]);
+  }, [buyer, isUserLoading]);
+
+  const isLoading = isUserLoading || isDataLoading;
 
   if (isLoading) {
     return (

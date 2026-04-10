@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,10 +8,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
-import { User, CreditCard, Bell, Globe, Loader2, Save, RotateCcw } from 'lucide-react';
+import { User, CreditCard, Bell, Globe, Loader2, Save, RotateCcw, Truck, Search, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { getCreatorSession, updateCreatorSettings } from '@/lib/actions/creator';
 import { useOnboardingStore } from '@/lib/store/onboarding';
+
+function formatPhoneNumber(value: string): string {
+  const numbers = value.replace(/\D/g, '');
+  if (numbers.length <= 3) return numbers;
+  if (numbers.length <= 7) return `${numbers.slice(0, 3)}-${numbers.slice(3)}`;
+  return `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7, 11)}`;
+}
 
 export default function CreatorSettingsPage() {
   const t = useTranslations('creator');
@@ -34,7 +41,57 @@ export default function CreatorSettingsPage() {
     emailNotifications: true,
     orderNotifications: true,
     settlementNotifications: true,
+    // 배송 정보 (체험 신청 시 사용)
+    shippingName: '',
+    shippingPhone: '',
+    shippingZipcode: '',
+    shippingAddress: '',
+    shippingAddressDetail: '',
   });
+
+  // Daum 주소 검색 (embed 방식 — 모바일 팝업 차단 우회)
+  const [showAddressModal, setShowAddressModal] = useState(false);
+  const addressEmbedRef = useRef<HTMLDivElement>(null);
+  const addressDetailRef = useRef<HTMLInputElement>(null);
+
+  const loadDaumPostcode = () => {
+    return new Promise<void>((resolve) => {
+      if ((window as any).daum?.Postcode) {
+        resolve();
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
+      script.onload = () => resolve();
+      document.head.appendChild(script);
+    });
+  };
+
+  const handleSearchAddress = async () => {
+    await loadDaumPostcode();
+    setShowAddressModal(true);
+  };
+
+  useEffect(() => {
+    if (!showAddressModal || !addressEmbedRef.current) return;
+    const container = addressEmbedRef.current;
+    container.innerHTML = '';
+    new (window as any).daum.Postcode({
+      oncomplete: (data: { zonecode: string; roadAddress: string; jibunAddress: string }) => {
+        setSettings((prev) => ({
+          ...prev,
+          shippingZipcode: data.zonecode,
+          shippingAddress: data.roadAddress || data.jibunAddress,
+        }));
+        setShowAddressModal(false);
+        setTimeout(() => {
+          addressDetailRef.current?.focus();
+        }, 100);
+      },
+      width: '100%',
+      height: '100%',
+    }).embed(container);
+  }, [showAddressModal]);
 
   useEffect(() => {
     async function init() {
@@ -43,6 +100,7 @@ export default function CreatorSettingsPage() {
         setCreator(creatorData as any);
         const c = creatorData as Record<string, any>;
         const notifSettings = c.notificationSettings || {};
+        const shipping = c.defaultShippingAddress || {};
         setSettings({
           displayName: c.displayName || '',
           email: c.email || '',
@@ -56,6 +114,11 @@ export default function CreatorSettingsPage() {
           emailNotifications: notifSettings.emailNotifications ?? notifSettings.email_notifications ?? true,
           orderNotifications: notifSettings.orderNotifications ?? notifSettings.order_notifications ?? true,
           settlementNotifications: notifSettings.settlementNotifications ?? notifSettings.settlement_notifications ?? true,
+          shippingName: shipping.name || '',
+          shippingPhone: shipping.phone || '',
+          shippingZipcode: shipping.zipcode || '',
+          shippingAddress: shipping.address || '',
+          shippingAddressDetail: shipping.addressDetail || '',
         });
       }
       setIsLoading(false);
@@ -85,6 +148,11 @@ export default function CreatorSettingsPage() {
           orderNotifications: settings.orderNotifications,
           settlementNotifications: settings.settlementNotifications,
         },
+        shippingName: settings.shippingName,
+        shippingPhone: settings.shippingPhone,
+        shippingZipcode: settings.shippingZipcode,
+        shippingAddress: settings.shippingAddress,
+        shippingAddressDetail: settings.shippingAddressDetail,
       });
       toast.success(t('settingsSaved'));
     } catch (error) {
@@ -128,6 +196,10 @@ export default function CreatorSettingsPage() {
           <TabsTrigger value="profile" className="flex-1 min-w-0 text-xs sm:text-sm">
             <User className="h-4 w-4 mr-1 hidden sm:inline" />
             {t('profileSection')}
+          </TabsTrigger>
+          <TabsTrigger value="shipping" className="flex-1 min-w-0 text-xs sm:text-sm">
+            <Truck className="h-4 w-4 mr-1 hidden sm:inline" />
+            배송 정보
           </TabsTrigger>
           <TabsTrigger value="payment" className="flex-1 min-w-0 text-xs sm:text-sm">
             <CreditCard className="h-4 w-4 mr-1 hidden sm:inline" />
@@ -195,6 +267,99 @@ export default function CreatorSettingsPage() {
                 </div>
               </div>
               <Button onClick={() => handleSave('profile')} disabled={loading} className="btn-gold w-full sm:w-auto">
+                {loading ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{tCommon('loading')}</>
+                ) : (
+                  <><Save className="mr-2 h-4 w-4" />{tCommon('save')}</>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Shipping Tab */}
+        <TabsContent value="shipping" className="space-y-4">
+          <Card>
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <Truck className="h-5 w-5" />
+                배송 정보
+              </CardTitle>
+              <CardDescription className="text-xs sm:text-sm">
+                제품 체험 신청 시 브랜드가 샘플을 보낼 주소입니다
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0 space-y-4">
+              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>이름 (실명)</Label>
+                  <Input
+                    placeholder="배송받을 실명을 입력해주세요"
+                    value={settings.shippingName}
+                    onChange={(e) => setSettings({ ...settings, shippingName: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>연락처</Label>
+                  <Input
+                    type="tel"
+                    inputMode="numeric"
+                    placeholder="010-0000-0000"
+                    value={settings.shippingPhone}
+                    onChange={(e) =>
+                      setSettings({ ...settings, shippingPhone: formatPhoneNumber(e.target.value) })
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>우편번호</Label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="우편번호"
+                    value={settings.shippingZipcode}
+                    readOnly
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleSearchAddress}
+                    className="shrink-0"
+                  >
+                    <Search className="h-4 w-4 mr-1" />
+                    주소 검색
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>기본 주소</Label>
+                <Input
+                  placeholder="주소 검색 버튼을 눌러주세요"
+                  value={settings.shippingAddress}
+                  readOnly
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>상세 주소</Label>
+                <Input
+                  ref={addressDetailRef}
+                  placeholder="동/호수 등 상세 주소"
+                  value={settings.shippingAddressDetail}
+                  onChange={(e) =>
+                    setSettings({ ...settings, shippingAddressDetail: e.target.value })
+                  }
+                />
+              </div>
+
+              <Button
+                onClick={() => handleSave('shipping')}
+                disabled={loading}
+                className="btn-gold w-full sm:w-auto"
+              >
                 {loading ? (
                   <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{tCommon('loading')}</>
                 ) : (
@@ -382,6 +547,25 @@ export default function CreatorSettingsPage() {
           </Button>
         </CardContent>
       </Card>
+
+      {/* 주소 검색 모달 (embed 방식 — 모바일 팝업 차단 우회) */}
+      {showAddressModal && (
+        <div className="fixed inset-0 z-[100] bg-black/50 flex items-end sm:items-center justify-center">
+          <div className="bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl h-[85vh] sm:h-[520px] flex flex-col animate-in slide-in-from-bottom duration-200">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+              <h3 className="text-base font-semibold text-gray-900">주소 검색</h3>
+              <button
+                onClick={() => setShowAddressModal(false)}
+                className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                aria-label="닫기"
+              >
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+            <div ref={addressEmbedRef} className="flex-1 overflow-hidden" />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
