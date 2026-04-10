@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
-import { Upload, X, Loader2 } from 'lucide-react';
+import { ImagePlus, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ImageUploadProps {
@@ -13,6 +13,8 @@ interface ImageUploadProps {
   accept?: string;
   folder?: string;
   onFileSelected?: (file: File) => void;
+  recommendedSize?: string;
+  description?: string;
 }
 
 const ASPECT_CLASSES: Record<string, string> = {
@@ -30,6 +32,8 @@ export default function ImageUpload({
   accept = 'image/jpeg,image/png,image/webp',
   folder = 'uploads',
   onFileSelected,
+  recommendedSize,
+  description,
 }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -139,9 +143,28 @@ export default function ImageUpload({
           )}
         </>
       ) : (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted-foreground">
-          <Upload className="h-8 w-8" />
-          <span className="text-sm text-center px-4">{placeholder}</span>
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 text-muted-foreground px-4">
+          {dragOver ? (
+            <>
+              <ImagePlus className="h-8 w-8 text-primary" />
+              <span className="text-sm font-medium text-primary">여기에 놓으세요</span>
+            </>
+          ) : (
+            <>
+              <ImagePlus className="h-8 w-8" />
+              <span className="text-sm text-center">{placeholder}</span>
+              {recommendedSize && (
+                <span className="text-xs text-gray-400 text-center">
+                  권장 사이즈: {recommendedSize}
+                </span>
+              )}
+              {description && (
+                <span className="text-xs text-gray-400 text-center">{description}</span>
+              )}
+              <span className="text-xs text-gray-400 text-center">JPG, PNG, WebP</span>
+              <span className="text-xs text-gray-400 text-center">최대 {maxSizeMB}MB</span>
+            </>
+          )}
         </div>
       )}
 

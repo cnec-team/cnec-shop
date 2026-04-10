@@ -26,6 +26,7 @@ import {
   Copy,
   Camera,
   Store,
+  ImageIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ImageUpload from '@/components/common/ImageUpload';
@@ -200,6 +201,8 @@ export default function CreatorShopPage() {
               placeholder=""
               aspectRatio="cover"
               folder="creator/cover"
+              recommendedSize="1200x400px"
+              maxSizeMB={10}
             />
           </div>
         </div>
@@ -268,26 +271,38 @@ export default function CreatorShopPage() {
         </div>
       </div>
 
-      {/* Image upload cards */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-          <Label className="text-xs text-gray-500 mb-2 block">프로필 이미지</Label>
-          <ImageUpload
-            value={form.profileImageUrl}
-            onChange={(url) => setForm({ ...form, profileImageUrl: url })}
-            placeholder="프로필"
-            folder="creator/profile"
-          />
+      {/* Image Management Section */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 px-1">
+          <ImageIcon className="h-4 w-4 text-gray-500" />
+          <p className="text-sm font-semibold text-gray-900">이미지 관리</p>
         </div>
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-          <Label className="text-xs text-gray-500 mb-2 block">배너 이미지</Label>
-          <ImageUpload
-            value={form.bannerImageUrl}
-            onChange={(url) => setForm({ ...form, bannerImageUrl: url })}
-            placeholder="배너"
-            aspectRatio="banner"
-            folder="creator/banner"
-          />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <Label className="text-sm font-medium text-gray-700 mb-1 block">프로필 이미지</Label>
+            <p className="text-xs text-gray-400 mb-3">권장 사이즈 400x400px, 최대 5MB</p>
+            <ImageUpload
+              value={form.profileImageUrl}
+              onChange={(url) => setForm({ ...form, profileImageUrl: url })}
+              placeholder="프로필"
+              folder="creator/profile"
+              recommendedSize="400x400px"
+              maxSizeMB={5}
+            />
+          </div>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <Label className="text-sm font-medium text-gray-700 mb-1 block">배너 이미지</Label>
+            <p className="text-xs text-gray-400 mb-3">권장 사이즈 1200x400px, 최대 10MB</p>
+            <ImageUpload
+              value={form.bannerImageUrl}
+              onChange={(url) => setForm({ ...form, bannerImageUrl: url })}
+              placeholder="배너"
+              aspectRatio="banner"
+              folder="creator/banner"
+              recommendedSize="1200x400px"
+              maxSizeMB={10}
+            />
+          </div>
         </div>
       </div>
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -25,6 +25,7 @@ import {
   Clock,
   Truck,
   PackageCheck,
+  AlertCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -130,12 +131,21 @@ export default function CreatorTrialCatalogPage() {
     })
   }, [])
 
+  const profileComplete = useMemo(
+    () => Boolean(savedName && savedPhone && savedAddress),
+    [savedName, savedPhone, savedAddress]
+  )
+
   const handleCategoryChange = (cat: string) => {
     setCategory(cat)
     setPage(1)
   }
 
   const openModal = (product: TrialProduct) => {
+    if (!profileComplete) {
+      toast.error('프로필 정보를 먼저 등록해주세요. (이름, 연락처, 배송지)')
+      return
+    }
     setSelectedProduct(product)
     setMessage('')
     setAddress(savedAddress)
@@ -144,6 +154,10 @@ export default function CreatorTrialCatalogPage() {
 
   const handleSubmit = async () => {
     if (!selectedProduct) return
+    if (!savedName || !savedPhone) {
+      toast.error('설정에서 이름과 연락처를 입력해주세요.')
+      return
+    }
     if (!address.trim()) {
       toast.error('배송지를 입력해주세요.')
       return
@@ -178,6 +192,23 @@ export default function CreatorTrialCatalogPage() {
         <h1 className="text-2xl font-bold text-gray-900">제품 체험 신청</h1>
         <p className="text-sm text-gray-500 mt-1">써보고 공구 여부를 결정하세요</p>
       </div>
+
+      {/* Profile Incomplete Banner */}
+      {!profileComplete && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="flex-1 space-y-1">
+            <p className="text-sm font-medium text-amber-800">프로필 정보를 먼저 등록해주세요</p>
+            <p className="text-xs text-amber-600">이름, 연락처, 배송지를 입력해야 체험 신청이 가능합니다</p>
+            <Link
+              href="/ko/creator/settings"
+              className="inline-block text-sm font-medium text-amber-700 underline underline-offset-2 mt-1"
+            >
+              프로필 설정하기
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Category Filter */}
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
@@ -234,6 +265,7 @@ export default function CreatorTrialCatalogPage() {
                 key={product.id}
                 product={product}
                 onApply={openModal}
+                profileComplete={profileComplete}
               />
             ))}
           </div>
@@ -289,14 +321,17 @@ export default function CreatorTrialCatalogPage() {
                 <p className="text-xs font-medium text-gray-700">배송 정보</p>
                 <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-sm">
                   <span className="text-gray-400">이름</span>
-                  <span className="text-gray-900 font-medium">{savedName || '미입력'}</span>
+                  <span className={savedName ? 'text-gray-900 font-medium' : 'text-red-500 font-medium'}>{savedName || '미입력'}</span>
                   <span className="text-gray-400">연락처</span>
-                  <span className="text-gray-900 font-medium">{savedPhone || '미입력'}</span>
+                  <span className={savedPhone ? 'text-gray-900 font-medium' : 'text-red-500 font-medium'}>{savedPhone || '미입력'}</span>
                   <span className="text-gray-400">주소</span>
-                  <span className="text-gray-900 font-medium">{address || '미입력'}</span>
+                  <span className={address ? 'text-gray-900 font-medium' : 'text-red-500 font-medium'}>{address || '미입력'}</span>
                 </div>
                 {(!savedName || !savedPhone) && (
                   <p className="text-xs text-red-500">설정에서 이름과 연락처를 입력해주세요</p>
+                )}
+                {(!savedName || !savedPhone) && (
+                  <Link href="/ko/creator/settings" className="text-xs text-blue-600 underline">설정에서 정보 입력하기</Link>
                 )}
               </div>
 
@@ -327,7 +362,7 @@ export default function CreatorTrialCatalogPage() {
           <DialogFooter>
             <Button
               onClick={handleSubmit}
-              disabled={submitting}
+              disabled={submitting || !savedName || !savedPhone}
               className="w-full bg-gray-900 text-white rounded-xl h-11 font-medium"
             >
               {submitting ? (
@@ -346,9 +381,11 @@ export default function CreatorTrialCatalogPage() {
 function ProductCard({
   product,
   onApply,
+  profileComplete,
 }: {
   product: TrialProduct
   onApply: (p: TrialProduct) => void
+  profileComplete: boolean
 }) {
   const existing = product.existingTrial
   const statusInfo = existing ? STATUS_LABEL[existing.status] : null

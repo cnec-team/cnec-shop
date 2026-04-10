@@ -18,6 +18,8 @@ import {
   Plus,
   Loader2,
   Package,
+  EyeOff,
+  Info,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useOnboardingStore } from '@/lib/store/onboarding';
@@ -55,12 +57,14 @@ export function OnboardingTutorial() {
   const {
     tutorialCompleted,
     tutorialDismissed,
+    neverShowAgain,
     currentStep,
     completedSteps,
     setCurrentStep,
     completeStep,
     completeTutorial,
     dismissTutorial,
+    setNeverShowAgain,
   } = useOnboardingStore();
 
   const [visible, setVisible] = useState(false);
@@ -71,7 +75,7 @@ export function OnboardingTutorial() {
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    if (tutorialCompleted || tutorialDismissed) {
+    if (tutorialCompleted || tutorialDismissed || neverShowAgain) {
       setVisible(false);
       return;
     }
@@ -95,7 +99,7 @@ export function OnboardingTutorial() {
     }
 
     check();
-  }, [tutorialCompleted, tutorialDismissed]);
+  }, [tutorialCompleted, tutorialDismissed, neverShowAgain]);
 
   if (!visible) return null;
 
@@ -185,9 +189,10 @@ export function OnboardingTutorial() {
           </div>
           <button
             onClick={handleSkip}
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors p-2"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-muted"
+            aria-label="닫기"
           >
-            건너뛰기
+            <X className="h-5 w-5" />
           </button>
         </div>
 
@@ -212,11 +217,15 @@ export function OnboardingTutorial() {
 
           {/* Step Content */}
           {currentStep === 0 && (
-            <div className="text-center">
+            <div className="text-center space-y-3">
               <p className="text-sm text-muted-foreground leading-relaxed">
                 써보고 좋으면 스토리 올리고,<br />
                 반응 좋으면 공구 도전!
               </p>
+              <div className="bg-blue-50 text-blue-700 rounded-xl p-3 text-xs flex items-center gap-2 text-left">
+                <Info className="h-4 w-4 shrink-0" />
+                <span>프로필을 등록해야 체험 신청을 할 수 있어요</span>
+              </div>
             </div>
           )}
 
@@ -363,6 +372,20 @@ export function OnboardingTutorial() {
               <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           )}
+        </div>
+
+        {/* Never show again */}
+        <div className="flex justify-center pb-4">
+          <button
+            onClick={() => {
+              setNeverShowAgain();
+              setVisible(false);
+            }}
+            className="text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors flex items-center gap-1.5 py-1 px-2"
+          >
+            <EyeOff className="h-3.5 w-3.5" />
+            다시 보지 않기
+          </button>
         </div>
       </div>
     </div>
