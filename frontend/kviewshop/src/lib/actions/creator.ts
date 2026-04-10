@@ -766,6 +766,12 @@ export async function updateCreatorSettings(data: {
   accountNumber?: string
   swiftCode?: string
   notificationSettings?: Record<string, boolean>
+  // 배송 정보 (defaultShippingAddress JSON 필드에 저장)
+  shippingName?: string
+  shippingPhone?: string
+  shippingZipcode?: string
+  shippingAddress?: string
+  shippingAddressDetail?: string
 }) {
   const { creator } = await requireCreator()
   if (creator.id !== data.creatorId) throw new Error('Forbidden')
@@ -789,6 +795,16 @@ export async function updateCreatorSettings(data: {
 
   if (data.section === 'notifications' || !data.section) {
     updateData.notificationSettings = data.notificationSettings ?? null
+  }
+
+  if (data.section === 'shipping' || !data.section) {
+    updateData.defaultShippingAddress = {
+      name: data.shippingName ?? '',
+      phone: data.shippingPhone ?? '',
+      zipcode: data.shippingZipcode ?? '',
+      address: data.shippingAddress ?? '',
+      addressDetail: data.shippingAddressDetail ?? '',
+    }
   }
 
   return prisma.creator.update({

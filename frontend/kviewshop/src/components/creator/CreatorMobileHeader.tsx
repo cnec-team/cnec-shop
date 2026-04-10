@@ -21,7 +21,6 @@ const PAGE_TITLES: Record<string, string> = {
   settings: '설정',
   collections: '컬렉션 관리',
   routines: '뷰티 루틴',
-  banners: '배너 관리',
   live: '라이브',
 };
 

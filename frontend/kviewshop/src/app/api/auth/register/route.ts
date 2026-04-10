@@ -7,8 +7,31 @@ export async function POST(req: Request) {
     const body = await req.json()
     const { email, password, name, role, companyName, businessNumber, shopId, shopName, instagram, tiktok, youtube, profileImageUrl, refCode, phone } = body
 
-    if (!email || !password || !name || !role) {
-      return NextResponse.json({ error: '필수 항목을 입력해주세요' }, { status: 400 })
+    const missing: string[] = []
+    if (!email) missing.push('email')
+    if (!password) missing.push('password')
+    if (!name) missing.push('name')
+    if (!role) missing.push('role')
+    if (missing.length > 0) {
+      return NextResponse.json(
+        { error: `필수 항목이 누락되었습니다: ${missing.join(', ')}` },
+        { status: 400 }
+      )
+    }
+
+    const validRoles = ['buyer', 'creator', 'brand_admin']
+    if (!validRoles.includes(role)) {
+      return NextResponse.json(
+        { error: `올바르지 않은 역할입니다: ${role}` },
+        { status: 400 }
+      )
+    }
+
+    if (typeof password !== 'string' || password.length < 8) {
+      return NextResponse.json(
+        { error: '비밀번호는 8자 이상이어야 합니다' },
+        { status: 400 }
+      )
     }
 
     // Check duplicate email

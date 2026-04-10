@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { Bell, ShoppingCart, Truck, DollarSign, Megaphone, Info, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/lib/store/auth';
@@ -12,9 +12,9 @@ interface NotificationItem {
   type: NotificationType;
   title: string;
   message: string;
-  link_url?: string;
-  is_read: boolean;
-  created_at: string;
+  linkUrl?: string | null;
+  isRead: boolean;
+  createdAt: string;
 }
 
 const mockNotifications: NotificationItem[] = [
@@ -23,40 +23,40 @@ const mockNotifications: NotificationItem[] = [
     type: 'ORDER',
     title: '새 주문 발생',
     message: '뷰티진 샵에서 하우파파 로션 1건이 판매되었습니다. 예상 수익: ₩3,705',
-    is_read: false,
-    created_at: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
+    isRead: false,
+    createdAt: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
   },
   {
     id: 'mock-2',
     type: 'CAMPAIGN',
     title: '공구 승인',
     message: '누씨오 특가전 캠페인 참여가 승인되었습니다.',
-    is_read: false,
-    created_at: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
+    isRead: false,
+    createdAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
   },
   {
     id: 'mock-3',
     type: 'SETTLEMENT',
     title: '정산 예정 안내',
     message: '1월 정산금 ₩45,200이 2월 20일에 지급됩니다.',
-    is_read: true,
-    created_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
+    isRead: true,
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
   },
   {
     id: 'mock-4',
     type: 'SHIPPING',
     title: '배송 완료',
     message: '주문 CNEC-20260210-12345의 배송이 완료되었습니다.',
-    is_read: true,
-    created_at: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
+    isRead: true,
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
   },
   {
     id: 'mock-5',
     type: 'SYSTEM',
     title: '시스템 공지',
     message: 'CNEC Commerce v1.1이 업데이트되었습니다.',
-    is_read: true,
-    created_at: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(),
+    isRead: true,
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(),
   },
 ];
 
@@ -108,6 +108,8 @@ function timeAgo(dateStr: string): string {
 
 export function NotificationBell() {
   const router = useRouter();
+  const params = useParams();
+  const locale = (params?.locale as string) || 'ko';
   const { user } = useAuthStore();
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -118,7 +120,7 @@ export function NotificationBell() {
     if (!user?.id) {
       // Use mock data when no user is logged in
       setNotifications(mockNotifications.slice(0, 10));
-      setUnreadCount(mockNotifications.filter((n) => !n.is_read).length);
+      setUnreadCount(mockNotifications.filter((n) => !n.isRead).length);
       return;
     }
 
@@ -131,7 +133,7 @@ export function NotificationBell() {
     } catch {
       // Fallback to mock data on error
       setNotifications(mockNotifications.slice(0, 10));
-      setUnreadCount(mockNotifications.filter((n) => !n.is_read).length);
+      setUnreadCount(mockNotifications.filter((n) => !n.isRead).length);
     }
   }, [user?.id]);
 
@@ -160,7 +162,7 @@ export function NotificationBell() {
   const handleMarkAllRead = async () => {
     if (!user?.id) {
       // Mock mode: mark all as read locally
-      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
       setUnreadCount(0);
       return;
     }
@@ -171,7 +173,7 @@ export function NotificationBell() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ markAllRead: true, userId: user.id }),
       });
-      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
       setUnreadCount(0);
     } catch {
       console.error('Failed to mark all as read');
@@ -180,7 +182,7 @@ export function NotificationBell() {
 
   const handleNotificationClick = async (notification: NotificationItem) => {
     // Mark as read
-    if (!notification.is_read) {
+    if (!notification.isRead) {
       if (user?.id) {
         try {
           await fetch('/api/notifications', {
@@ -193,15 +195,28 @@ export function NotificationBell() {
         }
       }
       setNotifications((prev) =>
-        prev.map((n) => (n.id === notification.id ? { ...n, is_read: true } : n))
+        prev.map((n) => (n.id === notification.id ? { ...n, isRead: true } : n))
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
     }
 
-    // Navigate if link_url provided
-    if (notification.link_url) {
-      setIsOpen(false);
-      router.push(notification.link_url);
+    // 드롭다운 먼저 닫기
+    setIsOpen(false);
+
+    // linkUrl이 있으면 이동 — 로케일 prefix가 없으면 추가
+    if (notification.linkUrl) {
+      let target = notification.linkUrl;
+      // 절대 URL(http://)이 아니고, 로케일 prefix가 없으면 추가
+      if (!/^https?:\/\//i.test(target)) {
+        // "/" 로 시작하지 않으면 보정
+        if (!target.startsWith('/')) target = `/${target}`;
+        // 이미 /{locale}/ 로 시작하는지 확인
+        const hasLocalePrefix = /^\/(ko|en|ja|zh|es|it|ru|ar|fr|pt|de)(\/|$)/.test(target);
+        if (!hasLocalePrefix) {
+          target = `/${locale}${target}`;
+        }
+      }
+      router.push(target);
     }
   };
 
@@ -243,7 +258,7 @@ export function NotificationBell() {
                     key={notification.id}
                     onClick={() => handleNotificationClick(notification)}
                     className={`w-full text-left px-4 py-3 hover:bg-muted/50 transition-colors flex gap-3 ${
-                      !notification.is_read ? 'bg-primary/5' : ''
+                      !notification.isRead ? 'bg-primary/5' : ''
                     }`}
                   >
                     <div className={`shrink-0 mt-0.5 h-8 w-8 rounded-full flex items-center justify-center ${colorClass}`}>
@@ -251,10 +266,10 @@ export function NotificationBell() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <p className={`text-sm font-medium truncate ${!notification.is_read ? 'text-foreground' : 'text-muted-foreground'}`}>
+                        <p className={`text-sm font-medium truncate ${!notification.isRead ? 'text-foreground' : 'text-muted-foreground'}`}>
                           {notification.title}
                         </p>
-                        {!notification.is_read && (
+                        {!notification.isRead && (
                           <span className="shrink-0 h-2 w-2 rounded-full bg-blue-500" />
                         )}
                       </div>
@@ -262,7 +277,7 @@ export function NotificationBell() {
                         {notification.message}
                       </p>
                       <p className="text-[10px] text-muted-foreground/60 mt-1">
-                        {timeAgo(notification.created_at)}
+                        {timeAgo(notification.createdAt)}
                       </p>
                     </div>
                   </button>

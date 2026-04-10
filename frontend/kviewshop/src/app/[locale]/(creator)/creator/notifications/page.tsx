@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter, useParams } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -88,6 +89,9 @@ function formatDate(dateStr: string): string {
 }
 
 export default function CreatorNotificationsPage() {
+  const router = useRouter();
+  const params = useParams();
+  const locale = (params?.locale as string) || 'ko';
   const [userId, setUserId] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -128,23 +132,36 @@ export default function CreatorNotificationsPage() {
   }, [userId, fetchNotifications]);
 
   const handleMarkAsRead = async (notification: NotificationItem) => {
-    if (notification.isRead) return;
-
-    if (userId) {
-      try {
-        await fetch('/api/notifications', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ notificationId: notification.id }),
-        });
-      } catch {
-        console.error('Failed to mark notification as read');
+    if (!notification.isRead) {
+      if (userId) {
+        try {
+          await fetch('/api/notifications', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ notificationId: notification.id }),
+          });
+        } catch {
+          console.error('Failed to mark notification as read');
+        }
       }
+
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notification.id ? { ...n, isRead: true } : n))
+      );
     }
 
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === notification.id ? { ...n, isRead: true } : n))
-    );
+    // 링크가 있으면 이동 — 로케일 prefix 보정
+    if (notification.linkUrl) {
+      let target = notification.linkUrl;
+      if (!/^https?:\/\//i.test(target)) {
+        if (!target.startsWith('/')) target = `/${target}`;
+        const hasLocalePrefix = /^\/(ko|en|ja|zh|es|it|ru|ar|fr|pt|de)(\/|$)/.test(target);
+        if (!hasLocalePrefix) {
+          target = `/${locale}${target}`;
+        }
+      }
+      router.push(target);
+    }
   };
 
   const handleMarkAllRead = async () => {
