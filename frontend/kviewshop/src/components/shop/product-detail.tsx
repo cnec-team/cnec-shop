@@ -100,6 +100,7 @@ export function ProductDetailPage({
   const [shippingOpen, setShippingOpen] = useState(false);
   const [returnOpen, setReturnOpen] = useState(false);
   const [iframeLoaded, setIframeLoaded] = useState<Record<string, boolean>>({});
+  const [expandedCaptions, setExpandedCaptions] = useState<Record<string, boolean>>({});
 
   const campaign = campaignProduct?.campaign as Campaign | undefined;
   const startAt = (campaign as any)?.start_at ?? (campaign as any)?.startAt;
@@ -410,18 +411,29 @@ export function ProductDetailPage({
           </div>
         )}
 
-        {/* Creator Contents Section */}
-        {creatorContents && creatorContents.length > 0 && (
+        {/* Creator Review Section (Contents + Reels unified) */}
+        {((creatorContents && creatorContents.length > 0) || reelsUrl) && (
           <div className="bg-white mt-2 py-5">
-            <div className="flex items-center gap-2 px-4 mb-3">
+            {/* Section Header */}
+            <div className="flex items-center gap-2 px-4 mb-4">
               <Play className="w-4 h-4 text-gray-600" />
               <h2 className="text-base font-semibold text-gray-900">크리에이터 리뷰</h2>
+              {(() => {
+                const count = (creatorContents?.length ?? 0) + (reelsUrl ? 1 : 0);
+                return count > 0 ? (
+                  <span className="text-xs text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">
+                    {count}개
+                  </span>
+                ) : null;
+              })()}
             </div>
-            {creatorContents.length === 1 ? (
+
+            {/* Single content - full width */}
+            {creatorContents && creatorContents.length === 1 && !reelsUrl && (
               <div className="px-4">
-                <div className="relative w-full overflow-hidden rounded-xl" style={{ aspectRatio: '9/16', maxHeight: '500px' }}>
+                <div className="relative w-full overflow-hidden rounded-2xl shadow-sm" style={{ aspectRatio: '9/16', maxHeight: '500px' }}>
                   {!iframeLoaded[creatorContents[0].id] && (
-                    <div className="absolute inset-0 bg-secondary animate-pulse rounded-xl" />
+                    <div className="absolute inset-0 bg-secondary animate-pulse rounded-2xl" />
                   )}
                   {creatorContents[0].embedUrl && (
                     <iframe
@@ -435,19 +447,34 @@ export function ProductDetailPage({
                   )}
                 </div>
                 {creatorContents[0].caption && (
-                  <p className="text-sm text-gray-500 mt-2">{creatorContents[0].caption}</p>
+                  <div className="mt-2">
+                    <p className={`text-sm text-gray-500 ${!expandedCaptions[creatorContents[0].id] ? 'line-clamp-2' : ''}`}>
+                      {creatorContents[0].caption}
+                    </p>
+                    {creatorContents[0].caption.length > 80 && (
+                      <button
+                        onClick={() => setExpandedCaptions((prev) => ({ ...prev, [creatorContents[0].id]: !prev[creatorContents[0].id] }))}
+                        className="text-xs text-gray-400 hover:text-gray-600 mt-0.5"
+                      >
+                        {expandedCaptions[creatorContents[0].id] ? '접기' : '더보기'}
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
-            ) : (
+            )}
+
+            {/* Multiple content or single content + reels - horizontal scroll */}
+            {((creatorContents && creatorContents.length > 1) || (creatorContents && creatorContents.length === 1 && reelsUrl)) && (
               <div
                 className="flex gap-3 overflow-x-auto px-4 pb-2"
-                style={{ scrollbarWidth: 'none' }}
+                style={{ scrollbarWidth: 'none', scrollSnapType: 'x mandatory' }}
               >
                 {creatorContents.map((content) => (
-                  <div key={content.id} className="flex-shrink-0" style={{ width: '280px' }}>
-                    <div className="relative overflow-hidden rounded-xl" style={{ aspectRatio: '9/16', maxHeight: '500px' }}>
+                  <div key={content.id} className="flex-shrink-0" style={{ width: '260px', scrollSnapAlign: 'start' }}>
+                    <div className="relative overflow-hidden rounded-2xl shadow-sm" style={{ aspectRatio: '9/16', maxHeight: '500px' }}>
                       {!iframeLoaded[content.id] && (
-                        <div className="absolute inset-0 bg-secondary animate-pulse rounded-xl" />
+                        <div className="absolute inset-0 bg-secondary animate-pulse rounded-2xl" />
                       )}
                       {content.embedUrl && (
                         <iframe
@@ -461,34 +488,85 @@ export function ProductDetailPage({
                       )}
                     </div>
                     {content.caption && (
-                      <p className="text-sm text-gray-500 mt-2 line-clamp-2">{content.caption}</p>
+                      <div className="mt-2">
+                        <p className={`text-sm text-gray-500 ${!expandedCaptions[content.id] ? 'line-clamp-2' : ''}`}>
+                          {content.caption}
+                        </p>
+                        {content.caption.length > 60 && (
+                          <button
+                            onClick={() => setExpandedCaptions((prev) => ({ ...prev, [content.id]: !prev[content.id] }))}
+                            className="text-xs text-gray-400 hover:text-gray-600 mt-0.5"
+                          >
+                            {expandedCaptions[content.id] ? '접기' : '더보기'}
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                 ))}
+
+                {/* Reels card in horizontal scroll */}
+                {reelsUrl && (
+                  <div className="flex-shrink-0" style={{ width: '260px', scrollSnapAlign: 'start' }}>
+                    <a
+                      href={reelsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block rounded-2xl shadow-sm overflow-hidden bg-gradient-to-br from-pink-50 to-purple-50"
+                      style={{ aspectRatio: '9/16', maxHeight: '500px' }}
+                    >
+                      <div className="w-full h-full flex flex-col items-center justify-center gap-4 px-6 text-center">
+                        <div className="w-14 h-14 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center">
+                          <Play className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900 mb-1">
+                            {(creator as any).displayName || (creator as any).shopId}의 릴스
+                          </p>
+                          {reelsCaption && (
+                            <p className="text-xs text-gray-500 line-clamp-2 mb-3">{reelsCaption}</p>
+                          )}
+                        </div>
+                        <span className="inline-flex items-center gap-1.5 bg-white/80 backdrop-blur rounded-full px-4 py-2 text-sm font-medium text-gray-900 shadow-sm">
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          인스타그램에서 보기
+                        </span>
+                      </div>
+                    </a>
+                  </div>
+                )}
               </div>
             )}
-          </div>
-        )}
 
-        {/* Creator Reels Section */}
-        {reelsUrl && (
-          <div className="bg-white mt-2 py-5 px-4">
-            <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2 mb-3">
-              <Play className="w-4 h-4" />
-              {(creator as any).displayName || (creator as any).shopId}의 릴스 리뷰
-            </h2>
-            {reelsCaption && (
-              <p className="text-sm text-gray-600 mb-3">{reelsCaption}</p>
+            {/* Reels only - standalone card (no creatorContents) */}
+            {(!creatorContents || creatorContents.length === 0) && reelsUrl && (
+              <div className="px-4">
+                <a
+                  href={reelsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block rounded-2xl shadow-sm overflow-hidden bg-gradient-to-br from-pink-50 to-purple-50 p-6"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center flex-shrink-0">
+                      <Play className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900">
+                        {(creator as any).displayName || (creator as any).shopId}의 릴스 리뷰
+                      </p>
+                      {reelsCaption && (
+                        <p className="text-xs text-gray-500 line-clamp-2 mt-0.5">{reelsCaption}</p>
+                      )}
+                    </div>
+                    <span className="inline-flex items-center gap-1.5 bg-white/80 backdrop-blur rounded-full px-4 py-2 text-sm font-medium text-gray-900 shadow-sm flex-shrink-0">
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      인스타그램에서 보기
+                    </span>
+                  </div>
+                </a>
+              </div>
             )}
-            <a
-              href={reelsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 w-full h-12 border border-gray-200 rounded-xl text-sm font-medium text-gray-900 hover:bg-gray-50 transition-colors"
-            >
-              <Play className="w-4 h-4" />
-              인스타그램에서 보기
-            </a>
           </div>
         )}
 

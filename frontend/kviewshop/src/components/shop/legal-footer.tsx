@@ -1,98 +1,36 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
-import { ChevronDown, ChevronUp, Building2, Shield, RefreshCw, Truck, Mail, Phone } from 'lucide-react';
+import { Mail, Clock, Building2, Shield } from 'lucide-react';
 
 interface LegalFooterProps {
   locale: string;
   shopName?: string;
-  creatorCountry?: string;
   variant?: 'full' | 'minimal';
 }
 
-interface LegalContent {
-  content_type: string;
-  title: string;
-  content: string;
-}
-
-// Static fallback content for each country
-const staticLegalContent = {
-  KR: {
-    business_info: {
-      title: '사업자정보',
-      content: `상호: (주)케이뷰샵 | 대표: 홍길동 | 사업자등록번호: 123-45-67890
-통신판매업신고: 제2024-서울강남-0000호
-주소: 서울특별시 강남구 테헤란로 123, 4층
-고객센터: 1588-0000 | 이메일: support@cnec.shop`,
-    },
-    terms: { title: '이용약관', href: '/terms' },
-    privacy: { title: '개인정보처리방침', href: '/privacy' },
-    refund: { title: '환불정책', content: '상품 수령 후 7일 이내 환불 가능 (단, 개봉/사용 시 환불 불가)' },
-  },
-  US: {
-    business_info: {
-      title: 'Business Information',
-      content: `Company: CNEC Shop Inc.
-Address: 123 Commerce Street, Suite 400, Los Angeles, CA 90001
-Customer Service: 1-800-XXX-XXXX | Email: support@cnec.shop`,
-    },
-    terms: { title: 'Terms of Service', href: '/terms' },
-    privacy: { title: 'Privacy Policy', href: '/privacy' },
-    refund: { title: 'Refund Policy', content: 'Full refund within 30 days of purchase. Items must be unopened and in original packaging.' },
-  },
-  JP: {
-    business_info: {
-      title: '特定商取引法に基づく表記',
-      content: `販売業者: CNEC Shop Japan株式会社
-代表者: 山田太郎 | 所在地: 〒150-0001 東京都渋谷区神宮前1-2-3
-電話番号: 03-XXXX-XXXX | メール: support@cnec.shop
-販売価格: 各商品ページに記載 | 送料: 全国一律550円（税込）`,
-    },
-    terms: { title: '利用規約', href: '/terms' },
-    privacy: { title: 'プライバシーポリシー', href: '/privacy' },
-    refund: { title: '返品・返金ポリシー', content: '商品到着後7日以内の返品可能（未開封・未使用品に限る）' },
-  },
-};
-
-export function LegalFooter({ locale, shopName, creatorCountry, variant = 'full' }: LegalFooterProps) {
-  const [expanded, setExpanded] = useState(false);
-
-  // Determine country based on locale or creator setting
-  const getCountry = () => {
-    if (creatorCountry) return creatorCountry;
-    if (locale === 'ja') return 'JP';
-    if (locale === 'ko') return 'KR';
-    return 'US';
-  };
-
-  const country = getCountry();
-  const staticContent = staticLegalContent[country as keyof typeof staticLegalContent] || staticLegalContent.US;
-
-  // Use static content as fallback
-  const getContent = (_type: string) => {
-    return undefined; // falls back to static content below
-  };
-
+export function LegalFooter({ locale, shopName, variant = 'full' }: LegalFooterProps) {
   if (variant === 'minimal') {
     return (
-      <footer className="mt-12 py-6 border-t border-border/30" style={{ backgroundColor: '#1a1a2e' }}>
-        <div className="container px-4">
-          <div className="flex flex-wrap justify-center gap-4 text-sm text-muted-foreground">
-            <Link href={`/${locale}${staticContent.terms.href}`} className="hover:text-foreground transition-colors">
-              {staticContent.terms.title}
+      <footer className="mt-12 bg-gray-900 py-6 border-t border-gray-800">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-wrap justify-center gap-4 text-sm text-gray-400">
+            <Link href={`/${locale}/terms`} className="hover:text-white transition-colors">
+              이용약관
             </Link>
-            <span className="text-border">|</span>
-            <Link href={`/${locale}${staticContent.privacy.href}`} className="hover:text-foreground transition-colors">
-              {staticContent.privacy.title}
+            <span className="text-gray-600">|</span>
+            <Link href={`/${locale}/privacy`} className="hover:text-white transition-colors font-semibold">
+              개인정보처리방침
             </Link>
-            <span className="text-border">|</span>
-            <span>{staticContent.refund.title}</span>
+            <span className="text-gray-600">|</span>
+            <Link href={`/${locale}/terms`} className="hover:text-white transition-colors">
+              전자금융거래 이용약관
+            </Link>
           </div>
-          <p className="text-center text-xs text-muted-foreground mt-4">
+          <p className="text-center text-xs text-gray-500 mt-4">
             {shopName ? `${shopName} powered by ` : ''}
-            <span className="font-medium">CNEC Shop</span> | All rights reserved
+            <span className="font-semibold text-gray-400">CNEC Shop</span>
+            {' '}| &copy; 2026 HOWPAPA Inc. All rights reserved.
           </p>
         </div>
       </footer>
@@ -100,116 +38,102 @@ export function LegalFooter({ locale, shopName, creatorCountry, variant = 'full'
   }
 
   return (
-    <footer className="mt-12 border-t border-border/30" style={{ backgroundColor: '#1a1a2e' }}>
-      <div className="container px-4 py-8">
-        {/* Main Links */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+    <footer className="mt-12 bg-gray-900 border-t border-gray-800">
+      <div className="container mx-auto px-4 py-10">
+        {/* 3-column grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+          {/* Column 1: 고객지원 */}
           <div>
-            <h4 className="font-semibold mb-3 flex items-center gap-2">
-              <Shield className="h-4 w-4 text-primary" />
-              {locale === 'ko' ? '정책' : locale === 'ja' ? 'ポリシー' : 'Policies'}
+            <h4 className="text-white font-semibold mb-4 flex items-center gap-2 text-sm">
+              <Mail className="h-4 w-4 text-gray-400" />
+              고객지원
             </h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
+            <ul className="space-y-2 text-sm text-gray-400">
+              <li className="flex items-center gap-2">
+                <Mail className="h-3 w-3 shrink-0" />
+                contact@cnec.kr
+              </li>
+              <li className="flex items-center gap-2">
+                <Clock className="h-3 w-3 shrink-0" />
+                평일 10:00-18:00 (주말/공휴일 휴무)
+              </li>
+            </ul>
+          </div>
+
+          {/* Column 2: 법적고지 */}
+          <div>
+            <h4 className="text-white font-semibold mb-4 flex items-center gap-2 text-sm">
+              <Shield className="h-4 w-4 text-gray-400" />
+              법적고지
+            </h4>
+            <ul className="space-y-2 text-sm text-gray-400">
               <li>
-                <Link href={`/${locale}/terms`} className="hover:text-foreground transition-colors">
-                  {staticContent.terms.title}
+                <Link href={`/${locale}/terms`} className="hover:text-white transition-colors">
+                  이용약관
                 </Link>
               </li>
               <li>
-                <Link href={`/${locale}/privacy`} className="hover:text-foreground transition-colors">
-                  {staticContent.privacy.title}
+                <Link href={`/${locale}/privacy`} className="hover:text-white transition-colors font-semibold">
+                  개인정보처리방침
+                </Link>
+              </li>
+              <li>
+                <Link href={`/${locale}/terms`} className="hover:text-white transition-colors">
+                  전자금융거래 이용약관
                 </Link>
               </li>
             </ul>
           </div>
 
+          {/* Column 3: 회사정보 */}
           <div>
-            <h4 className="font-semibold mb-3 flex items-center gap-2">
-              <RefreshCw className="h-4 w-4 text-primary" />
-              {staticContent.refund.title}
+            <h4 className="text-white font-semibold mb-4 flex items-center gap-2 text-sm">
+              <Building2 className="h-4 w-4 text-gray-400" />
+              회사정보
             </h4>
-            <p className="text-sm text-muted-foreground">
-              {getContent('refund_policy') || staticContent.refund.content}
-            </p>
+            <dl className="space-y-1 text-sm text-gray-400">
+              <div className="flex gap-1">
+                <dt className="text-gray-500 shrink-0">상호:</dt>
+                <dd>주식회사 하우파파</dd>
+              </div>
+              <div className="flex gap-1">
+                <dt className="text-gray-500 shrink-0">대표:</dt>
+                <dd>박현용</dd>
+              </div>
+              <div className="flex gap-1">
+                <dt className="text-gray-500 shrink-0">이메일:</dt>
+                <dd>contact@cnec.kr</dd>
+              </div>
+              <div className="flex gap-1">
+                <dt className="text-gray-500 shrink-0">사업자등록번호:</dt>
+                <dd>확인 중</dd>
+              </div>
+              <div className="flex gap-1">
+                <dt className="text-gray-500 shrink-0">통신판매업신고:</dt>
+                <dd>확인 중</dd>
+              </div>
+              <div className="flex gap-1">
+                <dt className="text-gray-500 shrink-0">주소:</dt>
+                <dd>서울특별시</dd>
+              </div>
+              <div className="flex gap-1">
+                <dt className="text-gray-500 shrink-0">호스팅서비스:</dt>
+                <dd>Vercel Inc.</dd>
+              </div>
+            </dl>
           </div>
-
-          <div>
-            <h4 className="font-semibold mb-3 flex items-center gap-2">
-              <Truck className="h-4 w-4 text-primary" />
-              {locale === 'ko' ? '배송안내' : locale === 'ja' ? '配送について' : 'Shipping'}
-            </h4>
-            <p className="text-sm text-muted-foreground">
-              {locale === 'ko'
-                ? '주문 후 2-3일 내 발송\n해외배송 7-14일 소요'
-                : locale === 'ja'
-                ? '注文後2-3日以内に発送\n海外配送7-14日'
-                : 'Ships within 2-3 business days\nInternational: 7-14 days'}
-            </p>
-          </div>
-
-          <div>
-            <h4 className="font-semibold mb-3 flex items-center gap-2">
-              <Mail className="h-4 w-4 text-primary" />
-              {locale === 'ko' ? '고객센터' : locale === 'ja' ? 'お問い合わせ' : 'Contact'}
-            </h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li className="flex items-center gap-2">
-                <Mail className="h-3 w-3" />
-                support@cnec.shop
-              </li>
-              <li className="flex items-center gap-2">
-                <Phone className="h-3 w-3" />
-                {country === 'KR' ? '1588-0000' : country === 'JP' ? '03-XXXX-XXXX' : '1-800-XXX-XXXX'}
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        {/* Business Info (Expandable) */}
-        <div className="border-t border-border/30 pt-6">
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <Building2 className="h-4 w-4" />
-            {staticContent.business_info.title}
-            {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </button>
-
-          {expanded && (
-            <div className="mt-4 p-4 rounded-lg bg-muted/50 text-sm text-muted-foreground whitespace-pre-line">
-              {getContent('business_info') || staticContent.business_info.content}
-            </div>
-          )}
         </div>
 
         {/* Copyright */}
-        <div className="mt-6 pt-6 border-t border-border/30 flex flex-col sm:flex-row justify-between items-center gap-4">
-          <p className="text-xs text-muted-foreground">
+        <div className="pt-6 border-t border-gray-800 flex flex-col sm:flex-row justify-between items-center gap-2">
+          <p className="text-xs text-gray-500">
             {shopName ? `${shopName} powered by ` : ''}
-            <span className="font-headline font-bold text-gold-gradient">CNEC Shop</span>
+            <span className="font-semibold text-gray-400">CNEC Shop</span>
           </p>
-          <p className="text-xs text-muted-foreground">
-            {new Date().getFullYear()} All rights reserved.
+          <p className="text-xs text-gray-500">
+            &copy; 2026 HOWPAPA Inc. All rights reserved.
           </p>
         </div>
-
-        {/* Legal Compliance Notice */}
-        {country === 'KR' && (
-          <p className="mt-4 text-xs text-center text-muted-foreground">
-            본 쇼핑몰은 공정거래위원회에서 인증한 표준약관을 사용합니다.
-          </p>
-        )}
-        {country === 'JP' && (
-          <p className="mt-4 text-xs text-center text-muted-foreground">
-            特定商取引法に基づく表記を遵守しています。
-          </p>
-        )}
-        {country === 'US' && (
-          <p className="mt-4 text-xs text-center text-muted-foreground">
-            We comply with all applicable consumer protection laws including the FTC Act.
-          </p>
-        )}
       </div>
     </footer>
   );
