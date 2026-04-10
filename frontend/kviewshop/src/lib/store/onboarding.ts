@@ -4,12 +4,14 @@ import { persist } from 'zustand/middleware';
 interface OnboardingState {
   tutorialCompleted: boolean;
   tutorialDismissed: boolean;
+  neverShowAgain: boolean;
   currentStep: number;
   completedSteps: number[];
   setCurrentStep: (step: number) => void;
   completeStep: (step: number) => void;
   completeTutorial: () => void;
   dismissTutorial: () => void;
+  setNeverShowAgain: () => void;
   resetTutorial: () => void;
 }
 
@@ -18,6 +20,7 @@ export const useOnboardingStore = create<OnboardingState>()(
     (set) => ({
       tutorialCompleted: false,
       tutorialDismissed: false,
+      neverShowAgain: false,
       currentStep: 0,
       completedSteps: [],
 
@@ -36,10 +39,14 @@ export const useOnboardingStore = create<OnboardingState>()(
       dismissTutorial: () =>
         set({ tutorialDismissed: true }),
 
+      setNeverShowAgain: () =>
+        set({ neverShowAgain: true, tutorialDismissed: true }),
+
       resetTutorial: () =>
         set({
           tutorialCompleted: false,
           tutorialDismissed: false,
+          neverShowAgain: false,
           currentStep: 0,
           completedSteps: [],
         }),
