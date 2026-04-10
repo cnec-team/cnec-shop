@@ -32,6 +32,15 @@ async function getShopItems(creatorId: string) {
       where: {
         creatorId,
         isVisible: true,
+        // Product must be ACTIVE
+        product: {
+          status: 'ACTIVE',
+        },
+        // Campaign (if linked) must be ACTIVE — exclude DRAFT/ENDED/RECRUITING
+        OR: [
+          { campaignId: null },  // PICK items without campaign
+          { campaign: { status: 'ACTIVE' } },  // Campaign items with ACTIVE campaign
+        ],
       },
       include: {
         product: {
