@@ -1,9 +1,10 @@
 'use client';
-import { useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useSearchParams, useRouter, useParams } from 'next/navigation';
 import { Search, Package, Truck, Loader2, ShoppingBag } from 'lucide-react';
 import { lookupOrder } from '@/lib/actions/shop';
 import { getCourierLabel, getTrackingUrl } from '@/lib/utils/courier';
+import { useUser } from '@/lib/hooks/use-user';
 
 type OrderStatus = 'PENDING' | 'PAID' | 'PREPARING' | 'SHIPPING' | 'DELIVERED' | 'CONFIRMED' | 'CANCELLED' | 'REFUNDED';
 
@@ -47,6 +48,10 @@ function formatCurrency(amount: number): string {
 
 export default function OrderLookupPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const params = useParams();
+  const locale = params.locale as string;
+  const { user, buyer, isLoading: isUserLoading } = useUser();
   const initialOrderNumber = searchParams.get('orderNumber') || '';
   const [orderNumber, setOrderNumber] = useState(initialOrderNumber);
   const [buyerPhone, setBuyerPhone] = useState('');
@@ -54,6 +59,16 @@ export default function OrderLookupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
+
+  // Redirect logged-in buyers to their dashboard orders page.
+  // Respect explicit `guest=1` query for users who want to look up without login.
+  const isGuestMode = searchParams.get('guest') === '1';
+  useEffect(() => {
+    if (isUserLoading || isGuestMode) return;
+    if (user && (buyer || user.role === 'buyer')) {
+      router.replace(`/${locale}/buyer/orders`);
+    }
+  }, [isUserLoading, user, buyer, isGuestMode, locale, router]);
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -93,9 +108,19 @@ export default function OrderLookupPage() {
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 mb-4">
             <ShoppingBag className="w-6 h-6 text-gray-600" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">주문 조회</h1>
+          <h1 className="text-2xl font-bold text-gray-900">비회원 주문 조회</h1>
           <p className="text-gray-400 text-sm mt-2">
             주문번호와 전화번호로 주문을 조회합니다
+          </p>
+          <p className="text-gray-400 text-xs mt-3">
+            회원이신가요?{' '}
+            <button
+              type="button"
+              onClick={() => router.push(`/${locale}/buyer/login?redirect=/${locale}/buyer/orders`)}
+              className="text-gray-900 font-medium underline"
+            >
+              로그인하여 전체 주문 보기
+            </button>
           </p>
         </div>
 
@@ -208,7 +233,7 @@ export default function OrderLookupPage() {
                 주문 상품
               </h2>
               <div className="space-y-4">
-                {order.orderItems?.map((item: any, index: number) => {
+                {order.items?.map((item: any, index: number) => {
                   const productName = item.product?.name || item.productName || '상품 정보 없음';
                   const brandName = item.product?.brand?.brandName || '';
                   const imageUrl =
@@ -287,16 +312,17 @@ export default function OrderLookupPage() {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-400">받는분</span>
-                  <span className="text-gray-900">{order.buyerName}</span>
+                  <span className="text-gray-900">{order.buyerName || order.customerName || '-'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">연락처</span>
-                  <span className="text-gray-900">{order.buyerPhone}</span>
+                  <span className="text-gray-900">{order.buyerPhone || order.customerPhone || '-'}</span>
                 </div>
                 <div className="flex justify-between items-start">
                   <span className="text-gray-400 flex-shrink-0">배송지</span>
                   <span className="text-right ml-4 text-gray-900">
                     {order.shippingAddress}
+                    {order.shippingDetail && ` ${order.shippingDetail}`}
                   </span>
                 </div>
               </div>

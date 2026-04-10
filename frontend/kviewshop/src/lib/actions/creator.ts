@@ -302,6 +302,134 @@ export async function addCampaignShopItems(campaignId: string, productIds: strin
   }
 }
 
+export async function getCreatorCampaignDetail(campaignId: string) {
+  const { creator } = await requireCreator()
+
+  const campaign = await prisma.campaign.findUnique({
+    where: { id: campaignId },
+    include: {
+      brand: {
+        select: {
+          id: true,
+          brandName: true,
+          companyName: true,
+          logoUrl: true,
+          description: true,
+          defaultShippingFee: true,
+          freeShippingThreshold: true,
+        },
+      },
+      products: {
+        include: {
+          product: {
+            select: {
+              id: true,
+              name: true,
+              nameKo: true,
+              description: true,
+              descriptionKo: true,
+              originalPrice: true,
+              salePrice: true,
+              images: true,
+              thumbnailUrl: true,
+              imageUrl: true,
+              volume: true,
+              shippingFeeType: true,
+              shippingFee: true,
+              freeShippingThreshold: true,
+            },
+          },
+        },
+      },
+    },
+  })
+
+  if (!campaign) return null
+
+  const [participantCount, myParticipation] = await Promise.all([
+    prisma.campaignParticipation.count({
+      where: {
+        campaignId: campaign.id,
+        status: { in: ['PENDING', 'APPROVED'] },
+      },
+    }),
+    prisma.campaignParticipation.findFirst({
+      where: { campaignId: campaign.id, creatorId: creator.id },
+      select: { id: true, status: true, appliedAt: true, approvedAt: true },
+    }),
+  ])
+
+  return {
+    id: campaign.id,
+    brandId: campaign.brandId,
+    type: campaign.type,
+    title: campaign.title,
+    description: campaign.description,
+    status: campaign.status,
+    recruitmentType: campaign.recruitmentType,
+    commissionRate: Number(campaign.commissionRate),
+    totalStock: campaign.totalStock,
+    soldCount: campaign.soldCount,
+    targetParticipants: campaign.targetParticipants,
+    conditions: campaign.conditions,
+    startAt: campaign.startAt?.toISOString() ?? null,
+    endAt: campaign.endAt?.toISOString() ?? null,
+    createdAt: campaign.createdAt.toISOString(),
+    brand: campaign.brand
+      ? {
+          id: campaign.brand.id,
+          brandName: campaign.brand.brandName,
+          companyName: campaign.brand.companyName,
+          logoUrl: campaign.brand.logoUrl,
+          description: campaign.brand.description,
+          defaultShippingFee: campaign.brand.defaultShippingFee
+            ? Number(campaign.brand.defaultShippingFee)
+            : 0,
+          freeShippingThreshold: campaign.brand.freeShippingThreshold
+            ? Number(campaign.brand.freeShippingThreshold)
+            : null,
+        }
+      : null,
+    products: campaign.products.map((cp) => ({
+      id: cp.id,
+      productId: cp.productId,
+      campaignPrice: Number(cp.campaignPrice),
+      perCreatorLimit: cp.perCreatorLimit,
+      product: cp.product
+        ? {
+            id: cp.product.id,
+            name: cp.product.name ?? cp.product.nameKo ?? '',
+            description: cp.product.description ?? cp.product.descriptionKo ?? '',
+            originalPrice: cp.product.originalPrice
+              ? Number(cp.product.originalPrice)
+              : null,
+            salePrice: cp.product.salePrice ? Number(cp.product.salePrice) : null,
+            images: cp.product.images ?? [],
+            thumbnailUrl: cp.product.thumbnailUrl,
+            imageUrl: cp.product.imageUrl,
+            volume: cp.product.volume,
+            shippingFeeType: cp.product.shippingFeeType,
+            shippingFee: cp.product.shippingFee
+              ? Number(cp.product.shippingFee)
+              : 0,
+            freeShippingThreshold: cp.product.freeShippingThreshold
+              ? Number(cp.product.freeShippingThreshold)
+              : null,
+          }
+        : null,
+    })),
+    participantCount,
+    myParticipation: myParticipation
+      ? {
+          id: myParticipation.id,
+          status: myParticipation.status,
+          appliedAt: myParticipation.appliedAt.toISOString(),
+          approvedAt: myParticipation.approvedAt?.toISOString() ?? null,
+        }
+      : null,
+  }
+}
+
 export async function getMyParticipations(creatorId: string) {
   const { creator } = await requireCreator()
   if (creator.id !== creatorId) throw new Error('Forbidden')

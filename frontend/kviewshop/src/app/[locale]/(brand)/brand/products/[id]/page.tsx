@@ -27,6 +27,7 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Skeleton } from '@/components/ui/skeleton';
 import ImageUpload from '@/components/common/ImageUpload';
+import { toast } from 'sonner';
 
 const COURIERS = [
   { code: 'cj', name: 'CJ대한통운' },
@@ -45,7 +46,6 @@ export default function ProductDetailPage() {
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
 
   // Basic info
   const [name, setName] = useState('');
@@ -127,20 +127,22 @@ export default function ProductDetailPage() {
   async function handleSave() {
     if (!name.trim()) {
       setError('상품명을 입력해주세요.');
+      toast.error('상품명을 입력해주세요');
       return;
     }
     if (!originalPrice || Number(originalPrice) <= 0) {
       setError('정가를 올바르게 입력해주세요.');
+      toast.error('정가를 올바르게 입력해주세요');
       return;
     }
     if (!salePrice || Number(salePrice) <= 0) {
       setError('판매가를 올바르게 입력해주세요.');
+      toast.error('판매가를 올바르게 입력해주세요');
       return;
     }
 
     setIsSaving(true);
     setError(null);
-    setSuccess(false);
 
     try {
       const images: string[] = [];
@@ -174,11 +176,11 @@ export default function ProductDetailPage() {
         defaultCommissionRate: Number(commissionRate),
       });
 
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
+      toast.success('상품 정보가 저장되었습니다');
     } catch (err) {
       console.error('Failed to update product:', err);
       setError('상품 수정에 실패했습니다. 다시 시도해주세요.');
+      toast.error('저장에 실패했습니다. 다시 시도해주세요');
     } finally {
       setIsSaving(false);
     }
@@ -206,11 +208,6 @@ export default function ProductDetailPage() {
       {error && (
         <div className="rounded-md border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
           {error}
-        </div>
-      )}
-      {success && (
-        <div className="rounded-md border border-success/50 bg-success/10 p-4 text-sm text-green-700">
-          상품이 성공적으로 수정되었습니다.
         </div>
       )}
 

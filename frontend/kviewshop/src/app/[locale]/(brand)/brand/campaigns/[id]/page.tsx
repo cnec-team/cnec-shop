@@ -29,6 +29,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ExternalLink } from 'lucide-react';
+import { toast } from 'sonner';
 
 function formatCurrency(num: number): string {
   return `${num.toLocaleString('ko-KR')}원`;
@@ -141,8 +142,10 @@ export default function CampaignDetailPage() {
     try {
       await updateCampaignStatus(campaignId, newStatus);
       await load();
+      toast.success('캠페인 상태가 변경되었습니다');
     } catch (err: any) {
       setError(err.message || '상태 변경에 실패했습니다.');
+      toast.error(err?.message || '상태 변경에 실패했습니다');
     } finally {
       setUpdatingStatus(false);
     }
@@ -153,8 +156,12 @@ export default function CampaignDetailPage() {
     try {
       await handleParticipationAction(participationId, action);
       await load();
+      toast.success(
+        action === 'APPROVED' ? '참여를 승인했습니다' : '참여를 거절했습니다'
+      );
     } catch {
       setError('참여 처리에 실패했습니다.');
+      toast.error('참여 처리에 실패했습니다');
     } finally {
       setProcessingParticipation(null);
     }
