@@ -482,10 +482,11 @@ export async function getPickableProducts(creatorId: string) {
     }
   }
 
-  // Fetch products: ACTIVE status AND (allowCreatorPick=true OR has active campaign)
+  // Fetch products: ACTIVE status + isActive AND (allowCreatorPick=true OR has active campaign)
   const products = await prisma.product.findMany({
     where: {
       status: 'ACTIVE',
+      isActive: true,
       OR: [
         { allowCreatorPick: true },
         { id: { in: Array.from(activeCampaignProductIds) } },

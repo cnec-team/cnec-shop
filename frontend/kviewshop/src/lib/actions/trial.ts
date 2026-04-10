@@ -151,7 +151,10 @@ export async function cancelProductTrial(trialId: string) {
 export async function confirmTrialReceived(trialId: string) {
   const { creator } = await requireCreator()
 
-  const trial = await prisma.sampleRequest.findUnique({ where: { id: trialId } })
+  const trial = await prisma.sampleRequest.findUnique({
+    where: { id: trialId },
+    include: { product: { select: { name: true, brandId: true } } },
+  })
   if (!trial) return { success: false, error: '신청을 찾을 수 없습니다.' }
   if (trial.creatorId !== creator.id) return { success: false, error: '권한이 없습니다.' }
   if (trial.status !== SampleRequestStatus.shipped) return { success: false, error: '발송된 상태에서만 수령 확인이 가능합니다.' }
@@ -163,6 +166,27 @@ export async function confirmTrialReceived(trialId: string) {
       receivedAt: new Date(),
     },
   })
+
+  // 브랜드에게 수령 확인 알림
+  try {
+    if (trial.product?.brandId) {
+      const brand = await prisma.brand.findUnique({
+        where: { id: trial.product.brandId },
+        select: { userId: true },
+      })
+      if (brand?.userId) {
+        sendNotification({
+          userId: brand.userId,
+          type: 'TRIAL',
+          title: '체험 상품 수령 확인',
+          message: `${creator.displayName ?? creator.username ?? '크리에이터'}님이 "${trial.product.name ?? '상품'}" 샘플을 수령했습니다.`,
+          linkUrl: '/brand/trial',
+        })
+      }
+    }
+  } catch {
+    // 알림 실패가 주요 로직에 영향 주지 않음
+  }
 
   return { success: true }
 }
