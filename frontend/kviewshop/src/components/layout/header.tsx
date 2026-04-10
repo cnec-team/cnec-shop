@@ -15,6 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useUser } from '@/lib/hooks/use-user';
 import { Globe, LogOut, Settings, User } from 'lucide-react';
 import { locales, localeNames, type Locale } from '@/lib/i18n/config';
+import { NotificationBell } from '@/components/layout/notification-bell';
 
 interface HeaderProps {
   locale: Locale;
@@ -64,6 +65,11 @@ export function Header({ locale }: HeaderProps) {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* Notification Bell - for brand_admin and creator */}
+          {!isLoading && user && (user.role === 'brand_admin' || user.role === 'creator') && (
+            <NotificationBell />
+          )}
 
           {/* User Menu */}
           {!isLoading && (

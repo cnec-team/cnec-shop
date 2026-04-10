@@ -1,16 +1,18 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Settings, Percent, Building2, CreditCard, Info, Globe, ShieldCheck, Upload, X, Check, FileText, Plus, Trash2, ImageIcon, Loader2, Tags, Package, Truck } from 'lucide-react';
+import {
+  Percent, Building2, CreditCard, Info, Globe, ShieldCheck,
+  X, Check, FileText, Plus, Trash2, ImageIcon, Loader2, Tags,
+  Truck, ChevronDown, ChevronUp, Save,
+} from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
@@ -43,10 +45,56 @@ interface BrandLine {
   description: string;
 }
 
+// ── Section Card Wrapper ──────────────────────────────────────────
+function SettingsSection({
+  icon: Icon,
+  title,
+  description,
+  children,
+  collapsible = false,
+  defaultOpen = true,
+}: {
+  icon: React.ElementType;
+  title: string;
+  description: string;
+  children: React.ReactNode;
+  collapsible?: boolean;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <button
+        type="button"
+        className={`w-full flex items-center gap-4 p-6 text-left ${collapsible ? 'cursor-pointer hover:bg-gray-50/50 transition-colors' : 'cursor-default'}`}
+        onClick={() => collapsible && setOpen(!open)}
+      >
+        <div className="shrink-0 w-11 h-11 rounded-xl bg-gray-900 text-white flex items-center justify-center">
+          <Icon className="w-5 h-5" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-base font-semibold text-gray-900">{title}</h3>
+          <p className="text-sm text-gray-500 mt-0.5">{description}</p>
+        </div>
+        {collapsible && (
+          open ? <ChevronUp className="w-5 h-5 text-gray-400 shrink-0" /> : <ChevronDown className="w-5 h-5 text-gray-400 shrink-0" />
+        )}
+      </button>
+      {(!collapsible || open) && (
+        <div className="px-6 pb-6 pt-0 space-y-5">
+          <div className="border-t border-gray-100 pt-5" />
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function BrandSettingsPage() {
   const t = useTranslations('brandSettings');
-  const tc = useTranslations('common');
   const [loading, setLoading] = useState(false);
+  const [activeSection, setActiveSection] = useState<string | null>(null);
   const [settings, setSettings] = useState({
     brandName: '',
     businessNumber: '',
@@ -59,7 +107,7 @@ export default function BrandSettingsPage() {
     tier3Rate: 25,
     tier4Rate: 30,
     settlementCycle: 'monthly',
-    minimumPayout: 50,
+    minimumPayout: 10000,
     bankCode: '',
     bankName: '',
     accountNumber: '',
@@ -75,36 +123,26 @@ export default function BrandSettingsPage() {
     allowCreatorPickGlobal: true,
   });
 
-  // Shipping countries state
   const [shippingCountries, setShippingCountries] = useState<string[]>([]);
-
-  // Certifications state
   const [certifications, setCertifications] = useState<Certification[]>([]);
   const [newCert, setNewCert] = useState({
-    type: '',
-    name: '',
-    issueDate: '',
-    expiryDate: '',
-    fileUrl: '',
+    type: '', name: '', issueDate: '', expiryDate: '', fileUrl: '',
   });
   const [showAddCert, setShowAddCert] = useState(false);
-
-  // Brand lines state
   const [brandLines, setBrandLines] = useState<BrandLine[]>([]);
   const [newBrandLine, setNewBrandLine] = useState({ name: '', description: '' });
   const [showAddBrandLine, setShowAddBrandLine] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState<string | null>(null);
-  const logoInputRef = useRef<HTMLInputElement>(null);
 
+  // ── Handlers ────────────────────────────────────────────────────
   const handleAddBrandLine = () => {
     if (!newBrandLine.name.trim()) return;
-    const line: BrandLine = {
+    setBrandLines(prev => [...prev, {
       id: Date.now().toString(),
       name: newBrandLine.name,
       logo_url: '',
       description: newBrandLine.description,
-    };
-    setBrandLines(prev => [...prev, line]);
+    }]);
     setNewBrandLine({ name: '', description: '' });
     setShowAddBrandLine(false);
   };
@@ -116,25 +154,15 @@ export default function BrandSettingsPage() {
   const handleLogoUpload = async (brandLineId: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file');
-      return;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('Logo must be under 2MB');
-      return;
-    }
-
+    if (!file.type.startsWith('image/')) { toast.error('이미지 파일을 선택해주세요'); return; }
+    if (file.size > 2 * 1024 * 1024) { toast.error('로고는 2MB 이하만 가능합니다'); return; }
     setUploadingLogo(brandLineId);
     try {
       const publicUrl = await uploadImage(file, 'brand-logos');
-
-      setBrandLines(prev => prev.map(bl =>
-        bl.id === brandLineId ? { ...bl, logo_url: publicUrl } : bl
-      ));
+      setBrandLines(prev => prev.map(bl => bl.id === brandLineId ? { ...bl, logo_url: publicUrl } : bl));
     } catch (err) {
       console.error('Logo upload error:', err);
-      toast.error('Failed to upload logo');
+      toast.error('로고 업로드에 실패했습니다');
     } finally {
       setUploadingLogo(null);
     }
@@ -144,13 +172,11 @@ export default function BrandSettingsPage() {
     const codes = getRegionCountryCodes(regionId);
     return codes.every(code => shippingCountries.includes(code));
   };
-
   const isRegionPartiallySelected = (regionId: string) => {
     const codes = getRegionCountryCodes(regionId);
     const selected = codes.filter(code => shippingCountries.includes(code));
     return selected.length > 0 && selected.length < codes.length;
   };
-
   const toggleRegion = (regionId: string) => {
     const codes = getRegionCountryCodes(regionId);
     if (isRegionFullySelected(regionId)) {
@@ -159,34 +185,23 @@ export default function BrandSettingsPage() {
       setShippingCountries(prev => [...new Set([...prev, ...codes])]);
     }
   };
-
   const toggleCountry = (code: string) => {
     setShippingCountries(prev =>
       prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code]
     );
   };
-
   const selectAll = () => {
-    const allCodes = SHIPPING_REGIONS.flatMap(r => r.countries.map(c => c.code));
-    setShippingCountries(allCodes);
+    setShippingCountries(SHIPPING_REGIONS.flatMap(r => r.countries.map(c => c.code)));
   };
-
-  const deselectAll = () => {
-    setShippingCountries([]);
-  };
+  const deselectAll = () => setShippingCountries([]);
 
   const handleAddCertification = () => {
     if (!newCert.type || !newCert.name) return;
-    const cert: Certification = {
+    setCertifications(prev => [...prev, {
       id: Date.now().toString(),
-      type: newCert.type,
-      name: newCert.name,
-      issueDate: newCert.issueDate,
-      expiryDate: newCert.expiryDate,
-      fileUrl: newCert.fileUrl,
-      status: 'pending',
-    };
-    setCertifications(prev => [...prev, cert]);
+      ...newCert,
+      status: 'pending' as const,
+    }]);
     setNewCert({ type: '', name: '', issueDate: '', expiryDate: '', fileUrl: '' });
     setShowAddCert(false);
   };
@@ -197,6 +212,7 @@ export default function BrandSettingsPage() {
 
   const handleSave = async (section?: string) => {
     setLoading(true);
+    setActiveSection(section ?? null);
     try {
       await updateBrandSettings({
         section,
@@ -224,16 +240,16 @@ export default function BrandSettingsPage() {
         returnAddress: settings.returnAddress,
         exchangePolicy: settings.exchangePolicy,
       });
-
-      toast.success(t('saved'));
-    } catch (error) {
-      toast.error(t('saveError'));
+      toast.success('저장되었습니다');
+    } catch {
+      toast.error('저장에 실패했습니다');
     } finally {
       setLoading(false);
+      setActiveSection(null);
     }
   };
 
-  // Load data on mount
+  // ── Load Data ──────────────────────────────────────────────────
   useEffect(() => {
     const loadSettings = async () => {
       try {
@@ -252,10 +268,10 @@ export default function BrandSettingsPage() {
             tier3Rate: Number(data.tier3Rate) ?? 25,
             tier4Rate: Number(data.tier4Rate) ?? 30,
             settlementCycle: data.settlementCycle || 'monthly',
-            minimumPayout: Number(data.minimumPayout) ?? 50,
+            minimumPayout: Number(data.minimumPayout) ?? 10000,
             bankName: data.bankName || '',
-            accountNumber: (data as any).bankAccount || '',
-            accountHolder: (data as any).bankHolder || '',
+            accountNumber: (data as Record<string, unknown>).bankAccount as string || '',
+            accountHolder: (data as Record<string, unknown>).bankHolder as string || '',
             defaultShippingFee: Number(data.defaultShippingFee) ?? 3000,
             freeShippingThreshold: Number(data.freeShippingThreshold) ?? 50000,
             defaultCourier: data.defaultCourier || 'cj',
@@ -278,682 +294,117 @@ export default function BrandSettingsPage() {
   const getCertStatusBadge = (status: string) => {
     switch (status) {
       case 'approved':
-        return <Badge className="bg-green-500/10 text-green-500 border-green-500/30"><Check className="h-3 w-3 mr-1" />{t('certApproved')}</Badge>;
+        return <Badge className="bg-green-500/10 text-green-500 border-green-500/30"><Check className="h-3 w-3 mr-1" />승인됨</Badge>;
       case 'rejected':
-        return <Badge variant="destructive">{t('certRejected')}</Badge>;
+        return <Badge variant="destructive">반려됨</Badge>;
       default:
-        return <Badge variant="secondary">{t('certPending')}</Badge>;
+        return <Badge variant="secondary">심사중</Badge>;
     }
   };
 
+  const SaveButton = ({ section }: { section: string }) => (
+    <Button
+      onClick={() => handleSave(section)}
+      disabled={loading}
+      className="btn-gold h-11 px-6 rounded-xl text-sm font-medium"
+    >
+      {loading && activeSection === section ? (
+        <><Loader2 className="w-4 h-4 animate-spin mr-2" />저장 중...</>
+      ) : (
+        <><Save className="w-4 h-4 mr-2" />저장</>
+      )}
+    </Button>
+  );
+
+  // ── Render ─────────────────────────────────────────────────────
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24">
+      {/* Page Header */}
       <div>
-        <h1 className="text-3xl font-headline font-bold">{t('title')}</h1>
-        <p className="text-muted-foreground">{t('subtitle')}</p>
+        <h1 className="text-2xl font-bold text-gray-900">브랜드 설정</h1>
+        <p className="text-sm text-gray-500 mt-1">브랜드 정보와 정산, 배송 설정을 관리합니다</p>
       </div>
 
-      <Tabs defaultValue="general">
-        <TabsList className="flex flex-wrap h-auto gap-1">
-          <TabsTrigger value="general">{t('generalTab')}</TabsTrigger>
-          <TabsTrigger value="product_shipping">{t('productShippingTab')}</TabsTrigger>
-          <TabsTrigger value="brand_lines">{t('brandLinesTab')}</TabsTrigger>
-          <TabsTrigger value="shipping">{t('shippingTab')}</TabsTrigger>
-          <TabsTrigger value="certifications">{t('certificationsTab')}</TabsTrigger>
-          <TabsTrigger value="commission">{t('commissionTab')}</TabsTrigger>
-          <TabsTrigger value="settlement">{t('settlementTab')}</TabsTrigger>
-        </TabsList>
+      {/* ── 2-Column Grid (Desktop) ─────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
-        {/* General Info Tab */}
-        <TabsContent value="general" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building2 className="h-5 w-5" />
-                {t('brandInfo')}
-              </CardTitle>
-              <CardDescription>{t('brandInfoDesc')}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
+        {/* ━━━ LEFT COLUMN ━━━ */}
+        <div className="space-y-5">
+
+          {/* 기본 정보 */}
+          <SettingsSection
+            icon={Building2}
+            title="기본 정보"
+            description="브랜드명, 사업자번호, 연락처를 관리합니다"
+          >
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700">브랜드명</Label>
+                <Input
+                  placeholder="브랜드명을 입력하세요"
+                  value={settings.brandName}
+                  onChange={(e) => setSettings({ ...settings, brandName: e.target.value })}
+                  className="h-11 rounded-xl"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700">사업자등록번호</Label>
+                <Input
+                  placeholder="000-00-00000"
+                  value={settings.businessNumber}
+                  onChange={(e) => setSettings({ ...settings, businessNumber: e.target.value })}
+                  className="h-11 rounded-xl"
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>{t('brandName')}</Label>
-                  <Input
-                    placeholder={t('brandNamePlaceholder')}
-                    value={settings.brandName}
-                    onChange={(e) => setSettings({ ...settings, brandName: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>{t('businessNumber')}</Label>
-                  <Input
-                    placeholder="000-00-00000"
-                    value={settings.businessNumber}
-                    onChange={(e) => setSettings({ ...settings, businessNumber: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>{t('contactEmail')}</Label>
+                  <Label className="text-sm font-medium text-gray-700">이메일</Label>
                   <Input
                     type="email"
                     placeholder="contact@brand.com"
                     value={settings.contactEmail}
                     onChange={(e) => setSettings({ ...settings, contactEmail: e.target.value })}
+                    className="h-11 rounded-xl"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>{t('contactPhone')}</Label>
+                  <Label className="text-sm font-medium text-gray-700">전화번호</Label>
                   <Input
                     placeholder="02-0000-0000"
                     value={settings.contactPhone}
                     onChange={(e) => setSettings({ ...settings, contactPhone: e.target.value })}
+                    className="h-11 rounded-xl"
                   />
                 </div>
               </div>
-              <Button onClick={() => handleSave('general')} disabled={loading} className="btn-gold">
-                {loading ? tc('loading') : tc('save')}
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
+              <SaveButton section="general" />
+            </div>
+          </SettingsSection>
 
-        {/* Product & Shipping Defaults Tab */}
-        <TabsContent value="product_shipping" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Truck className="h-5 w-5" />
-                {t('productShippingTitle')}
-              </CardTitle>
-              <CardDescription>{t('productShippingDesc')}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>{t('defaultShippingFee')}</Label>
-                  <Input
-                    type="number"
-                    placeholder="3000"
-                    value={settings.defaultShippingFee}
-                    onChange={(e) => setSettings({ ...settings, defaultShippingFee: Number(e.target.value) })}
-                  />
-                  <p className="text-xs text-muted-foreground">{t('defaultShippingFeeDesc')}</p>
-                </div>
-                <div className="space-y-2">
-                  <Label>{t('freeShippingThreshold')}</Label>
-                  <Input
-                    type="number"
-                    placeholder="50000"
-                    value={settings.freeShippingThreshold}
-                    onChange={(e) => setSettings({ ...settings, freeShippingThreshold: Number(e.target.value) })}
-                  />
-                  <p className="text-xs text-muted-foreground">{t('freeShippingThresholdDesc')}</p>
-                </div>
-                <div className="space-y-2">
-                  <Label>{t('defaultCourier')}</Label>
-                  <Select
-                    value={settings.defaultCourier}
-                    onValueChange={(v) => setSettings({ ...settings, defaultCourier: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="epost">우체국택배</SelectItem>
-                      <SelectItem value="cj">CJ대한통운</SelectItem>
-                      <SelectItem value="hanjin">한진택배</SelectItem>
-                      <SelectItem value="lotte">롯데택배</SelectItem>
-                      <SelectItem value="logen">로젠택배</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>{t('defaultCommissionRateLabel')}</Label>
-                  <Input
-                    type="number"
-                    placeholder="15"
-                    min={0}
-                    max={100}
-                    value={settings.defaultCommissionRate}
-                    onChange={(e) => setSettings({ ...settings, defaultCommissionRate: Number(e.target.value) })}
-                  />
-                  <p className="text-xs text-muted-foreground">{t('defaultCommissionRateDesc')}</p>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>{t('returnAddress')}</Label>
-                <Textarea
-                  placeholder={t('returnAddressPlaceholder')}
-                  value={settings.returnAddress}
-                  onChange={(e) => setSettings({ ...settings, returnAddress: e.target.value })}
-                  rows={2}
-                />
-                <p className="text-xs text-muted-foreground">{t('returnAddressDesc')}</p>
-              </div>
-
-              <div className="space-y-2">
-                <Label>{t('exchangePolicy')}</Label>
-                <Textarea
-                  placeholder={t('exchangePolicyPlaceholder')}
-                  value={settings.exchangePolicy}
-                  onChange={(e) => setSettings({ ...settings, exchangePolicy: e.target.value })}
-                  rows={3}
-                />
-              </div>
-
-              <div className="flex items-center justify-between rounded-lg border p-4">
-                <div>
-                  <p className="font-medium text-sm">{t('allowCreatorPickGlobal')}</p>
-                  <p className="text-xs text-muted-foreground">{t('allowCreatorPickGlobalDesc')}</p>
-                </div>
-                <Switch
-                  checked={settings.allowCreatorPickGlobal}
-                  onCheckedChange={(checked) => setSettings({ ...settings, allowCreatorPickGlobal: checked })}
-                />
-              </div>
-
-              <Button onClick={() => handleSave('product_shipping')} disabled={loading} className="btn-gold">
-                {loading ? tc('loading') : tc('save')}
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Brand Lines Tab */}
-        <TabsContent value="brand_lines" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Tags className="h-5 w-5" />
-                    {t('brandLinesTitle')}
-                  </CardTitle>
-                  <CardDescription>{t('brandLinesDesc')}</CardDescription>
-                </div>
-                <Button
-                  size="sm"
-                  onClick={() => setShowAddBrandLine(true)}
-                  className="btn-gold"
-                >
-                  <Plus className="h-4 w-4 mr-1" />
-                  {t('addBrandLine')}
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Add Brand Line Form */}
-              {showAddBrandLine && (
-                <div className="p-4 border rounded-lg bg-muted/30 space-y-3">
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">{t('brandLineName')} *</Label>
-                      <Input
-                        placeholder={t('brandLineNamePlaceholder')}
-                        value={newBrandLine.name}
-                        onChange={(e) => setNewBrandLine({ ...newBrandLine, name: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">{t('brandLineDescription')}</Label>
-                      <Input
-                        placeholder={t('brandLineDescPlaceholder')}
-                        value={newBrandLine.description}
-                        onChange={(e) => setNewBrandLine({ ...newBrandLine, description: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button size="sm" onClick={handleAddBrandLine} className="btn-gold">
-                      {tc('add')}
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => setShowAddBrandLine(false)}>
-                      {tc('cancel')}
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {/* Brand Lines List */}
-              {brandLines.length === 0 && !showAddBrandLine ? (
-                <div className="text-center py-8">
-                  <Tags className="mx-auto h-10 w-10 text-muted-foreground/40" />
-                  <p className="mt-3 text-sm text-muted-foreground">{t('noBrandLines')}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{t('noBrandLinesDesc')}</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {brandLines.map((line) => (
-                    <div key={line.id} className="flex items-center gap-4 p-4 border rounded-lg">
-                      {/* Logo */}
-                      <div className="relative group shrink-0">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          id={`logo-${line.id}`}
-                          onChange={(e) => handleLogoUpload(line.id, e)}
-                        />
-                        <label
-                          htmlFor={`logo-${line.id}`}
-                          className="block w-14 h-14 rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 cursor-pointer overflow-hidden transition-colors"
-                        >
-                          {uploadingLogo === line.id ? (
-                            <div className="w-full h-full flex items-center justify-center bg-muted">
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            </div>
-                          ) : line.logo_url ? (
-                            <Image src={line.logo_url} alt={line.name} width={56} height={56} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-muted">
-                              <ImageIcon className="h-5 w-5 text-muted-foreground/40" />
-                            </div>
-                          )}
-                        </label>
-                      </div>
-
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">{line.name}</p>
-                        {line.description && (
-                          <p className="text-xs text-muted-foreground truncate">{line.description}</p>
-                        )}
-                      </div>
-
-                      {/* Delete */}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveBrandLine(line.id)}
-                        className="text-destructive hover:text-destructive shrink-0"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <Button onClick={() => handleSave('brand_lines')} disabled={loading} className="btn-gold">
-                {loading ? tc('loading') : tc('save')}
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Shipping Countries Tab */}
-        <TabsContent value="shipping" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Globe className="h-5 w-5" />
-                {t('shippingTitle')}
-              </CardTitle>
-              <CardDescription>{t('shippingDesc')}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Select/Deselect All */}
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
-                  {t('selectedCountries', { count: shippingCountries.length })}
-                </p>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={selectAll}>
-                    {t('selectAll')}
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={deselectAll}>
-                    {t('deselectAll')}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Region Groups */}
-              <div className="space-y-4">
-                {SHIPPING_REGIONS.map((region) => (
-                  <div key={region.id} className="border rounded-lg p-4">
-                    {/* Region Header */}
-                    <div className="flex items-center gap-3 mb-3">
-                      <Checkbox
-                        id={`region-${region.id}`}
-                        checked={isRegionFullySelected(region.id)}
-                        ref={(el) => {
-                          if (el) {
-                            const input = el as unknown as HTMLButtonElement;
-                            input.dataset.indeterminate = isRegionPartiallySelected(region.id) ? 'true' : 'false';
-                          }
-                        }}
-                        className={isRegionPartiallySelected(region.id) ? 'data-[state=unchecked]:bg-primary/30' : ''}
-                        onCheckedChange={() => toggleRegion(region.id)}
-                      />
-                      <Label htmlFor={`region-${region.id}`} className="text-base font-semibold cursor-pointer">
-                        {t(`regions.${region.nameKey}`)}
-                      </Label>
-                      <Badge variant="secondary" className="ml-auto">
-                        {region.countries.filter(c => shippingCountries.includes(c.code)).length}/{region.countries.length}
-                      </Badge>
-                    </div>
-                    {/* Countries Grid */}
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 ml-6">
-                      {region.countries.map((country) => (
-                        <div key={country.code} className="flex items-center gap-2">
-                          <Checkbox
-                            id={`country-${country.code}`}
-                            checked={shippingCountries.includes(country.code)}
-                            onCheckedChange={() => toggleCountry(country.code)}
-                          />
-                          <Label htmlFor={`country-${country.code}`} className="text-sm cursor-pointer">
-                            {t(`countries.${country.nameKey}`)}
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Info Box */}
-              <div className="flex items-start gap-2 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-                <Info className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
-                <div className="text-sm">
-                  <p className="font-medium text-blue-500">{t('shippingNote')}</p>
-                  <p className="text-muted-foreground mt-1">{t('shippingNoteDesc')}</p>
-                </div>
-              </div>
-
-              <Button onClick={() => handleSave('shipping')} disabled={loading} className="btn-gold">
-                {loading ? tc('loading') : tc('save')}
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Certifications Tab */}
-        <TabsContent value="certifications" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <ShieldCheck className="h-5 w-5" />
-                {t('certTitle')}
-              </CardTitle>
-              <CardDescription>{t('certDesc')}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Existing Certifications */}
-              {certifications.length > 0 ? (
-                <div className="space-y-3">
-                  {certifications.map((cert) => (
-                    <div key={cert.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <FileText className="h-5 w-5 text-muted-foreground" />
-                        <div>
-                          <p className="font-medium">{cert.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {t(`certTypes.${cert.type}`)}
-                            {cert.issueDate && ` · ${cert.issueDate}`}
-                            {cert.expiryDate && ` ~ ${cert.expiryDate}`}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {getCertStatusBadge(cert.status)}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveCertification(cert.id)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <ShieldCheck className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                  <p>{t('noCertifications')}</p>
-                </div>
-              )}
-
-              {/* Add Certification Form */}
-              {showAddCert ? (
-                <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
-                  <h4 className="font-medium">{t('addCertification')}</h4>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>{t('certType')}</Label>
-                      <select
-                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                        value={newCert.type}
-                        onChange={(e) => setNewCert({ ...newCert, type: e.target.value })}
-                      >
-                        <option value="">{t('selectCertType')}</option>
-                        {CERTIFICATION_TYPES.map((type) => (
-                          <option key={type.id} value={type.id}>
-                            {t(`certTypes.${type.nameKey}`)}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>{t('certName')}</Label>
-                      <Input
-                        placeholder={t('certNamePlaceholder')}
-                        value={newCert.name}
-                        onChange={(e) => setNewCert({ ...newCert, name: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>{t('issueDate')}</Label>
-                      <Input
-                        type="date"
-                        value={newCert.issueDate}
-                        onChange={(e) => setNewCert({ ...newCert, issueDate: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>{t('expiryDate')}</Label>
-                      <Input
-                        type="date"
-                        value={newCert.expiryDate}
-                        onChange={(e) => setNewCert({ ...newCert, expiryDate: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button onClick={handleAddCertification} disabled={!newCert.type || !newCert.name} className="btn-gold">
-                      {tc('add')}
-                    </Button>
-                    <Button variant="outline" onClick={() => setShowAddCert(false)}>
-                      {tc('cancel')}
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <Button variant="outline" onClick={() => setShowAddCert(true)} className="w-full">
-                  <ShieldCheck className="h-4 w-4 mr-2" />
-                  {t('addCertification')}
-                </Button>
-              )}
-
-              {/* Certification Types Info */}
-              <div className="space-y-2">
-                <h4 className="font-medium text-sm">{t('availableCertTypes')}</h4>
-                <div className="grid gap-2 md:grid-cols-2">
-                  {CERTIFICATION_TYPES.map((type) => (
-                    <div key={type.id} className="flex items-start gap-2 p-3 bg-muted/30 rounded-lg">
-                      <ShieldCheck className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                      <div>
-                        <p className="text-sm font-medium">{t(`certTypes.${type.nameKey}`)}</p>
-                        <p className="text-xs text-muted-foreground">{t(`certTypes.${type.descKey}`)}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <Button onClick={() => handleSave('certifications')} disabled={loading} className="btn-gold">
-                {loading ? tc('loading') : tc('save')}
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Commission Tab */}
-        <TabsContent value="commission" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Percent className="h-5 w-5" />
-                {t('commissionTitle')}
-              </CardTitle>
-              <CardDescription>{t('commissionDesc')}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>{t('baseCommission')}</Label>
-                    <p className="text-sm text-muted-foreground">{t('baseCommissionDesc')}</p>
-                  </div>
-                  <div className="text-2xl font-bold text-primary">
-                    {settings.creatorCommissionRate}%
-                  </div>
-                </div>
-                <Slider
-                  value={[settings.creatorCommissionRate]}
-                  onValueChange={(value) => setSettings({ ...settings, creatorCommissionRate: value[0] })}
-                  min={15}
-                  max={60}
-                  step={5}
-                  className="w-full"
-                />
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>15%</span>
-                  <span>60%</span>
-                </div>
-              </div>
-
-              <div className="border-t pt-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <Label>{t('tieredCommission')}</Label>
-                    <p className="text-sm text-muted-foreground">{t('tieredCommissionDesc')}</p>
-                  </div>
-                  <Switch
-                    checked={settings.enableTieredCommission}
-                    onCheckedChange={(checked) => setSettings({ ...settings, enableTieredCommission: checked })}
-                  />
-                </div>
-
-                {settings.enableTieredCommission && (
-                  <div className="grid gap-4 md:grid-cols-2 mt-4 p-4 bg-muted/50 rounded-lg">
-                    <div className="space-y-2">
-                      <Label className="flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full bg-zinc-400" />
-                        {t('tierNormal')}
-                      </Label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="number"
-                          value={settings.tier1Rate}
-                          onChange={(e) => setSettings({ ...settings, tier1Rate: parseInt(e.target.value) || 0 })}
-                          className="w-20"
-                        />
-                        <span>%</span>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full bg-zinc-300" />
-                        {t('tierSilver')}
-                      </Label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="number"
-                          value={settings.tier2Rate}
-                          onChange={(e) => setSettings({ ...settings, tier2Rate: parseInt(e.target.value) || 0 })}
-                          className="w-20"
-                        />
-                        <span>%</span>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full bg-yellow-500" />
-                        {t('tierGold')}
-                      </Label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="number"
-                          value={settings.tier3Rate}
-                          onChange={(e) => setSettings({ ...settings, tier3Rate: parseInt(e.target.value) || 0 })}
-                          className="w-20"
-                        />
-                        <span>%</span>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full bg-purple-500" />
-                        {t('tierVip')}
-                      </Label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="number"
-                          value={settings.tier4Rate}
-                          onChange={(e) => setSettings({ ...settings, tier4Rate: parseInt(e.target.value) || 0 })}
-                          className="w-20"
-                        />
-                        <span>%</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-start gap-2 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-                <Info className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
-                <div className="text-sm">
-                  <p className="font-medium text-blue-500">{t('intlSettlementNote')}</p>
-                  <p className="text-muted-foreground mt-1">{t('intlSettlementNoteDesc')}</p>
-                </div>
-              </div>
-
-              <Button onClick={() => handleSave('commission')} disabled={loading} className="btn-gold">
-                {loading ? tc('loading') : tc('save')}
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Settlement Tab */}
-        <TabsContent value="settlement" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard className="h-5 w-5" />
-                {t('settlementTitle')}
-              </CardTitle>
-              <CardDescription>{t('settlementDesc')}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <Label>{t('settlementCycle')}</Label>
+          {/* 계좌 정보 */}
+          <SettingsSection
+            icon={CreditCard}
+            title="정산 계좌"
+            description="정산 주기와 계좌 정보를 설정합니다"
+          >
+            <div className="space-y-5">
+              {/* 정산 주기 */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium text-gray-700">정산 주기</Label>
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { value: 'weekly', label: t('weekly') },
-                    { value: 'biweekly', label: t('biweekly') },
-                    { value: 'monthly', label: t('monthly') },
+                    { value: 'weekly', label: '주간' },
+                    { value: 'biweekly', label: '격주' },
+                    { value: 'monthly', label: '월간' },
                   ].map((option) => (
                     <button
                       key={option.value}
                       type="button"
                       onClick={() => setSettings({ ...settings, settlementCycle: option.value })}
-                      className={`p-3 rounded-lg border-2 transition-all ${
+                      className={`p-3 rounded-xl border-2 text-sm font-medium transition-all ${
                         settings.settlementCycle === option.value
-                          ? 'border-primary bg-primary/10'
-                          : 'border-muted hover:border-primary/50'
+                          ? 'border-gray-900 bg-gray-900 text-white'
+                          : 'border-gray-200 text-gray-600 hover:border-gray-300'
                       }`}
                     >
                       {option.label}
@@ -962,51 +413,52 @@ export default function BrandSettingsPage() {
                 </div>
               </div>
 
+              {/* 최소 지급액 */}
               <div className="space-y-2">
-                <Label>{t('minimumPayout')}</Label>
-                <Input
-                  type="number"
-                  value={settings.minimumPayout}
-                  onChange={(e) => setSettings({ ...settings, minimumPayout: parseInt(e.target.value) || 0 })}
-                  placeholder="50"
-                />
-                <p className="text-xs text-muted-foreground">{t('minimumPayoutDesc')}</p>
+                <Label className="text-sm font-medium text-gray-700">최소 지급액</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">&#8361;</span>
+                  <Input
+                    type="number"
+                    value={settings.minimumPayout}
+                    onChange={(e) => setSettings({ ...settings, minimumPayout: parseInt(e.target.value) || 0 })}
+                    placeholder="10000"
+                    className="h-11 rounded-xl pl-7"
+                  />
+                </div>
+                <p className="text-xs text-gray-400">이 금액 이상일 때만 정산이 처리됩니다</p>
               </div>
 
-              {/* Bank Account Verification Section */}
-              <div className="border-t pt-6 space-y-4">
+              {/* 계좌 인증 */}
+              <div className="border-t border-gray-100 pt-5 space-y-4">
                 <div className="flex items-center justify-between">
-                  <h4 className="font-medium flex items-center gap-2">
-                    <ShieldCheck className="h-5 w-5" />
-                    계좌 인증 (팝빌 연동)
+                  <h4 className="font-semibold text-sm text-gray-900 flex items-center gap-2">
+                    <ShieldCheck className="h-4 w-4" />
+                    계좌 인증
                   </h4>
                   {settings.bankVerified && (
-                    <Badge className="bg-green-500/20 text-green-500 border-green-500/30">
-                      <Check className="h-3 w-3 mr-1" />
-                      인증 완료
+                    <Badge className="bg-green-500/20 text-green-600 border-green-500/30 rounded-lg">
+                      <Check className="h-3 w-3 mr-1" />인증 완료
                     </Badge>
                   )}
                 </div>
 
-                {/* Verification Status Box */}
                 {settings.bankVerified ? (
-                  <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-xl">
                     <div className="flex items-start gap-3">
-                      <ShieldCheck className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
+                      <ShieldCheck className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
                       <div className="flex-1">
-                        <p className="font-medium text-green-500">계좌 인증이 완료되었습니다</p>
-                        <div className="mt-2 grid gap-1 text-sm text-muted-foreground">
+                        <p className="font-medium text-green-700 text-sm">계좌 인증이 완료되었습니다</p>
+                        <div className="mt-2 grid gap-1 text-sm text-gray-600">
                           <p>은행: {settings.bankName}</p>
                           <p>예금주: {settings.accountHolder}</p>
                           <p>계좌번호: {settings.accountNumber?.replace(/(\d{3})(\d+)(\d{4})/, '$1-****-$3')}</p>
-                          {settings.bankVerifiedAt && (
-                            <p>인증일시: {settings.bankVerifiedAt}</p>
-                          )}
+                          {settings.bankVerifiedAt && <p>인증일시: {settings.bankVerifiedAt}</p>}
                         </div>
                         <Button
                           variant="outline"
                           size="sm"
-                          className="mt-3"
+                          className="mt-3 rounded-xl"
                           onClick={() => setSettings({ ...settings, bankVerified: false, bankVerifiedAt: '' })}
                         >
                           계좌 변경
@@ -1015,14 +467,14 @@ export default function BrandSettingsPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-4 p-4 bg-muted/50 rounded-lg border border-dashed border-border">
-                    <div className="flex items-start gap-2 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-                      <Info className="h-4 w-4 text-yellow-500 shrink-0 mt-0.5" />
-                      <p className="text-xs text-yellow-600">정산을 받으시려면 계좌 인증이 필요합니다. 사업자등록번호와 예금주명이 일치해야 인증이 완료됩니다.</p>
+                  <div className="space-y-4 p-4 bg-gray-50 rounded-xl">
+                    <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
+                      <Info className="h-4 w-4 text-yellow-600 shrink-0 mt-0.5" />
+                      <p className="text-xs text-yellow-700">정산을 받으시려면 계좌 인증이 필요합니다. 사업자등록번호와 예금주명이 일치해야 인증이 완료됩니다.</p>
                     </div>
 
                     <div className="space-y-2">
-                      <Label>은행 선택</Label>
+                      <Label className="text-sm font-medium text-gray-700">은행 선택</Label>
                       <select
                         value={settings.bankCode}
                         onChange={(e) => {
@@ -1036,13 +488,9 @@ export default function BrandSettingsPage() {
                             '048': '신협', '071': '우체국', '089': '케이뱅크',
                             '090': '카카오뱅크', '092': '토스뱅크',
                           };
-                          setSettings({
-                            ...settings,
-                            bankCode: selected,
-                            bankName: bankNames[selected] || '',
-                          });
+                          setSettings({ ...settings, bankCode: selected, bankName: bankNames[selected] || '' });
                         }}
-                        className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                        className="w-full h-11 px-3 rounded-xl border border-gray-200 bg-white text-sm"
                       >
                         <option value="">은행을 선택하세요</option>
                         <option value="004">국민은행</option>
@@ -1068,37 +516,26 @@ export default function BrandSettingsPage() {
                       </select>
                     </div>
 
-                    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label>계좌번호 (숫자만 입력)</Label>
+                        <Label className="text-sm font-medium text-gray-700">계좌번호</Label>
                         <Input
-                          placeholder="1234567890123"
+                          placeholder="숫자만 입력"
                           value={settings.accountNumber}
-                          onChange={(e) => {
-                            const val = e.target.value.replace(/[^0-9]/g, '');
-                            setSettings({ ...settings, accountNumber: val });
-                          }}
+                          onChange={(e) => setSettings({ ...settings, accountNumber: e.target.value.replace(/[^0-9]/g, '') })}
                           maxLength={16}
+                          className="h-11 rounded-xl"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>예금주명</Label>
+                        <Label className="text-sm font-medium text-gray-700">예금주명</Label>
                         <Input
                           placeholder="(주)브랜드명"
                           value={settings.accountHolder}
                           onChange={(e) => setSettings({ ...settings, accountHolder: e.target.value })}
+                          className="h-11 rounded-xl"
                         />
                       </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>사업자등록번호</Label>
-                      <Input
-                        placeholder="000-00-00000"
-                        value={settings.businessNumber}
-                        onChange={(e) => setSettings({ ...settings, businessNumber: e.target.value })}
-                      />
-                      <p className="text-xs text-muted-foreground">예금주와 사업자등록번호가 일치해야 인증이 가능합니다.</p>
                     </div>
 
                     <Button
@@ -1113,57 +550,428 @@ export default function BrandSettingsPage() {
                         }
                         setLoading(true);
                         try {
-                          // Popbill bank verification API call
-                          // In production: POST to /api/popbill/verify-bank
-                          // For now, simulate verification with local validation
                           await new Promise(resolve => setTimeout(resolve, 1500));
-
                           const now = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
-                          setSettings(prev => ({
-                            ...prev,
-                            bankVerified: true,
-                            bankVerifiedAt: now,
-                          }));
+                          setSettings(prev => ({ ...prev, bankVerified: true, bankVerifiedAt: now }));
                           toast.success('계좌 인증이 완료되었습니다');
-                        } catch (err) {
+                        } catch {
                           toast.error('계좌 인증에 실패했습니다. 정보를 확인해주세요.');
                         } finally {
                           setLoading(false);
                         }
                       }}
                       disabled={loading || !settings.bankCode || !settings.accountNumber || !settings.accountHolder}
-                      className="w-full btn-gold"
+                      className="w-full btn-gold h-11 rounded-xl font-medium"
                     >
                       {loading ? (
-                        <><span className="animate-spin mr-2">&#9696;</span> 인증 진행 중...</>
+                        <><Loader2 className="w-4 h-4 animate-spin mr-2" />인증 진행 중...</>
                       ) : (
-                        <><ShieldCheck className="mr-2 h-4 w-4" /> 계좌 실명 인증</>
+                        <><ShieldCheck className="mr-2 h-4 w-4" />계좌 실명 인증</>
                       )}
                     </Button>
                   </div>
                 )}
 
-                <div className="flex items-start gap-2 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-                  <Info className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
-                  <div className="text-sm">
-                    <p className="font-medium text-blue-500">정산 계좌 안내</p>
-                    <ul className="mt-2 text-xs text-muted-foreground space-y-1">
-                      <li>- 팝빌(Popbill) 계좌 실명인증을 통해 안전하게 확인됩니다</li>
-                      <li>- 사업자 명의의 계좌만 등록 가능합니다</li>
-                      <li>- 인증 완료 후 정산이 자동으로 진행됩니다</li>
-                      <li>- 계좌 변경 시 재인증이 필요합니다</li>
-                    </ul>
+                <div className="flex items-start gap-2 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                  <Info className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
+                  <div className="text-xs text-gray-600 space-y-0.5">
+                    <p>계좌 실명인증을 통해 안전하게 확인됩니다</p>
+                    <p>사업자 명의의 계좌만 등록 가능합니다</p>
+                    <p>인증 완료 후 정산이 자동으로 진행됩니다</p>
                   </div>
                 </div>
               </div>
 
-              <Button onClick={() => handleSave('settlement')} disabled={loading} className="btn-gold">
-                {loading ? tc('loading') : tc('save')}
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+              <SaveButton section="settlement" />
+            </div>
+          </SettingsSection>
+
+          {/* 수수료 설정 */}
+          <SettingsSection
+            icon={Percent}
+            title="수수료 설정"
+            description="크리에이터 판매 수수료율을 관리합니다"
+          >
+            <div className="space-y-5">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium text-gray-700">기본 수수료율</Label>
+                  <span className="text-2xl font-bold text-gray-900">{settings.creatorCommissionRate}%</span>
+                </div>
+                <Slider
+                  value={[settings.creatorCommissionRate]}
+                  onValueChange={(value) => setSettings({ ...settings, creatorCommissionRate: value[0] })}
+                  min={15}
+                  max={60}
+                  step={5}
+                  className="w-full"
+                />
+                <div className="flex justify-between text-xs text-gray-400">
+                  <span>15%</span>
+                  <span>60%</span>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-100 pt-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">등급별 수수료</p>
+                    <p className="text-xs text-gray-400 mt-0.5">크리에이터 등급에 따라 다른 수수료율 적용</p>
+                  </div>
+                  <Switch
+                    checked={settings.enableTieredCommission}
+                    onCheckedChange={(checked) => setSettings({ ...settings, enableTieredCommission: checked })}
+                  />
+                </div>
+
+                {settings.enableTieredCommission && (
+                  <div className="grid grid-cols-2 gap-3 p-4 bg-gray-50 rounded-xl">
+                    {[
+                      { key: 'tier1Rate', label: '일반', color: 'bg-gray-400' },
+                      { key: 'tier2Rate', label: '실버', color: 'bg-gray-300' },
+                      { key: 'tier3Rate', label: '골드', color: 'bg-yellow-500' },
+                      { key: 'tier4Rate', label: 'VIP', color: 'bg-purple-500' },
+                    ].map(tier => (
+                      <div key={tier.key} className="space-y-1.5">
+                        <Label className="flex items-center gap-2 text-xs text-gray-600">
+                          <span className={`w-2.5 h-2.5 rounded-full ${tier.color}`} />
+                          {tier.label}
+                        </Label>
+                        <div className="flex items-center gap-1.5">
+                          <Input
+                            type="number"
+                            value={settings[tier.key as keyof typeof settings] as number}
+                            onChange={(e) => setSettings({ ...settings, [tier.key]: parseInt(e.target.value) || 0 })}
+                            className="h-9 rounded-lg w-20 text-sm"
+                          />
+                          <span className="text-sm text-gray-500">%</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <SaveButton section="commission" />
+            </div>
+          </SettingsSection>
+        </div>
+
+        {/* ━━━ RIGHT COLUMN ━━━ */}
+        <div className="space-y-5">
+
+          {/* 배송 설정 */}
+          <SettingsSection
+            icon={Truck}
+            title="배송 설정"
+            description="기본 배송비, 택배사, 반품 주소를 관리합니다"
+          >
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">기본 배송비</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">&#8361;</span>
+                    <Input
+                      type="number"
+                      placeholder="3000"
+                      value={settings.defaultShippingFee}
+                      onChange={(e) => setSettings({ ...settings, defaultShippingFee: Number(e.target.value) })}
+                      className="h-11 rounded-xl pl-7"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">무료배송 기준</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">&#8361;</span>
+                    <Input
+                      type="number"
+                      placeholder="50000"
+                      value={settings.freeShippingThreshold}
+                      onChange={(e) => setSettings({ ...settings, freeShippingThreshold: Number(e.target.value) })}
+                      className="h-11 rounded-xl pl-7"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">기본 택배사</Label>
+                  <Select
+                    value={settings.defaultCourier}
+                    onValueChange={(v) => setSettings({ ...settings, defaultCourier: v })}
+                  >
+                    <SelectTrigger className="h-11 rounded-xl">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="epost">우체국택배</SelectItem>
+                      <SelectItem value="cj">CJ대한통운</SelectItem>
+                      <SelectItem value="hanjin">한진택배</SelectItem>
+                      <SelectItem value="lotte">롯데택배</SelectItem>
+                      <SelectItem value="logen">로젠택배</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">기본 수수료율</Label>
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      placeholder="15"
+                      min={0}
+                      max={100}
+                      value={settings.defaultCommissionRate}
+                      onChange={(e) => setSettings({ ...settings, defaultCommissionRate: Number(e.target.value) })}
+                      className="h-11 rounded-xl pr-8"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700">반품 주소</Label>
+                <Textarea
+                  placeholder="반품 수거 주소를 입력하세요"
+                  value={settings.returnAddress}
+                  onChange={(e) => setSettings({ ...settings, returnAddress: e.target.value })}
+                  rows={2}
+                  className="rounded-xl resize-none"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700">교환/반품 정책</Label>
+                <Textarea
+                  placeholder="교환/반품 정책을 입력하세요"
+                  value={settings.exchangePolicy}
+                  onChange={(e) => setSettings({ ...settings, exchangePolicy: e.target.value })}
+                  rows={3}
+                  className="rounded-xl resize-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-between rounded-xl border border-gray-200 p-4">
+                <div>
+                  <p className="font-medium text-sm text-gray-900">크리에이터 픽 허용</p>
+                  <p className="text-xs text-gray-400 mt-0.5">크리에이터가 직접 상품을 선택할 수 있도록 허용합니다</p>
+                </div>
+                <Switch
+                  checked={settings.allowCreatorPickGlobal}
+                  onCheckedChange={(checked) => setSettings({ ...settings, allowCreatorPickGlobal: checked })}
+                />
+              </div>
+
+              <SaveButton section="product_shipping" />
+            </div>
+          </SettingsSection>
+
+          {/* 브랜드 라인 */}
+          <SettingsSection
+            icon={Tags}
+            title="브랜드 라인"
+            description="회사 내 여러 브랜드 라인을 관리합니다"
+            collapsible
+            defaultOpen={false}
+          >
+            <div className="space-y-4">
+              <div className="flex justify-end">
+                <Button size="sm" onClick={() => setShowAddBrandLine(true)} className="btn-gold rounded-xl">
+                  <Plus className="h-4 w-4 mr-1" />추가
+                </Button>
+              </div>
+
+              {showAddBrandLine && (
+                <div className="p-4 bg-gray-50 rounded-xl space-y-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-gray-600">라인명 *</Label>
+                      <Input placeholder="브랜드 라인명" value={newBrandLine.name} onChange={(e) => setNewBrandLine({ ...newBrandLine, name: e.target.value })} className="h-10 rounded-xl" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-gray-600">설명</Label>
+                      <Input placeholder="간단한 설명" value={newBrandLine.description} onChange={(e) => setNewBrandLine({ ...newBrandLine, description: e.target.value })} className="h-10 rounded-xl" />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={handleAddBrandLine} className="btn-gold rounded-xl">추가</Button>
+                    <Button size="sm" variant="outline" onClick={() => setShowAddBrandLine(false)} className="rounded-xl">취소</Button>
+                  </div>
+                </div>
+              )}
+
+              {brandLines.length === 0 && !showAddBrandLine ? (
+                <div className="text-center py-8">
+                  <Tags className="mx-auto h-10 w-10 text-gray-300" />
+                  <p className="mt-3 text-sm text-gray-500">등록된 브랜드 라인이 없습니다</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {brandLines.map((line) => (
+                    <div key={line.id} className="flex items-center gap-3 p-3 border border-gray-100 rounded-xl">
+                      <input type="file" accept="image/*" className="hidden" id={`logo-${line.id}`} onChange={(e) => handleLogoUpload(line.id, e)} />
+                      <label htmlFor={`logo-${line.id}`} className="block w-12 h-12 rounded-xl border-2 border-dashed border-gray-200 hover:border-gray-400 cursor-pointer overflow-hidden transition-colors shrink-0">
+                        {uploadingLogo === line.id ? (
+                          <div className="w-full h-full flex items-center justify-center bg-gray-50"><Loader2 className="h-4 w-4 animate-spin" /></div>
+                        ) : line.logo_url ? (
+                          <Image src={line.logo_url} alt={line.name} width={48} height={48} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gray-50"><ImageIcon className="h-4 w-4 text-gray-300" /></div>
+                        )}
+                      </label>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{line.name}</p>
+                        {line.description && <p className="text-xs text-gray-400 truncate">{line.description}</p>}
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={() => handleRemoveBrandLine(line.id)} className="text-red-500 hover:text-red-600 shrink-0">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <SaveButton section="brand_lines" />
+            </div>
+          </SettingsSection>
+
+          {/* 인증서 관리 */}
+          <SettingsSection
+            icon={ShieldCheck}
+            title="인증서 관리"
+            description="사업자 인증서, 제품 인증서를 관리합니다"
+            collapsible
+            defaultOpen={false}
+          >
+            <div className="space-y-4">
+              {certifications.length > 0 && (
+                <div className="space-y-2">
+                  {certifications.map((cert) => (
+                    <div key={cert.id} className="flex items-center justify-between p-3 border border-gray-100 rounded-xl">
+                      <div className="flex items-center gap-3">
+                        <FileText className="h-4 w-4 text-gray-400" />
+                        <div>
+                          <p className="font-medium text-sm">{cert.name}</p>
+                          <p className="text-xs text-gray-400">
+                            {cert.issueDate && `${cert.issueDate}`}
+                            {cert.expiryDate && ` ~ ${cert.expiryDate}`}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {getCertStatusBadge(cert.status)}
+                        <Button variant="ghost" size="sm" onClick={() => handleRemoveCertification(cert.id)}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {showAddCert ? (
+                <div className="p-4 bg-gray-50 rounded-xl space-y-3">
+                  <h4 className="font-medium text-sm">인증서 추가</h4>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-gray-600">종류</Label>
+                      <select
+                        className="w-full h-10 px-3 rounded-xl border border-gray-200 bg-white text-sm"
+                        value={newCert.type}
+                        onChange={(e) => setNewCert({ ...newCert, type: e.target.value })}
+                      >
+                        <option value="">선택</option>
+                        {CERTIFICATION_TYPES.map((type) => (
+                          <option key={type.id} value={type.id}>{t(`certTypes.${type.nameKey}`)}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-gray-600">인증서명</Label>
+                      <Input placeholder="인증서 이름" value={newCert.name} onChange={(e) => setNewCert({ ...newCert, name: e.target.value })} className="h-10 rounded-xl" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-gray-600">발급일</Label>
+                      <Input type="date" value={newCert.issueDate} onChange={(e) => setNewCert({ ...newCert, issueDate: e.target.value })} className="h-10 rounded-xl" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-gray-600">만료일</Label>
+                      <Input type="date" value={newCert.expiryDate} onChange={(e) => setNewCert({ ...newCert, expiryDate: e.target.value })} className="h-10 rounded-xl" />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={handleAddCertification} disabled={!newCert.type || !newCert.name} className="btn-gold rounded-xl">추가</Button>
+                    <Button size="sm" variant="outline" onClick={() => setShowAddCert(false)} className="rounded-xl">취소</Button>
+                  </div>
+                </div>
+              ) : (
+                <Button variant="outline" onClick={() => setShowAddCert(true)} className="w-full rounded-xl">
+                  <ShieldCheck className="h-4 w-4 mr-2" />인증서 추가
+                </Button>
+              )}
+
+              <SaveButton section="certifications" />
+            </div>
+          </SettingsSection>
+
+          {/* 배송 국가 */}
+          <SettingsSection
+            icon={Globe}
+            title="배송 가능 국가"
+            description="해외 배송 가능 국가를 설정합니다"
+            collapsible
+            defaultOpen={false}
+          >
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-500">{shippingCountries.length}개국 선택됨</p>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={selectAll} className="rounded-xl text-xs">전체 선택</Button>
+                  <Button variant="outline" size="sm" onClick={deselectAll} className="rounded-xl text-xs">전체 해제</Button>
+                </div>
+              </div>
+
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {SHIPPING_REGIONS.map((region) => (
+                  <div key={region.id} className="border border-gray-100 rounded-xl p-3">
+                    <div className="flex items-center gap-3 mb-2">
+                      <Checkbox
+                        id={`region-${region.id}`}
+                        checked={isRegionFullySelected(region.id)}
+                        className={isRegionPartiallySelected(region.id) ? 'data-[state=unchecked]:bg-primary/30' : ''}
+                        onCheckedChange={() => toggleRegion(region.id)}
+                      />
+                      <Label htmlFor={`region-${region.id}`} className="text-sm font-semibold cursor-pointer">
+                        {t(`regions.${region.nameKey}`)}
+                      </Label>
+                      <Badge variant="secondary" className="ml-auto text-[10px]">
+                        {region.countries.filter(c => shippingCountries.includes(c.code)).length}/{region.countries.length}
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5 ml-6">
+                      {region.countries.map((country) => (
+                        <div key={country.code} className="flex items-center gap-2">
+                          <Checkbox
+                            id={`country-${country.code}`}
+                            checked={shippingCountries.includes(country.code)}
+                            onCheckedChange={() => toggleCountry(country.code)}
+                          />
+                          <Label htmlFor={`country-${country.code}`} className="text-xs cursor-pointer">{t(`countries.${country.nameKey}`)}</Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <SaveButton section="shipping" />
+            </div>
+          </SettingsSection>
+        </div>
+      </div>
     </div>
   );
 }
