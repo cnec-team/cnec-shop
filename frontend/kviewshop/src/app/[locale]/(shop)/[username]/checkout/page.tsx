@@ -12,8 +12,10 @@ import {
   Minus,
   Plus,
   X,
+  Search,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import DaumPostcodeEmbed, { type Address } from 'react-daum-postcode';
 
 // =============================================
 // Helpers
@@ -79,6 +81,7 @@ export default function CheckoutPage() {
   const [deliveryMemo, setDeliveryMemo] = useState('선택하세요');
 
   const [depositorName, setDepositorName] = useState('');
+  const [postcodeOpen, setPostcodeOpen] = useState(false);
   const [form, setForm] = useState({
     name: '',
     phone: '',
@@ -87,6 +90,28 @@ export default function CheckoutPage() {
     addressDetail: '',
     zipcode: '',
   });
+
+  const handlePostcodeComplete = (data: Address) => {
+    let fullAddress = data.address;
+    let extraAddress = '';
+
+    if (data.addressType === 'R') {
+      if (data.bname !== '') {
+        extraAddress += data.bname;
+      }
+      if (data.buildingName !== '') {
+        extraAddress += extraAddress !== '' ? `, ${data.buildingName}` : data.buildingName;
+      }
+      fullAddress += extraAddress !== '' ? ` (${extraAddress})` : '';
+    }
+
+    setForm((prev) => ({
+      ...prev,
+      zipcode: data.zonecode,
+      address: fullAddress,
+    }));
+    setPostcodeOpen(false);
+  };
 
   // Load checkout data
   useEffect(() => {
@@ -533,22 +558,32 @@ export default function CheckoutPage() {
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-gray-500">우편번호 *</label>
-              <input
-                type="text"
-                value={form.zipcode}
-                onChange={(e) => setForm({ ...form, zipcode: e.target.value })}
-                placeholder="12345"
-                className="w-full h-11 px-4 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-300"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={form.zipcode}
+                  readOnly
+                  placeholder="주소 검색을 눌러주세요"
+                  className="flex-1 h-11 px-4 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-300 bg-gray-50 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setPostcodeOpen(true)}
+                  className="shrink-0 h-11 px-4 bg-gray-900 text-white text-sm font-medium rounded-xl hover:bg-gray-800 transition-colors flex items-center gap-1.5"
+                >
+                  <Search className="w-4 h-4" />
+                  주소 검색
+                </button>
+              </div>
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-gray-500">주소 *</label>
               <input
                 type="text"
                 value={form.address}
-                onChange={(e) => setForm({ ...form, address: e.target.value })}
-                placeholder="서울특별시 강남구 테헤란로 123"
-                className="w-full h-11 px-4 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-300"
+                readOnly
+                placeholder="주소 검색을 눌러주세요"
+                className="w-full h-11 px-4 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-300 bg-gray-50 focus:outline-none"
               />
             </div>
             <div className="space-y-1.5">
@@ -678,6 +713,35 @@ export default function CheckoutPage() {
           </button>
         </div>
       </div>
+
+      {/* Daum Postcode Modal */}
+      {postcodeOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setPostcodeOpen(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <h3 className="text-base font-semibold text-gray-900">주소 검색</h3>
+              <button
+                type="button"
+                onClick={() => setPostcodeOpen(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <DaumPostcodeEmbed
+              onComplete={handlePostcodeComplete}
+              style={{ height: 480 }}
+              autoClose={false}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
