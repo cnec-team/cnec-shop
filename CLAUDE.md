@@ -106,3 +106,9 @@ CNEC Shop -- K-뷰티 크리에이터 커머스 플랫폼 (Next.js + Prisma + Ra
 ---
 
 *최종 업데이트: 2026-04-08*
+
+## Git 자동화 규칙
+- 작업 완료 후 반드시 커밋 + 푸시 + main 머지까지 자동 실행
+- PR 생성 불필요, 직접 머지
+- git checkout main && git pull origin main && git merge [브랜치] --no-ff && git push origin main
+- 중간에 질문하지 말고 끝까지 자율 실행
