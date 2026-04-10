@@ -204,7 +204,10 @@ export default function CheckoutPage() {
     }
   }, [buyer, user]);
 
-  // Daum Postcode API
+  // Daum Postcode API — embedded modal (모바일 팝업 차단 우회)
+  const [showAddressModal, setShowAddressModal] = useState(false);
+  const addressEmbedRef = useRef<HTMLDivElement>(null);
+
   const loadDaumPostcode = () => {
     return new Promise<void>((resolve) => {
       if ((window as any).daum?.Postcode) {
@@ -212,7 +215,7 @@ export default function CheckoutPage() {
         return;
       }
       const script = document.createElement('script');
-      script.src = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
+      script.src = 'https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
       script.onload = () => resolve();
       document.head.appendChild(script);
     });
@@ -220,19 +223,29 @@ export default function CheckoutPage() {
 
   const handleSearchAddress = async () => {
     await loadDaumPostcode();
+    setShowAddressModal(true);
+  };
+
+  useEffect(() => {
+    if (!showAddressModal || !addressEmbedRef.current) return;
+    const container = addressEmbedRef.current;
+    container.innerHTML = '';
     new (window as any).daum.Postcode({
-      oncomplete: (data: any) => {
+      oncomplete: (data: { zonecode: string; roadAddress: string; jibunAddress: string }) => {
         setShippingForm((prev) => ({
           ...prev,
           zipcode: data.zonecode,
           address: data.roadAddress || data.jibunAddress,
         }));
+        setShowAddressModal(false);
         setTimeout(() => {
           addressDetailRef.current?.focus();
         }, 100);
       },
-    }).open();
-  };
+      width: '100%',
+      height: '100%',
+    }).embed(container);
+  }, [showAddressModal]);
 
   const handleAddressSelect = (addressId: string) => {
     setSelectedAddressId(addressId);
@@ -907,6 +920,24 @@ export default function CheckoutPage() {
           </button>
         </div>
       </div>
+
+      {/* 주소 검색 모달 (embed 방식 — 모바일 팝업 차단 우회) */}
+      {showAddressModal && (
+        <div className="fixed inset-0 z-[100] bg-black/50 flex items-end sm:items-center justify-center">
+          <div className="bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl h-[85vh] sm:h-[520px] flex flex-col animate-in slide-in-from-bottom duration-200">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+              <h3 className="text-base font-semibold text-gray-900">주소 검색</h3>
+              <button
+                onClick={() => setShowAddressModal(false)}
+                className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+            <div ref={addressEmbedRef} className="flex-1 overflow-hidden" />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

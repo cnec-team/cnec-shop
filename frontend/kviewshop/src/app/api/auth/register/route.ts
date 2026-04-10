@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server'
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const { email, password, name, role, companyName, businessNumber, shopId, shopName, instagram, tiktok, youtube, profileImageUrl, refCode } = body
+    const { email, password, name, role, companyName, businessNumber, shopId, shopName, instagram, tiktok, youtube, profileImageUrl, refCode, phone } = body
 
     if (!email || !password || !name || !role) {
       return NextResponse.json({ error: '필수 항목을 입력해주세요' }, { status: 400 })
@@ -22,7 +22,7 @@ export async function POST(req: Request) {
 
     // Create user
     const user = await prisma.user.create({
-      data: { email, name, passwordHash, role }
+      data: { email, name, passwordHash, role, phone: phone || null }
     })
 
     // Create role-specific profile
@@ -65,6 +65,15 @@ export async function POST(req: Request) {
       }
 
       return NextResponse.json({ success: true, userId: user.id, creatorId: creator.id })
+    } else if (role === 'buyer') {
+      // 구매자 프로필 생성 (회원가입 시 바로 생성)
+      await prisma.buyer.create({
+        data: {
+          userId: user.id,
+          nickname: name,
+          phone: phone || null,
+        }
+      })
     }
 
     return NextResponse.json({ success: true, userId: user.id })
