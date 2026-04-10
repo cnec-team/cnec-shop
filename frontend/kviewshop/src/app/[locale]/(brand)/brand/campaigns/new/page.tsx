@@ -23,6 +23,7 @@ import {
   Info,
   X,
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 type CampaignType = 'GONGGU' | 'ALWAYS';
 type RecruitmentType = 'OPEN' | 'APPROVAL';
@@ -242,6 +243,7 @@ export default function NewCampaignPage() {
         })),
       });
 
+      toast.success('캠페인이 생성되었습니다');
       if (campaignType === 'GONGGU') {
         router.push('../campaigns/gonggu');
       } else {
@@ -250,6 +252,7 @@ export default function NewCampaignPage() {
     } catch (err) {
       console.error('Failed to create campaign:', err);
       setError('캠페인 생성에 실패했습니다. 다시 시도해주세요.');
+      toast.error('캠페인 생성에 실패했습니다. 다시 시도해주세요');
     } finally {
       setIsSaving(false);
     }

@@ -1,37 +1,21 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useParams } from 'next/navigation';
-import Link from 'next/link';
+import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { calculateDDay, getDDayLabel } from '@/lib/utils/date';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import {
   Megaphone,
   Users,
-  Loader2,
   ArrowRight,
   Clock,
 } from 'lucide-react';
-import { toast } from 'sonner';
-import { formatCurrency } from '@/lib/i18n/config';
 import { BrandBadge } from '@/components/common/BrandBadge';
 import {
   getCreatorSession,
   getAvailableCampaigns,
   getMyParticipations,
-  applyCampaignParticipation,
-  addCampaignShopItems,
 } from '@/lib/actions/creator';
 
 type CampaignStatus = 'RECRUITING' | 'ACTIVE' | 'ENDED' | 'PAUSED' | 'DRAFT';
@@ -97,24 +81,17 @@ const PARTICIPATION_BADGE: Record<string, string> = {
 
 export default function CreatorCampaignsPage() {
   const params = useParams();
+  const router = useRouter();
   const locale = params.locale as string;
-  const [creator, setCreator] = useState<{ id: string } | null>(null);
   const [campaigns, setCampaigns] = useState<CampaignWithDetails[]>([]);
   const [myParticipations, setMyParticipations] = useState<MyParticipation[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'recruiting' | 'my'>('recruiting');
 
-  // Apply dialog
-  const [applyOpen, setApplyOpen] = useState(false);
-  const [applyingCampaign, setApplyingCampaign] = useState<CampaignWithDetails | null>(null);
-  const [applyMessage, setApplyMessage] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-
   useEffect(() => {
     let cancelled = false;
     async function fetchData() {
       const creatorData = await getCreatorSession();
-      if (creatorData && !cancelled) setCreator(creatorData as any);
 
       try {
         const [campaignData, participationData] = await Promise.all([
@@ -151,47 +128,6 @@ export default function CreatorCampaignsPage() {
   const getEstimatedEarnings = (campaign: CampaignWithDetails) => {
     const avgPrice = (campaign.products ?? []).reduce((sum, p) => sum + Number(p.campaignPrice), 0) / Math.max((campaign.products ?? []).length, 1);
     return Math.round(avgPrice * Number(campaign.commissionRate));
-  };
-
-  const handleApplyApproval = (campaign: CampaignWithDetails) => {
-    setApplyingCampaign(campaign);
-    setApplyMessage('');
-    setApplyOpen(true);
-  };
-
-  const handleSubmitApply = async () => {
-    if (!creator || !applyingCampaign) return;
-    setSubmitting(true);
-    try {
-      await applyCampaignParticipation({
-        campaignId: applyingCampaign.id,
-        status: 'PENDING',
-        message: applyMessage.trim() || undefined,
-      });
-      toast.success('공구 참여 신청이 완료되었습니다. 내 샵에 자동 추가됩니다');
-      setApplyOpen(false);
-    } catch (error: any) {
-      if (error?.message?.includes('Unique')) toast.error('이미 공구 참여한 캠페인입니다');
-      else toast.error('참여에 실패했습니다');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleJoinOpen = async (campaign: CampaignWithDetails) => {
-    if (!creator) return;
-    setSubmitting(true);
-    try {
-      await applyCampaignParticipation({ campaignId: campaign.id, status: 'APPROVED' });
-      const productIds = (campaign.products ?? []).map((cp) => cp.productId);
-      if (productIds.length > 0) await addCampaignShopItems(campaign.id, productIds);
-      toast.success('공구 참여가 완료되었습니다. 내 샵에 자동 추가됩니다');
-    } catch (error: any) {
-      if (error?.message?.includes('Unique')) toast.error('이미 참여 중인 캠페인입니다');
-      else toast.error('참여에 실패했습니다');
-    } finally {
-      setSubmitting(false);
-    }
   };
 
   if (loading) {
@@ -254,7 +190,11 @@ export default function CreatorCampaignsPage() {
               const earnings = getEstimatedEarnings(campaign);
 
               return (
-                <div key={campaign.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col">
+                <div
+                  key={campaign.id}
+                  className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col cursor-pointer hover:border-gray-300 transition-colors"
+                  onClick={() => router.push(`/${locale}/creator/campaigns/${campaign.id}`)}
+                >
                   {/* Top row */}
                   <div className="flex items-center justify-between mb-3">
                     <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${STATUS_BADGE[campaign.status] || ''}`}>
@@ -293,24 +233,15 @@ export default function CreatorCampaignsPage() {
                   </div>
 
                   {/* Action */}
-                  <div className="mt-4">
-                    {campaign.recruitmentType === 'APPROVAL' ? (
-                      <Button
-                        className="w-full h-10 bg-gray-900 text-white hover:bg-gray-800 rounded-xl text-sm"
-                        onClick={() => handleApplyApproval(campaign)}
-                        disabled={submitting}
-                      >
-                        참여하기
-                      </Button>
-                    ) : (
-                      <Button
-                        className="w-full h-10 bg-gray-900 text-white hover:bg-gray-800 rounded-xl text-sm"
-                        onClick={() => handleJoinOpen(campaign)}
-                        disabled={submitting}
-                      >
-                        {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : '바로 참여'}
-                      </Button>
-                    )}
+                  <div className="mt-4" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      variant="outline"
+                      className="w-full h-10 rounded-xl text-sm border-gray-200 hover:bg-gray-50 flex items-center justify-center gap-1"
+                      onClick={() => router.push(`/${locale}/creator/campaigns/${campaign.id}`)}
+                    >
+                      자세히 보기
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
                 </div>
               );
@@ -339,7 +270,11 @@ export default function CreatorCampaignsPage() {
               const dDay = getDDay(campaign.endAt);
 
               return (
-                <div key={p.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-4">
+                <div
+                  key={p.id}
+                  className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-4 cursor-pointer hover:border-gray-300 transition-colors"
+                  onClick={() => router.push(`/${locale}/creator/campaigns/${campaign.id}`)}
+                >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${STATUS_BADGE[campaign.status] || 'bg-gray-100 text-gray-600'}`}>
@@ -363,40 +298,6 @@ export default function CreatorCampaignsPage() {
         )
       )}
 
-      {/* Apply Dialog */}
-      <Dialog open={applyOpen} onOpenChange={setApplyOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>공구 참여</DialogTitle>
-            <DialogDescription>{applyingCampaign?.title}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>참여 메시지 (선택)</Label>
-              <Textarea
-                placeholder="브랜드에 전달할 메시지를 입력하세요"
-                value={applyMessage}
-                onChange={(e) => setApplyMessage(e.target.value)}
-                rows={4}
-              />
-            </div>
-            {applyingCampaign?.conditions && (
-              <div className="p-3 bg-gray-50 rounded-xl">
-                <p className="text-xs font-medium text-gray-500 mb-1">참여 조건</p>
-                <p className="text-sm text-gray-700">{applyingCampaign.conditions}</p>
-              </div>
-            )}
-          </div>
-          <DialogFooter className="flex-row gap-2">
-            <Button variant="outline" onClick={() => setApplyOpen(false)} className="flex-1 rounded-xl h-12">
-              취소
-            </Button>
-            <Button onClick={handleSubmitApply} disabled={submitting} className="flex-1 bg-gray-900 text-white hover:bg-gray-800 rounded-xl h-12">
-              {submitting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />참여 중...</> : '공구 참여하기'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

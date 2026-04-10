@@ -238,10 +238,12 @@ export default function NewProductPage() {
         defaultCommissionRate: commissionRate,
       });
 
+      toast.success('상품이 등록되었습니다');
       router.push('../products');
     } catch (err) {
       console.error('Failed to create product:', err);
       setError('상품 등록에 실패했습니다. 다시 시도해주세요.');
+      toast.error('상품 등록에 실패했습니다. 다시 시도해주세요');
     } finally {
       setIsSaving(false);
     }

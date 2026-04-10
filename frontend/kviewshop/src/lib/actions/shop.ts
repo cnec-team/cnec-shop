@@ -300,11 +300,17 @@ export async function getOrderComplete(orderNumber: string) {
 
 // ==================== Order Lookup ====================
 
-export async function lookupOrder(orderNumber: string, buyerPhone: string) {
+export async function lookupOrder(orderNumber: string, phone: string) {
+  const trimmedOrderNumber = orderNumber.trim()
+  const trimmedPhone = phone.trim()
+
   const order = await prisma.order.findFirst({
     where: {
-      orderNumber: orderNumber.trim(),
-      buyerPhone: buyerPhone.trim(),
+      orderNumber: trimmedOrderNumber,
+      OR: [
+        { buyerPhone: trimmedPhone },
+        { customerPhone: trimmedPhone },
+      ],
     },
     include: {
       items: {
