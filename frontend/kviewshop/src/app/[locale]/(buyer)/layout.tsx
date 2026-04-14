@@ -7,6 +7,7 @@ import { useUser } from '@/lib/hooks/use-user';
 import { Loader2, Home, ShoppingBag, Heart, Star, Bell, Settings, LogOut, User, Gift, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { LegalFooter } from '@/components/shop/legal-footer';
 
 const buyerNavItems = [
   { href: '/buyer/dashboard', label: '홈', icon: Home },
@@ -31,19 +32,23 @@ export default function BuyerLayout({
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const redirectedRef = useRef(false);
 
+  // Use stable primitives as dependencies instead of object references
+  const userId = user?.id;
+  const userRole = user?.role;
+
   useEffect(() => {
     if (isLoading || redirectedRef.current) return;
 
-    if (!user) {
+    if (!userId) {
       redirectedRef.current = true;
       router.push(`/${locale}/buyer/login`);
-    } else if (user.role !== 'buyer') {
+    } else if (userRole && userRole !== 'buyer') {
       redirectedRef.current = true;
-      if (user.role === 'creator') router.push(`/${locale}/creator/dashboard`);
-      else if (user.role === 'brand_admin') router.push(`/${locale}/brand/dashboard`);
-      else if (user.role === 'super_admin') router.push(`/${locale}/admin/dashboard`);
+      if (userRole === 'creator') router.push(`/${locale}/creator/dashboard`);
+      else if (userRole === 'brand_admin') router.push(`/${locale}/brand/dashboard`);
+      else if (userRole === 'super_admin') router.push(`/${locale}/admin/dashboard`);
     }
-  }, [user, isLoading, router, locale]);
+  }, [userId, userRole, isLoading, router, locale]);
 
   if (isLoading) {
     return (
@@ -132,6 +137,9 @@ export default function BuyerLayout({
           {children}
         </main>
       </div>
+
+      {/* Legal Footer */}
+      <LegalFooter locale={locale} />
 
       {/* Mobile Bottom Nav */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 border-t border-border/50 bg-background/95 backdrop-blur">

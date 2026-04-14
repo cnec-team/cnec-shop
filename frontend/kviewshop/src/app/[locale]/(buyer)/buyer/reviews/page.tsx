@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { useUser } from '@/lib/hooks/use-user';
 import { getBuyerReviewsData, submitReview } from '@/lib/actions/buyer';
@@ -43,12 +43,16 @@ export default function BuyerReviewsPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    const loadData = async () => {
-      if (!buyer) return;
+  const buyerId = buyer?.id;
+  const fetchedRef = useRef(false);
 
+  useEffect(() => {
+    if (!buyerId || fetchedRef.current) return;
+    fetchedRef.current = true;
+
+    const loadData = async () => {
       try {
-        const data = await getBuyerReviewsData(buyer.id);
+        const data = await getBuyerReviewsData(buyerId);
         setReviews(data.reviews || []);
         setPendingOrders(data.pendingOrders || []);
       } catch (error) {
@@ -59,11 +63,11 @@ export default function BuyerReviewsPage() {
     };
 
     loadData();
-  }, [buyer]);
+  }, [buyerId]);
 
   const handleSubmitReview = async () => {
     if (!buyer || !selectedProduct || !reviewForm.content) {
-      toast.error('Please fill in the review content');
+      toast.error('리뷰 내용을 입력해주세요');
       return;
     }
 
@@ -103,7 +107,7 @@ export default function BuyerReviewsPage() {
       );
     } catch (error) {
       console.error('Submit error:', error);
-      toast.error('Failed to submit review');
+      toast.error('리뷰 등록에 실패했습니다');
     } finally {
       setIsSubmitting(false);
     }

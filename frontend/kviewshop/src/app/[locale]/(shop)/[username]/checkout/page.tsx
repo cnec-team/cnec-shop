@@ -177,14 +177,16 @@ export default function CheckoutPage() {
     loadData();
   }, [username, items, locale, router]);
 
-  // Auto-fill for logged-in buyers
+  // Auto-fill for logged-in buyers — use stable primitives as deps
+  const buyerId = buyer?.id;
+  const userEmail = user?.email;
   useEffect(() => {
     if (!buyer) return;
     const b = buyer as any;
     setOrdererForm((prev) => ({
       name: prev.name || b.nickname || b.name || '',
       phone: prev.phone || b.phone || '',
-      email: prev.email || b.email || user?.email || '',
+      email: prev.email || b.email || userEmail || '',
     }));
     try {
       const raw = b.defaultShippingAddress;
@@ -203,7 +205,8 @@ export default function CheckoutPage() {
     } catch {
       // defaultShippingAddress parsing failed
     }
-  }, [buyer, user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [buyerId, userEmail]);
 
   // Daum Postcode API — embedded modal (모바일 팝업 차단 우회)
   const [showAddressModal, setShowAddressModal] = useState(false);
