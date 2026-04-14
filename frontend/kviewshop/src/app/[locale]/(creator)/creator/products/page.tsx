@@ -43,6 +43,7 @@ import { formatCurrency } from '@/lib/i18n/config';
 import { PRODUCT_CATEGORY_LABELS } from '@/types/database';
 import { formatEarnings } from '@/lib/utils/beauty-labels';
 import { PriceBadgeTag, PriceScoutSheet } from '@/components/creator/PriceScout';
+import { AiGonguTipButton } from '@/components/creator/AiGonguTipCard';
 import {
   getCreatorSession,
   getPickableProducts,
@@ -484,14 +485,16 @@ export default function CreatorProductsPage() {
                     <p className="text-xs text-earnings font-semibold mt-1">
                       팔면 ₩{earnings.toLocaleString()}
                     </p>
-                    {priceBadges[product.id] && (
-                      <button
-                        onClick={(e) => { e.preventDefault(); setPriceSheetProductId(product.id); }}
-                        className="mt-1.5 block"
-                      >
-                        <PriceBadgeTag badge={priceBadges[product.id]} />
-                      </button>
-                    )}
+                    <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                      {priceBadges[product.id] && (
+                        <button
+                          onClick={(e) => { e.preventDefault(); setPriceSheetProductId(product.id); }}
+                        >
+                          <PriceBadgeTag badge={priceBadges[product.id]} />
+                        </button>
+                      )}
+                      <AiGonguTipButton productId={product.id} />
+                    </div>
                   </div>
                 </Link>
 
