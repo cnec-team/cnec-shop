@@ -37,6 +37,7 @@ export const useAuthStore = create<AuthState>()(
         user: state.user,
         brand: state.brand,
         creator: state.creator,
+        buyer: state.buyer,
       }),
     }
   )

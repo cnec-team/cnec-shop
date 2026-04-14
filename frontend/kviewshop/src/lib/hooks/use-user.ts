@@ -1,8 +1,12 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useSession, signOut as nextAuthSignOut } from 'next-auth/react';
 import { useAuthStore } from '@/lib/store/auth';
+
+// Module-level flags shared across all useUser instances (prevents duplicate fetches)
+let _fetched = false;
+let _fetching = false;
 
 export function useUser() {
   const { data: session, status } = useSession();
@@ -18,33 +22,10 @@ export function useUser() {
     setBuyer,
     setLoading,
   } = useAuthStore();
-  const fetchedRef = useRef(false);
-  const fetchingRef = useRef(false);
 
-  useEffect(() => {
-    if (status === 'loading') {
-      return;
-    }
-
-    if (status === 'unauthenticated') {
-      setUser(null);
-      setBrand(null);
-      setCreator(null);
-      setBuyer(null);
-      setLoading(false);
-      fetchedRef.current = false;
-      return;
-    }
-
-    if (status === 'authenticated' && session?.user?.id && !fetchedRef.current) {
-      fetchUserData(session.user.id);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, session?.user?.id]);
-
-  const fetchUserData = async (userId: string) => {
-    if (fetchingRef.current || fetchedRef.current) return;
-    fetchingRef.current = true;
+  const fetchUserData = useCallback(async () => {
+    if (_fetching || _fetched) return;
+    _fetching = true;
     setLoading(true);
 
     try {
@@ -59,30 +40,48 @@ export function useUser() {
       if (data.brand) setBrand(data.brand);
       if (data.creator) setCreator(data.creator);
       if (data.buyer) setBuyer(data.buyer);
-      fetchedRef.current = true;
+      _fetched = true;
     } catch (error) {
       console.error('Error fetching user data:', error);
     } finally {
-      fetchingRef.current = false;
+      _fetching = false;
       setLoading(false);
     }
-  };
+  }, [setUser, setBrand, setCreator, setBuyer, setLoading]);
 
-  const signOut = async () => {
+  useEffect(() => {
+    if (status === 'loading') return;
+
+    if (status === 'unauthenticated') {
+      setUser(null);
+      setBrand(null);
+      setCreator(null);
+      setBuyer(null);
+      setLoading(false);
+      _fetched = false;
+      return;
+    }
+
+    if (status === 'authenticated' && session?.user?.id && !_fetched) {
+      fetchUserData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, session?.user?.id]);
+
+  const signOut = useCallback(async () => {
     await nextAuthSignOut({ redirect: false });
     setUser(null);
     setBrand(null);
     setCreator(null);
     setBuyer(null);
-    fetchedRef.current = false;
-  };
+    _fetched = false;
+  }, [setUser, setBrand, setCreator, setBuyer]);
 
-  const refetch = session?.user?.id
-    ? () => {
-        fetchedRef.current = false;
-        fetchUserData(session.user.id);
-      }
-    : undefined;
+  const refetch = useCallback(() => {
+    _fetched = false;
+    _fetching = false;
+    fetchUserData();
+  }, [fetchUserData]);
 
   return {
     user,
@@ -92,6 +91,6 @@ export function useUser() {
     isLoading: status === 'loading' || storeLoading,
     isAuthenticated: status === 'authenticated',
     signOut,
-    refetch,
+    refetch: session?.user?.id ? refetch : undefined,
   };
 }
