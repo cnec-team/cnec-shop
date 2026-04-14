@@ -130,6 +130,9 @@ export default function NewCampaignPage() {
   const [commissionRate, setCommissionRate] = useState('10');
   const [totalStock, setTotalStock] = useState('');
 
+  // Price Scout warnings
+  const [productsWithoutPrices, setProductsWithoutPrices] = useState<Set<string>>(new Set());
+
   // Step 4: Recruitment
   const [recruitmentType, setRecruitmentType] = useState<RecruitmentType>('OPEN');
   const [targetParticipants, setTargetParticipants] = useState('');
@@ -143,6 +146,25 @@ export default function NewCampaignPage() {
         setBrand(brandData);
         const data = await getActiveProducts(brandData.id);
         setProducts(data as any);
+
+        // Check which products have no channel prices
+        const noPriceIds = new Set<string>();
+        for (const p of data as Array<{ id: string }>) {
+          try {
+            const res = await fetch(`/api/brand/products/${p.id}/channel-prices`);
+            if (res.ok) {
+              const cpData = await res.json();
+              if (!cpData.channels || cpData.channels.length === 0) {
+                noPriceIds.add(p.id);
+              }
+            } else {
+              noPriceIds.add(p.id);
+            }
+          } catch {
+            noPriceIds.add(p.id);
+          }
+        }
+        setProductsWithoutPrices(noPriceIds);
       } catch (err) {
         console.error('Failed to fetch products:', err);
       } finally {
@@ -514,6 +536,15 @@ export default function NewCampaignPage() {
                     </div>
                   );
                 })}
+              </div>
+            )}
+
+            {selectedProducts.some((sp) => productsWithoutPrices.has(sp.productId)) && (
+              <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <span className="text-[13px] text-amber-800">
+                  선택한 상품 중 기존 채널 가격이 없는 상품이 있습니다. 상품 관리에서 입력해주세요.
+                </span>
               </div>
             )}
 

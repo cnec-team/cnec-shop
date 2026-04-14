@@ -26,8 +26,10 @@ import {
 } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Checkbox } from '@/components/ui/checkbox';
 import ImageUpload from '@/components/common/ImageUpload';
 import { toast } from 'sonner';
+import { AlertCircle } from 'lucide-react';
 
 const COURIERS = [
   { code: 'cj', name: 'CJ대한통운' },
@@ -77,6 +79,18 @@ export default function ProductDetailPage() {
   const [allowTrial, setAllowTrial] = useState(true);
   const [commissionRate, setCommissionRate] = useState('10');
 
+  // Channel prices (Price Scout)
+  const [channelCoupang, setChannelCoupang] = useState('');
+  const [channelNaver, setChannelNaver] = useState('');
+  const [channelOlive, setChannelOlive] = useState('');
+  const [channelSmart, setChannelSmart] = useState('');
+  const [channelCoupangUrl, setChannelCoupangUrl] = useState('');
+  const [channelNaverUrl, setChannelNaverUrl] = useState('');
+  const [channelOliveUrl, setChannelOliveUrl] = useState('');
+  const [channelSmartUrl, setChannelSmartUrl] = useState('');
+  const [isExclusive, setIsExclusive] = useState(false);
+  const [channelSaving, setChannelSaving] = useState(false);
+
   useEffect(() => {
     async function load() {
       try {
@@ -115,6 +129,23 @@ export default function ProductDetailPage() {
           setMainImage(imgs[0]);
           setAdditionalImages(imgs.slice(1));
         }
+
+        // Load channel prices
+        try {
+          const cpRes = await fetch(`/api/brand/products/${productId}/channel-prices`);
+          if (cpRes.ok) {
+            const cpData = await cpRes.json();
+            setIsExclusive(cpData.isExclusive ?? false);
+            for (const ch of cpData.channels ?? []) {
+              const p = String(ch.price);
+              const u = ch.url ?? '';
+              if (ch.name === '쿠팡') { setChannelCoupang(p); setChannelCoupangUrl(u); }
+              else if (ch.name === '네이버') { setChannelNaver(p); setChannelNaverUrl(u); }
+              else if (ch.name === '올리브영') { setChannelOlive(p); setChannelOliveUrl(u); }
+              else if (ch.name === '스마트스토어') { setChannelSmart(p); setChannelSmartUrl(u); }
+            }
+          }
+        } catch { /* channel prices optional */ }
       } catch {
         setError('상품을 불러오는 데 실패했습니다.');
       } finally {
@@ -138,6 +169,16 @@ export default function ProductDetailPage() {
     if (!salePrice || Number(salePrice) <= 0) {
       setError('판매가를 올바르게 입력해주세요.');
       toast.error('판매가를 올바르게 입력해주세요');
+      return;
+    }
+
+    // Channel price validation
+    const hasAnyChannel = [channelCoupang, channelNaver, channelOlive, channelSmart].some(
+      (v) => v && Number(v) > 0
+    );
+    if (!hasAnyChannel && !isExclusive) {
+      setError('최소 1개 채널의 판매가를 입력해주세요.');
+      toast.error('최소 1개 채널의 판매가를 입력해주세요');
       return;
     }
 
@@ -174,6 +215,20 @@ export default function ProductDetailPage() {
         allowCreatorPick,
         allowTrial,
         defaultCommissionRate: Number(commissionRate),
+      });
+
+      // Save channel prices
+      const channels = [
+        { name: '쿠팡', price: Number(channelCoupang) || 0, url: channelCoupangUrl },
+        { name: '네이버', price: Number(channelNaver) || 0, url: channelNaverUrl },
+        { name: '올리브영', price: Number(channelOlive) || 0, url: channelOliveUrl },
+        { name: '스마트스토어', price: Number(channelSmart) || 0, url: channelSmartUrl },
+      ].filter((c) => c.price > 0);
+
+      await fetch(`/api/brand/products/${productId}/channel-prices`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channels, isExclusive }),
       });
 
       toast.success('상품 정보가 저장되었습니다');
@@ -487,6 +542,57 @@ export default function ProductDetailPage() {
               placeholder="교환 및 환불 관련 정책을 입력하세요"
               rows={3}
             />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Channel Prices (Price Scout) */}
+      <Card>
+        <CardHeader>
+          <CardTitle>기존 채널 판매가</CardTitle>
+          <CardDescription>다른 판매 채널의 가격을 입력하세요. 크리에이터에게 가격 비교 정보가 제공됩니다.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {![channelCoupang, channelNaver, channelOlive, channelSmart].some(
+            (v) => v && Number(v) > 0
+          ) && !isExclusive && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+              최소 1개 채널의 판매가를 입력해주세요.
+            </div>
+          )}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>쿠팡 가격 (원)</Label>
+              <Input type="number" min="0" value={channelCoupang} onChange={(e) => setChannelCoupang(e.target.value)} placeholder="0" />
+              <Input value={channelCoupangUrl} onChange={(e) => setChannelCoupangUrl(e.target.value)} placeholder="쿠팡 상품 URL (선택)" className="text-xs" />
+            </div>
+            <div className="space-y-2">
+              <Label>네이버 가격 (원)</Label>
+              <Input type="number" min="0" value={channelNaver} onChange={(e) => setChannelNaver(e.target.value)} placeholder="0" />
+              <Input value={channelNaverUrl} onChange={(e) => setChannelNaverUrl(e.target.value)} placeholder="네이버 상품 URL (선택)" className="text-xs" />
+            </div>
+            <div className="space-y-2">
+              <Label>올리브영 가격 (원)</Label>
+              <Input type="number" min="0" value={channelOlive} onChange={(e) => setChannelOlive(e.target.value)} placeholder="0" />
+              <Input value={channelOliveUrl} onChange={(e) => setChannelOliveUrl(e.target.value)} placeholder="올리브영 상품 URL (선택)" className="text-xs" />
+            </div>
+            <div className="space-y-2">
+              <Label>스마트스토어 가격 (원)</Label>
+              <Input type="number" min="0" value={channelSmart} onChange={(e) => setChannelSmart(e.target.value)} placeholder="0" />
+              <Input value={channelSmartUrl} onChange={(e) => setChannelSmartUrl(e.target.value)} placeholder="스마트스토어 상품 URL (선택)" className="text-xs" />
+            </div>
+          </div>
+          <Separator />
+          <div className="flex items-center gap-3">
+            <Checkbox
+              id="isExclusive"
+              checked={isExclusive}
+              onCheckedChange={(checked) => setIsExclusive(checked as boolean)}
+            />
+            <label htmlFor="isExclusive" className="text-sm cursor-pointer">
+              이 상품은 크넥샵 독점 구성입니다
+            </label>
           </div>
         </CardContent>
       </Card>

@@ -271,6 +271,18 @@ enum LegalContentType {
   contact_info
 }
 
+enum PriceChannel {
+  BRAND_INPUT
+  NAVER_API
+}
+
+enum PriceBadgeType {
+  LOWEST
+  EXCLUSIVE
+  CAUTION
+  UNKNOWN
+}
+
 // ============================================================
 // USERS
 // ============================================================
@@ -555,6 +567,8 @@ model Product {
   buyerCarts         BuyerCart[]
   liveChatMessages   LiveChatMessage[]
   creatorContents    CreatorProductContent[]
+  priceData          ProductPriceData[]
+  priceBadge         PriceBadge?
 
   @@index([isActive])
   @@index([status])
@@ -1667,4 +1681,36 @@ model SystemSetting {
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("system_settings")
+}
+
+// ============================================================
+// PRICE SCOUT
+// ============================================================
+
+model ProductPriceData {
+  id          String       @id @default(uuid())
+  productId   String       @map("product_id")
+  product     Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  channel     PriceChannel
+  channelName String       @map("channel_name") @db.VarChar(50)
+  price       Decimal      @db.Decimal(10, 0)
+  url         String?
+  crawledAt   DateTime     @default(now()) @map("crawled_at") @db.Timestamptz
+  isLowest    Boolean      @default(false) @map("is_lowest")
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([productId, channel])
+  @@map("product_price_data")
+}
+
+model PriceBadge {
+  id         String         @id @default(uuid())
+  productId  String         @unique @map("product_id")
+  product    Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  badgeType  PriceBadgeType
+  message    String?
+  validUntil DateTime?      @map("valid_until") @db.Timestamptz
+  updatedAt  DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("price_badges")
 }
