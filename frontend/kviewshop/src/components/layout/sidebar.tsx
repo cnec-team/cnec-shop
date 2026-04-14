@@ -115,7 +115,7 @@ export function Sidebar({ role, locale }: SidebarProps) {
             items: [
               { title: '내가 고른 상품', href: `${base}/creator/shop/products`, icon: Package },
               { title: '상품 둘러보기', href: `${base}/creator/products`, icon: Package },
-              { title: '샵 관리', href: `${base}/creator/shop`, icon: Palette },
+              { title: '샵 꾸미기', href: `${base}/creator/shop`, icon: Palette },
             ],
           },
           {
