@@ -569,6 +569,7 @@ model Product {
   creatorContents    CreatorProductContent[]
   priceData          ProductPriceData[]
   priceBadge         PriceBadge?
+  aiGonguTips        AiGonguTip[]
 
   @@index([isActive])
   @@index([status])
@@ -1713,4 +1714,22 @@ model PriceBadge {
   updatedAt  DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("price_badges")
+}
+
+model AiGonguTip {
+  id             String   @id @default(uuid())
+  productId      String   @map("product_id")
+  product        Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  strategy       String   @db.VarChar(20)
+  hook           String
+  targetMessage  String   @map("target_message")
+  estimatedCvr   String   @map("estimated_cvr") @db.VarChar(20)
+  caption        String
+  hashtags       String[] @default([])
+  reasoning      String?
+  modelUsed      String   @default("claude-sonnet-4-6") @map("model_used")
+  generatedAt    DateTime @default(now()) @map("generated_at") @db.Timestamptz
+
+  @@index([productId])
+  @@map("ai_gonggu_tips")
 }
