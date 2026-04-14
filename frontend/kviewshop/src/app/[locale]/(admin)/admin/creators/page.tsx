@@ -182,7 +182,7 @@ export default function AdminCreatorsPage() {
     setGradeUpdating(true);
     try {
       await updateCreatorGrade(selectedCreator.id, newGrade);
-      toast.success(`등급이 ${newGrade}로 변경되었습니다`);
+      toast.success(`등급이 ${GRADE_KO[newGrade] || newGrade}(으)로 변경되었습니다`);
       fetchCreators();
       const detail = await getAdminCreatorDetail(selectedCreator.id);
       setSelectedCreator(detail as CreatorDetail);
@@ -247,10 +247,10 @@ export default function AdminCreatorsPage() {
                 <SelectTrigger className="w-full sm:w-[130px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">전체 등급</SelectItem>
-                  <SelectItem value="ROOKIE">ROOKIE</SelectItem>
-                  <SelectItem value="SILVER">SILVER</SelectItem>
-                  <SelectItem value="GOLD">GOLD</SelectItem>
-                  <SelectItem value="PLATINUM">PLATINUM</SelectItem>
+                  <SelectItem value="ROOKIE">루키</SelectItem>
+                  <SelectItem value="SILVER">실버</SelectItem>
+                  <SelectItem value="GOLD">골드</SelectItem>
+                  <SelectItem value="PLATINUM">플래티넘</SelectItem>
                 </SelectContent>
               </Select>
               <div className="relative w-full sm:w-64">
@@ -428,8 +428,8 @@ export default function AdminCreatorsPage() {
 
               {/* Beauty Profile */}
               <div className="flex gap-2 flex-wrap">
-                {selectedCreator.skinType && <Badge variant="outline">{selectedCreator.skinType}</Badge>}
-                {selectedCreator.personalColor && <Badge variant="outline">{selectedCreator.personalColor}</Badge>}
+                {selectedCreator.skinType && <Badge variant="outline">{SKIN_TYPE_KO[selectedCreator.skinType] || selectedCreator.skinType}</Badge>}
+                {selectedCreator.personalColor && <Badge variant="outline">{PERSONAL_COLOR_KO[selectedCreator.personalColor] || selectedCreator.personalColor}</Badge>}
                 {selectedCreator.skinConcerns && selectedCreator.skinConcerns.map((concern, i) => <Badge key={i} variant="outline">{concern}</Badge>)}
                 {selectedCreator.ageRange && <Badge variant="outline">{selectedCreator.ageRange}</Badge>}
               </div>
@@ -491,10 +491,10 @@ export default function AdminCreatorsPage() {
                     <Select value={newGrade} onValueChange={setNewGrade}>
                       <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="ROOKIE">ROOKIE</SelectItem>
-                        <SelectItem value="SILVER">SILVER</SelectItem>
-                        <SelectItem value="GOLD">GOLD</SelectItem>
-                        <SelectItem value="PLATINUM">PLATINUM</SelectItem>
+                        <SelectItem value="ROOKIE">루키</SelectItem>
+                        <SelectItem value="SILVER">실버</SelectItem>
+                        <SelectItem value="GOLD">골드</SelectItem>
+                        <SelectItem value="PLATINUM">플래티넘</SelectItem>
                       </SelectContent>
                     </Select>
                     <Button size="sm" onClick={handleGradeChange} disabled={gradeUpdating || newGrade === (selectedCreator.grade?.grade || 'ROOKIE')}>

@@ -270,7 +270,6 @@ export default function AdminBrandsPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>브랜드</TableHead>
-                      <TableHead>대표자</TableHead>
                       <TableHead>사업자번호</TableHead>
                       <TableHead>연락처</TableHead>
                       <TableHead className="text-right">상품</TableHead>
@@ -285,7 +284,7 @@ export default function AdminBrandsPage() {
                     {filtered.map(b => {
                       const status = getBrandStatus(b);
                       return (
-                        <TableRow key={b.id} className="cursor-pointer hover:bg-muted/50" onClick={() => openDetail(b.id)}>
+                        <TableRow key={b.id} className={`cursor-pointer hover:bg-muted/50 ${status === 'pending' ? 'bg-yellow-50/60' : ''}`} onClick={() => openDetail(b.id)}>
                           <TableCell>
                             <div className="flex items-center gap-3">
                               <Avatar className="h-9 w-9">
@@ -297,21 +296,42 @@ export default function AdminBrandsPage() {
                                 {b.brandName && b.companyName !== b.brandName && (
                                   <p className="text-xs text-muted-foreground">{b.companyName}</p>
                                 )}
+                                {b.representativeName && <p className="text-xs text-muted-foreground">{b.representativeName} 대표</p>}
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell className="text-sm">{b.representativeName || '-'}</TableCell>
-                          <TableCell className="text-sm font-mono">{b.businessNumber || '-'}</TableCell>
                           <TableCell>
-                            <div className="text-xs">
-                              {b.contactEmail && <p className="flex items-center gap-1"><Mail className="h-3 w-3" />{b.contactEmail}</p>}
-                              {b.contactPhone && <p className="flex items-center gap-1"><Phone className="h-3 w-3" />{b.contactPhone}</p>}
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-sm font-mono">{b.businessNumber || '-'}</span>
+                              {b.businessRegistrationUrl && (
+                                <a href={b.businessRegistrationUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>
+                                  <FileText className="h-3.5 w-3.5 text-blue-500 hover:text-blue-700" />
+                                </a>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-xs space-y-0.5">
+                              {(b.contactEmail || b.user?.email) && <p className="flex items-center gap-1 text-muted-foreground"><Mail className="h-3 w-3" />{b.contactEmail || b.user?.email}</p>}
+                              {(b.contactPhone || b.user?.phone) && <p className="flex items-center gap-1"><Phone className="h-3 w-3" />{b.contactPhone || b.user?.phone}</p>}
                             </div>
                           </TableCell>
                           <TableCell className="text-right text-sm">{b.productCount}</TableCell>
                           <TableCell className="text-right text-sm font-medium">{formatKRW(b.totalSales)}</TableCell>
-                          <TableCell className="text-right text-sm">{(b.platformFeeRate * 100).toFixed(1)}%</TableCell>
-                          <TableCell>{statusBadge(status)}</TableCell>
+                          <TableCell className="text-right text-xs">
+                            <span className="text-sm">10%</span>
+                            <p className="text-muted-foreground">(결제 수수료 포함)</p>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1 flex-wrap">
+                              {statusBadge(status)}
+                              {b.mocraStatus && (
+                                <Badge variant="outline" className={`text-[10px] px-1 py-0 ${b.mocraStatus === 'green' ? 'border-green-400 text-green-700' : b.mocraStatus === 'yellow' ? 'border-yellow-400 text-yellow-700' : 'border-red-400 text-red-700'}`}>
+                                  MoCRA
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
                           <TableCell className="text-sm text-muted-foreground">{new Date(b.createdAt).toLocaleDateString('ko-KR')}</TableCell>
                           <TableCell className="text-right" onClick={e => e.stopPropagation()}>
                             {status === 'pending' && (
@@ -337,7 +357,7 @@ export default function AdminBrandsPage() {
                 {filtered.map(b => {
                   const status = getBrandStatus(b);
                   return (
-                    <Card key={b.id} className="cursor-pointer hover:bg-muted/50" onClick={() => openDetail(b.id)}>
+                    <Card key={b.id} className={`cursor-pointer hover:bg-muted/50 ${status === 'pending' ? 'bg-yellow-50/60' : ''}`} onClick={() => openDetail(b.id)}>
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between">
                           <div className="flex items-center gap-3">
@@ -350,12 +370,17 @@ export default function AdminBrandsPage() {
                               <p className="text-xs text-muted-foreground">{b.representativeName || '-'} | {b.businessNumber || '-'}</p>
                             </div>
                           </div>
-                          {statusBadge(status)}
+                          <div className="flex gap-1 items-center">
+                            {statusBadge(status)}
+                            {b.mocraStatus && (
+                              <Badge variant="outline" className={`text-[10px] px-1 py-0 ${b.mocraStatus === 'green' ? 'border-green-400 text-green-700' : b.mocraStatus === 'yellow' ? 'border-yellow-400 text-yellow-700' : 'border-red-400 text-red-700'}`}>MoCRA</Badge>
+                            )}
+                          </div>
                         </div>
                         <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
                           <div><p className="text-muted-foreground">상품</p><p className="font-medium">{b.productCount}개</p></div>
                           <div><p className="text-muted-foreground">매출</p><p className="font-medium">{formatKRW(b.totalSales)}</p></div>
-                          <div><p className="text-muted-foreground">수수료</p><p className="font-medium">{(b.platformFeeRate * 100).toFixed(1)}%</p></div>
+                          <div><p className="text-muted-foreground">수수료</p><p className="font-medium">10%</p></div>
                         </div>
                         {status === 'pending' && (
                           <div className="mt-3 flex gap-2" onClick={e => e.stopPropagation()}>
@@ -433,7 +458,8 @@ export default function AdminBrandsPage() {
               <div>
                 <h3 className="font-semibold mb-2 flex items-center gap-2"><Truck className="h-4 w-4" />운영 정보</h3>
                 <div className="text-sm space-y-1">
-                  <p><span className="text-muted-foreground">수수료율:</span> {(selectedBrand.platformFeeRate * 100).toFixed(1)}%</p>
+                  <p><span className="text-muted-foreground">플랫폼 수수료:</span> 10% (결제 수수료 포함)</p>
+                  <p className="text-xs text-muted-foreground pl-4">공동구매 진행 시 브랜드에 청구되는 수수료입니다. 크리에이터 커미션은 별도입니다.</p>
                   <p><span className="text-muted-foreground">커미션율:</span> {selectedBrand.creatorCommissionRate ?? '-'}%</p>
                   <p><span className="text-muted-foreground">기본 배송비:</span> {formatKRW(selectedBrand.defaultShippingFee)}</p>
                   <p><span className="text-muted-foreground">무료배송 기준:</span> {selectedBrand.freeShippingThreshold > 0 ? formatKRW(selectedBrand.freeShippingThreshold) : '-'}</p>
