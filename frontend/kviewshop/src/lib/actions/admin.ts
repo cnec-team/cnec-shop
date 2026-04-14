@@ -16,40 +16,352 @@ async function requireAdmin() {
 
 export async function getAdminBrands() {
   await requireAdmin()
-  return prisma.brand.findMany({
+
+  const brands = await prisma.brand.findMany({
     orderBy: { createdAt: 'desc' },
+    include: {
+      user: { select: { email: true, phone: true, name: true } },
+      _count: {
+        select: {
+          products: true,
+          campaigns: { where: { status: { in: ['RECRUITING', 'ACTIVE'] } } },
+          orders: true,
+        },
+      },
+    },
   })
+
+  // 총 매출 집계
+  const brandIds = brands.map(b => b.id)
+  const salesAgg = await prisma.order.groupBy({
+    by: ['brandId'],
+    where: { brandId: { in: brandIds }, status: { notIn: ['CANCELLED', 'REFUNDED'] } },
+    _sum: { totalAmount: true },
+  })
+  const salesMap = new Map(salesAgg.map(s => [s.brandId, Number(s._sum.totalAmount || 0)]))
+
+  return brands.map(b => ({
+    id: b.id,
+    userId: b.userId,
+    brandName: b.brandName,
+    companyName: b.companyName,
+    representativeName: b.representativeName,
+    businessNumber: b.businessNumber,
+    businessRegistrationUrl: b.businessRegistrationUrl,
+    logoUrl: b.logoUrl,
+    description: b.description,
+    contactEmail: b.contactEmail,
+    contactPhone: b.contactPhone,
+    platformFeeRate: Number(b.platformFeeRate || 0),
+    creatorCommissionRate: b.creatorCommissionRate,
+    defaultShippingFee: Number(b.defaultShippingFee || 0),
+    freeShippingThreshold: Number(b.freeShippingThreshold || 0),
+    defaultCourier: b.defaultCourier,
+    returnAddress: b.returnAddress,
+    approved: b.approved,
+    approvedAt: b.approvedAt,
+    mocraStatus: b.mocraStatus,
+    createdAt: b.createdAt,
+    user: b.user,
+    productCount: b._count.products,
+    activeCampaignCount: b._count.campaigns,
+    orderCount: b._count.orders,
+    totalSales: salesMap.get(b.id) || 0,
+  }))
+}
+
+export async function getAdminBrandDetail(brandId: string) {
+  await requireAdmin()
+
+  const brand = await prisma.brand.findUnique({
+    where: { id: brandId },
+    include: {
+      user: { select: { email: true, phone: true, name: true } },
+      products: {
+        take: 10,
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, name: true, price: true, status: true, thumbnailUrl: true },
+      },
+      campaigns: {
+        take: 10,
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, title: true, status: true, type: true, startAt: true, endAt: true },
+      },
+    },
+  })
+  if (!brand) throw new Error('브랜드를 찾을 수 없습니다')
+
+  const recentOrders = await prisma.order.findMany({
+    where: { brandId },
+    take: 10,
+    orderBy: { createdAt: 'desc' },
+    select: { id: true, orderNumber: true, totalAmount: true, status: true, createdAt: true },
+  })
+
+  const salesAgg = await prisma.order.aggregate({
+    where: { brandId, status: { notIn: ['CANCELLED', 'REFUNDED'] } },
+    _sum: { totalAmount: true },
+    _count: true,
+  })
+
+  return {
+    ...brand,
+    platformFeeRate: Number(brand.platformFeeRate || 0),
+    defaultShippingFee: Number(brand.defaultShippingFee || 0),
+    freeShippingThreshold: Number(brand.freeShippingThreshold || 0),
+    products: brand.products.map(p => ({ ...p, price: Number(p.price || 0) })),
+    recentOrders: recentOrders.map(o => ({ ...o, totalAmount: Number(o.totalAmount || 0) })),
+    totalSales: Number(salesAgg._sum.totalAmount || 0),
+    totalOrders: salesAgg._count,
+  }
 }
 
 export async function approveBrand(id: string) {
   await requireAdmin()
   const brand = await prisma.brand.update({
     where: { id },
-    data: { approved: true },
+    data: { approved: true, approvedAt: new Date() },
     select: { id: true, userId: true, companyName: true },
   })
 
-  // 브랜드에게 승인 알림
   if (brand.userId) {
-    sendNotification({
-      userId: brand.userId,
-      type: 'SYSTEM',
-      title: '브랜드 승인 완료',
-      message: `${brand.companyName ?? '브랜드'}가 승인되었어요. 지금 바로 상품을 등록해보세요!`,
-      linkUrl: '/brand/products/new',
-    })
+    try {
+      await sendNotification({
+        userId: brand.userId,
+        type: 'SYSTEM',
+        title: '브랜드 승인 완료',
+        message: `${brand.companyName ?? '브랜드'}가 승인되었어요. 지금 바로 상품을 등록해보세요!`,
+        linkUrl: '/brand/products/new',
+      })
+    } catch { /* ignore */ }
   }
 
   return brand
+}
+
+export async function updateBrandStatus(brandId: string, action: 'approve' | 'suspend' | 'reject') {
+  await requireAdmin()
+
+  const brand = await prisma.brand.findUnique({ where: { id: brandId }, select: { id: true, userId: true, companyName: true } })
+  if (!brand) throw new Error('브랜드를 찾을 수 없습니다')
+
+  if (action === 'approve') {
+    await prisma.brand.update({ where: { id: brandId }, data: { approved: true, approvedAt: new Date() } })
+    if (brand.userId) {
+      try {
+        await sendNotification({
+          userId: brand.userId,
+          type: 'SYSTEM',
+          title: '브랜드 승인 완료',
+          message: `${brand.companyName ?? '브랜드'}가 승인되었어요!`,
+          linkUrl: '/brand/products/new',
+        })
+      } catch { /* ignore */ }
+    }
+  } else if (action === 'suspend') {
+    await prisma.brand.update({ where: { id: brandId }, data: { approved: false } })
+    if (brand.userId) {
+      try {
+        await sendNotification({
+          userId: brand.userId,
+          type: 'SYSTEM',
+          title: '브랜드 정지',
+          message: `${brand.companyName ?? '브랜드'} 계정이 정지되었습니다. 관리자에게 문의하세요.`,
+        })
+      } catch { /* ignore */ }
+    }
+  } else if (action === 'reject') {
+    await prisma.brand.update({ where: { id: brandId }, data: { approved: false } })
+    if (brand.userId) {
+      try {
+        await sendNotification({
+          userId: brand.userId,
+          type: 'SYSTEM',
+          title: '브랜드 등록 거절',
+          message: `${brand.companyName ?? '브랜드'} 등록이 거절되었습니다. 자세한 사항은 관리자에게 문의하세요.`,
+        })
+      } catch { /* ignore */ }
+    }
+  }
+
+  return { success: true }
 }
 
 // ==================== Creators ====================
 
 export async function getAdminCreators() {
   await requireAdmin()
-  return prisma.creator.findMany({
+
+  const creators = await prisma.creator.findMany({
     orderBy: { createdAt: 'desc' },
+    include: {
+      user: { select: { email: true, phone: true } },
+      grade: true,
+      _count: {
+        select: {
+          shopItems: true,
+          shopVisits: true,
+        },
+      },
+    },
   })
+
+  // 통계 집계
+  const creatorIds = creators.map(c => c.id)
+
+  const [orderAgg, commissionAgg, campaignAgg] = await Promise.all([
+    prisma.order.groupBy({
+      by: ['creatorId'],
+      where: { creatorId: { in: creatorIds }, status: { notIn: ['CANCELLED', 'REFUNDED'] } },
+      _sum: { totalAmount: true },
+      _count: true,
+    }),
+    prisma.conversion.groupBy({
+      by: ['creatorId'],
+      where: { creatorId: { in: creatorIds } },
+      _sum: { commissionAmount: true },
+    }),
+    prisma.campaignParticipation.groupBy({
+      by: ['creatorId'],
+      where: { creatorId: { in: creatorIds } },
+      _count: true,
+    }),
+  ])
+
+  const orderMap = new Map(orderAgg.map(o => [o.creatorId, { sales: Number(o._sum.totalAmount || 0), count: o._count }]))
+  const commissionMap = new Map(commissionAgg.map(c => [c.creatorId, Number(c._sum.commissionAmount || 0)]))
+  const campaignMap = new Map(campaignAgg.map(c => [c.creatorId, c._count]))
+
+  return creators.map(c => ({
+    id: c.id,
+    userId: c.userId,
+    displayName: c.displayName,
+    username: c.username,
+    shopId: c.shopId,
+    profileImage: c.profileImage,
+    profileImageUrl: c.profileImageUrl,
+    bio: c.bio,
+    instagramHandle: c.instagramHandle,
+    youtubeHandle: c.youtubeHandle,
+    tiktokHandle: c.tiktokHandle,
+    skinType: c.skinType,
+    personalColor: c.personalColor,
+    skinConcerns: c.skinConcerns,
+    ageRange: c.ageRange,
+    status: c.status,
+    country: c.country,
+    createdAt: c.createdAt,
+    user: c.user,
+    grade: c.grade ? { grade: c.grade.grade, monthlySales: c.grade.monthlySales, commissionBonusRate: Number(c.grade.commissionBonusRate || 0) } : null,
+    totalSales: orderMap.get(c.id)?.sales || 0,
+    orderCount: orderMap.get(c.id)?.count || 0,
+    totalCommission: commissionMap.get(c.id) || 0,
+    shopVisitCount: c._count.shopVisits,
+    shopItemCount: c._count.shopItems,
+    campaignCount: campaignMap.get(c.id) || 0,
+  }))
+}
+
+export async function getAdminCreatorDetail(creatorId: string) {
+  await requireAdmin()
+
+  const creator = await prisma.creator.findUnique({
+    where: { id: creatorId },
+    include: {
+      user: { select: { email: true, phone: true } },
+      grade: true,
+    },
+  })
+  if (!creator) throw new Error('크리에이터를 찾을 수 없습니다')
+
+  const [recentOrders, participations, orderAgg, commissionAgg, shopVisitCount, shopItemCount, campaignCount] = await Promise.all([
+    prisma.order.findMany({
+      where: { creatorId },
+      take: 10,
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, orderNumber: true, totalAmount: true, status: true, createdAt: true },
+    }),
+    prisma.campaignParticipation.findMany({
+      where: { creatorId },
+      orderBy: { appliedAt: 'desc' },
+      include: { campaign: { select: { id: true, title: true, status: true, type: true } } },
+    }),
+    prisma.order.aggregate({
+      where: { creatorId, status: { notIn: ['CANCELLED', 'REFUNDED'] } },
+      _sum: { totalAmount: true },
+      _count: true,
+    }),
+    prisma.conversion.aggregate({
+      where: { creatorId },
+      _sum: { commissionAmount: true },
+    }),
+    prisma.shopVisit.count({ where: { creatorId } }),
+    prisma.creatorShopItem.count({ where: { creatorId } }),
+    prisma.campaignParticipation.count({ where: { creatorId } }),
+  ])
+
+  return {
+    ...creator,
+    grade: creator.grade ? { grade: creator.grade.grade, monthlySales: creator.grade.monthlySales, commissionBonusRate: Number(creator.grade.commissionBonusRate || 0) } : null,
+    recentOrders: recentOrders.map(o => ({ ...o, totalAmount: Number(o.totalAmount || 0) })),
+    participations,
+    totalSales: Number(orderAgg._sum.totalAmount || 0),
+    orderCount: orderAgg._count,
+    totalCommission: Number(commissionAgg._sum.commissionAmount || 0),
+    shopVisitCount,
+    shopItemCount,
+    campaignCount,
+  }
+}
+
+export async function updateCreatorStatus(creatorId: string, status: 'ACTIVE' | 'SUSPENDED') {
+  await requireAdmin()
+
+  const creator = await prisma.creator.findUnique({ where: { id: creatorId }, select: { id: true, userId: true, displayName: true } })
+  if (!creator) throw new Error('크리에이터를 찾을 수 없습니다')
+
+  await prisma.creator.update({ where: { id: creatorId }, data: { status } })
+
+  if (creator.userId) {
+    try {
+      await sendNotification({
+        userId: creator.userId,
+        type: 'SYSTEM',
+        title: status === 'SUSPENDED' ? '계정 정지' : '계정 활성화',
+        message: status === 'SUSPENDED'
+          ? '계정이 정지되었습니다. 관리자에게 문의하세요.'
+          : '계정이 다시 활성화되었습니다.',
+      })
+    } catch { /* ignore */ }
+  }
+
+  return { success: true }
+}
+
+export async function updateCreatorGrade(creatorId: string, grade: string) {
+  await requireAdmin()
+
+  const creator = await prisma.creator.findUnique({ where: { id: creatorId }, select: { id: true, userId: true } })
+  if (!creator) throw new Error('크리에이터를 찾을 수 없습니다')
+
+  await prisma.creatorGrade.upsert({
+    where: { creatorId },
+    create: { creatorId, grade, gradeUpdatedAt: new Date() },
+    update: { grade, gradeUpdatedAt: new Date() },
+  })
+
+  if (creator.userId) {
+    try {
+      await sendNotification({
+        userId: creator.userId,
+        type: 'SYSTEM',
+        title: '등급 변경',
+        message: `등급이 ${grade}로 변경되었습니다.`,
+      })
+    } catch { /* ignore */ }
+  }
+
+  return { success: true }
 }
 
 // ==================== Dashboard Stats ====================

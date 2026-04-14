@@ -15,6 +15,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Package,
   Play,
   Trash2,
@@ -23,6 +33,7 @@ import {
   EyeOff,
   ExternalLink,
   AlertCircle,
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { BrandBadge } from '@/components/common/BrandBadge';
@@ -71,6 +82,30 @@ export default function MyShopProductsPage() {
   const [items, setItems] = useState<ShopItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+
+  // Remove item
+  const [removeTarget, setRemoveTarget] = useState<ShopItem | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+
+  const handleRemoveItem = async () => {
+    if (!removeTarget) return;
+    setRemovingId(removeTarget.id);
+    try {
+      const res = await fetch(`/api/creator/shop-items/${removeTarget.id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || '상품이 내 샵에서 제거되었습니다');
+        setItems((prev) => prev.filter((i) => i.id !== removeTarget.id));
+      } else {
+        toast.error(data.error || '삭제에 실패했습니다');
+      }
+    } catch {
+      toast.error('삭제에 실패했습니다');
+    } finally {
+      setRemovingId(null);
+      setRemoveTarget(null);
+    }
+  };
 
   // Content modal
   const [contentItem, setContentItem] = useState<ShopItem | null>(null);
@@ -326,6 +361,21 @@ export default function MyShopProductsPage() {
                       <EyeOff className="h-3.5 w-3.5 text-gray-400" />
                     )}
                   </Button>
+                  {item.type === 'PICK' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-9 px-3 rounded-xl text-red-500 hover:text-red-600 hover:bg-red-50 border-red-200"
+                      onClick={() => setRemoveTarget(item)}
+                      disabled={removingId === item.id}
+                    >
+                      {removingId === item.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <X className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                  )}
                 </div>
               </div>
             );
@@ -410,6 +460,27 @@ export default function MyShopProductsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Remove Confirmation Dialog */}
+      <AlertDialog open={!!removeTarget} onOpenChange={(open) => { if (!open) setRemoveTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>내 샵에서 빼기</AlertDialogTitle>
+            <AlertDialogDescription>
+              이 상품을 내 샵에서 뺄까요? 언제든 다시 추가할 수 있어요.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRemoveItem}
+              className="bg-red-500 hover:bg-red-600 text-white"
+            >
+              빼기
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
