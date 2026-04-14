@@ -42,6 +42,7 @@ import { SafeImage } from '@/components/common/SafeImage';
 import { formatCurrency } from '@/lib/i18n/config';
 import { PRODUCT_CATEGORY_LABELS } from '@/types/database';
 import { formatEarnings } from '@/lib/utils/beauty-labels';
+import { PriceBadgeTag, PriceScoutSheet } from '@/components/creator/PriceScout';
 import {
   getCreatorSession,
   getPickableProducts,
@@ -111,6 +112,10 @@ export default function CreatorProductsPage() {
   const [contentLoading, setContentLoading] = useState(false);
   const [deletingContentId, setDeletingContentId] = useState<string | null>(null);
 
+  // Price Scout
+  const [priceBadges, setPriceBadges] = useState<Record<string, { type: string; message: string | null }>>({});
+  const [priceSheetProductId, setPriceSheetProductId] = useState<string | null>(null);
+
   useEffect(() => {
     let cancelled = false;
     async function fetchData() {
@@ -137,6 +142,19 @@ export default function CreatorProductsPage() {
             }
           }
           setMyShopCategories(catMap);
+
+          // Load price badges
+          try {
+            const badgeRes = await fetch('/api/creator/price-scout');
+            if (badgeRes.ok) {
+              const badgeData = await badgeRes.json();
+              const map: Record<string, { type: string; message: string | null }> = {};
+              for (const item of badgeData.products ?? []) {
+                map[item.productId] = item.badge;
+              }
+              if (!cancelled) setPriceBadges(map);
+            }
+          } catch { /* price badges optional */ }
         }
       } catch (error) {
         console.error('Failed to load products:', error);
@@ -466,6 +484,14 @@ export default function CreatorProductsPage() {
                     <p className="text-xs text-earnings font-semibold mt-1">
                       팔면 ₩{earnings.toLocaleString()}
                     </p>
+                    {priceBadges[product.id] && (
+                      <button
+                        onClick={(e) => { e.preventDefault(); setPriceSheetProductId(product.id); }}
+                        className="mt-1.5 block"
+                      >
+                        <PriceBadgeTag badge={priceBadges[product.id]} />
+                      </button>
+                    )}
                   </div>
                 </Link>
 
@@ -563,6 +589,15 @@ export default function CreatorProductsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Price Scout Sheet */}
+      {priceSheetProductId && (
+        <PriceScoutSheet
+          productId={priceSheetProductId}
+          open={!!priceSheetProductId}
+          onOpenChange={(open) => { if (!open) setPriceSheetProductId(null); }}
+        />
+      )}
 
       {/* Creator Content (Reels) Modal */}
       <Dialog open={!!contentModalProduct} onOpenChange={() => setContentModalProduct(null)}>
