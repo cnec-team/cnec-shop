@@ -87,15 +87,15 @@ export default function MyShopProductsPage() {
   const [removeTarget, setRemoveTarget] = useState<ShopItem | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
 
-  const handleRemoveItem = async () => {
-    if (!removeTarget) return;
-    setRemovingId(removeTarget.id);
+  const handleRemoveItem = async (item: ShopItem) => {
+    setRemoveTarget(null);
+    setRemovingId(item.id);
     try {
-      const res = await fetch(`/api/creator/shop-items/${removeTarget.id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/creator/shop-items/${item.id}`, { method: 'DELETE' });
       const data = await res.json();
       if (res.ok) {
         toast.success(data.message || '상품이 내 샵에서 제거되었습니다');
-        setItems((prev) => prev.filter((i) => i.id !== removeTarget.id));
+        setItems((prev) => prev.filter((i) => i.id !== item.id));
       } else {
         toast.error(data.error || '삭제에 실패했습니다');
       }
@@ -103,7 +103,6 @@ export default function MyShopProductsPage() {
       toast.error('삭제에 실패했습니다');
     } finally {
       setRemovingId(null);
-      setRemoveTarget(null);
     }
   };
 
@@ -462,7 +461,7 @@ export default function MyShopProductsPage() {
       </Dialog>
 
       {/* Remove Confirmation Dialog */}
-      <AlertDialog open={!!removeTarget} onOpenChange={(open) => { if (!open) setRemoveTarget(null); }}>
+      <AlertDialog open={!!removeTarget} onOpenChange={() => setRemoveTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>내 샵에서 빼기</AlertDialogTitle>
@@ -473,7 +472,7 @@ export default function MyShopProductsPage() {
           <AlertDialogFooter>
             <AlertDialogCancel>취소</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleRemoveItem}
+              onClick={() => { if (removeTarget) handleRemoveItem(removeTarget); }}
               className="bg-red-500 hover:bg-red-600 text-white"
             >
               빼기
