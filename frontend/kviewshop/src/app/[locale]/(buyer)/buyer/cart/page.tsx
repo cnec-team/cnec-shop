@@ -354,12 +354,12 @@ export default function BuyerCartPage() {
                 <span>${calculateTotal().toLocaleString()}</span>
               </div>
 
-              {buyer?.points_balance && buyer.points_balance > 0 && (
+              {buyer?.pointsBalance && Number(buyer.pointsBalance) > 0 && (
                 <div className="text-sm text-muted-foreground bg-muted/50 rounded-lg p-3">
                   <span className="font-medium text-primary">
-                    {buyer.points_balance.toLocaleString()}P
+                    {Number(buyer.pointsBalance).toLocaleString()}P
                   </span>{' '}
-                  available to use
+                  사용 가능한 포인트
                 </div>
               )}
             </CardContent>

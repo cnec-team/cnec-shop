@@ -19,33 +19,44 @@ export default function PaymentSuccessPage() {
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // PortOne V2 redirect sends: paymentId, code, message
+  // Also receive orderId from our redirectUrl query param
   const orderId = searchParams.get('orderId');
-  const paymentKey = searchParams.get('paymentKey');
-  const amount = searchParams.get('amount');
+  const paymentId = searchParams.get('paymentId');
+  const code = searchParams.get('code');
 
   useEffect(() => {
     const confirmPayment = async () => {
-      if (!orderId || !paymentKey || !amount) {
+      // PortOne redirect: if code exists and is not null, payment failed
+      if (code) {
+        const message = searchParams.get('message');
+        setError(message || '결제가 실패했습니다');
+        setIsProcessing(false);
+        return;
+      }
+
+      if (!orderId || !paymentId) {
         setError('결제 정보가 올바르지 않습니다');
         setIsProcessing(false);
         return;
       }
 
       try {
-        const response = await fetch('/api/payments/confirm', {
+        // Call PortOne complete endpoint (not Toss confirm)
+        const response = await fetch('/api/payments/complete', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             orderId,
-            paymentKey,
-            amount: parseInt(amount),
+            paymentId,
+            pgProvider: 'portone',
           }),
         });
 
         const result = await response.json();
 
         if (!response.ok) {
-          throw new Error(result.message || '결제 확인에 실패했습니다');
+          throw new Error(result.error || '결제 확인에 실패했습니다');
         }
 
         setOrderNumber(result.orderNumber || orderId);
@@ -59,7 +70,7 @@ export default function PaymentSuccessPage() {
     };
 
     confirmPayment();
-  }, [orderId, paymentKey, amount, clearCart]);
+  }, [orderId, paymentId, code, searchParams, clearCart]);
 
   if (isProcessing) {
     return (
@@ -132,6 +143,14 @@ export default function PaymentSuccessPage() {
               <span>판매자에게 주문이 전달되었습니다</span>
             </div>
           </div>
+
+          {/* Non-member notice */}
+          {!buyer && orderNumber && (
+            <div className="bg-amber-50 rounded-xl p-4 text-sm text-left">
+              <p className="font-medium text-amber-800">주문번호를 꼭 기억해주세요</p>
+              <p className="text-xs text-amber-600 mt-1">비회원 주문 조회 시 주문번호와 전화번호가 필요합니다</p>
+            </div>
+          )}
 
           {/* Shipping & CS Info */}
           <div className="bg-gray-50 rounded-xl p-4 text-sm text-center space-y-1">
