@@ -66,7 +66,7 @@ export function MobileBottomNav() {
       items: [
         { title: '내가 고른 상품', description: '담은 상품 관리', href: `${base}/shop/products`, icon: ShoppingBag },
         { title: '상품 둘러보기', description: '새로운 상품 발견', href: `${base}/products`, icon: Package },
-        { title: '샵 관리', description: '샵 정보 수정', href: `${base}/shop`, icon: Palette },
+        { title: '샵 꾸미기', description: '샵 정보 수정', href: `${base}/shop`, icon: Palette },
       ],
     },
     {

@@ -21,7 +21,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  Search, Building2, Check, X, ShieldAlert, TrendingUp, Package, Megaphone,
+  Search, Building2, Check, X, ShieldAlert, TrendingUp, Package,
   ShoppingBag, Mail, Phone, User, FileText, Truck, ExternalLink, Clock,
 } from 'lucide-react';
 import { getAdminBrands, getAdminBrandDetail, updateBrandStatus } from '@/lib/actions/admin';
@@ -96,17 +96,13 @@ const STATUS_LABELS: Record<string, string> = {
   CONFIRMED: '확정', CANCELLED: '취소', REFUNDED: '환불',
 };
 
-const CAMPAIGN_STATUS: Record<string, string> = {
-  DRAFT: '초안', RECRUITING: '모집중', ACTIVE: '진행중', ENDED: '종료',
-};
-
 function formatKRW(v: number) {
   return new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(v);
 }
 
 function getBrandStatus(brand: { approved: boolean; approvedAt: Date | null }): 'approved' | 'pending' | 'suspended' {
   if (brand.approved) return 'approved';
-  if (brand.approvedAt) return 'suspended'; // Was approved before, now suspended
+  if (brand.approvedAt) return 'suspended';
   return 'pending';
 }
 
@@ -127,12 +123,10 @@ export default function AdminBrandsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Sheet
   const [selectedBrand, setSelectedBrand] = useState<BrandDetail | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetLoading, setSheetLoading] = useState(false);
 
-  // Action dialog
   const [actionDialog, setActionDialog] = useState<{ open: boolean; action: BrandAction; brandId: string; brandName: string }>({ open: false, action: 'approve', brandId: '', brandName: '' });
   const [actionUpdating, setActionUpdating] = useState(false);
 
@@ -222,7 +216,6 @@ export default function AdminBrandsPage() {
         <p className="text-muted-foreground">{t('brandManagementDesc')}</p>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         <Card><CardContent className="pt-6"><div className="flex items-center gap-3"><div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center"><Building2 className="h-5 w-5 text-blue-600" /></div><div><p className="text-sm text-muted-foreground">전체</p><p className="text-2xl font-bold">{stats.total}개</p></div></div></CardContent></Card>
         <Card><CardContent className="pt-6"><div className="flex items-center gap-3"><div className="h-10 w-10 rounded-xl bg-green-50 flex items-center justify-center"><Check className="h-5 w-5 text-green-600" /></div><div><p className="text-sm text-muted-foreground">승인됨</p><p className="text-2xl font-bold">{stats.approved}개</p></div></div></CardContent></Card>
@@ -230,7 +223,6 @@ export default function AdminBrandsPage() {
         <Card><CardContent className="pt-6"><div className="flex items-center gap-3"><div className="h-10 w-10 rounded-xl bg-purple-50 flex items-center justify-center"><Building2 className="h-5 w-5 text-purple-600" /></div><div><p className="text-sm text-muted-foreground">이번 달 신규</p><p className="text-2xl font-bold">{stats.newThisMonth}개</p></div></div></CardContent></Card>
       </div>
 
-      {/* Filters */}
       <Card>
         <CardHeader>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -264,7 +256,6 @@ export default function AdminBrandsPage() {
             <div className="text-center py-12"><Building2 className="mx-auto h-12 w-12 text-muted-foreground/50" /><p className="mt-4 text-muted-foreground">브랜드가 없습니다</p></div>
           ) : (
             <>
-              {/* Desktop Table */}
               <div className="hidden md:block overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -284,7 +275,7 @@ export default function AdminBrandsPage() {
                     {filtered.map(b => {
                       const status = getBrandStatus(b);
                       return (
-                        <TableRow key={b.id} className={`cursor-pointer hover:bg-muted/50 ${status === 'pending' ? 'bg-yellow-50/60' : ''}`} onClick={() => openDetail(b.id)}>
+                        <TableRow key={b.id} className={`cursor-pointer hover:bg-muted/50 ${status === 'pending' ? 'bg-amber-50' : ''}`} onClick={() => openDetail(b.id)}>
                           <TableCell>
                             <div className="flex items-center gap-3">
                               <Avatar className="h-9 w-9">
@@ -311,27 +302,18 @@ export default function AdminBrandsPage() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <div className="text-xs space-y-0.5">
-                              {(b.contactEmail || b.user?.email) && <p className="flex items-center gap-1 text-muted-foreground"><Mail className="h-3 w-3" />{b.contactEmail || b.user?.email}</p>}
-                              {(b.contactPhone || b.user?.phone) && <p className="flex items-center gap-1"><Phone className="h-3 w-3" />{b.contactPhone || b.user?.phone}</p>}
+                            <div className="space-y-0.5">
+                              {(b.contactEmail || b.user?.email) && <p className="text-sm">{b.contactEmail || b.user?.email}</p>}
+                              {(b.contactPhone || b.user?.phone) && <p className="text-xs text-muted-foreground">{b.contactPhone || b.user?.phone}</p>}
                             </div>
                           </TableCell>
                           <TableCell className="text-right text-sm">{b.productCount}</TableCell>
                           <TableCell className="text-right text-sm font-medium">{formatKRW(b.totalSales)}</TableCell>
                           <TableCell className="text-right text-xs">
                             <span className="text-sm">10%</span>
-                            <p className="text-muted-foreground">(결제 수수료 포함)</p>
+                            <p className="text-muted-foreground">(결제 포함)</p>
                           </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1 flex-wrap">
-                              {statusBadge(status)}
-                              {b.mocraStatus && (
-                                <Badge variant="outline" className={`text-[10px] px-1 py-0 ${b.mocraStatus === 'green' ? 'border-green-400 text-green-700' : b.mocraStatus === 'yellow' ? 'border-yellow-400 text-yellow-700' : 'border-red-400 text-red-700'}`}>
-                                  MoCRA
-                                </Badge>
-                              )}
-                            </div>
-                          </TableCell>
+                          <TableCell>{statusBadge(status)}</TableCell>
                           <TableCell className="text-sm text-muted-foreground">{new Date(b.createdAt).toLocaleDateString('ko-KR')}</TableCell>
                           <TableCell className="text-right" onClick={e => e.stopPropagation()}>
                             {status === 'pending' && (
@@ -352,12 +334,11 @@ export default function AdminBrandsPage() {
                 </Table>
               </div>
 
-              {/* Mobile Cards */}
               <div className="md:hidden space-y-3">
                 {filtered.map(b => {
                   const status = getBrandStatus(b);
                   return (
-                    <Card key={b.id} className={`cursor-pointer hover:bg-muted/50 ${status === 'pending' ? 'bg-yellow-50/60' : ''}`} onClick={() => openDetail(b.id)}>
+                    <Card key={b.id} className={`cursor-pointer hover:bg-muted/50 ${status === 'pending' ? 'bg-amber-50' : ''}`} onClick={() => openDetail(b.id)}>
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between">
                           <div className="flex items-center gap-3">
@@ -370,12 +351,7 @@ export default function AdminBrandsPage() {
                               <p className="text-xs text-muted-foreground">{b.representativeName || '-'} | {b.businessNumber || '-'}</p>
                             </div>
                           </div>
-                          <div className="flex gap-1 items-center">
-                            {statusBadge(status)}
-                            {b.mocraStatus && (
-                              <Badge variant="outline" className={`text-[10px] px-1 py-0 ${b.mocraStatus === 'green' ? 'border-green-400 text-green-700' : b.mocraStatus === 'yellow' ? 'border-yellow-400 text-yellow-700' : 'border-red-400 text-red-700'}`}>MoCRA</Badge>
-                            )}
-                          </div>
+                          {statusBadge(status)}
                         </div>
                         <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
                           <div><p className="text-muted-foreground">상품</p><p className="font-medium">{b.productCount}개</p></div>
@@ -402,7 +378,6 @@ export default function AdminBrandsPage() {
         </CardContent>
       </Card>
 
-      {/* Detail Sheet */}
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
           <SheetHeader>
@@ -412,7 +387,6 @@ export default function AdminBrandsPage() {
             <div className="py-12 text-center text-muted-foreground">로딩 중...</div>
           ) : selectedBrand && (
             <div className="space-y-6 mt-4">
-              {/* Brand Info */}
               <div className="flex items-center gap-4">
                 <Avatar className="h-16 w-16">
                   <AvatarImage src={selectedBrand.logoUrl || ''} />
@@ -429,7 +403,6 @@ export default function AdminBrandsPage() {
 
               {selectedBrand.description && <p className="text-sm text-muted-foreground">{selectedBrand.description}</p>}
 
-              {/* Business Info */}
               <div className="text-sm space-y-1.5">
                 <p className="flex items-center gap-2"><User className="h-4 w-4 text-muted-foreground" /><span className="text-muted-foreground">대표자:</span> {selectedBrand.representativeName || '-'}</p>
                 <p className="flex items-center gap-2"><FileText className="h-4 w-4 text-muted-foreground" /><span className="text-muted-foreground">사업자번호:</span> <span className="font-mono">{selectedBrand.businessNumber || '-'}</span></p>
@@ -442,7 +415,6 @@ export default function AdminBrandsPage() {
 
               <Separator />
 
-              {/* Contact */}
               <div>
                 <h3 className="font-semibold mb-2 flex items-center gap-2"><Mail className="h-4 w-4" />연락처</h3>
                 <div className="text-sm space-y-1">
@@ -454,24 +426,21 @@ export default function AdminBrandsPage() {
 
               <Separator />
 
-              {/* Operation Info */}
               <div>
                 <h3 className="font-semibold mb-2 flex items-center gap-2"><Truck className="h-4 w-4" />운영 정보</h3>
                 <div className="text-sm space-y-1">
                   <p><span className="text-muted-foreground">플랫폼 수수료:</span> 10% (결제 수수료 포함)</p>
-                  <p className="text-xs text-muted-foreground pl-4">공동구매 진행 시 브랜드에 청구되는 수수료입니다. 크리에이터 커미션은 별도입니다.</p>
+                  <p className="text-sm text-muted-foreground pl-4">공동구매 진행 시 브랜드에 청구되는 수수료입니다. 크리에이터 커미션은 별도입니다.</p>
                   <p><span className="text-muted-foreground">커미션율:</span> {selectedBrand.creatorCommissionRate ?? '-'}%</p>
                   <p><span className="text-muted-foreground">기본 배송비:</span> {formatKRW(selectedBrand.defaultShippingFee)}</p>
                   <p><span className="text-muted-foreground">무료배송 기준:</span> {selectedBrand.freeShippingThreshold > 0 ? formatKRW(selectedBrand.freeShippingThreshold) : '-'}</p>
                   <p><span className="text-muted-foreground">택배사:</span> {selectedBrand.defaultCourier || '-'}</p>
                   <p><span className="text-muted-foreground">반품주소:</span> {selectedBrand.returnAddress || '-'}</p>
-                  {selectedBrand.mocraStatus && <p><span className="text-muted-foreground">MoCRA:</span> <Badge variant="outline" className={selectedBrand.mocraStatus === 'green' ? 'border-green-500 text-green-700' : selectedBrand.mocraStatus === 'yellow' ? 'border-yellow-500 text-yellow-700' : 'border-red-500 text-red-700'}>{selectedBrand.mocraStatus}</Badge></p>}
                 </div>
               </div>
 
               <Separator />
 
-              {/* Stats */}
               <div>
                 <h3 className="font-semibold mb-3 flex items-center gap-2"><TrendingUp className="h-4 w-4" />성과</h3>
                 <div className="grid grid-cols-2 gap-3">
@@ -484,7 +453,6 @@ export default function AdminBrandsPage() {
 
               <Separator />
 
-              {/* Products */}
               {selectedBrand.products.length > 0 && (
                 <div>
                   <h3 className="font-semibold mb-3 flex items-center gap-2"><Package className="h-4 w-4" />최근 상품</h3>
@@ -505,7 +473,6 @@ export default function AdminBrandsPage() {
                 </div>
               )}
 
-              {/* Recent Orders */}
               {selectedBrand.recentOrders.length > 0 && (
                 <div>
                   <h3 className="font-semibold mb-3 flex items-center gap-2"><ShoppingBag className="h-4 w-4" />최근 주문</h3>
@@ -528,7 +495,6 @@ export default function AdminBrandsPage() {
 
               <Separator />
 
-              {/* Actions */}
               <div className="space-y-3">
                 <h3 className="font-semibold">관리</h3>
                 {(() => {
@@ -564,7 +530,6 @@ export default function AdminBrandsPage() {
         </SheetContent>
       </Sheet>
 
-      {/* Action Dialog */}
       <Dialog open={actionDialog.open} onOpenChange={open => setActionDialog(prev => ({ ...prev, open }))}>
         <DialogContent>
           <DialogHeader>

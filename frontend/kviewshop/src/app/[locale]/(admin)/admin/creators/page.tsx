@@ -74,8 +74,8 @@ interface CreatorDetail extends AdminCreator {
 const GRADE_COLORS: Record<string, string> = {
   ROOKIE: 'bg-gray-100 text-gray-700',
   SILVER: 'bg-slate-200 text-slate-800',
-  GOLD: 'bg-amber-200 text-amber-700',
-  PLATINUM: 'bg-purple-200 text-purple-700',
+  GOLD: 'bg-amber-100 text-amber-700',
+  PLATINUM: 'bg-purple-100 text-purple-700',
 };
 
 const GRADE_KO: Record<string, string> = {
