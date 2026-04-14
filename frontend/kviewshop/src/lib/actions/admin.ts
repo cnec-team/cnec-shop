@@ -153,7 +153,7 @@ export async function deleteGuide(id: string) {
 
 const SETTING_DEFAULTS: Record<string, string> = {
   site_name: 'CNEC Shop',
-  site_url: 'https://cnecshop.netlify.app',
+  site_url: 'https://www.cnecshop.com',
   default_commission: '25',
   min_commission: '20',
   max_commission: '30',
@@ -236,4 +236,243 @@ export async function getAdminSettlements() {
       user: { select: { name: true, role: true } },
     },
   })
+}
+
+// ==================== Orders ====================
+
+interface OrderFilters {
+  status?: string
+  period?: string // 'today' | '7days' | '30days' | 'all'
+  search?: string
+  page?: number
+}
+
+export async function getAdminOrders(filters: OrderFilters = {}) {
+  await requireAdmin()
+
+  const where: Record<string, unknown> = {}
+
+  if (filters.status && filters.status !== 'all') {
+    where.status = filters.status
+  }
+
+  if (filters.period && filters.period !== 'all') {
+    const now = new Date()
+    const start = new Date()
+    if (filters.period === 'today') start.setHours(0, 0, 0, 0)
+    else if (filters.period === '7days') start.setDate(now.getDate() - 7)
+    else if (filters.period === '30days') start.setDate(now.getDate() - 30)
+    where.createdAt = { gte: start }
+  }
+
+  if (filters.search) {
+    const s = filters.search
+    where.OR = [
+      { orderNumber: { contains: s, mode: 'insensitive' } },
+      { buyerName: { contains: s, mode: 'insensitive' } },
+      { customerName: { contains: s, mode: 'insensitive' } },
+      { buyerPhone: { contains: s } },
+      { customerPhone: { contains: s } },
+    ]
+  }
+
+  const pageSize = 20
+  const page = filters.page || 1
+
+  const [orders, total] = await Promise.all([
+    prisma.order.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      include: {
+        items: {
+          include: {
+            product: { select: { id: true, name: true, thumbnailUrl: true } },
+          },
+        },
+        creator: { select: { id: true, username: true, displayName: true } },
+        brand: { select: { id: true, companyName: true } },
+        buyer: { select: { id: true, nickname: true } },
+      },
+    }),
+    prisma.order.count({ where }),
+  ])
+
+  // Convert Decimal fields to numbers
+  const serialized = orders.map(order => ({
+    ...order,
+    totalAmount: Number(order.totalAmount),
+    subtotal: order.subtotal ? Number(order.subtotal) : null,
+    productAmount: order.productAmount ? Number(order.productAmount) : null,
+    shippingFee: Number(order.shippingFee),
+    creatorRevenue: order.creatorRevenue ? Number(order.creatorRevenue) : null,
+    platformRevenue: order.platformRevenue ? Number(order.platformRevenue) : null,
+    brandRevenue: order.brandRevenue ? Number(order.brandRevenue) : null,
+    items: order.items.map(item => ({
+      ...item,
+      unitPrice: Number(item.unitPrice),
+      totalPrice: Number(item.totalPrice),
+    })),
+  }))
+
+  return { orders: serialized, total, pageSize }
+}
+
+export async function getAdminOrderStats() {
+  await requireAdmin()
+
+  const counts = await prisma.order.groupBy({
+    by: ['status'],
+    _count: true,
+  })
+
+  const stats: Record<string, number> = {
+    PAID: 0, PREPARING: 0, SHIPPING: 0, DELIVERED: 0, CONFIRMED: 0, CANCELLED: 0, REFUNDED: 0,
+  }
+  for (const c of counts) {
+    stats[c.status] = c._count
+  }
+  return stats
+}
+
+export async function updateOrderStatus(
+  orderId: string,
+  newStatus: string,
+  extra?: { trackingNumber?: string; courierCode?: string; cancelReason?: string }
+) {
+  await requireAdmin()
+
+  const order = await prisma.order.findUnique({ where: { id: orderId }, select: { id: true, status: true, buyerId: true, orderNumber: true } })
+  if (!order) throw new Error('주문을 찾을 수 없습니다')
+
+  // Validate transitions
+  const allowed: Record<string, string[]> = {
+    PAID: ['PREPARING', 'CANCELLED'],
+    PREPARING: ['SHIPPING', 'CANCELLED'],
+    SHIPPING: ['DELIVERED', 'CANCELLED'],
+    DELIVERED: ['CONFIRMED', 'CANCELLED'],
+    CONFIRMED: ['CANCELLED'],
+  }
+
+  if (!allowed[order.status]?.includes(newStatus)) {
+    throw new Error(`${order.status}에서 ${newStatus}로 변경할 수 없습니다`)
+  }
+
+  if (newStatus === 'SHIPPING' && !extra?.trackingNumber) {
+    throw new Error('배송 시 송장번호가 필요합니다')
+  }
+
+  const updateData: Record<string, unknown> = { status: newStatus }
+
+  if (newStatus === 'SHIPPING') {
+    updateData.trackingNumber = extra?.trackingNumber
+    updateData.courierCode = extra?.courierCode
+    updateData.shippedAt = new Date()
+  } else if (newStatus === 'DELIVERED') {
+    updateData.deliveredAt = new Date()
+  } else if (newStatus === 'CONFIRMED') {
+    updateData.confirmedAt = new Date()
+  } else if (newStatus === 'CANCELLED') {
+    updateData.cancelledAt = new Date()
+    updateData.cancelReason = extra?.cancelReason || '관리자 취소'
+  }
+
+  const updated = await prisma.order.update({ where: { id: orderId }, data: updateData })
+
+  // Send notification to buyer
+  if (order.buyerId) {
+    const statusLabels: Record<string, string> = {
+      PREPARING: '배송 준비가 시작되었습니다',
+      SHIPPING: '상품이 발송되었습니다',
+      DELIVERED: '상품이 배송 완료되었습니다',
+      CANCELLED: '주문이 취소되었습니다',
+    }
+    const msg = statusLabels[newStatus]
+    if (msg) {
+      try {
+        await sendNotification({
+          userId: order.buyerId,
+          type: 'ORDER',
+          title: `주문 ${order.orderNumber || ''} ${msg}`,
+          message: msg,
+          linkUrl: `/buyer/orders/${orderId}`,
+        })
+      } catch { /* ignore notification failures */ }
+    }
+  }
+
+  return updated
+}
+
+// ==================== Campaigns ====================
+
+interface CampaignFilters {
+  status?: string
+  type?: string
+  search?: string
+}
+
+export async function getAdminCampaigns(filters: CampaignFilters = {}) {
+  await requireAdmin()
+
+  const where: Record<string, unknown> = {}
+
+  if (filters.status && filters.status !== 'all') {
+    where.status = filters.status
+  }
+  if (filters.type && filters.type !== 'all') {
+    where.type = filters.type
+  }
+  if (filters.search) {
+    where.OR = [
+      { title: { contains: filters.search, mode: 'insensitive' } },
+      { brand: { companyName: { contains: filters.search, mode: 'insensitive' } } },
+    ]
+  }
+
+  const campaigns = await prisma.campaign.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
+    include: {
+      brand: { select: { id: true, companyName: true } },
+      products: {
+        include: {
+          product: { select: { id: true, name: true, thumbnailUrl: true, price: true } },
+        },
+      },
+      participations: {
+        select: { id: true, creatorId: true, status: true },
+      },
+    },
+  })
+
+  // Serialize Decimal fields
+  return campaigns.map(c => ({
+    ...c,
+    commissionRate: Number(c.commissionRate),
+    products: c.products.map(cp => ({
+      ...cp,
+      campaignPrice: Number(cp.campaignPrice),
+      product: {
+        ...cp.product,
+        price: cp.product.price ? Number(cp.product.price) : null,
+      },
+    })),
+  }))
+}
+
+export async function getAdminCampaignStats() {
+  await requireAdmin()
+
+  const counts = await prisma.campaign.groupBy({
+    by: ['status'],
+    _count: true,
+  })
+
+  const stats: Record<string, number> = { DRAFT: 0, RECRUITING: 0, ACTIVE: 0, ENDED: 0 }
+  for (const c of counts) {
+    stats[c.status] = c._count
+  }
+  return stats
 }
