@@ -16,7 +16,10 @@ import {
   AlertTriangle,
   HelpCircle,
   ExternalLink,
+  RefreshCw,
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 // ── Badge Types ──
 
@@ -98,23 +101,54 @@ export function PriceScoutSheet({
   const [data, setData] = useState<PriceDetailData | null>(null);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/creator/price-scout/${productId}`);
+      if (res.ok) {
+        const json = await res.json();
+        setData(json);
+      }
+    } catch {
+      // silent
+    } finally {
+      setLoading(false);
+      setLoaded(true);
+    }
+  };
 
   const handleOpenChange = async (isOpen: boolean) => {
     onOpenChange(isOpen);
     if (isOpen && !loaded) {
-      setLoading(true);
-      try {
-        const res = await fetch(`/api/creator/price-scout/${productId}`);
-        if (res.ok) {
-          const json = await res.json();
-          setData(json);
-        }
-      } catch {
-        // silent
-      } finally {
-        setLoading(false);
-        setLoaded(true);
+      await loadData();
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const res = await fetch(`/api/creator/price-scout/${productId}/refresh`, {
+        method: 'POST',
+      });
+      const json = await res.json();
+
+      if (res.status === 429) {
+        toast.error(json.error ?? '1시간 후 다시 시도해주세요');
+        return;
       }
+
+      if (json.updated) {
+        toast.success('가격이 업데이트되었어요');
+        await loadData();
+      } else {
+        toast.info('검색 결과가 없습니다');
+      }
+    } catch {
+      toast.error('업데이트에 실패했어요');
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -122,7 +156,19 @@ export function PriceScoutSheet({
     <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetContent side="bottom" className="rounded-t-2xl max-h-[80vh] overflow-y-auto">
         <SheetHeader>
-          <SheetTitle className="text-left">가격 비교</SheetTitle>
+          <div className="flex items-center justify-between">
+            <SheetTitle className="text-left">가격 비교</SheetTitle>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={refreshing || loading}
+              className="text-xs text-gray-500 gap-1"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+              {refreshing ? '업데이트 중' : '가격 새로고침'}
+            </Button>
+          </div>
         </SheetHeader>
 
         {loading ? (
