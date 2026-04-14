@@ -54,8 +54,8 @@ export function MobileBottomNav() {
 
   const tabs = [
     { title: '홈', href: `${base}/dashboard`, icon: LayoutDashboard },
+    { title: '캠페인', href: `${base}/campaigns/gonggu`, icon: Megaphone },
     { title: '내 샵', href: `${base}/shop/products`, icon: Store },
-    { title: '캠페인', href: `${base}/campaigns`, icon: Megaphone },
     { title: '판매', href: `${base}/sales`, icon: TrendingUp },
     { title: '더보기', href: '#more', icon: MoreHorizontal },
   ] as const;
