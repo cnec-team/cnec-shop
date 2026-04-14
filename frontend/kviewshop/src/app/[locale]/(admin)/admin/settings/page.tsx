@@ -16,7 +16,7 @@ export default function AdminSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState({
     site_name: 'CNEC Shop',
-    site_url: 'https://cnecshop.netlify.app',
+    site_url: 'https://www.cnecshop.com',
     default_commission: '25',
     min_commission: '20',
     max_commission: '30',

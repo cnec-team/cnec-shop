@@ -1,3 +1,5 @@
+import { redirect } from 'next/navigation';
+import { auth } from '@/lib/auth';
 import { Header } from '@/components/layout/header';
 import { Sidebar } from '@/components/layout/sidebar';
 import type { Locale } from '@/lib/i18n/config';
@@ -10,6 +12,12 @@ export default async function AdminLayout({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
+
+  // Server-side auth check: only super_admin can access admin pages
+  const session = await auth();
+  if (!session?.user || session.user.role !== 'super_admin') {
+    redirect(`/${locale}/login`);
+  }
 
   return (
     <div className="min-h-screen bg-background">

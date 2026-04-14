@@ -82,7 +82,7 @@ export default function AdminSettlementsPage() {
       recipient_name: s.user?.name || '-',
       recipient_type: s.userRole === 'creator' ? 'creator' as const : 'brand' as const,
       amount: Number(s.netAmount),
-      currency: 'USD',
+      currency: 'KRW',
       status: s.status.toLowerCase() as 'pending' | 'processing' | 'completed' | 'failed',
       period_start: new Date(s.periodStart).toISOString(),
       period_end: new Date(s.periodEnd).toISOString(),
@@ -99,7 +99,7 @@ export default function AdminSettlementsPage() {
       recipient_name: settlement.user?.name || '-',
       recipient_type: settlement.userRole === 'creator' ? 'creator' as const : 'brand' as const,
       amount: Number(settlement.netAmount),
-      currency: 'USD',
+      currency: 'KRW',
       status: settlement.status.toLowerCase() as 'pending' | 'processing' | 'completed' | 'failed',
       period_start: new Date(settlement.periodStart).toISOString(),
       period_end: new Date(settlement.periodEnd).toISOString(),
@@ -162,7 +162,7 @@ export default function AdminSettlementsPage() {
                 </Badge>
               </TableCell>
               <TableCell className="font-bold">
-                {formatCurrency(Number(settlement.netAmount), 'USD')}
+                {formatCurrency(Number(settlement.netAmount), 'KRW')}
               </TableCell>
               <TableCell className="text-sm text-muted-foreground">
                 {new Date(settlement.periodStart).toLocaleDateString('ko-KR')} ~{' '}
@@ -229,7 +229,7 @@ export default function AdminSettlementsPage() {
             <Clock className="h-4 w-4 text-warning" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-warning">{formatCurrency(totalPending, 'USD')}</div>
+            <div className="text-2xl font-bold text-warning">{formatCurrency(totalPending, 'KRW')}</div>
             <p className="text-xs text-muted-foreground">{pendingSettlements.length}건 대기중</p>
           </CardContent>
         </Card>
@@ -240,7 +240,7 @@ export default function AdminSettlementsPage() {
             <DollarSign className="h-4 w-4 text-success" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-success">{formatCurrency(totalCompleted, 'USD')}</div>
+            <div className="text-2xl font-bold text-success">{formatCurrency(totalCompleted, 'KRW')}</div>
             <p className="text-xs text-muted-foreground">{completedSettlements.length}건 완료</p>
           </CardContent>
         </Card>
@@ -251,7 +251,7 @@ export default function AdminSettlementsPage() {
             <Receipt className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalAll, 'USD')}</div>
+            <div className="text-2xl font-bold">{formatCurrency(totalAll, 'KRW')}</div>
             <p className="text-xs text-muted-foreground">누적 금액</p>
           </CardContent>
         </Card>

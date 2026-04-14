@@ -541,7 +541,11 @@
     "viewDetails": "상세 보기",
     "settings": "설정",
     "totalCommission": "총 수수료",
-    "pendingSettlements": "미정산"
+    "pendingSettlements": "미정산",
+    "orderManagement": "주문 관리",
+    "orderManagementDesc": "전체 주문을 조회하고 상태를 관리합니다",
+    "campaignManagement": "캠페인 관리",
+    "campaignManagementDesc": "전체 캠페인 현황을 모니터링합니다"
   },
   "home": {
     "title": "크리에이터 셀렉트샵,\n크넥에서 시작하세요",
