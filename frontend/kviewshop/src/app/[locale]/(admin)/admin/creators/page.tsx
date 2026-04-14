@@ -73,9 +73,21 @@ interface CreatorDetail extends AdminCreator {
 
 const GRADE_COLORS: Record<string, string> = {
   ROOKIE: 'bg-gray-100 text-gray-700',
-  SILVER: 'bg-gray-200 text-gray-800',
-  GOLD: 'bg-amber-100 text-amber-800',
-  PLATINUM: 'bg-purple-100 text-purple-800',
+  SILVER: 'bg-slate-200 text-slate-800',
+  GOLD: 'bg-amber-200 text-amber-700',
+  PLATINUM: 'bg-purple-200 text-purple-700',
+};
+
+const GRADE_KO: Record<string, string> = {
+  ROOKIE: '루키', SILVER: '실버', GOLD: '골드', PLATINUM: '플래티넘',
+};
+
+const SKIN_TYPE_KO: Record<string, string> = {
+  dry: '건성', oily: '지성', combination: '복합성', normal: '보통', oily_sensitive: '지성민감성', sensitive: '민감성',
+};
+
+const PERSONAL_COLOR_KO: Record<string, string> = {
+  spring_warm: '봄웜', summer_cool: '여름쿨', autumn_warm: '가을웜', winter_cool: '겨울쿨',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -278,7 +290,7 @@ export default function AdminCreatorsPage() {
                     {filtered.map(c => {
                       const grade = c.grade?.grade || 'ROOKIE';
                       return (
-                        <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50" onClick={() => openDetail(c.id)}>
+                        <TableRow key={c.id} className={`cursor-pointer hover:bg-muted/50 ${c.totalSales > 0 ? 'bg-blue-50/50' : ''}`} onClick={() => openDetail(c.id)}>
                           <TableCell>
                             <div className="flex items-center gap-3">
                               <Avatar className="h-9 w-9">
@@ -288,24 +300,25 @@ export default function AdminCreatorsPage() {
                               <div>
                                 <p className="font-medium text-sm">{c.displayName || c.username}</p>
                                 <p className="text-xs text-muted-foreground">@{c.shopId || c.username}</p>
+                                {c.bio && <p className="text-xs text-muted-foreground/70 truncate max-w-[160px]">{c.bio.slice(0, 20)}{c.bio.length > 20 ? '...' : ''}</p>}
                               </div>
                             </div>
                           </TableCell>
                           <TableCell>
-                            <div className="flex gap-1">
-                              {c.instagramHandle && <Instagram className="h-4 w-4 text-pink-500" />}
-                              {c.youtubeHandle && <Youtube className="h-4 w-4 text-red-500" />}
-                              {c.tiktokHandle && <TikTokIcon className="h-4 w-4" />}
+                            <div className="flex gap-1" onClick={e => e.stopPropagation()}>
+                              {c.instagramHandle && <a href={`https://instagram.com/${c.instagramHandle}`} target="_blank" rel="noopener noreferrer"><Instagram className="h-4 w-4 text-pink-500 hover:text-pink-700" /></a>}
+                              {c.youtubeHandle && <a href={`https://youtube.com/@${c.youtubeHandle}`} target="_blank" rel="noopener noreferrer"><Youtube className="h-4 w-4 text-red-500 hover:text-red-700" /></a>}
+                              {c.tiktokHandle && <a href={`https://tiktok.com/@${c.tiktokHandle}`} target="_blank" rel="noopener noreferrer"><TikTokIcon className="h-4 w-4 hover:opacity-70" /></a>}
                             </div>
                           </TableCell>
                           <TableCell className="text-sm">{c.user?.email || '-'}</TableCell>
                           <TableCell>
                             <div className="flex gap-1 flex-wrap">
-                              {c.skinType && <Badge variant="outline" className="text-xs">{c.skinType}</Badge>}
+                              {c.skinType && <Badge variant="outline" className="text-xs">{SKIN_TYPE_KO[c.skinType] || c.skinType}</Badge>}
                               {c.ageRange && <Badge variant="outline" className="text-xs">{c.ageRange}</Badge>}
                             </div>
                           </TableCell>
-                          <TableCell><Badge className={GRADE_COLORS[grade] || GRADE_COLORS.ROOKIE}>{grade}</Badge></TableCell>
+                          <TableCell><Badge className={GRADE_COLORS[grade] || GRADE_COLORS.ROOKIE}>{GRADE_KO[grade] || grade}</Badge></TableCell>
                           <TableCell className="text-right text-sm font-medium">{formatKRW(c.totalSales)}</TableCell>
                           <TableCell className="text-right text-sm">{formatKRW(c.totalCommission)}</TableCell>
                           <TableCell className="text-right text-sm">{c.shopItemCount}</TableCell>
@@ -327,7 +340,7 @@ export default function AdminCreatorsPage() {
                 {filtered.map(c => {
                   const grade = c.grade?.grade || 'ROOKIE';
                   return (
-                    <Card key={c.id} className="cursor-pointer hover:bg-muted/50" onClick={() => openDetail(c.id)}>
+                    <Card key={c.id} className={`cursor-pointer hover:bg-muted/50 ${c.totalSales > 0 ? 'bg-blue-50/50' : ''}`} onClick={() => openDetail(c.id)}>
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between">
                           <div className="flex items-center gap-3">
@@ -341,7 +354,7 @@ export default function AdminCreatorsPage() {
                             </div>
                           </div>
                           <div className="flex gap-1 items-center">
-                            <Badge className={GRADE_COLORS[grade]}>{grade}</Badge>
+                            <Badge className={GRADE_COLORS[grade]}>{GRADE_KO[grade] || grade}</Badge>
                             <Badge variant={c.status === 'ACTIVE' ? 'default' : 'destructive'} className={c.status === 'ACTIVE' ? 'bg-green-100 text-green-800 hover:bg-green-100' : ''}>
                               {c.status === 'ACTIVE' ? '활성' : '정지'}
                             </Badge>

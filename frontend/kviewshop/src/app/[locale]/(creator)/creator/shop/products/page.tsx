@@ -29,9 +29,6 @@ import {
   Play,
   Trash2,
   Loader2,
-  Eye,
-  EyeOff,
-  ExternalLink,
   AlertCircle,
   X,
 } from 'lucide-react';
@@ -283,10 +280,25 @@ export default function MyShopProductsPage() {
             return (
               <div
                 key={item.id}
-                className={`bg-white rounded-2xl border shadow-sm overflow-hidden ${
+                className={`bg-white rounded-2xl border shadow-sm overflow-hidden relative ${
                   item.isVisible ? 'border-gray-100' : 'border-gray-200 opacity-60'
                 }`}
               >
+                {/* Delete button — top-right of card, PICK only */}
+                {item.type === 'PICK' && (
+                  <button
+                    onClick={() => setRemoveTarget(item)}
+                    disabled={removingId === item.id}
+                    className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-gray-100/90 hover:bg-red-100 flex items-center justify-center transition-colors"
+                  >
+                    {removingId === item.id ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-500" />
+                    ) : (
+                      <X className="h-3.5 w-3.5 text-gray-500 hover:text-red-500" />
+                    )}
+                  </button>
+                )}
+
                 <Link href={`/${locale}/creator/products/${product.id}`} className="block">
                   <div className="aspect-square bg-gray-50 relative overflow-hidden">
                     <SafeImage
@@ -304,11 +316,13 @@ export default function MyShopProductsPage() {
                         </span>
                       </div>
                     )}
-                    <span className="absolute top-2 left-2 bg-white/80 text-[10px] font-medium px-2 py-0.5 rounded-full text-gray-600">
-                      {item.type === 'GONGGU' ? '공구' : '픽'}
-                    </span>
+                    {item.type === 'GONGGU' && (
+                      <span className="absolute top-2 left-2 bg-blue-50/90 text-[10px] font-medium px-2 py-0.5 rounded-full text-blue-700">
+                        공구
+                      </span>
+                    )}
                   </div>
-                  <div className="p-3 pb-0">
+                  <div className="p-3">
                     {product.brand && (
                       <BrandBadge brandName={product.brand.brandName} size="sm" />
                     )}
@@ -333,49 +347,6 @@ export default function MyShopProductsPage() {
                     )}
                   </div>
                 </Link>
-
-                {/* Action Buttons */}
-                <div className="p-3 pt-2 flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 h-9 text-xs rounded-xl"
-                    onClick={() => openContentModal(item)}
-                  >
-                    <Play className="h-3.5 w-3.5 mr-1" />
-                    리뷰 영상
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-9 px-3 rounded-xl"
-                    onClick={() => handleToggleVisibility(item)}
-                    disabled={togglingId === item.id}
-                  >
-                    {togglingId === item.id ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : item.isVisible ? (
-                      <Eye className="h-3.5 w-3.5 text-gray-500" />
-                    ) : (
-                      <EyeOff className="h-3.5 w-3.5 text-gray-400" />
-                    )}
-                  </Button>
-                  {item.type === 'PICK' && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-9 px-3 rounded-xl text-red-500 hover:text-red-600 hover:bg-red-50 border-red-200"
-                      onClick={() => setRemoveTarget(item)}
-                      disabled={removingId === item.id}
-                    >
-                      {removingId === item.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <X className="h-3.5 w-3.5" />
-                      )}
-                    </Button>
-                  )}
-                </div>
               </div>
             );
           })}
