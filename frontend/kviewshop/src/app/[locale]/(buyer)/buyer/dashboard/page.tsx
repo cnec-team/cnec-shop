@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useUser } from '@/lib/hooks/use-user';
 import { getBuyerDashboardData } from '@/lib/actions/buyer';
@@ -24,17 +24,23 @@ import {
 export default function BuyerDashboardPage() {
   const { user, buyer, isLoading: isUserLoading } = useUser();
   const params = useParams();
+  const router = useRouter();
   const locale = params.locale as string;
   const [isDataLoading, setIsDataLoading] = useState(true);
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
+  const [redirected, setRedirected] = useState(false);
 
   useEffect(() => {
     // 유저 로딩이 끝날 때까지 대기
     if (isUserLoading) return;
 
-    // 유저 로딩이 끝났는데 buyer가 없으면 로딩 종료 (빈 상태 표시)
-    if (!buyer) {
+    // 비로그인 상태면 로그인 페이지로 리다이렉트 (무한 API 호출 방지)
+    if (!user || !buyer) {
+      if (!redirected) {
+        setRedirected(true);
+        router.replace(`/${locale}/buyer/login`);
+      }
       setIsDataLoading(false);
       return;
     }
