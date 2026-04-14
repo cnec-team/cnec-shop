@@ -1,33 +1,39 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useUser } from '@/lib/hooks/use-user';
 import { getBuyerPointsHistory } from '@/lib/actions/buyer';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import {
   Gift,
-  TrendingUp,
-  TrendingDown,
   Star,
-  ShoppingBag,
   Users,
-  Calendar,
+  ShoppingBag,
   Loader2,
 } from 'lucide-react';
+
+interface PointTransaction {
+  id: string;
+  amount: string | number;
+  balanceAfter?: string | number | null;
+  pointType?: string;
+  type?: string;
+  description?: string | null;
+  createdAt: string | Date;
+}
 
 export default function BuyerPointsPage() {
   const { buyer } = useUser();
   const [isLoading, setIsLoading] = useState(true);
-  const [history, setHistory] = useState<any[]>([]);
+  const [history, setHistory] = useState<PointTransaction[]>([]);
 
-  // Use stable primitive ID instead of object reference as dependency
   const buyerId = buyer?.id;
+  const fetchedRef = useRef(false);
 
   useEffect(() => {
-    const loadHistory = async () => {
-      if (!buyerId) return;
+    if (!buyerId || fetchedRef.current) return;
+    fetchedRef.current = true;
 
+    const loadHistory = async () => {
       try {
         const data = await getBuyerPointsHistory(buyerId);
         setHistory(data || []);
@@ -59,190 +65,148 @@ export default function BuyerPointsPage() {
     }
   };
 
-  const getTypeLabel = (type: string) => {
+  const getTypeLabel = (type: string): string => {
     switch (type) {
       case 'review_text':
-        return 'Text Review';
+        return '텍스트 리뷰 적립';
       case 'review_instagram':
-        return 'Instagram Review';
+        return '인스타그램 리뷰 적립';
+      case 'REVIEW':
+        return '리뷰 적립';
       case 'purchase':
       case 'PURCHASE':
-        return 'Purchase Bonus';
+        return '구매 적립';
       case 'referral':
       case 'REFERRAL':
-        return 'Referral Bonus';
+        return '친구 추천 적립';
       case 'event':
-        return 'Event Bonus';
+        return '이벤트 적립';
       case 'use_order':
-        return 'Used for Order';
+        return '주문 사용';
       case 'expiry':
-        return 'Points Expired';
+        return '포인트 만료';
       case 'admin_adjustment':
-        return 'Adjustment';
+        return '관리자 조정';
       case 'SIGNUP_BONUS':
-        return 'Signup Bonus';
+        return '가입 보너스';
       case 'PERSONA_BONUS':
-        return 'Persona Bonus';
+        return '페르소나 보너스';
       default:
         return type;
     }
   };
 
+  const balance = Number(buyer?.points_balance ?? buyer?.pointsBalance ?? 0);
+  const totalEarned = Number(buyer?.total_points_earned ?? buyer?.totalPointsEarned ?? 0);
+  const totalUsed = Number(buyer?.total_points_used ?? buyer?.totalPointsUsed ?? 0);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* Header */}
       <div>
-        <h1 className="text-3xl font-headline font-bold flex items-center gap-2">
-          <Gift className="h-8 w-8 text-primary" />
-          My Points
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Earn and spend reward points
+        <h1 className="text-xl font-bold text-gray-900">내 포인트</h1>
+        <p className="text-sm text-gray-500 mt-1">
+          적립하고 사용하는 포인트를 확인하세요
         </p>
       </div>
 
-      {/* Points Summary */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="bg-gradient-to-br from-primary/20 to-primary/5 border-primary/30">
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground">Current Balance</p>
-              <p className="text-4xl font-bold text-primary mt-1">
-                {(buyer?.points_balance || buyer?.pointsBalance || 0).toLocaleString()}
-                <span className="text-lg ml-1">P</span>
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-full bg-green-500/10">
-                <TrendingUp className="h-6 w-6 text-green-500" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Earned</p>
-                <p className="text-2xl font-bold">
-                  {(buyer?.total_points_earned || buyer?.totalPointsEarned || 0).toLocaleString()} P
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-full bg-blue-500/10">
-                <TrendingDown className="h-6 w-6 text-blue-500" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Used</p>
-                <p className="text-2xl font-bold">
-                  {(buyer?.total_points_used || buyer?.totalPointsUsed || 0).toLocaleString()} P
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Dark Balance Card */}
+      <div className="bg-gray-900 text-white rounded-2xl p-6">
+        <p className="text-sm text-gray-400">보유 포인트</p>
+        <p className="text-3xl font-bold text-white mt-1">
+          {balance.toLocaleString()} P
+        </p>
+        <div className="flex items-center gap-4 mt-4 pt-4 border-t border-gray-700">
+          <p className="text-sm text-gray-400">
+            총 적립 <span className="text-white font-medium">{totalEarned.toLocaleString()}P</span>
+          </p>
+          <p className="text-sm text-gray-400">
+            총 사용 <span className="text-white font-medium">{totalUsed.toLocaleString()}P</span>
+          </p>
+        </div>
       </div>
 
-      {/* How to Earn */}
-      <Card>
-        <CardHeader>
-          <CardTitle>How to Earn Points</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="p-4 rounded-lg bg-muted/50">
-              <div className="flex items-center gap-2 mb-2">
-                <Star className="h-5 w-5 text-yellow-500" />
-                <span className="font-medium">Write Reviews</span>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Text review: <strong>500P</strong><br />
-                With Instagram: <strong>1,000P</strong>
+      {/* How to Earn Points */}
+      <div>
+        <h2 className="text-sm font-bold text-gray-900 mb-3">포인트 적립 방법</h2>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-white rounded-2xl border border-gray-100 p-4">
+            <Star className="h-5 w-5 text-yellow-500 mb-2" />
+            <p className="text-sm font-semibold text-gray-900">리뷰 작성</p>
+            <p className="text-xs text-gray-400 mt-1">텍스트 리뷰 500P</p>
+            <p className="text-xs text-gray-400">인스타그램 리뷰 1,000P</p>
+          </div>
+          <div className="bg-white rounded-2xl border border-gray-100 p-4">
+            <Users className="h-5 w-5 text-blue-500 mb-2" />
+            <p className="text-sm font-semibold text-gray-900">친구 추천</p>
+            <p className="text-xs text-gray-400 mt-1">친구 1명 가입 시 1,000P</p>
+          </div>
+          <div className="bg-white rounded-2xl border border-gray-100 p-4">
+            <Gift className="h-5 w-5 text-green-500 mb-2" />
+            <p className="text-sm font-semibold text-gray-900">이벤트 참여</p>
+            <p className="text-xs text-gray-400 mt-1">프로모션 참여 시 보너스 적립</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Points History */}
+      <div>
+        <h2 className="text-sm font-bold text-gray-900 mb-3">포인트 내역</h2>
+        {history.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-gray-100 p-5">
+            <div className="py-10 text-center">
+              <Gift className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+              <p className="text-sm font-semibold text-gray-900 mb-1">
+                아직 포인트 내역이 없어요
               </p>
-            </div>
-            <div className="p-4 rounded-lg bg-muted/50">
-              <div className="flex items-center gap-2 mb-2">
-                <Users className="h-5 w-5 text-blue-500" />
-                <span className="font-medium">Refer Friends</span>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Each friend signup: <strong>1,000P</strong>
-              </p>
-            </div>
-            <div className="p-4 rounded-lg bg-muted/50">
-              <div className="flex items-center gap-2 mb-2">
-                <Calendar className="h-5 w-5 text-green-500" />
-                <span className="font-medium">Special Events</span>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Participate in promotions for bonus points
+              <p className="text-xs text-gray-400">
+                리뷰를 작성하거나 이벤트에 참여해 포인트를 적립하세요
               </p>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        ) : (
+          <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-50">
+            {history.map((item) => {
+              const amount = Number(item.amount);
+              const isPositive = amount > 0;
 
-      {/* Points History */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Points History</CardTitle>
-          <CardDescription>Your recent point transactions</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {history.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Gift className="h-12 w-12 mx-auto mb-3 opacity-30" />
-              <p>No point transactions yet</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {history.map((item: any) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between p-3 rounded-lg bg-muted/30"
-                >
+              return (
+                <div key={item.id} className="flex items-center justify-between px-5 py-4">
                   <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-full ${
-                      Number(item.amount) > 0 ? 'bg-green-500/10' : 'bg-red-500/10'
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center ${
+                      isPositive ? 'bg-blue-50 text-blue-600' : 'bg-red-50 text-red-500'
                     }`}>
-                      {getTypeIcon(item.pointType || '')}
+                      {getTypeIcon(item.pointType || item.type || '')}
                     </div>
                     <div>
-                      <p className="font-medium text-sm">{getTypeLabel(item.pointType || '')}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(item.createdAt).toLocaleDateString()}
-                        {item.description && ` • ${item.description}`}
+                      <p className="text-sm font-medium text-gray-900">
+                        {getTypeLabel(item.pointType || item.type || '')}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {new Date(item.createdAt).toLocaleDateString('ko-KR')}
+                        {item.description && ` · ${item.description}`}
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className={`font-semibold ${
-                      Number(item.amount) > 0 ? 'text-green-500' : 'text-red-500'
-                    }`}>
-                      {Number(item.amount) > 0 ? '+' : ''}{Number(item.amount).toLocaleString()}P
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Balance: {Number(item.balanceAfter).toLocaleString()}P
-                    </p>
-                  </div>
+                  <p className={`text-sm font-bold ${
+                    isPositive ? 'text-blue-600' : 'text-red-500'
+                  }`}>
+                    {isPositive ? '+' : ''}{amount.toLocaleString()}P
+                  </p>
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

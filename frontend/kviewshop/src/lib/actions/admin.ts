@@ -400,6 +400,165 @@ export async function getAdminDashboardStats() {
   }
 }
 
+export async function getAdminDashboardCharts(period: '7d' | '30d' | '90d') {
+  await requireAdmin()
+
+  const days = period === '7d' ? 7 : period === '30d' ? 30 : 90
+  const startDate = new Date()
+  startDate.setDate(startDate.getDate() - days)
+  startDate.setHours(0, 0, 0, 0)
+
+  // Previous period for comparison
+  const prevStart = new Date(startDate)
+  prevStart.setDate(prevStart.getDate() - days)
+
+  // Daily orders for the period
+  const orders = await prisma.order.findMany({
+    where: { createdAt: { gte: startDate }, status: { notIn: ['CANCELLED', 'REFUNDED'] } },
+    select: { totalAmount: true, createdAt: true, brandId: true, creatorId: true },
+  })
+
+  // Previous period orders for comparison
+  const prevOrders = await prisma.order.findMany({
+    where: { createdAt: { gte: prevStart, lt: startDate }, status: { notIn: ['CANCELLED', 'REFUNDED'] } },
+    select: { totalAmount: true },
+  })
+
+  const prevGMV = prevOrders.reduce((sum, o) => sum + Number(o.totalAmount || 0), 0)
+  const prevOrderCount = prevOrders.length
+
+  // Daily aggregation
+  const dailyMap = new Map<string, { sales: number; orders: number }>()
+  for (let d = new Date(startDate); d <= new Date(); d.setDate(d.getDate() + 1)) {
+    const key = d.toISOString().slice(0, 10)
+    dailyMap.set(key, { sales: 0, orders: 0 })
+  }
+  for (const o of orders) {
+    const key = new Date(o.createdAt).toISOString().slice(0, 10)
+    const existing = dailyMap.get(key)
+    if (existing) {
+      existing.sales += Number(o.totalAmount || 0)
+      existing.orders += 1
+    }
+  }
+  const dailySales = Array.from(dailyMap.entries()).map(([date, data]) => ({
+    date, sales: data.sales, orders: data.orders,
+  }))
+
+  // Daily signups
+  const users = await prisma.user.findMany({
+    where: { createdAt: { gte: startDate } },
+    select: { createdAt: true, role: true },
+  })
+  const signupMap = new Map<string, { brand: number; creator: number; buyer: number }>()
+  for (const [key] of dailyMap) {
+    signupMap.set(key, { brand: 0, creator: 0, buyer: 0 })
+  }
+  for (const u of users) {
+    const key = new Date(u.createdAt).toISOString().slice(0, 10)
+    const existing = signupMap.get(key)
+    if (existing) {
+      if (u.role === 'brand_admin') existing.brand += 1
+      else if (u.role === 'creator') existing.creator += 1
+      else if (u.role === 'buyer') existing.buyer += 1
+    }
+  }
+  const dailySignups = Array.from(signupMap.entries()).map(([date, data]) => ({
+    date, ...data,
+  }))
+
+  // Brand TOP 5
+  const brandSalesMap = new Map<string, number>()
+  for (const o of orders) {
+    if (o.brandId) {
+      brandSalesMap.set(o.brandId, (brandSalesMap.get(o.brandId) || 0) + Number(o.totalAmount || 0))
+    }
+  }
+  const topBrandIds = Array.from(brandSalesMap.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5)
+  const brandNames = await prisma.brand.findMany({
+    where: { id: { in: topBrandIds.map(b => b[0]) } },
+    select: { id: true, brandName: true, companyName: true },
+  })
+  const brandNameMap = new Map(brandNames.map(b => [b.id, b.brandName || b.companyName || '알 수 없음']))
+  const topBrands = topBrandIds.map(([id, sales]) => ({
+    name: brandNameMap.get(id) || '알 수 없음', sales,
+  }))
+
+  // Creator TOP 5
+  const creatorSalesMap = new Map<string, number>()
+  for (const o of orders) {
+    if (o.creatorId) {
+      creatorSalesMap.set(o.creatorId, (creatorSalesMap.get(o.creatorId) || 0) + Number(o.totalAmount || 0))
+    }
+  }
+  const topCreatorIds = Array.from(creatorSalesMap.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5)
+  const creatorNames = await prisma.creator.findMany({
+    where: { id: { in: topCreatorIds.map(c => c[0]) } },
+    select: { id: true, displayName: true, username: true },
+  })
+  const creatorNameMap = new Map(creatorNames.map(c => [c.id, c.displayName || c.username || '알 수 없음']))
+  const topCreators = topCreatorIds.map(([id, sales]) => ({
+    name: creatorNameMap.get(id) || '알 수 없음', sales,
+  }))
+
+  // Product TOP 5
+  const orderItems = await prisma.orderItem.findMany({
+    where: { order: { createdAt: { gte: startDate }, status: { notIn: ['CANCELLED', 'REFUNDED'] } } },
+    select: { productId: true, quantity: true, totalPrice: true },
+  })
+  const productMap = new Map<string, { qty: number; sales: number }>()
+  for (const item of orderItems) {
+    if (!item.productId) continue
+    const existing = productMap.get(item.productId) || { qty: 0, sales: 0 }
+    existing.qty += item.quantity
+    existing.sales += Number(item.totalPrice || 0)
+    productMap.set(item.productId, existing)
+  }
+  const topProductIds = Array.from(productMap.entries()).sort((a, b) => b[1].sales - a[1].sales).slice(0, 5)
+  const productNames = await prisma.product.findMany({
+    where: { id: { in: topProductIds.map(p => p[0]) } },
+    select: { id: true, name: true },
+  })
+  const productNameMap = new Map(productNames.map(p => [p.id, p.name || '알 수 없음']))
+  const topProducts = topProductIds.map(([id, data]) => ({
+    name: productNameMap.get(id) || '알 수 없음', quantity: data.qty, sales: data.sales,
+  }))
+
+  // Campaign type comparison
+  const campaignOrders = await prisma.order.findMany({
+    where: { createdAt: { gte: startDate }, status: { notIn: ['CANCELLED', 'REFUNDED'] } },
+    select: { totalAmount: true, items: { select: { product: { select: { campaignProducts: { select: { campaign: { select: { type: true } } } } } } } } },
+  })
+  let gongguSales = 0
+  let alwaysSales = 0
+  for (const o of campaignOrders) {
+    const amount = Number(o.totalAmount || 0)
+    const types = new Set<string>()
+    for (const item of o.items) {
+      for (const cp of (item.product?.campaignProducts || [])) {
+        if (cp.campaign?.type) types.add(cp.campaign.type)
+      }
+    }
+    if (types.has('GONGGU')) gongguSales += amount
+    else if (types.has('ALWAYS')) alwaysSales += amount
+  }
+
+  return {
+    dailySales,
+    dailySignups,
+    topBrands,
+    topCreators,
+    topProducts,
+    campaignTypeSales: { gonggu: gongguSales, always: alwaysSales },
+    comparison: {
+      prevGMV,
+      prevOrderCount,
+      currentGMV: orders.reduce((sum, o) => sum + Number(o.totalAmount || 0), 0),
+      currentOrderCount: orders.length,
+    },
+  }
+}
+
 // ==================== Guides ====================
 
 export async function getAdminGuides() {

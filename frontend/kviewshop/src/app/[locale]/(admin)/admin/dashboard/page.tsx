@@ -1,17 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Building2,
-  Users,
-  DollarSign,
-  ShoppingCart,
-  Megaphone,
-  TrendingUp,
+  Building2, Users, DollarSign, ShoppingCart, Megaphone, TrendingUp,
+  ArrowUpRight, ArrowDownRight,
 } from 'lucide-react';
-import { getAdminDashboardStats } from '@/lib/actions/admin';
+import { getAdminDashboardStats, getAdminDashboardCharts } from '@/lib/actions/admin';
+import dynamic from 'next/dynamic';
+
+const DashboardCharts = dynamic(() => import('@/components/admin/DashboardCharts'), { ssr: false });
+
+type Period = '7d' | '30d' | '90d';
 
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState({
@@ -23,30 +25,45 @@ export default function AdminDashboardPage() {
     pendingSettlements: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState<Period>('30d');
+  const [comparison, setComparison] = useState<{ prevGMV: number; prevOrderCount: number; currentGMV: number; currentOrderCount: number } | null>(null);
 
   useEffect(() => {
     async function fetchStats() {
       try {
-        const data = await getAdminDashboardStats();
+        const [data, chartData] = await Promise.all([
+          getAdminDashboardStats(),
+          getAdminDashboardCharts(period),
+        ]);
         setStats(data);
+        setComparison((chartData as { comparison: typeof comparison }).comparison);
       } catch (error) {
         console.error('Error fetching stats:', error);
       }
       setLoading(false);
     }
     fetchStats();
-  }, []);
+  }, [period]);
 
   const formatKRW = (amount: number) =>
     new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW', minimumFractionDigits: 0 }).format(amount);
 
+  function getChange(current: number, previous: number): { value: string; positive: boolean } | null {
+    if (previous === 0) return current > 0 ? { value: '+100%', positive: true } : null;
+    const change = ((current - previous) / previous) * 100;
+    return { value: `${change >= 0 ? '+' : ''}${change.toFixed(0)}%`, positive: change >= 0 };
+  }
+
+  const gmvChange = comparison ? getChange(comparison.currentGMV, comparison.prevGMV) : null;
+  const orderChange = comparison ? getChange(comparison.currentOrderCount, comparison.prevOrderCount) : null;
+
   const statCards = [
-    { label: '총 거래액 (GMV)', value: formatKRW(stats.totalGMV), icon: DollarSign, desc: '전체 누적 매출' },
-    { label: '총 주문', value: stats.totalOrders.toString(), icon: ShoppingCart, desc: '전체 주문 건수' },
-    { label: '입점 브랜드', value: stats.totalBrands.toString(), icon: Building2, desc: '등록된 브랜드' },
-    { label: '활성 크리에이터', value: stats.totalCreators.toString(), icon: Users, desc: '등록된 크리에이터' },
-    { label: '진행 중 캠페인', value: stats.activeCampaigns.toString(), icon: Megaphone, desc: '모집중 + 진행중' },
-    { label: '미정산 건', value: stats.pendingSettlements.toString(), icon: TrendingUp, desc: '정산 대기 중' },
+    { label: '총 거래액 (GMV)', value: formatKRW(stats.totalGMV), icon: DollarSign, desc: '전체 누적 매출', change: gmvChange },
+    { label: '총 주문', value: stats.totalOrders.toString(), icon: ShoppingCart, desc: '전체 주문 건수', change: orderChange },
+    { label: '입점 브랜드', value: stats.totalBrands.toString(), icon: Building2, desc: '등록된 브랜드', change: null },
+    { label: '활성 크리에이터', value: stats.totalCreators.toString(), icon: Users, desc: '등록된 크리에이터', change: null },
+    { label: '진행 중 캠페인', value: stats.activeCampaigns.toString(), icon: Megaphone, desc: '모집중 + 진행중', change: null },
+    { label: '미정산 건', value: stats.pendingSettlements.toString(), icon: TrendingUp, desc: '정산 대기 중', change: null },
   ];
 
   return (
@@ -56,9 +73,10 @@ export default function AdminDashboardPage() {
         <p className="text-muted-foreground">플랫폼 전체 현황을 확인합니다</p>
       </div>
 
+      {/* Stat Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {statCards.map((card) => (
-          <Card key={card.label} className="card-hover">
+        {statCards.map(card => (
+          <Card key={card.label}>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">{card.label}</CardTitle>
               <card.icon className="h-4 w-4 text-muted-foreground" />
@@ -68,7 +86,15 @@ export default function AdminDashboardPage() {
                 <Skeleton className="h-8 w-24" />
               ) : (
                 <>
-                  <div className="text-2xl font-bold">{card.value}</div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl font-bold">{card.value}</span>
+                    {card.change && (
+                      <span className={`flex items-center text-xs font-medium ${card.change.positive ? 'text-green-600' : 'text-red-500'}`}>
+                        {card.change.positive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                        {card.change.value}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground mt-1">{card.desc}</p>
                 </>
               )}
@@ -77,43 +103,24 @@ export default function AdminDashboardPage() {
         ))}
       </div>
 
-      {/* Getting Started */}
-      <Card>
-        <CardHeader>
-          <CardTitle>크넥 커머스 시작하기</CardTitle>
-          <CardDescription>크리에이터 셀렉트샵 플랫폼의 운영 구조</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-4 p-4 rounded-lg bg-muted/50">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-bold">1</div>
-            <div>
-              <p className="font-medium">브랜드 → 상품 등록 + 캠페인 생성</p>
-              <p className="text-sm text-muted-foreground">브랜드가 상품을 등록하고 공구/상시 캠페인을 생성합니다</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4 p-4 rounded-lg bg-muted/50">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-bold">2</div>
-            <div>
-              <p className="font-medium">크리에이터 → 셀렉트샵 운영 + SNS 홍보</p>
-              <p className="text-sm text-muted-foreground">크리에이터가 상품을 선택하여 내 셀렉트샵에 추가하고 팔로워에게 홍보합니다</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4 p-4 rounded-lg bg-muted/50">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-bold">3</div>
-            <div>
-              <p className="font-medium">팔로워 → 크리에이터 샵에서 구매</p>
-              <p className="text-sm text-muted-foreground">팔로워가 크리에이터 셀렉트샵에서 상품을 구매합니다 (크넥 PG 결제)</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4 p-4 rounded-lg bg-muted/50">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-bold">4</div>
-            <div>
-              <p className="font-medium">크넥 → 전환 추적 + 수수료 정산</p>
-              <p className="text-sm text-muted-foreground">직접 전환 + 간접 전환(3%) 추적, 매월 20일 크리에이터에게 정산합니다</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Period Selector */}
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-medium text-muted-foreground">기간:</span>
+        <div className="flex gap-1 rounded-lg bg-muted p-1">
+          {([['7d', '7일'], ['30d', '30일'], ['90d', '90일']] as const).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setPeriod(key)}
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${period === key ? 'bg-background text-foreground shadow-sm font-medium' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Charts */}
+      <DashboardCharts period={period} />
     </div>
   );
 }
