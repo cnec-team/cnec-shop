@@ -10,6 +10,7 @@ import {
   Users,
   ArrowRight,
   Clock,
+  Package,
 } from 'lucide-react';
 import { BrandBadge } from '@/components/common/BrandBadge';
 import {
@@ -37,7 +38,7 @@ interface CampaignWithDetails {
   conditions?: string | null;
   createdAt: string;
   brand?: { id: string; brandName: string; companyName: string } | null;
-  products?: Array<{ id: string; campaignId: string; productId: string; campaignPrice: number }>;
+  products?: Array<{ id: string; campaignId: string; productId: string; campaignPrice: number; product?: { id: string; name: string | null; nameKo: string | null; thumbnailUrl: string | null; imageUrl: string | null; images: string[] } | null }>;
   participantCount?: number;
 }
 
@@ -189,6 +190,10 @@ export default function CreatorCampaignsPage() {
               const dDay = getDDay(campaign.endAt);
               const earnings = getEstimatedEarnings(campaign);
 
+              const primaryProduct = campaign.products?.[0]?.product;
+              const productName = primaryProduct?.nameKo || primaryProduct?.name || null;
+              const productImage = primaryProduct?.thumbnailUrl || primaryProduct?.imageUrl || primaryProduct?.images?.[0] || null;
+
               return (
                 <div
                   key={campaign.id}
@@ -207,6 +212,22 @@ export default function CreatorCampaignsPage() {
                     )}
                   </div>
 
+                  {/* Product thumbnail + name */}
+                  {productName && (
+                    <div className="flex items-center gap-2.5 mb-2">
+                      <div className="w-10 h-10 rounded-lg bg-gray-100 overflow-hidden shrink-0">
+                        {productImage ? (
+                          <img src={productImage} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Package className="w-4 h-4 text-gray-300" />
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-600 line-clamp-2 leading-tight">{productName}</p>
+                    </div>
+                  )}
+
                   {/* Title */}
                   <h3 className="font-semibold text-sm text-gray-900 line-clamp-2 mb-1">{campaign.title}</h3>
                   {campaign.brand && (
@@ -217,7 +238,12 @@ export default function CreatorCampaignsPage() {
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-3 text-xs">
                     {earnings > 0 && (
                       <span className="text-earnings font-semibold">
-                        팔면 ₩{earnings.toLocaleString()}
+                        1개 팔면 ₩{earnings.toLocaleString()}
+                      </span>
+                    )}
+                    {Number(campaign.commissionRate) > 0 && (
+                      <span className="text-gray-500">
+                        커미션 {Math.round(Number(campaign.commissionRate) * 100)}%
                       </span>
                     )}
                     {campaign.endAt && (

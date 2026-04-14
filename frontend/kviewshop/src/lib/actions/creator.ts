@@ -211,7 +211,20 @@ export async function getAvailableCampaigns() {
       orderBy: { createdAt: 'desc' },
     }),
     prisma.brand.findMany(),
-    prisma.campaignProduct.findMany(),
+    prisma.campaignProduct.findMany({
+      include: {
+        product: {
+          select: {
+            id: true,
+            name: true,
+            nameKo: true,
+            thumbnailUrl: true,
+            imageUrl: true,
+            images: true,
+          },
+        },
+      },
+    }),
     prisma.campaignParticipation.findMany({
       where: { status: { in: ['PENDING', 'APPROVED'] } },
       select: { campaignId: true },

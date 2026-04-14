@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { Loader2, AlertCircle, ShoppingBag, Eye, EyeOff, Gift, Heart, TrendingUp, Check } from 'lucide-react';
+import { LegalFooter } from '@/components/shop/legal-footer';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const signupSchema = z.object({
@@ -440,6 +441,7 @@ export default function BuyerSignupPage() {
           </div>
         </div>
       </div>
+      <LegalFooter locale={locale} variant="minimal" />
     </div>
   );
 }

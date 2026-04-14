@@ -5,6 +5,7 @@ import { Search, Package, Truck, Loader2, ShoppingBag } from 'lucide-react';
 import { lookupOrder } from '@/lib/actions/shop';
 import { getCourierLabel, getTrackingUrl } from '@/lib/utils/courier';
 import { useUser } from '@/lib/hooks/use-user';
+import { LegalFooter } from '@/components/shop/legal-footer';
 
 type OrderStatus = 'PENDING' | 'PAID' | 'PREPARING' | 'SHIPPING' | 'DELIVERED' | 'CONFIRMED' | 'CANCELLED' | 'REFUNDED';
 
@@ -371,6 +372,7 @@ export default function OrderLookupPage() {
           </div>
         )}
       </div>
+      <LegalFooter locale={locale} variant="minimal" />
     </div>
   );
 }

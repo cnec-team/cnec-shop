@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { LegalFooter } from '@/components/shop/legal-footer';
 import { Loader2, AlertCircle, ShoppingBag, Eye, EyeOff } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -238,6 +239,7 @@ export default function BuyerLoginPage() {
           </div>
         </div>
       </div>
+      <LegalFooter locale={locale} variant="minimal" />
     </div>
   );
 }
