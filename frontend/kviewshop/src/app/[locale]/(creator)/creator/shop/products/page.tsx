@@ -214,7 +214,7 @@ export default function MyShopProductsPage() {
     <div className="space-y-4 max-w-4xl">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-bold text-gray-900">내 샵 상품</h1>
+        <h1 className="text-xl font-bold text-gray-900">내가 고른 상품</h1>
         <p className="text-sm text-gray-400 mt-0.5">내 셀렉트샵에 담긴 상품을 관리하세요</p>
       </div>
 
@@ -223,7 +223,7 @@ export default function MyShopProductsPage() {
       {items.length === 0 ? (
         <div className="text-center py-16">
           <Package className="mx-auto h-12 w-12 text-gray-200" />
-          <p className="mt-4 text-gray-400">아직 담은 상품이 없어요</p>
+          <p className="mt-4 text-sm text-gray-400">아직 고른 상품이 없어요. 둘러볼까요?</p>
           <Link href={`/${locale}/creator/products`}>
             <Button variant="outline" className="mt-3 rounded-xl">
               상품 둘러보기

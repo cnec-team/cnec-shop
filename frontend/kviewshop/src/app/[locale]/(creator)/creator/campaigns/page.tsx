@@ -87,7 +87,7 @@ export default function CreatorCampaignsPage() {
   const [campaigns, setCampaigns] = useState<CampaignWithDetails[]>([]);
   const [myParticipations, setMyParticipations] = useState<MyParticipation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'recruiting' | 'my'>('recruiting');
+  const [activeTab, setActiveTab] = useState<'available' | 'active' | 'ended'>('available');
 
   useEffect(() => {
     let cancelled = false;
@@ -113,10 +113,26 @@ export default function CreatorCampaignsPage() {
     return () => { cancelled = true; };
   }, []);
 
-  // Only RECRUITING status for the recruiting tab
+  // Only RECRUITING status for the available tab
   const recruitingCampaigns = useMemo(
     () => campaigns.filter((c) => c.status === 'RECRUITING'),
     [campaigns]
+  );
+
+  // Participations where approved and campaign is active/recruiting
+  const activeCampaigns = useMemo(
+    () => myParticipations.filter(
+      (p) => p.status === 'APPROVED' && p.campaign && (p.campaign.status === 'RECRUITING' || p.campaign.status === 'ACTIVE')
+    ),
+    [myParticipations]
+  );
+
+  // Participations where campaign ended or participation rejected
+  const endedCampaigns = useMemo(
+    () => myParticipations.filter(
+      (p) => p.campaign && (p.campaign.status === 'ENDED' || p.status === 'REJECTED')
+    ),
+    [myParticipations]
   );
 
   const getDDay = (endAt?: string | null) => {
@@ -155,12 +171,12 @@ export default function CreatorCampaignsPage() {
       {/* Tab Switcher */}
       <div className="flex rounded-xl bg-gray-100 p-1 gap-1">
         <button
-          onClick={() => setActiveTab('recruiting')}
+          onClick={() => setActiveTab('available')}
           className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-colors ${
-            activeTab === 'recruiting' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
+            activeTab === 'available' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
           }`}
         >
-          모집중
+          참여 가능
           {recruitingCampaigns.length > 0 && (
             <span className="ml-1.5 bg-blue-50 text-blue-700 text-[10px] px-1.5 py-0.5 rounded-full font-semibold">
               {recruitingCampaigns.length}
@@ -168,21 +184,34 @@ export default function CreatorCampaignsPage() {
           )}
         </button>
         <button
-          onClick={() => setActiveTab('my')}
+          onClick={() => setActiveTab('active')}
           className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-colors ${
-            activeTab === 'my' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
+            activeTab === 'active' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
           }`}
         >
-          내 캠페인
+          참여 중
+          {activeCampaigns.length > 0 && (
+            <span className="ml-1.5 bg-emerald-50 text-emerald-700 text-[10px] px-1.5 py-0.5 rounded-full font-semibold">
+              {activeCampaigns.length}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab('ended')}
+          className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-colors ${
+            activeTab === 'ended' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
+          }`}
+        >
+          종료
         </button>
       </div>
 
-      {activeTab === 'recruiting' ? (
+      {activeTab === 'available' ? (
         recruitingCampaigns.length === 0 ? (
           <div className="text-center py-16">
             <Megaphone className="mx-auto h-12 w-12 text-gray-200" />
-            <p className="mt-4 text-gray-400">참여 가능한 캠페인이 없습니다</p>
-            <p className="text-xs text-gray-300 mt-1">새로운 캠페인이 열리면 알려드릴게요</p>
+            <p className="mt-4 text-sm text-gray-400">지금은 모집 중인 캠페인이 없어요</p>
+            <p className="text-xs text-gray-300 mt-1">곧 새로운 공구가 열릴 거예요!</p>
           </div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
@@ -274,23 +303,59 @@ export default function CreatorCampaignsPage() {
             })}
           </div>
         )
-      ) : (
-        /* My Campaigns Tab — inline list */
-        myParticipations.length === 0 ? (
+      ) : activeTab === 'active' ? (
+        activeCampaigns.length === 0 ? (
           <div className="text-center py-16">
             <Megaphone className="mx-auto h-12 w-12 text-gray-200" />
-            <p className="mt-4 text-gray-400">참여한 캠페인이 없습니다</p>
-            <Button
-              variant="outline"
-              className="mt-3 rounded-xl"
-              onClick={() => setActiveTab('recruiting')}
-            >
-              캠페인 둘러보기
+            <p className="mt-4 text-sm text-gray-400">참여 중인 캠페인이 없어요</p>
+            <p className="text-xs text-gray-300 mt-1">새로운 공구에 참여해보세요!</p>
+            <Button variant="outline" className="mt-3 rounded-xl" onClick={() => setActiveTab('available')}>
+              참여 가능 캠페인 보기
             </Button>
           </div>
         ) : (
           <div className="space-y-3">
-            {myParticipations.map((p) => {
+            {activeCampaigns.map((p) => {
+              const campaign = p.campaign;
+              if (!campaign) return null;
+              const dDay = getDDay(campaign.endAt);
+
+              return (
+                <div
+                  key={p.id}
+                  className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-4 cursor-pointer hover:border-gray-300 transition-colors"
+                  onClick={() => router.push(`/${locale}/creator/campaigns/${campaign.id}`)}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${STATUS_BADGE[campaign.status] || 'bg-gray-100 text-gray-600'}`}>
+                        {STATUS_LABEL[campaign.status] || campaign.status}
+                      </span>
+                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${PARTICIPATION_BADGE[p.status] || 'bg-gray-100 text-gray-600'}`}>
+                        {PARTICIPATION_STATUS_LABEL[p.status] || p.status}
+                      </span>
+                      {dDay && <span className="text-[10px] text-gray-400">{dDay}</span>}
+                    </div>
+                    <p className="text-sm font-medium text-gray-900 truncate">{campaign.title}</p>
+                    {campaign.brand && <BrandBadge brandName={campaign.brand.brandName} />}
+                  </div>
+                  <span className="text-xs text-earnings font-semibold whitespace-nowrap">
+                    팔면 ₩{getEstimatedEarnings(campaign).toLocaleString()}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )
+      ) : (
+        endedCampaigns.length === 0 ? (
+          <div className="text-center py-16">
+            <Megaphone className="mx-auto h-12 w-12 text-gray-200" />
+            <p className="mt-4 text-sm text-gray-400">종료된 캠페인이 없어요</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {endedCampaigns.map((p) => {
               const campaign = p.campaign;
               if (!campaign) return null;
               const dDay = getDDay(campaign.endAt);

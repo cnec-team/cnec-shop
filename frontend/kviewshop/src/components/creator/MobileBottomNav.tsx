@@ -23,6 +23,7 @@ import {
   ChevronRight,
   Gift,
   Package,
+  Palette,
 } from 'lucide-react';
 import {
   Sheet,
@@ -53,17 +54,19 @@ export function MobileBottomNav() {
 
   const tabs = [
     { title: '홈', href: `${base}/dashboard`, icon: LayoutDashboard },
-    { title: '상품', href: `${base}/products`, icon: ShoppingBag },
-    { title: '내 샵', href: `${base}/shop`, icon: Store },
+    { title: '내 샵', href: `${base}/shop/products`, icon: Store },
     { title: '캠페인', href: `${base}/campaigns`, icon: Megaphone },
+    { title: '판매', href: `${base}/sales`, icon: TrendingUp },
     { title: '더보기', href: '#more', icon: MoreHorizontal },
   ] as const;
 
   const moreMenuSections: MoreMenuSection[] = [
     {
-      label: '내 셀렉트샵',
+      label: '내 샵',
       items: [
-        { title: '내 샵 상품', description: '담은 상품 관리 및 리뷰 영상', href: `${base}/shop/products`, icon: Package },
+        { title: '내가 고른 상품', description: '담은 상품 관리', href: `${base}/shop/products`, icon: ShoppingBag },
+        { title: '상품 둘러보기', description: '새로운 상품 발견', href: `${base}/products`, icon: Package },
+        { title: '샵 관리', description: '샵 정보 수정', href: `${base}/shop`, icon: Palette },
       ],
     },
     {
@@ -77,7 +80,7 @@ export function MobileBottomNav() {
       label: '판매',
       items: [
         { title: '판매 현황', description: '매출 및 수익 확인', href: `${base}/sales`, icon: TrendingUp },
-        { title: '주문 관리', description: '주문 내역 추적', href: `${base}/orders`, icon: ShoppingCart },
+        { title: '주문 현황', description: '주문 내역 추적', href: `${base}/orders`, icon: ShoppingCart },
       ],
     },
     {

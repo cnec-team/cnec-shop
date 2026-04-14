@@ -102,22 +102,16 @@ export function Sidebar({ role, locale }: SidebarProps) {
         ];
       case 'creator':
         return [
-          { items: [{ title: '대시보드', href: `${base}/creator/dashboard`, icon: LayoutDashboard }] },
-          { label: '상품 관리', items: [{ title: '전체 상품', href: `${base}/creator/products`, icon: Package }] },
+          { items: [{ title: '홈', href: `${base}/creator/dashboard`, icon: LayoutDashboard }] },
           {
-            label: '내 셀렉트샵',
+            label: '내 샵',
             items: [
-              { title: '내 샵 상품', href: `${base}/creator/shop/products`, icon: ShoppingBag },
-              { title: '샵 정보', href: `${base}/creator/shop`, icon: Palette },
+              { title: '내가 고른 상품', href: `${base}/creator/shop/products`, icon: ShoppingBag },
+              { title: '상품 둘러보기', href: `${base}/creator/products`, icon: Package },
+              { title: '샵 관리', href: `${base}/creator/shop`, icon: Palette },
             ],
           },
-          {
-            label: '캠페인',
-            items: [
-              { title: '공구 캠페인', href: `${base}/creator/campaigns`, icon: Megaphone },
-              { title: '내 캠페인', href: `${base}/creator/campaigns/my`, icon: Store },
-            ],
-          },
+          { items: [{ title: '캠페인', href: `${base}/creator/campaigns`, icon: Megaphone }] },
           {
             label: '제품 체험',
             items: [
@@ -125,7 +119,13 @@ export function Sidebar({ role, locale }: SidebarProps) {
               { title: '내 체험 현황', href: `${base}/creator/trial/my`, icon: Package },
             ],
           },
-          { items: [{ title: '주문 현황', href: `${base}/creator/orders`, icon: ShoppingCart }] },
+          {
+            items: [
+              { title: '판매 현황', href: `${base}/creator/sales`, icon: TrendingUp },
+              { title: '주문 현황', href: `${base}/creator/orders`, icon: ShoppingCart },
+              { title: '내 정산', href: `${base}/creator/settlements`, icon: DollarSign },
+            ],
+          },
           {
             label: '활동',
             items: [
@@ -137,8 +137,6 @@ export function Sidebar({ role, locale }: SidebarProps) {
           },
           {
             items: [
-              { title: '판매 현황', href: `${base}/creator/sales`, icon: TrendingUp },
-              { title: '내 정산', href: `${base}/creator/settlements`, icon: DollarSign },
               { title: '알림', href: `${base}/creator/notifications`, icon: Bell },
               { title: '설정', href: `${base}/creator/settings`, icon: Settings },
             ],

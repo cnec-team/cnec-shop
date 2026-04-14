@@ -212,7 +212,7 @@ export default function CreatorSalesPage() {
           {filteredConversions.length === 0 ? (
             <div className="text-center py-12">
               <Receipt className="mx-auto h-10 w-10 text-muted-foreground/50" />
-              <p className="mt-3 text-sm text-muted-foreground">아직 첫 판매를 기다리고 있어요</p>
+              <p className="mt-3 text-sm text-muted-foreground">아직 판매 내역이 없어요. 내 샵 링크를 공유해보세요!</p>
             </div>
           ) : (
             <>
