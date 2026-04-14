@@ -27,12 +27,15 @@ export default function BuyerSubscriptionsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
 
+  // Use stable primitive ID instead of object reference as dependency
+  const buyerId = buyer?.id;
+
   useEffect(() => {
     const loadSubscriptions = async () => {
-      if (!buyer) return;
+      if (!buyerId) return;
 
       try {
-        const data = await getBuyerSubscriptions(buyer.id);
+        const data = await getBuyerSubscriptions(buyerId);
         setSubscriptions(data || []);
       } catch (error) {
         console.error('Failed to load subscriptions:', error);
@@ -43,7 +46,7 @@ export default function BuyerSubscriptionsPage() {
     };
 
     loadSubscriptions();
-  }, [buyer]);
+  }, [buyerId]);
 
   const handleUpdateNotifications = async (
     subId: string,

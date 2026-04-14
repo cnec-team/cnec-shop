@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useUser } from '@/lib/hooks/use-user';
 import { getBecomeCreatorData, checkUsernameAvailability, submitCreatorApplication } from '@/lib/actions/buyer';
@@ -66,25 +66,32 @@ export default function BecomeCreatorPage() {
     content_plan: '',
   });
 
+  // Use stable primitive ID instead of object reference as dependency
+  const buyerId = buyer?.id;
+  const buyerRef = useRef(buyer);
+  buyerRef.current = buyer;
+
   useEffect(() => {
     const loadData = async () => {
-      if (!buyer) return;
+      if (!buyerId) return;
+      const currentBuyer = buyerRef.current;
+      if (!currentBuyer) return;
 
       try {
-        const data = await getBecomeCreatorData(buyer.id);
+        const data = await getBecomeCreatorData(buyerId);
 
         setCriteria(data.criteria);
         setExistingApplication(data.existingApplication);
 
         // Calculate user progress
-        const accountAge = buyer.created_at
-          ? Math.floor((Date.now() - new Date(buyer.created_at).getTime()) / (1000 * 60 * 60 * 24))
+        const accountAge = currentBuyer.created_at
+          ? Math.floor((Date.now() - new Date(currentBuyer.created_at).getTime()) / (1000 * 60 * 60 * 24))
           : 0;
 
         setProgress({
-          totalOrders: buyer.total_orders || buyer.totalOrders || 0,
-          totalReviews: buyer.total_reviews || buyer.totalReviews || 0,
-          totalSpent: buyer.total_spent || buyer.totalSpent || 0,
+          totalOrders: currentBuyer.total_orders || currentBuyer.totalOrders || 0,
+          totalReviews: currentBuyer.total_reviews || currentBuyer.totalReviews || 0,
+          totalSpent: currentBuyer.total_spent || currentBuyer.totalSpent || 0,
           accountAgeDays: accountAge,
         });
       } catch (error) {
@@ -95,7 +102,7 @@ export default function BecomeCreatorPage() {
     };
 
     loadData();
-  }, [buyer]);
+  }, [buyerId]);
 
   const checkEligibility = () => {
     if (!criteria || !progress) return false;

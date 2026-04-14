@@ -79,15 +79,18 @@ export default function OrderDetailPage() {
   const [cancelReason, setCancelReason] = useState('');
   const [isCancelling, setIsCancelling] = useState(false);
 
+  // Use stable primitive ID instead of object reference as dependency
+  const buyerId = buyer?.id;
+
   useEffect(() => {
     const loadOrder = async () => {
-      if (!buyer || !orderId) {
+      if (!buyerId || !orderId) {
         setIsLoading(false);
         return;
       }
 
       try {
-        const orderData = await getBuyerOrderDetail(orderId, buyer.id);
+        const orderData = await getBuyerOrderDetail(orderId, buyerId);
 
         if (!orderData) {
           router.push('/' + locale + '/buyer/orders');
@@ -103,7 +106,7 @@ export default function OrderDetailPage() {
     };
 
     loadOrder();
-  }, [buyer, orderId, router, locale]);
+  }, [buyerId, orderId, router, locale]);
 
   const formatDate = (dateString: string | Date | null) => {
     if (!dateString) return '-';

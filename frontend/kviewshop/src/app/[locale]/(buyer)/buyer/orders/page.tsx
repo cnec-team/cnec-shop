@@ -58,13 +58,16 @@ export default function BuyerOrdersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const fetchedRef = useRef(false);
 
+  // Use stable primitive ID instead of object reference as dependency
+  const buyerId = buyer?.id;
+
   useEffect(() => {
-    if (!buyer || fetchedRef.current) return;
+    if (!buyerId || fetchedRef.current) return;
     fetchedRef.current = true;
 
     const loadOrders = async () => {
       try {
-        const ordersData = await getBuyerOrders(buyer.id);
+        const ordersData = await getBuyerOrders(buyerId);
         setOrders(ordersData || []);
       } catch (error) {
         console.error('Failed to load orders:', error);
@@ -74,7 +77,7 @@ export default function BuyerOrdersPage() {
     };
 
     loadOrders();
-  }, [buyer]);
+  }, [buyerId]);
 
   // Count per tab
   const tabCounts = useMemo(() => {

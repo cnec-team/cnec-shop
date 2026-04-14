@@ -64,12 +64,17 @@ export default function OrderLookupPage() {
   // Redirect logged-in buyers to their dashboard orders page.
   // Respect explicit `guest=1` query for users who want to look up without login.
   const isGuestMode = searchParams.get('guest') === '1';
+  // Use stable primitive IDs instead of object references as dependencies
+  const userId = user?.id;
+  const userRole = user?.role;
+  const buyerId = buyer?.id;
+
   useEffect(() => {
     if (isUserLoading || isGuestMode) return;
-    if (user && (buyer || user.role === 'buyer')) {
+    if (userId && (buyerId || userRole === 'buyer')) {
       router.replace(`/${locale}/buyer/orders`);
     }
-  }, [isUserLoading, user, buyer, isGuestMode, locale, router]);
+  }, [isUserLoading, userId, buyerId, userRole, isGuestMode, locale, router]);
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();

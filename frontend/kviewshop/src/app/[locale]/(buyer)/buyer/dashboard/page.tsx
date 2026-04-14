@@ -30,14 +30,17 @@ export default function BuyerDashboardPage() {
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
   const fetchedRef = useRef(false);
 
+  // Use stable primitive ID as dependency instead of object reference
+  const buyerId = buyer?.id;
+
   useEffect(() => {
     // Layout handles redirect for unauthenticated users
-    if (isUserLoading || !buyer || fetchedRef.current) return;
+    if (isUserLoading || !buyerId || fetchedRef.current) return;
     fetchedRef.current = true;
 
     const loadDashboardData = async () => {
       try {
-        const data = await getBuyerDashboardData(buyer.id);
+        const data = await getBuyerDashboardData(buyerId);
         setSubscriptions(data.subscriptions || []);
         setRecentOrders(data.recentOrders || []);
       } catch (error) {
@@ -48,7 +51,8 @@ export default function BuyerDashboardPage() {
     };
 
     loadDashboardData();
-  }, [isUserLoading, buyer]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isUserLoading, buyerId]);
 
   const isLoading = isUserLoading || isDataLoading;
 
