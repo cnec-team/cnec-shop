@@ -788,3 +788,196 @@ export async function getAdminCampaignStats() {
   }
   return stats
 }
+
+export async function getAdminCampaignDetail(campaignId: string) {
+  await requireAdmin()
+
+  const campaign = await prisma.campaign.findUnique({
+    where: { id: campaignId },
+    include: {
+      brand: { select: { id: true, companyName: true, brandName: true } },
+      products: {
+        include: {
+          product: { select: { id: true, name: true, thumbnailUrl: true, price: true, status: true } },
+        },
+      },
+      participations: true,
+    },
+  })
+  if (!campaign) throw new Error('캠페인을 찾을 수 없습니다')
+
+  // Get creator info for participations
+  const creatorIds = campaign.participations.map(p => p.creatorId)
+  const creators = await prisma.creator.findMany({
+    where: { id: { in: creatorIds } },
+    select: { id: true, displayName: true, shopId: true, profileImageUrl: true },
+  })
+  const creatorMap = new Map(creators.map(c => [c.id, c]))
+
+  // Get per-creator order stats for this campaign
+  const orders = await prisma.order.findMany({
+    where: {
+      creatorId: { in: creatorIds },
+      items: { some: { product: { campaignProducts: { some: { campaignId } } } } },
+      status: { notIn: ['CANCELLED', 'REFUNDED'] },
+    },
+    select: { id: true, creatorId: true, totalAmount: true },
+  })
+
+  const creatorSalesMap = new Map<string, { count: number; sales: number }>()
+  for (const o of orders) {
+    if (!o.creatorId) continue
+    const existing = creatorSalesMap.get(o.creatorId) || { count: 0, sales: 0 }
+    existing.count += 1
+    existing.sales += Number(o.totalAmount || 0)
+    creatorSalesMap.set(o.creatorId, existing)
+  }
+
+  // Per-creator commissions
+  const conversions = await prisma.conversion.findMany({
+    where: { creatorId: { in: creatorIds } },
+    select: { creatorId: true, commissionAmount: true },
+  })
+  const commissionMap = new Map<string, number>()
+  for (const cv of conversions) {
+    commissionMap.set(cv.creatorId, (commissionMap.get(cv.creatorId) || 0) + Number(cv.commissionAmount || 0))
+  }
+
+  // Overall stats
+  const totalOrders = orders.length
+  const totalSales = orders.reduce((sum, o) => sum + Number(o.totalAmount || 0), 0)
+  const totalCommission = conversions.reduce((sum, cv) => sum + Number(cv.commissionAmount || 0), 0)
+
+  // Shop visits for participating creators
+  const shopVisitCount = await prisma.shopVisit.count({
+    where: { creatorId: { in: creatorIds } },
+  })
+
+  return {
+    ...campaign,
+    commissionRate: Number(campaign.commissionRate),
+    products: campaign.products.map(cp => ({
+      ...cp,
+      campaignPrice: Number(cp.campaignPrice),
+      product: { ...cp.product, price: cp.product.price ? Number(cp.product.price) : null },
+    })),
+    participations: campaign.participations.map(p => {
+      const creator = creatorMap.get(p.creatorId)
+      const sales = creatorSalesMap.get(p.creatorId)
+      const commission = commissionMap.get(p.creatorId) || 0
+      return {
+        ...p,
+        creator: creator || null,
+        orderCount: sales?.count || 0,
+        totalSales: sales?.sales || 0,
+        commission,
+      }
+    }).sort((a, b) => b.totalSales - a.totalSales),
+    stats: {
+      totalOrders,
+      totalSales,
+      totalCommission,
+      avgOrderAmount: totalOrders > 0 ? Math.round(totalSales / totalOrders) : 0,
+      shopVisitCount,
+      conversionRate: shopVisitCount > 0 ? ((totalOrders / shopVisitCount) * 100).toFixed(1) : null,
+    },
+  }
+}
+
+// ==================== Sample Requests ====================
+
+interface SampleFilters {
+  status?: string
+  brandId?: string
+  search?: string
+}
+
+export async function getAdminSampleRequests(filters: SampleFilters = {}) {
+  await requireAdmin()
+
+  const where: Record<string, unknown> = {}
+
+  if (filters.status && filters.status !== 'all') {
+    where.status = filters.status
+  }
+  if (filters.brandId && filters.brandId !== 'all') {
+    where.brandId = filters.brandId
+  }
+  if (filters.search) {
+    where.OR = [
+      { creator: { displayName: { contains: filters.search, mode: 'insensitive' } } },
+      { creator: { shopId: { contains: filters.search, mode: 'insensitive' } } },
+      { brand: { brandName: { contains: filters.search, mode: 'insensitive' } } },
+      { brand: { companyName: { contains: filters.search, mode: 'insensitive' } } },
+    ]
+  }
+
+  const samples = await prisma.sampleRequest.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
+    include: {
+      creator: { select: { id: true, displayName: true, shopId: true, profileImageUrl: true, instagramHandle: true, youtubeHandle: true, tiktokHandle: true } },
+      brand: { select: { id: true, brandName: true, companyName: true } },
+      product: { select: { id: true, name: true, thumbnailUrl: true } },
+    },
+  })
+
+  return samples
+}
+
+export async function getAdminSampleStats() {
+  await requireAdmin()
+
+  const counts = await prisma.sampleRequest.groupBy({
+    by: ['status'],
+    _count: true,
+  })
+
+  const stats: Record<string, number> = { pending: 0, approved: 0, shipped: 0, received: 0, decided: 0, rejected: 0, cancelled: 0 }
+  for (const c of counts) {
+    stats[c.status] = c._count
+  }
+
+  // Conversion rate: received → decided(PROCEED)
+  const decidedProceed = await prisma.sampleRequest.count({ where: { status: 'decided', decision: 'PROCEED' } })
+  const totalReceived = stats.received + stats.decided
+
+  return {
+    ...stats,
+    decidedProceed,
+    conversionRate: totalReceived > 0 ? ((decidedProceed / totalReceived) * 100).toFixed(1) : null,
+  }
+}
+
+export async function getAdminSampleDetail(sampleId: string) {
+  await requireAdmin()
+
+  const sample = await prisma.sampleRequest.findUnique({
+    where: { id: sampleId },
+    include: {
+      creator: { select: { id: true, displayName: true, shopId: true, profileImageUrl: true, instagramHandle: true, youtubeHandle: true, tiktokHandle: true } },
+      brand: { select: { id: true, brandName: true, companyName: true } },
+      product: { select: { id: true, name: true, thumbnailUrl: true, price: true } },
+    },
+  })
+  if (!sample) throw new Error('샘플 신청을 찾을 수 없습니다')
+
+  return {
+    ...sample,
+    product: sample.product ? { ...sample.product, price: sample.product.price ? Number(sample.product.price) : null } : null,
+  }
+}
+
+export async function updateAdminSampleNote(sampleId: string, adminNote: string) {
+  await requireAdmin()
+  await prisma.sampleRequest.update({ where: { id: sampleId }, data: { adminNote } })
+  return { success: true }
+}
+
+export async function getAdminBrandList() {
+  await requireAdmin()
+  return prisma.brand.findMany({
+    select: { id: true, brandName: true, companyName: true },
+    orderBy: { brandName: 'asc' },
+  })
+}

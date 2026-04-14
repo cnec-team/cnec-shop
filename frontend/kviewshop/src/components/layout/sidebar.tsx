@@ -61,6 +61,7 @@ export function Sidebar({ role, locale }: SidebarProps) {
             { title: '주문 관리', href: `${base}/admin/orders`, icon: ShoppingBag },
             { title: '크리에이터 관리', href: `${base}/admin/creators`, icon: Users },
             { title: '캠페인 관리', href: `${base}/admin/campaigns`, icon: Megaphone },
+            { title: '샘플 관리', href: `${base}/admin/samples`, icon: Gift },
             { title: '정산 관리', href: `${base}/admin/settlements`, icon: DollarSign },
             { title: '가이드 관리', href: `${base}/admin/guides`, icon: BookOpen },
             { title: '설정', href: `${base}/admin/settings`, icon: Settings },
