@@ -21,12 +21,15 @@ export default function BuyerPointsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [history, setHistory] = useState<any[]>([]);
 
+  // Use stable primitive ID instead of object reference as dependency
+  const buyerId = buyer?.id;
+
   useEffect(() => {
     const loadHistory = async () => {
-      if (!buyer) return;
+      if (!buyerId) return;
 
       try {
-        const data = await getBuyerPointsHistory(buyer.id);
+        const data = await getBuyerPointsHistory(buyerId);
         setHistory(data || []);
       } catch (error) {
         console.error('Failed to load history:', error);
@@ -36,7 +39,7 @@ export default function BuyerPointsPage() {
     };
 
     loadHistory();
-  }, [buyer]);
+  }, [buyerId]);
 
   const getTypeIcon = (type: string) => {
     switch (type) {

@@ -135,28 +135,34 @@ export default function BuyerSettingsPage() {
 
   // ==================== Load data ====================
 
+  // Use stable primitive ID instead of object reference as dependency
+  const buyerId = buyer?.id;
+  const buyerRef = useRef(buyer);
+  buyerRef.current = buyer;
+
   const loadAddresses = useCallback(async () => {
-    if (!buyer) return;
+    if (!buyerId) return;
     try {
-      const data = await getShippingAddresses(buyer.id);
+      const data = await getShippingAddresses(buyerId);
       setAddresses(data);
     } catch (error) {
       console.error('Failed to load addresses:', error);
     } finally {
       setAddressLoading(false);
     }
-  }, [buyer]);
+  }, [buyerId]);
 
   useEffect(() => {
-    if (buyer) {
+    const currentBuyer = buyerRef.current;
+    if (currentBuyer) {
       loadAddresses();
       setProfileForm({
-        nickname: buyer.nickname || '',
-        phone: buyer.phone || '',
+        nickname: currentBuyer.nickname || '',
+        phone: currentBuyer.phone || '',
       });
-      setMarketingConsent(buyer.marketing_consent ?? false);
+      setMarketingConsent(currentBuyer.marketing_consent ?? false);
     }
-  }, [buyer, loadAddresses]);
+  }, [buyerId, loadAddresses]);
 
   // ==================== Shipping Address Handlers ====================
 
