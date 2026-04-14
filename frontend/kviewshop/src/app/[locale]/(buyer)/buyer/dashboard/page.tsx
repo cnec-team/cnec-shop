@@ -3,55 +3,81 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useUser } from '@/lib/hooks/use-user';
-import { getBuyerDashboardData } from '@/lib/actions/buyer';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { getBuyerHomeData } from '@/lib/actions/buyer';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import {
-  ShoppingBag,
-  Heart,
-  Gift,
-  Star,
-  TrendingUp,
-  Package,
-  ChevronRight,
-  Loader2,
-  Sparkles,
-} from 'lucide-react';
+import { Package, ChevronRight, Gift, Truck, Loader2 } from 'lucide-react';
+import { getCourierLabel, getTrackingUrl } from '@/lib/utils/courier';
+
+const STATUS_LABELS: Record<string, string> = {
+  PAID: '결제완료',
+  PREPARING: '상품준비중',
+  SHIPPING: '배송중',
+  DELIVERED: '배송완료',
+  CONFIRMED: '구매확정',
+  CANCELLED: '취소',
+  REFUNDED: '환불',
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  PAID: 'bg-gray-100 text-gray-600',
+  PREPARING: 'bg-amber-50 text-amber-600',
+  SHIPPING: 'bg-blue-50 text-blue-600',
+  DELIVERED: 'bg-emerald-50 text-emerald-600',
+  CONFIRMED: 'bg-emerald-50 text-emerald-600',
+  CANCELLED: 'bg-red-50 text-red-600',
+  REFUNDED: 'bg-red-50 text-red-600',
+};
+
+interface RecentOrder {
+  id: string;
+  orderNumber: string | null;
+  totalAmount: number;
+  status: string;
+  createdAt: string;
+  trackingNumber: string | null;
+  courierCode: string | null;
+  productName: string | null;
+  productImage: string | null;
+  itemCount: number;
+  unitPrice: number;
+  quantity: number;
+}
+
+interface HomeData {
+  recentOrders: RecentOrder[];
+  activeCount: number;
+  statusCounts: Record<string, number>;
+  pointsBalance: number;
+}
 
 export default function BuyerDashboardPage() {
   const { user, buyer, isLoading: isUserLoading } = useUser();
   const params = useParams();
   const locale = params.locale as string;
   const [isDataLoading, setIsDataLoading] = useState(true);
-  const [subscriptions, setSubscriptions] = useState<any[]>([]);
-  const [recentOrders, setRecentOrders] = useState<any[]>([]);
+  const [data, setData] = useState<HomeData | null>(null);
   const fetchedRef = useRef(false);
 
-  // Use stable primitive ID as dependency instead of object reference
   const buyerId = buyer?.id;
 
   useEffect(() => {
-    // Layout handles redirect for unauthenticated users
     if (isUserLoading || !buyerId || fetchedRef.current) return;
     fetchedRef.current = true;
 
-    const loadDashboardData = async () => {
+    const loadData = async () => {
       try {
-        const data = await getBuyerDashboardData(buyerId);
-        setSubscriptions(data.subscriptions || []);
-        setRecentOrders(data.recentOrders || []);
+        const result = await getBuyerHomeData(buyerId);
+        setData(result);
       } catch (error) {
-        console.error('Failed to load dashboard data:', error);
+        console.error('대시보드 데이터 로드 실패:', error);
       } finally {
         setIsDataLoading(false);
       }
     };
 
-    loadDashboardData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    loadData();
   }, [isUserLoading, buyerId]);
 
   const isLoading = isUserLoading || isDataLoading;
@@ -64,233 +90,159 @@ export default function BuyerDashboardPage() {
     );
   }
 
-  const ORDER_STATUS_LABELS: Record<string, string> = {
-    PENDING: '결제대기',
-    PAID: '결제완료',
-    PREPARING: '배송준비',
-    SHIPPING: '배송중',
-    DELIVERED: '배송완료',
-    CONFIRMED: '구매확정',
-    CANCELLED: '취소',
-    REFUNDED: '환불',
-  };
-
-  const statCards = [
-    {
-      label: '총 주문',
-      value: (buyer?.totalOrders ?? buyer?.total_orders ?? 0),
-      icon: ShoppingBag,
-      color: 'text-blue-500',
-      bgColor: 'bg-blue-500/10',
-    },
-    {
-      label: '포인트',
-      value: `${(Number(buyer?.pointsBalance ?? buyer?.points_balance ?? 0)).toLocaleString()} P`,
-      icon: Gift,
-      color: 'text-primary',
-      bgColor: 'bg-primary/10',
-    },
-    {
-      label: '구독',
-      value: subscriptions.length,
-      icon: Heart,
-      color: 'text-pink-500',
-      bgColor: 'bg-pink-500/10',
-    },
-    {
-      label: '작성한 리뷰',
-      value: (buyer?.totalReviews ?? buyer?.total_reviews ?? 0),
-      icon: Star,
-      color: 'text-yellow-500',
-      bgColor: 'bg-yellow-500/10',
-    },
-  ];
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'CONFIRMED':
-      case 'DELIVERED':
-        return 'bg-green-500/10 text-green-500';
-      case 'SHIPPING':
-        return 'bg-blue-500/10 text-blue-500';
-      case 'PAID':
-      case 'PREPARING':
-        return 'bg-purple-500/10 text-purple-500';
-      case 'PENDING':
-        return 'bg-yellow-500/10 text-yellow-500';
-      case 'CANCELLED':
-      case 'REFUNDED':
-        return 'bg-red-500/10 text-red-500';
-      default:
-        return 'bg-muted text-muted-foreground';
-    }
-  };
+  const displayName = buyer?.nickname || user?.name || '고객';
+  const shippingCount = data?.statusCounts?.['SHIPPING'] ?? 0;
 
   return (
-    <div className="space-y-6">
-      {/* Welcome Section */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-headline font-bold">
-            {buyer?.nickname || user?.name}님, 안녕하세요!
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            크리에이터 추천 제품을 만나보세요
-          </p>
-        </div>
-        {(buyer?.eligibleForCreator ?? buyer?.eligible_for_creator ?? false) && (
-          <Link href={`/${locale}/buyer/become-creator`}>
-            <Button className="btn-gold gap-2">
-              <Sparkles className="h-4 w-4" />
-              크리에이터 되기
-            </Button>
+    <div className="space-y-6 max-w-lg mx-auto pb-20">
+      {/* Greeting */}
+      <div className="px-1">
+        <p className="text-lg font-semibold">
+          안녕하세요, {displayName}님
+        </p>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 gap-3">
+        {/* Active Orders Card */}
+        <Link href={`/${locale}/buyer/orders`}>
+          <div className="bg-white rounded-2xl border border-gray-100 p-5 hover:shadow-sm transition-shadow">
+            <div className="flex items-center justify-between mb-3">
+              <Package className="h-5 w-5 text-blue-500" />
+              <ChevronRight className="h-4 w-4 text-gray-300" />
+            </div>
+            <p className="text-2xl font-bold">{data?.activeCount ?? 0}</p>
+            <p className="text-sm text-gray-500 mt-1">진행 중 주문</p>
+            {shippingCount > 0 && (
+              <p className="text-xs text-blue-500 mt-1">배송중 {shippingCount}</p>
+            )}
+          </div>
+        </Link>
+
+        {/* Points Card */}
+        <Link href={`/${locale}/buyer/points`}>
+          <div className="bg-white rounded-2xl border border-gray-100 p-5 hover:shadow-sm transition-shadow">
+            <div className="flex items-center justify-between mb-3">
+              <Gift className="h-5 w-5 text-primary" />
+              <ChevronRight className="h-4 w-4 text-gray-300" />
+            </div>
+            <p className="text-2xl font-bold">
+              {(data?.pointsBalance ?? 0).toLocaleString()}
+              <span className="text-base font-medium ml-0.5">P</span>
+            </p>
+            <p className="text-sm text-gray-500 mt-1">보유 포인트</p>
+          </div>
+        </Link>
+      </div>
+
+      {/* Recent Orders Section */}
+      <div>
+        <div className="flex items-center justify-between mb-3 px-1">
+          <h2 className="text-base font-semibold">최근 주문</h2>
+          <Link
+            href={`/${locale}/buyer/orders`}
+            className="text-sm text-gray-400 flex items-center gap-0.5"
+          >
+            전체보기
+            <ChevronRight className="h-3.5 w-3.5" />
           </Link>
+        </div>
+
+        {!data?.recentOrders || data.recentOrders.length === 0 ? (
+          /* Empty State */
+          <div className="bg-white rounded-2xl border border-gray-100 p-10 text-center">
+            <Package className="h-12 w-12 mx-auto mb-4 text-gray-200" />
+            <p className="font-semibold text-gray-700 mb-1">
+              아직 주문 내역이 없어요
+            </p>
+            <p className="text-sm text-gray-400 mb-5">
+              크리에이터가 추천하는 상품을 구경해보세요
+            </p>
+            <Link href={`/${locale}`}>
+              <Button size="sm" variant="outline" className="rounded-full">
+                크리에이터 샵 둘러보기
+              </Button>
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {data.recentOrders.map((order) => {
+              const trackingUrl = getTrackingUrl(order.courierCode, order.trackingNumber);
+              return (
+                <Link
+                  key={order.id}
+                  href={`/${locale}/buyer/orders/${order.id}`}
+                  className="block bg-white rounded-2xl border border-gray-100 p-4 hover:shadow-sm transition-shadow"
+                >
+                  <div className="flex gap-3">
+                    {/* Product Image */}
+                    <div className="relative w-[60px] h-[60px] rounded-xl overflow-hidden bg-gray-50 flex-shrink-0">
+                      {order.productImage ? (
+                        <Image
+                          src={order.productImage}
+                          alt={order.productName || '상품'}
+                          fill
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Package className="h-6 w-6 text-gray-300" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Order Info */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {order.productName || '상품'}
+                        {order.itemCount > 1 && (
+                          <span className="text-gray-400 font-normal">
+                            {' '}외 {order.itemCount - 1}건
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-sm text-gray-500 mt-0.5">
+                        {order.unitPrice.toLocaleString()}원
+                        {order.quantity > 1 && ` x ${order.quantity}`}
+                      </p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                            STATUS_COLORS[order.status] || 'bg-gray-100 text-gray-600'
+                          }`}
+                        >
+                          {STATUS_LABELS[order.status] || order.status}
+                        </span>
+                        {order.status === 'SHIPPING' && order.courierCode && (
+                          <span className="text-xs text-gray-400">
+                            {getCourierLabel(order.courierCode)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Tracking Button */}
+                    {order.status === 'SHIPPING' && trackingUrl && (
+                      <div className="flex-shrink-0 self-center">
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            window.open(trackingUrl, '_blank', 'noopener,noreferrer');
+                          }}
+                          className="p-2 rounded-full bg-blue-50 text-blue-500 hover:bg-blue-100 transition-colors"
+                        >
+                          <Truck className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
         )}
       </div>
-
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {statCards.map((stat) => (
-          <Card key={stat.label}>
-            <CardContent className="flex items-center gap-4 pt-6">
-              <div className={`p-3 rounded-lg ${stat.bgColor}`}>
-                <stat.icon className={`h-6 w-6 ${stat.color}`} />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{stat.value}</p>
-                <p className="text-sm text-muted-foreground">{stat.label}</p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Subscribed Malls */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Heart className="h-5 w-5 text-pink-500" />
-                구독 중인 샵
-              </CardTitle>
-              <CardDescription>팔로우 중인 크리에이터 샵</CardDescription>
-            </div>
-            <Link href={`/${locale}/buyer/subscriptions`}>
-              <Button variant="ghost" size="sm">
-                전체 보기 <ChevronRight className="ml-1 h-4 w-4" />
-              </Button>
-            </Link>
-          </CardHeader>
-          <CardContent>
-            {subscriptions.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Heart className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                <p>아직 구독한 샵이 없어요</p>
-                <p className="text-sm">크리에이터 샵을 둘러보세요!</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                {subscriptions.map((sub: any) => (
-                  <Link
-                    key={sub.id}
-                    href={`/${locale}/@${sub.creator.shopId || sub.creator.username}`}
-                    className="group"
-                  >
-                    <div className="p-4 rounded-lg border border-border/50 hover:border-primary/50 transition-colors text-center">
-                      <Avatar className="h-12 w-12 mx-auto mb-2 ring-2 ring-offset-2 ring-offset-background"
-                        style={{ ['--ring-color' as any]: sub.creator.themeColor || sub.creator.backgroundColor }}
-                      >
-                        <AvatarImage src={sub.creator.profileImageUrl || ''} />
-                        <AvatarFallback
-                          style={{ backgroundColor: sub.creator.themeColor || sub.creator.backgroundColor || '#666' }}
-                          className="text-white"
-                        >
-                          {sub.creator.displayName?.charAt(0) || (sub.creator.shopId || sub.creator.username || 'C').charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <p className="font-medium text-sm truncate group-hover:text-primary">
-                        {sub.creator.displayName || sub.creator.shopId || sub.creator.username}
-                      </p>
-                      <p className="text-xs text-muted-foreground">@{sub.creator.shopId || sub.creator.username}</p>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Recent Orders */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Package className="h-5 w-5 text-blue-500" />
-                최근 주문
-              </CardTitle>
-              <CardDescription>최근 구매 내역</CardDescription>
-            </div>
-            <Link href={`/${locale}/buyer/orders`}>
-              <Button variant="ghost" size="sm">
-                전체 보기 <ChevronRight className="ml-1 h-4 w-4" />
-              </Button>
-            </Link>
-          </CardHeader>
-          <CardContent>
-            {recentOrders.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <ShoppingBag className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                <p>아직 주문 내역이 없어요</p>
-                <p className="text-sm">크리에이터 샵에서 쇼핑을 시작해보세요!</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {recentOrders.map((order: any) => (
-                  <Link
-                    key={order.id}
-                    href={`/${locale}/buyer/orders/${order.id}`}
-                    className="flex items-center justify-between p-3 rounded-lg border border-border/50 hover:border-primary/50 transition-colors"
-                  >
-                    <div>
-                      <p className="font-medium text-sm">{order.orderNumber}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(order.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-medium">
-                        {Number(order.totalAmount).toLocaleString()}
-                      </p>
-                      <Badge variant="secondary" className={getStatusColor(order.status)}>
-                        {ORDER_STATUS_LABELS[order.status] || order.status}
-                      </Badge>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Points Earning Tip */}
-      <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
-        <CardContent className="flex items-center gap-4 pt-6">
-          <div className="p-3 rounded-full bg-primary/20">
-            <TrendingUp className="h-6 w-6 text-primary" />
-          </div>
-          <div className="flex-1">
-            <h3 className="font-semibold">더 많은 포인트를 모으세요!</h3>
-            <p className="text-sm text-muted-foreground">
-              리뷰 작성 500P, 인스타그램 공유 1,000P 적립!
-            </p>
-          </div>
-          <Link href={`/${locale}/buyer/reviews`}>
-            <Button variant="outline">리뷰 쓰기</Button>
-          </Link>
-        </CardContent>
-      </Card>
     </div>
   );
 }
