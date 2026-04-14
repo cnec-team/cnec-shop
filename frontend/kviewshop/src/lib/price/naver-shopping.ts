@@ -19,8 +19,8 @@ export async function searchNaverPrice(
   productName: string,
   brandName?: string
 ): Promise<NaverPriceResult | null> {
-  const clientId = process.env.NAVER_SHOPPING_CLIENT_ID;
-  const clientSecret = process.env.NAVER_SHOPPING_CLIENT_SECRET;
+  const clientId = process.env.NAVER_CLIENT_ID;
+  const clientSecret = process.env.NAVER_CLIENT_SECRET;
 
   if (!clientId || !clientSecret) return null;
 
