@@ -104,14 +104,20 @@ export function Sidebar({ role, locale }: SidebarProps) {
         return [
           { items: [{ title: '홈', href: `${base}/creator/dashboard`, icon: LayoutDashboard }] },
           {
+            label: '캠페인',
+            items: [
+              { title: '공동구매', href: `${base}/creator/campaigns/gonggu`, icon: Megaphone },
+              { title: '상시 판매', href: `${base}/creator/campaigns/pick`, icon: ShoppingBag },
+            ],
+          },
+          {
             label: '내 샵',
             items: [
-              { title: '내가 고른 상품', href: `${base}/creator/shop/products`, icon: ShoppingBag },
+              { title: '내가 고른 상품', href: `${base}/creator/shop/products`, icon: Package },
               { title: '상품 둘러보기', href: `${base}/creator/products`, icon: Package },
               { title: '샵 관리', href: `${base}/creator/shop`, icon: Palette },
             ],
           },
-          { items: [{ title: '캠페인', href: `${base}/creator/campaigns`, icon: Megaphone }] },
           {
             label: '제품 체험',
             items: [
