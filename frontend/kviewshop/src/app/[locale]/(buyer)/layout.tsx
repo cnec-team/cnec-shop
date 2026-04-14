@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter, useParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useUser } from '@/lib/hooks/use-user';
@@ -29,12 +29,16 @@ export default function BuyerLayout({
   const pathname = usePathname();
   const locale = params.locale as string;
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const redirectedRef = useRef(false);
 
   useEffect(() => {
-    if (!isLoading && !user) {
+    if (isLoading || redirectedRef.current) return;
+
+    if (!user) {
+      redirectedRef.current = true;
       router.push(`/${locale}/buyer/login`);
-    } else if (!isLoading && user && user.role !== 'buyer') {
-      // Redirect to appropriate dashboard based on role
+    } else if (user.role !== 'buyer') {
+      redirectedRef.current = true;
       if (user.role === 'creator') router.push(`/${locale}/creator/dashboard`);
       else if (user.role === 'brand_admin') router.push(`/${locale}/brand/dashboard`);
       else if (user.role === 'super_admin') router.push(`/${locale}/admin/dashboard`);
