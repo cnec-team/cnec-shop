@@ -9,8 +9,7 @@ import {
 } from '@/components/ui/table';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  Legend,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 import { getAdminDashboardCharts } from '@/lib/actions/admin';
 
@@ -28,32 +27,15 @@ interface ChartData {
 
 const COLORS = ['#1A73E8', '#34A853', '#EA4335', '#FBBC04', '#9334E6'];
 
-function formatKRW(v: number): string {
+function formatAmt(v: number): string {
   if (v >= 100000000) return `${(v / 100000000).toFixed(1)}억`;
-  if (v >= 10000) return `${(v / 10000).toFixed(0)}만`;
+  if (v >= 10000) return `${Math.round(v / 10000)}만`;
   return v.toLocaleString('ko-KR');
 }
 
-function formatDateLabel(date: string, period: Period): string {
+function fmtDate(date: string): string {
   const d = new Date(date);
-  if (period === '90d') return `${d.getMonth() + 1}/${d.getDate()}`;
   return `${d.getMonth() + 1}/${d.getDate()}`;
-}
-
-function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number; name: string; color: string }>; label?: string }) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="bg-white rounded-lg shadow-lg border p-3 text-sm">
-      <p className="font-medium text-gray-700 mb-1">{label}</p>
-      {payload.map((p, i) => (
-        <p key={i} className="flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: p.color }} />
-          <span className="text-muted-foreground">{p.name}:</span>
-          <span className="font-medium">{typeof p.value === 'number' && p.name?.includes('매출') ? `${formatKRW(p.value)}원` : p.value?.toLocaleString()}</span>
-        </p>
-      ))}
-    </div>
-  );
 }
 
 export default function DashboardCharts({ period }: { period: Period }) {
@@ -78,147 +60,97 @@ export default function DashboardCharts({ period }: { period: Period }) {
     );
   }
 
-  if (!data) {
-    return <p className="text-center text-muted-foreground py-8">데이터를 불러올 수 없습니다</p>;
-  }
+  if (!data) return <p className="text-center text-muted-foreground py-8">데이터를 불러올 수 없습니다</p>;
 
-  const chartDailySales = data.dailySales.map(d => ({
-    ...d, label: formatDateLabel(d.date, period),
-  }));
-
+  const daily = data.dailySales.map(d => ({ ...d, label: fmtDate(d.date) }));
+  const hasData = data.dailySales.some(d => d.sales > 0 || d.orders > 0);
+  const periodLabel = period === '7d' ? '7일' : period === '30d' ? '30일' : '90일';
   const pieData = [
     { name: '공구', value: data.campaignTypeSales.gonggu },
     { name: '상시', value: data.campaignTypeSales.always },
   ].filter(d => d.value > 0);
 
-  const hasData = data.dailySales.some(d => d.sales > 0 || d.orders > 0);
+  const EmptyState = () => <div className="h-[250px] flex items-center justify-center text-muted-foreground text-sm">아직 데이터가 없습니다</div>;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      {/* Chart 1: Sales Trend */}
       <Card>
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base">매출 추이</CardTitle>
-            <Badge variant="outline" className="text-xs">{period === '7d' ? '7일' : period === '30d' ? '30일' : '90일'}</Badge>
-          </div>
-        </CardHeader>
+        <CardHeader className="pb-2"><div className="flex items-center justify-between"><CardTitle className="text-base">매출 추이</CardTitle><Badge variant="outline" className="text-xs">{periodLabel}</Badge></div></CardHeader>
         <CardContent>
-          {!hasData ? (
-            <div className="h-[250px] flex items-center justify-center text-muted-foreground text-sm">아직 데이터가 없습니다</div>
-          ) : (
+          {!hasData ? <EmptyState /> : (
             <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={chartDailySales}>
+              <LineChart data={daily}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-                <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={v => formatKRW(v)} width={60} />
-                <Tooltip content={<CustomTooltip />} />
-                <Line type="monotone" dataKey="sales" name="매출" stroke="#1A73E8" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+                <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={v => formatAmt(Number(v))} width={60} />
+                <Tooltip formatter={(v) => [`${Number(v).toLocaleString()}원`, '매출']} />
+                <Line type="monotone" dataKey="sales" stroke="#1A73E8" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
               </LineChart>
             </ResponsiveContainer>
           )}
         </CardContent>
       </Card>
 
-      {/* Chart 2: Orders Trend */}
       <Card>
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base">주문 수 추이</CardTitle>
-            <Badge variant="outline" className="text-xs">{period === '7d' ? '7일' : period === '30d' ? '30일' : '90일'}</Badge>
-          </div>
-        </CardHeader>
+        <CardHeader className="pb-2"><div className="flex items-center justify-between"><CardTitle className="text-base">주문 수 추이</CardTitle><Badge variant="outline" className="text-xs">{periodLabel}</Badge></div></CardHeader>
         <CardContent>
-          {!hasData ? (
-            <div className="h-[250px] flex items-center justify-center text-muted-foreground text-sm">아직 데이터가 없습니다</div>
-          ) : (
+          {!hasData ? <EmptyState /> : (
             <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={chartDailySales}>
+              <BarChart data={daily}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
                 <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="orders" name="주문 수" fill="#1A73E8" radius={[4, 4, 0, 0]} />
+                <Tooltip formatter={(v) => [`${v}건`, '주문']} />
+                <Bar dataKey="orders" fill="#1A73E8" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}
         </CardContent>
       </Card>
 
-      {/* Chart 3: Brand TOP 5 */}
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">브랜드별 매출 TOP 5</CardTitle>
-        </CardHeader>
+        <CardHeader className="pb-2"><CardTitle className="text-base">브랜드별 매출 TOP 5</CardTitle></CardHeader>
         <CardContent>
-          {data.topBrands.length === 0 ? (
-            <div className="h-[250px] flex items-center justify-center text-muted-foreground text-sm">아직 데이터가 없습니다</div>
-          ) : (
+          {data.topBrands.length === 0 ? <EmptyState /> : (
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={data.topBrands} layout="vertical" margin={{ left: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={v => formatKRW(v)} />
+                <XAxis type="number" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={v => formatAmt(Number(v))} />
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={90} />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="sales" name="매출" radius={[0, 4, 4, 0]}>
-                  {data.topBrands.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                </Bar>
+                <Tooltip formatter={(v) => [`${Number(v).toLocaleString()}원`, '매출']} />
+                <Bar dataKey="sales" radius={[0, 4, 4, 0]}>{data.topBrands.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}</Bar>
               </BarChart>
             </ResponsiveContainer>
           )}
         </CardContent>
       </Card>
 
-      {/* Chart 4: Creator TOP 5 */}
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">크리에이터별 매출 TOP 5</CardTitle>
-        </CardHeader>
+        <CardHeader className="pb-2"><CardTitle className="text-base">크리에이터별 매출 TOP 5</CardTitle></CardHeader>
         <CardContent>
-          {data.topCreators.length === 0 ? (
-            <div className="h-[250px] flex items-center justify-center text-muted-foreground text-sm">아직 데이터가 없습니다</div>
-          ) : (
+          {data.topCreators.length === 0 ? <EmptyState /> : (
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={data.topCreators} layout="vertical" margin={{ left: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={v => formatKRW(v)} />
+                <XAxis type="number" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={v => formatAmt(Number(v))} />
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={90} />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="sales" name="매출" radius={[0, 4, 4, 0]}>
-                  {data.topCreators.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                </Bar>
+                <Tooltip formatter={(v) => [`${Number(v).toLocaleString()}원`, '매출']} />
+                <Bar dataKey="sales" radius={[0, 4, 4, 0]}>{data.topCreators.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}</Bar>
               </BarChart>
             </ResponsiveContainer>
           )}
         </CardContent>
       </Card>
 
-      {/* Chart 5: Product TOP 5 Table */}
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">상품별 판매 TOP 5</CardTitle>
-        </CardHeader>
+        <CardHeader className="pb-2"><CardTitle className="text-base">상품별 판매 TOP 5</CardTitle></CardHeader>
         <CardContent>
-          {data.topProducts.length === 0 ? (
-            <div className="h-[200px] flex items-center justify-center text-muted-foreground text-sm">아직 데이터가 없습니다</div>
-          ) : (
+          {data.topProducts.length === 0 ? <EmptyState /> : (
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-10">#</TableHead>
-                  <TableHead>상품명</TableHead>
-                  <TableHead className="text-right">판매 수량</TableHead>
-                  <TableHead className="text-right">매출</TableHead>
-                </TableRow>
-              </TableHeader>
+              <TableHeader><TableRow><TableHead className="w-10">#</TableHead><TableHead>상품명</TableHead><TableHead className="text-right">수량</TableHead><TableHead className="text-right">매출</TableHead></TableRow></TableHeader>
               <TableBody>
                 {data.topProducts.map((p, i) => (
-                  <TableRow key={i}>
-                    <TableCell className="font-medium">{i + 1}</TableCell>
-                    <TableCell className="text-sm truncate max-w-[200px]">{p.name}</TableCell>
-                    <TableCell className="text-right text-sm">{p.quantity.toLocaleString()}개</TableCell>
-                    <TableCell className="text-right text-sm font-medium">{formatKRW(p.sales)}원</TableCell>
-                  </TableRow>
+                  <TableRow key={i}><TableCell className="font-medium">{i + 1}</TableCell><TableCell className="text-sm truncate max-w-[200px]">{p.name}</TableCell><TableCell className="text-right text-sm">{p.quantity.toLocaleString()}개</TableCell><TableCell className="text-right text-sm font-medium">{formatAmt(p.sales)}원</TableCell></TableRow>
                 ))}
               </TableBody>
             </Table>
@@ -226,22 +158,16 @@ export default function DashboardCharts({ period }: { period: Period }) {
         </CardContent>
       </Card>
 
-      {/* Chart 6: Campaign Type Pie */}
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">공구 vs 상시 매출</CardTitle>
-        </CardHeader>
+        <CardHeader className="pb-2"><CardTitle className="text-base">공구 vs 상시 매출</CardTitle></CardHeader>
         <CardContent>
-          {pieData.length === 0 ? (
-            <div className="h-[250px] flex items-center justify-center text-muted-foreground text-sm">아직 데이터가 없습니다</div>
-          ) : (
+          {pieData.length === 0 ? <EmptyState /> : (
             <ResponsiveContainer width="100%" height={250}>
               <PieChart>
-                <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={4} dataKey="value" label={({ name, percent }: { name?: string; percent?: number }) => `${name || ''} ${((percent || 0) * 100).toFixed(0)}%`}>
-                  <Cell fill="#9334E6" />
-                  <Cell fill="#FBBC04" />
+                <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={4} dataKey="value" label={({ name, percent }: { name?: string; percent?: number }) => `${name || ''} ${Math.round((percent || 0) * 100)}%`}>
+                  <Cell fill="#9334E6" /><Cell fill="#FBBC04" />
                 </Pie>
-                <Tooltip formatter={(value: number) => `${formatKRW(value)}원`} />
+                <Tooltip formatter={(v) => [`${Number(v).toLocaleString()}원`]} />
                 <Legend />
               </PieChart>
             </ResponsiveContainer>
