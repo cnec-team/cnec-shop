@@ -20,12 +20,13 @@ const securityHeaders = [
     key: 'Content-Security-Policy',
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.tosspayments.com https://t1.kakaocdn.net https://developers.kakao.com https://cdn.portone.io https://*.daumcdn.net https://postcode.map.kakao.com https://ssl.daumcdn.net",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://fonts.gstatic.com",
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.tosspayments.com https://t1.kakaocdn.net https://developers.kakao.com https://cdn.portone.io https://*.daumcdn.net https://postcode.map.kakao.com https://ssl.daumcdn.net https://cdn.jsdelivr.net",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
       "img-src 'self' data: blob: https:",
-      "font-src 'self' https://fonts.gstatic.com",
-      "connect-src 'self' https://api.tosspayments.com https://api.portone.io https://kapi.kakao.com https://*.r2.dev https://*.cloudflarestorage.com https://storage.cnec.kr https://cnecshop.com https://*.cnecshop.com https://postcode.map.kakao.com https://*.daumcdn.net",
-      "frame-src https://js.tosspayments.com https://accounts.kakao.com https://service.portone.io https://www.instagram.com https://www.tiktok.com https://*.daumcdn.net https://postcode.map.kakao.com",
+      "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net data:",
+      "connect-src 'self' https://api.tosspayments.com https://api.portone.io https://kapi.kakao.com https://*.r2.dev https://*.cloudflarestorage.com https://storage.cnec.kr https://cnecshop.com https://*.cnecshop.com https://postcode.map.kakao.com https://*.daumcdn.net https://cdn.jsdelivr.net https://fonts.googleapis.com https://fonts.gstatic.com",
+      "frame-src 'self' https://js.tosspayments.com https://accounts.kakao.com https://service.portone.io https://www.instagram.com https://www.tiktok.com https://*.daumcdn.net https://postcode.map.kakao.com",
+      "media-src 'self' https: data:",
     ].join('; '),
   },
 ];
