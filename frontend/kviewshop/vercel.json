@@ -8,5 +8,11 @@
       "destination": "https://www.cnecshop.com/:path*",
       "permanent": true
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/price-update",
+      "schedule": "0 3 * * *"
+    }
   ]
 }
