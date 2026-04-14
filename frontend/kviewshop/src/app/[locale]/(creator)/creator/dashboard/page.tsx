@@ -35,6 +35,7 @@ import {
   triggerMissionCheck,
 } from '@/lib/actions/creator';
 import { getTrialableProducts } from '@/lib/actions/trial';
+import { RevenueCard } from '@/components/creator/RevenueCard';
 
 interface DashboardStats {
   totalVisits: number;
@@ -192,6 +193,9 @@ export default function CreatorDashboardPage() {
           안녕하세요, {(creator as any)?.displayName || '크리에이터'}님
         </h1>
       </div>
+
+      {/* Revenue Dashboard Cards */}
+      <RevenueCard />
 
       {/* Hero: This month's earnings — one big number */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
