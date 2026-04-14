@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { prisma } from '@/lib/db';
 import { ArrowRight, Users, Flame } from 'lucide-react';
 import type { Metadata } from 'next';
+import { LegalFooter } from '@/components/shop/legal-footer';
 
 export const revalidate = 120;
 
@@ -427,11 +428,7 @@ export default async function DiscoveryPage({ params }: PageProps) {
       )}
 
       {/* Footer */}
-      <div className="max-w-lg mx-auto border-t border-gray-100 py-4 px-4 mt-4">
-        <p className="text-xs text-gray-400 text-center">
-          크넥이 안전하게 관리하는 K-뷰티 플랫폼
-        </p>
-      </div>
+      <LegalFooter locale={locale} variant="minimal" />
     </div>
   );
 }

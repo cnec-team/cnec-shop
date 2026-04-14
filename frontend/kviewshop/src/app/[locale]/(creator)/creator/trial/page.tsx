@@ -345,6 +345,13 @@ export default function CreatorTrialCatalogPage() {
                   onChange={(e) => setAddress(e.target.value)}
                   placeholder="배송 받을 주소를 입력하세요"
                 />
+                {!address.trim() && (
+                  <p className="text-xs text-red-500 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    배송 정보를 먼저 등록해주세요.{' '}
+                    <Link href="/ko/creator/settings" className="underline text-blue-600">설정 페이지</Link>
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -362,7 +369,7 @@ export default function CreatorTrialCatalogPage() {
           <DialogFooter>
             <Button
               onClick={handleSubmit}
-              disabled={submitting || !savedName || !savedPhone}
+              disabled={submitting || !savedName || !savedPhone || !address.trim()}
               className="w-full bg-gray-900 text-white rounded-xl h-11 font-medium"
             >
               {submitting ? (
