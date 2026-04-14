@@ -1,51 +1,83 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useUser } from '@/lib/hooks/use-user';
-import { getBuyerOrders } from '@/lib/actions/buyer';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { getBuyerOrdersWithFilters } from '@/lib/actions/buyer';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import {
-  Package,
-  Truck,
-  CheckCircle,
-  Clock,
-  XCircle,
-  ShoppingBag,
-  ChevronRight,
-  Search,
-  Loader2,
-  Star,
-  RefreshCw,
-} from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { getTrackingUrl, getCourierLabel } from '@/lib/utils/courier';
+import { Package, Truck, ChevronRight, Loader2 } from 'lucide-react';
+import { getCourierLabel, getTrackingUrl } from '@/lib/utils/courier';
 
-const statusConfig: Record<string, { icon: typeof Clock; color: string; bgColor: string; label: string }> = {
-  PENDING: { icon: Clock, color: 'text-yellow-600', bgColor: 'bg-yellow-500/10', label: '결제대기' },
-  PAID: { icon: CheckCircle, color: 'text-green-600', bgColor: 'bg-green-500/10', label: '결제완료' },
-  PREPARING: { icon: Package, color: 'text-blue-600', bgColor: 'bg-blue-500/10', label: '배송준비중' },
-  SHIPPING: { icon: Truck, color: 'text-purple-600', bgColor: 'bg-purple-500/10', label: '배송중' },
-  DELIVERED: { icon: CheckCircle, color: 'text-green-600', bgColor: 'bg-green-500/10', label: '배송완료' },
-  CONFIRMED: { icon: CheckCircle, color: 'text-green-700', bgColor: 'bg-green-600/10', label: '구매확정' },
-  CANCELLED: { icon: XCircle, color: 'text-red-600', bgColor: 'bg-red-500/10', label: '주문취소' },
-  REFUNDED: { icon: XCircle, color: 'text-gray-600', bgColor: 'bg-gray-500/10', label: '환불완료' },
+const STATUS_LABELS: Record<string, string> = {
+  PAID: '결제완료',
+  PREPARING: '상품준비중',
+  SHIPPING: '배송중',
+  DELIVERED: '배송완료',
+  CONFIRMED: '구매확정',
+  CANCELLED: '취소',
+  REFUNDED: '환불',
 };
 
-type TabKey = 'all' | 'paid' | 'preparing' | 'shipping' | 'delivered' | 'cancelled';
+const STATUS_COLORS: Record<string, string> = {
+  PAID: 'bg-gray-100 text-gray-600',
+  PREPARING: 'bg-amber-50 text-amber-600',
+  SHIPPING: 'bg-blue-50 text-blue-600',
+  DELIVERED: 'bg-emerald-50 text-emerald-600',
+  CONFIRMED: 'bg-emerald-50 text-emerald-600',
+  CANCELLED: 'bg-red-50 text-red-600',
+  REFUNDED: 'bg-red-50 text-red-600',
+};
 
-const TABS: { key: TabKey; label: string; statuses: string[] }[] = [
-  { key: 'all', label: '전체', statuses: [] },
-  { key: 'paid', label: '결제완료', statuses: ['PAID'] },
-  { key: 'preparing', label: '배송준비', statuses: ['PREPARING'] },
-  { key: 'shipping', label: '배송중', statuses: ['SHIPPING'] },
-  { key: 'delivered', label: '배송완료', statuses: ['DELIVERED', 'CONFIRMED'] },
-  { key: 'cancelled', label: '취소/환불', statuses: ['CANCELLED', 'REFUNDED'] },
+interface OrderItem {
+  id: string;
+  productName: string;
+  productImage: string | null;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+}
+
+interface Order {
+  id: string;
+  orderNumber: string | null;
+  totalAmount: number;
+  shippingFee: number;
+  status: string;
+  createdAt: string;
+  trackingNumber: string | null;
+  courierCode: string | null;
+  items: OrderItem[];
+}
+
+interface FilterTab {
+  key: string;
+  label: string;
+}
+
+const FILTER_TABS: FilterTab[] = [
+  { key: 'all', label: '전체' },
+  { key: 'PAID', label: '결제완료' },
+  { key: 'PREPARING', label: '상품준비중' },
+  { key: 'SHIPPING', label: '배송중' },
+  { key: 'DELIVERED', label: '배송완료' },
 ];
+
+function groupByDate(orders: Order[]): { date: string; orders: Order[] }[] {
+  const groups: { date: string; orders: Order[] }[] = [];
+  for (const order of orders) {
+    const dateStr = new Date(order.createdAt).toLocaleDateString('ko-KR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+    const existing = groups.find((g) => g.date === dateStr);
+    if (existing) existing.orders.push(order);
+    else groups.push({ date: dateStr, orders: [order] });
+  }
+  return groups;
+}
 
 export default function BuyerOrdersPage() {
   const params = useParams();
@@ -53,82 +85,51 @@ export default function BuyerOrdersPage() {
   const { buyer } = useUser();
 
   const [isLoading, setIsLoading] = useState(true);
-  const [orders, setOrders] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<TabKey>('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
+  const [totalCount, setTotalCount] = useState(0);
+  const [activeTab, setActiveTab] = useState('all');
   const fetchedRef = useRef(false);
 
-  // Use stable primitive ID instead of object reference as dependency
   const buyerId = buyer?.id;
+
+  const loadOrders = useCallback(
+    async (status: string) => {
+      if (!buyerId) return;
+      setIsLoading(true);
+      try {
+        const result = await getBuyerOrdersWithFilters(buyerId, status);
+        setOrders(result.orders);
+        setStatusCounts(result.statusCounts);
+        setTotalCount(result.totalCount);
+      } catch (error) {
+        console.error('주문 데이터 로드 실패:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [buyerId]
+  );
 
   useEffect(() => {
     if (!buyerId || fetchedRef.current) return;
     fetchedRef.current = true;
+    loadOrders('all');
+  }, [buyerId, loadOrders]);
 
-    const loadOrders = async () => {
-      try {
-        const ordersData = await getBuyerOrders(buyerId);
-        setOrders(ordersData || []);
-      } catch (error) {
-        console.error('Failed to load orders:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadOrders();
-  }, [buyerId]);
-
-  // Count per tab
-  const tabCounts = useMemo(() => {
-    const counts: Record<TabKey, number> = { all: 0, paid: 0, preparing: 0, shipping: 0, delivered: 0, cancelled: 0 };
-    for (const order of orders) {
-      counts.all++;
-      for (const tab of TABS) {
-        if (tab.key !== 'all' && tab.statuses.includes(order.status)) {
-          counts[tab.key]++;
-        }
-      }
-    }
-    return counts;
-  }, [orders]);
-
-  const filteredOrders = useMemo(() => {
-    let filtered = orders;
-
-    // Filter by tab
-    const tab = TABS.find((t) => t.key === activeTab);
-    if (tab && tab.statuses.length > 0) {
-      filtered = filtered.filter((o) => tab.statuses.includes(o.status));
-    }
-
-    // Filter by search
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (o) =>
-          o.orderNumber?.toLowerCase().includes(query) ||
-          o.creator?.displayName?.toLowerCase().includes(query) ||
-          o.items?.some((item: any) => (item.productName || item.product?.name || '').toLowerCase().includes(query))
-      );
-    }
-
-    return filtered;
-  }, [activeTab, searchQuery, orders]);
-
-  const formatDate = (dateString: string | Date) => {
-    return new Date(dateString).toLocaleDateString('ko-KR', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    });
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    loadOrders(tab);
   };
 
-  const formatCurrency = (amount: number) => {
-    return '₩' + Number(amount).toLocaleString();
+  const getTabCount = (key: string): number => {
+    if (key === 'all') return totalCount;
+    return statusCounts[key] ?? 0;
   };
 
-  if (isLoading) {
+  const dateGroups = groupByDate(orders);
+
+  if (isLoading && orders.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -137,49 +138,40 @@ export default function BuyerOrdersPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-3xl font-headline font-bold flex items-center gap-3">
-          <Package className="h-8 w-8" />
-          주문내역
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          주문 현황을 확인하세요
+    <div className="max-w-lg mx-auto space-y-5 pb-20">
+      {/* Page Header */}
+      <div className="px-1">
+        <h1 className="text-xl font-bold">주문내역</h1>
+        <p className="text-sm text-gray-400 mt-0.5">
+          주문하신 상품의 배송 현황을 확인하세요
         </p>
       </div>
 
-      {/* Search */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="주문번호, 상품명으로 검색"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-      </div>
-
-      {/* Status Tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {TABS.map((tab) => {
+      {/* Status Filter Tabs */}
+      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+        {FILTER_TABS.map((tab) => {
           const isActive = activeTab === tab.key;
-          const count = tabCounts[tab.key];
+          const count = getTabCount(tab.key);
           return (
             <button
               key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+              onClick={() => handleTabChange(tab.key)}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors flex-shrink-0 ${
                 isActive
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  ? 'bg-gray-900 text-white'
+                  : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'
               }`}
             >
               {tab.label}
               {count > 0 && (
-                <span className={`text-xs ${isActive ? 'opacity-80' : 'opacity-60'}`}>
-                  ({count})
+                <span
+                  className={`text-xs px-1.5 py-0.5 rounded-full ${
+                    isActive
+                      ? 'bg-white/20 text-white'
+                      : 'bg-gray-100 text-gray-500'
+                  }`}
+                >
+                  {count}
                 </span>
               )}
             </button>
@@ -187,174 +179,152 @@ export default function BuyerOrdersPage() {
         })}
       </div>
 
+      {/* Loading overlay for tab changes */}
+      {isLoading && orders.length > 0 && (
+        <div className="flex justify-center py-4">
+          <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+        </div>
+      )}
+
       {/* Orders List */}
-      {filteredOrders.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center py-16">
-            <ShoppingBag className="h-16 w-16 text-muted-foreground/30 mb-4" />
-            <h2 className="text-xl font-semibold mb-2">주문 내역이 없어요</h2>
-            <p className="text-muted-foreground mb-6">
-              {activeTab === 'all'
-                ? '아직 주문하신 내역이 없어요'
-                : '해당하는 주문이 없어요'}
-            </p>
-            <Link href={'/' + locale + '/buyer/subscriptions'}>
-              <Button>쇼핑하러 가기</Button>
-            </Link>
-          </CardContent>
-        </Card>
+      {!isLoading && orders.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-gray-100 p-10 text-center">
+          <Package className="h-12 w-12 mx-auto mb-4 text-gray-200" />
+          <p className="font-semibold text-gray-700 mb-1">
+            {activeTab === 'all'
+              ? '아직 주문 내역이 없어요'
+              : '해당하는 주문이 없어요'}
+          </p>
+          <p className="text-sm text-gray-400 mb-5">
+            크리에이터가 추천하는 상품을 구경해보세요
+          </p>
+          <Link href={`/${locale}`}>
+            <Button size="sm" variant="outline" className="rounded-full">
+              크리에이터 샵 둘러보기
+            </Button>
+          </Link>
+        </div>
       ) : (
-        <div className="space-y-4">
-          {filteredOrders.map((order) => {
-            const status = statusConfig[order.status] || statusConfig.PENDING;
-            const StatusIcon = status.icon;
-            const trackingUrl = getTrackingUrl(order.courierCode, order.trackingNumber);
+        <div className="space-y-6">
+          {dateGroups.map((group) => (
+            <div key={group.date}>
+              {/* Date Header */}
+              <p className="text-xs text-gray-400 font-medium mb-2 px-1">
+                {group.date}
+              </p>
 
-            return (
-              <Card key={order.id} className="overflow-hidden">
-                <CardHeader className="pb-3 bg-muted/30">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-4">
-                      <div>
-                        <p className="text-sm text-muted-foreground">주문번호</p>
-                        <p className="font-mono font-semibold">{order.orderNumber}</p>
-                      </div>
-                      <div className="hidden sm:block">
-                        <p className="text-sm text-muted-foreground">주문일</p>
-                        <p className="font-medium">{formatDate(order.createdAt)}</p>
-                      </div>
-                    </div>
-                    <Badge className={status.bgColor + ' ' + status.color + ' border-0'}>
-                      <StatusIcon className="h-3 w-3 mr-1" />
-                      {status.label}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-4">
-                  {/* Creator Info */}
-                  {order.creator && (
-                    <Link
-                      href={'/' + locale + '/@' + (order.creator.shopId || order.creator.username)}
-                      className="flex items-center gap-2 mb-4 text-sm hover:text-primary transition-colors"
+              <div className="space-y-3">
+                {group.orders.map((order) => {
+                  const trackingUrl = getTrackingUrl(
+                    order.courierCode,
+                    order.trackingNumber
+                  );
+
+                  return (
+                    <div
+                      key={order.id}
+                      className="bg-white rounded-2xl border border-gray-100 p-4"
                     >
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: order.creator.themeColor || order.creator.backgroundColor || '#000' }}
-                      />
-                      <span>{order.creator.displayName || order.creator.shopId || order.creator.username}</span>
-                      <ChevronRight className="h-3 w-3" />
-                    </Link>
-                  )}
+                      {/* Order Number */}
+                      <p className="text-xs text-gray-400 mb-3">
+                        {order.orderNumber}
+                      </p>
 
-                  {/* Order Items */}
-                  <div className="space-y-3">
-                    {order.items?.slice(0, 3).map((item: any) => {
-                      const itemName = item.productName || item.product?.name || '상품';
-                      const itemImage = item.productImage || item.product?.imageUrl;
-                      return (
-                        <div key={item.id} className="flex gap-3">
-                          <div className="relative w-16 h-16 rounded-md overflow-hidden bg-muted flex-shrink-0">
-                            {itemImage ? (
-                              <Image
-                                src={itemImage}
-                                alt={itemName}
-                                fill
-                                className="object-cover"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <ShoppingBag className="h-6 w-6 text-muted-foreground/50" />
-                              </div>
-                            )}
+                      {/* Order Items */}
+                      <div className="space-y-3">
+                        {order.items.map((item) => (
+                          <div key={item.id} className="flex gap-3">
+                            {/* Product Image */}
+                            <div className="relative w-20 h-20 rounded-xl overflow-hidden bg-gray-50 flex-shrink-0">
+                              {item.productImage ? (
+                                <Image
+                                  src={item.productImage}
+                                  alt={item.productName}
+                                  fill
+                                  className="object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <Package className="h-6 w-6 text-gray-300" />
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Item Info */}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">
+                                {item.productName}
+                              </p>
+                              <p className="text-sm text-gray-500 mt-0.5">
+                                {item.unitPrice.toLocaleString()}원
+                                {item.quantity > 1 && ` x ${item.quantity}`}
+                              </p>
+                            </div>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium truncate">{itemName}</p>
-                            <p className="text-sm text-muted-foreground">
-                              수량: {item.quantity} x {formatCurrency(Number(item.unitPrice))}
-                            </p>
+                        ))}
+                      </div>
+
+                      {/* Status + Tracking + Actions */}
+                      <div className="mt-3 pt-3 border-t border-gray-50">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                STATUS_COLORS[order.status] ||
+                                'bg-gray-100 text-gray-600'
+                              }`}
+                            >
+                              {STATUS_LABELS[order.status] || order.status}
+                            </span>
+
+                            {order.status === 'SHIPPING' &&
+                              order.courierCode && (
+                                <span className="text-xs text-gray-400">
+                                  {getCourierLabel(order.courierCode)}{' '}
+                                  {order.trackingNumber}
+                                </span>
+                              )}
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {order.status === 'SHIPPING' && trackingUrl && (
+                              <a
+                                href={trackingUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-xs h-7 gap-1 rounded-full"
+                                >
+                                  <Truck className="h-3 w-3" />
+                                  배송조회
+                                </Button>
+                              </a>
+                            )}
+
+                            <Link
+                              href={`/${locale}/buyer/orders/${order.id}`}
+                            >
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-xs h-7 gap-0.5 text-gray-400"
+                              >
+                                주문상세
+                                <ChevronRight className="h-3 w-3" />
+                              </Button>
+                            </Link>
                           </div>
                         </div>
-                      );
-                    })}
-                    {order.items && order.items.length > 3 && (
-                      <p className="text-sm text-muted-foreground">
-                        외 {order.items.length - 3}건
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Tracking Info */}
-                  {order.trackingNumber && (
-                    <div className="mt-4 p-3 bg-muted/50 rounded-lg flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground">
-                          {getCourierLabel(order.courierCode)} {order.trackingNumber}
-                        </p>
                       </div>
-                      {trackingUrl && (
-                        <a href={trackingUrl} target="_blank" rel="noopener noreferrer">
-                          <Button variant="outline" size="sm" className="gap-1 text-purple-600">
-                            <Truck className="h-3 w-3" />
-                            배송 조회
-                          </Button>
-                        </a>
-                      )}
                     </div>
-                  )}
-
-                  {/* Order Total and Actions */}
-                  <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                    <div>
-                      <p className="text-sm text-muted-foreground">결제금액</p>
-                      <p className="text-lg font-semibold">
-                        {formatCurrency(Number(order.totalAmount))}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      {/* Status-based CTA buttons */}
-                      {['PAID', 'PREPARING'].includes(order.status) && (
-                        <Button variant="outline" size="sm" className="gap-1 text-muted-foreground">
-                          주문 취소 문의
-                        </Button>
-                      )}
-                      {order.status === 'SHIPPING' && trackingUrl && (
-                        <a href={trackingUrl} target="_blank" rel="noopener noreferrer">
-                          <Button variant="outline" size="sm" className="gap-1 text-purple-600 border-purple-200">
-                            <Truck className="h-4 w-4" />
-                            배송 조회
-                          </Button>
-                        </a>
-                      )}
-                      {order.status === 'DELIVERED' && (
-                        <>
-                          <Link href={'/' + locale + '/buyer/reviews?orderId=' + order.id}>
-                            <Button size="sm" className="gap-1">
-                              <Star className="h-4 w-4" />
-                              리뷰 작성
-                            </Button>
-                          </Link>
-                        </>
-                      )}
-                      {order.status === 'CONFIRMED' && (
-                        <Link href={'/' + locale + '/@' + (order.creator?.shopId || order.creator?.username || '')}>
-                          <Button variant="outline" size="sm" className="gap-1">
-                            <RefreshCw className="h-4 w-4" />
-                            재구매
-                          </Button>
-                        </Link>
-                      )}
-                      <Link href={'/' + locale + '/buyer/orders/' + order.id}>
-                        <Button variant="ghost" size="sm">
-                          상세보기
-                          <ChevronRight className="h-4 w-4 ml-1" />
-                        </Button>
-                      </Link>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

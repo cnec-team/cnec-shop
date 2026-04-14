@@ -68,12 +68,12 @@ export default function BuyerLayout({
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gray-50">
       {/* Top Header */}
       <header className="sticky top-0 z-50 border-b border-border/50 bg-background/95 backdrop-blur">
         <div className="container flex h-16 items-center justify-between px-4">
           <Link href={`/${locale}`} className="font-headline text-2xl font-bold text-gold-gradient">
-            CNEC Shop
+            크넥샵
           </Link>
 
           <div className="flex items-center gap-4">

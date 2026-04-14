@@ -766,3 +766,136 @@ export async function updateMarketingConsent(
     data: { marketingConsent: consent },
   })
 }
+
+// ==================== Buyer Home (v2) ====================
+
+export async function getBuyerHomeData(buyerId: string) {
+  const { buyer } = await requireBuyer()
+  if (buyer.id !== buyerId) throw new Error('Forbidden')
+
+  const [orders, pointsBalance] = await Promise.all([
+    prisma.order.findMany({
+      where: { buyerId: buyer.id },
+      orderBy: { createdAt: 'desc' },
+      take: 3,
+      include: {
+        items: {
+          take: 1,
+          include: {
+            product: {
+              select: { name: true, imageUrl: true, images: true },
+            },
+          },
+        },
+      },
+    }),
+    // Get points balance from buyer record
+    prisma.buyer.findUnique({
+      where: { id: buyer.id },
+      select: { pointsBalance: true },
+    }),
+  ])
+
+  // Count active orders by status
+  const statusCounts = await prisma.order.groupBy({
+    by: ['status'],
+    where: { buyerId: buyer.id },
+    _count: true,
+  })
+
+  const counts: Record<string, number> = {}
+  let activeCount = 0
+  for (const sc of statusCounts) {
+    counts[sc.status] = sc._count
+    if (['PAID', 'PREPARING', 'SHIPPING'].includes(sc.status)) {
+      activeCount += sc._count
+    }
+  }
+
+  const recentOrders = orders.map(o => ({
+    id: o.id,
+    orderNumber: o.orderNumber,
+    totalAmount: Number(o.totalAmount),
+    status: o.status,
+    createdAt: o.createdAt.toISOString(),
+    trackingNumber: o.trackingNumber,
+    courierCode: o.courierCode,
+    productName: o.items[0]?.product?.name || o.items[0]?.productName || null,
+    productImage: o.items[0]?.product?.imageUrl || o.items[0]?.product?.images?.[0] || null,
+    itemCount: o.items.length,
+    unitPrice: o.items[0] ? Number(o.items[0].unitPrice) : 0,
+    quantity: o.items[0]?.quantity || 0,
+  }))
+
+  return {
+    recentOrders,
+    activeCount,
+    statusCounts: counts,
+    pointsBalance: Number(pointsBalance?.pointsBalance ?? 0),
+  }
+}
+
+// ==================== Buyer Orders with Filters (v2) ====================
+
+export async function getBuyerOrdersWithFilters(buyerId: string, status?: string) {
+  const { buyer } = await requireBuyer()
+  if (buyer.id !== buyerId) throw new Error('Forbidden')
+
+  const where: Record<string, unknown> = { buyerId: buyer.id }
+  if (status && status !== 'all') {
+    where.status = status
+  }
+
+  const [orders, allStatusCounts] = await Promise.all([
+    prisma.order.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: { name: true, imageUrl: true, images: true },
+            },
+          },
+        },
+      },
+    }),
+    prisma.order.groupBy({
+      by: ['status'],
+      where: { buyerId: buyer.id },
+      _count: true,
+    }),
+  ])
+
+  const statusCountMap: Record<string, number> = {}
+  let totalCount = 0
+  for (const sc of allStatusCounts) {
+    statusCountMap[sc.status] = sc._count
+    totalCount += sc._count
+  }
+
+  const serialized = orders.map(o => ({
+    id: o.id,
+    orderNumber: o.orderNumber,
+    totalAmount: Number(o.totalAmount),
+    shippingFee: Number(o.shippingFee),
+    status: o.status,
+    createdAt: o.createdAt.toISOString(),
+    trackingNumber: o.trackingNumber,
+    courierCode: o.courierCode,
+    items: o.items.map(item => ({
+      id: item.id,
+      productName: item.product?.name || item.productName || '상품',
+      productImage: item.product?.imageUrl || item.product?.images?.[0] || null,
+      quantity: item.quantity,
+      unitPrice: Number(item.unitPrice),
+      totalPrice: Number(item.totalPrice),
+    })),
+  }))
+
+  return {
+    orders: serialized,
+    statusCounts: statusCountMap,
+    totalCount,
+  }
+}
