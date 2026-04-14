@@ -4,28 +4,24 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useUser } from '@/lib/hooks/use-user';
-import { getBuyerSubscriptions, updateSubscriptionNotifications, unsubscribeFromCreator } from '@/lib/actions/buyer';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { getBuyerSubscriptions, unsubscribeFromCreator } from '@/lib/actions/buyer';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import {
   Heart,
-  Bell,
-  BellOff,
-  ShoppingBag,
-  Video,
+  Store,
   Loader2,
-  ExternalLink,
+  UserMinus,
 } from 'lucide-react';
 import { toast } from 'sonner';
+
+type Subscription = Awaited<ReturnType<typeof getBuyerSubscriptions>>[number];
 
 export default function BuyerSubscriptionsPage() {
   const { buyer } = useUser();
   const params = useParams();
   const locale = params.locale as string;
   const [isLoading, setIsLoading] = useState(true);
-  const [subscriptions, setSubscriptions] = useState<any[]>([]);
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
 
   const buyerId = buyer?.id;
   const fetchedRef = useRef(false);
@@ -49,23 +45,9 @@ export default function BuyerSubscriptionsPage() {
     loadSubscriptions();
   }, [buyerId]);
 
-  const handleUpdateNotifications = async (
-    subId: string,
-    field: 'notifyNewProducts' | 'notifySales',
-    value: boolean
-  ) => {
-    try {
-      await updateSubscriptionNotifications(subId, field, value);
-      setSubscriptions(subs =>
-        subs.map(s => s.id === subId ? { ...s, [field]: value } : s)
-      );
-      toast.success('알림 설정이 변경되었습니다');
-    } catch (error) {
-      toast.error('설정 변경에 실패했습니다');
-    }
-  };
-
   const handleUnsubscribe = async (subId: string) => {
+    if (!confirm('정말 구독을 취소하시겠어요?')) return;
+
     try {
       await unsubscribeFromCreator(subId);
       setSubscriptions(subs => subs.filter(s => s.id !== subId));
@@ -78,143 +60,108 @@ export default function BuyerSubscriptionsPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* Header */}
       <div>
-        <h1 className="text-3xl font-headline font-bold flex items-center gap-2">
-          <Heart className="h-8 w-8 text-pink-500" />
-          My Subscriptions
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Manage your subscribed creator malls
+        <h1 className="text-xl font-bold text-gray-900">구독 중인 샵</h1>
+        <p className="text-sm text-gray-500 mt-1">
+          좋아하는 크리에이터 샵의 새 소식을 받아보세요
         </p>
       </div>
 
+      {/* Count */}
+      {subscriptions.length > 0 && (
+        <p className="text-sm text-gray-500">
+          구독 중 <span className="font-bold text-gray-900">{subscriptions.length}개</span>
+        </p>
+      )}
+
       {subscriptions.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Heart className="h-16 w-16 mx-auto text-muted-foreground/30 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No subscriptions yet</h3>
-            <p className="text-muted-foreground mb-4">
-              Discover amazing creator shops and subscribe to get updates!
+        /* Empty State */
+        <div className="bg-white rounded-2xl border border-gray-100 p-5">
+          <div className="py-12 text-center">
+            <div className="mx-auto w-12 h-12 flex items-center justify-center mb-4">
+              <Heart className="h-12 w-12 text-gray-300" />
+            </div>
+            <h3 className="text-base font-semibold text-gray-900 mb-1">
+              구독 중인 샵이 없어요
+            </h3>
+            <p className="text-sm text-gray-500 mb-5">
+              마음에 드는 크리에이터 샵을 찾아 구독해보세요!
             </p>
-            <Button asChild>
-              <Link href={`/${locale}`}>Explore Shops</Link>
+            <Button asChild className="bg-gray-900 text-white rounded-xl h-11 px-6">
+              <Link href={`/${locale}/creators`}>크리에이터 샵 둘러보기</Link>
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {subscriptions.map((sub: any) => (
-            <Card key={sub.id} className="overflow-hidden">
+        /* Subscription Cards */
+        <div className="space-y-3">
+          {subscriptions.map((sub) => {
+            const creator = sub.creator;
+            const shopSlug = creator.shopId || creator.username;
+            const displayName = creator.displayName || creator.shopId || creator.username || '';
+            const initial = displayName.charAt(0) || 'S';
+
+            return (
               <div
-                className="h-2"
-                style={{ backgroundColor: sub.creator?.themeColor || sub.creator?.backgroundColor || '#666' }}
-              />
-              <CardHeader className="pb-2">
-                <div className="flex items-start gap-4">
-                  <Link href={`/${locale}/@${sub.creator?.shopId || sub.creator?.username}`}>
-                    <Avatar className="h-14 w-14 ring-2 ring-offset-2"
-                      style={{ ['--tw-ring-color' as any]: sub.creator?.themeColor || sub.creator?.backgroundColor }}
-                    >
-                      <AvatarImage src={sub.creator?.profileImageUrl || ''} />
-                      <AvatarFallback
-                        style={{ backgroundColor: sub.creator?.themeColor || sub.creator?.backgroundColor || '#666' }}
-                        className="text-white text-lg"
-                      >
-                        {sub.creator?.displayName?.charAt(0) || (sub.creator?.shopId || sub.creator?.username || 'C').charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
-                  </Link>
+                key={sub.id}
+                className="bg-white rounded-2xl border border-gray-100 p-5"
+              >
+                <div className="flex items-center gap-3">
+                  {/* Profile Image */}
+                  <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 flex-shrink-0 flex items-center justify-center">
+                    {creator.profileImageUrl ? (
+                      <img
+                        src={creator.profileImageUrl}
+                        alt={displayName}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-sm font-bold text-gray-400">{initial}</span>
+                    )}
+                  </div>
+
+                  {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <Link
-                      href={`/${locale}/@${sub.creator?.shopId || sub.creator?.username}`}
-                      className="font-semibold hover:text-primary transition-colors"
-                    >
-                      {sub.creator?.displayName || sub.creator?.shopId || sub.creator?.username}
-                    </Link>
-                    <p className="text-sm text-muted-foreground">@{sub.creator?.shopId || sub.creator?.username}</p>
-                    <Badge variant="secondary" className="mt-1 text-xs">
-                      Since {new Date(sub.subscribedAt).toLocaleDateString()}
-                    </Badge>
+                    <p className="font-semibold text-gray-900 text-sm truncate">
+                      {displayName}
+                    </p>
+                    <p className="text-xs text-gray-400 truncate">
+                      @{shopSlug}
+                    </p>
                   </div>
-                  <Button variant="ghost" size="icon" asChild>
-                    <Link href={`/${locale}/@${sub.creator?.shopId || sub.creator?.username}`}>
-                      <ExternalLink className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {sub.creator?.bio && (
-                  <p className="text-sm text-muted-foreground line-clamp-2">
-                    {sub.creator.bio}
-                  </p>
-                )}
 
-                {/* Notification Settings */}
-                <div className="space-y-3 pt-2 border-t">
-                  <p className="text-sm font-medium flex items-center gap-2">
-                    <Bell className="h-4 w-4" />
-                    Notifications
-                  </p>
-                  <div className="grid grid-cols-3 gap-2">
-                    <button
-                      onClick={() => handleUpdateNotifications(
-                        sub.id,
-                        'notifyNewProducts',
-                        !sub.notifyNewProducts
-                      )}
-                      className={`p-2 rounded-lg text-xs flex flex-col items-center gap-1 transition-colors ${
-                        sub.notifyNewProducts
-                          ? 'bg-primary/10 text-primary'
-                          : 'bg-muted text-muted-foreground'
-                      }`}
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <Button
+                      asChild
+                      className="bg-gray-900 text-white rounded-xl h-9 px-4 text-xs font-medium"
                     >
-                      <ShoppingBag className="h-4 w-4" />
-                      Products
-                    </button>
-                    <button
-                      onClick={() => handleUpdateNotifications(
-                        sub.id,
-                        'notifySales',
-                        !sub.notifySales
-                      )}
-                      className={`p-2 rounded-lg text-xs flex flex-col items-center gap-1 transition-colors ${
-                        sub.notifySales
-                          ? 'bg-primary/10 text-primary'
-                          : 'bg-muted text-muted-foreground'
-                      }`}
+                      <Link href={`/${locale}/shop/${shopSlug}`}>
+                        <Store className="h-3.5 w-3.5 mr-1.5" />
+                        샵 보기
+                      </Link>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="border-gray-200 rounded-xl h-9 px-3 text-xs font-medium text-gray-500 hover:text-red-500 hover:border-red-200"
+                      onClick={() => handleUnsubscribe(sub.id)}
                     >
-                      <Bell className="h-4 w-4" />
-                      Sales
-                    </button>
-                    <div
-                      className="p-2 rounded-lg text-xs flex flex-col items-center gap-1 bg-muted text-muted-foreground"
-                    >
-                      <Video className="h-4 w-4" />
-                      Live
-                    </div>
+                      <UserMinus className="h-3.5 w-3.5 mr-1" />
+                      구독 취소
+                    </Button>
                   </div>
                 </div>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full text-destructive hover:text-destructive"
-                  onClick={() => handleUnsubscribe(sub.id)}
-                >
-                  <BellOff className="h-4 w-4 mr-2" />
-                  Unsubscribe
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
