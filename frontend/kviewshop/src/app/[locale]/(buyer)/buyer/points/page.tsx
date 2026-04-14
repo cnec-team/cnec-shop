@@ -96,9 +96,9 @@ export default function BuyerPointsPage() {
     }
   };
 
-  const balance = Number(buyer?.points_balance ?? buyer?.pointsBalance ?? 0);
-  const totalEarned = Number(buyer?.total_points_earned ?? buyer?.totalPointsEarned ?? 0);
-  const totalUsed = Number(buyer?.total_points_used ?? buyer?.totalPointsUsed ?? 0);
+  const balance = Number(buyer?.pointsBalance ?? 0);
+  const totalEarned = Number(buyer?.totalPointsEarned ?? 0);
+  const totalUsed = Number(buyer?.totalPointsUsed ?? 0);
 
   if (isLoading) {
     return (

@@ -520,9 +520,9 @@ export default function CheckoutPage() {
       checkoutDoneRef.current = true;
       clearCart();
       router.push(`/${locale}/order-complete?orderNumber=${completeOrderNumber}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Checkout failed:', error);
-      toast.error(error.message || '네트워크 오류가 발생했어요. 다시 시도해주세요.');
+      toast.error(error instanceof Error ? error.message : '네트워크 오류가 발생했어요. 다시 시도해주세요.');
     } finally {
       setIsProcessing(false);
     }
