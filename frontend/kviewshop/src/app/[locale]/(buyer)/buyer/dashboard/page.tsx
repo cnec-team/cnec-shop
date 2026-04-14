@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useUser } from '@/lib/hooks/use-user';
@@ -29,21 +29,25 @@ export default function BuyerDashboardPage() {
   const [isDataLoading, setIsDataLoading] = useState(true);
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
-  const [redirected, setRedirected] = useState(false);
+  const redirectedRef = useRef(false);
+  const fetchedRef = useRef(false);
 
   useEffect(() => {
-    // 유저 로딩이 끝날 때까지 대기
     if (isUserLoading) return;
 
-    // 비로그인 상태면 로그인 페이지로 리다이렉트 (무한 API 호출 방지)
+    // 비로그인 상태면 로그인 페이지로 리다이렉트
     if (!user || !buyer) {
-      if (!redirected) {
-        setRedirected(true);
+      if (!redirectedRef.current) {
+        redirectedRef.current = true;
         router.replace(`/${locale}/buyer/login`);
       }
       setIsDataLoading(false);
       return;
     }
+
+    // 이미 fetch 했으면 스킵
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
 
     const loadDashboardData = async () => {
       try {
@@ -58,7 +62,8 @@ export default function BuyerDashboardPage() {
     };
 
     loadDashboardData();
-  }, [buyer, isUserLoading]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isUserLoading, user, buyer]);
 
   const isLoading = isUserLoading || isDataLoading;
 

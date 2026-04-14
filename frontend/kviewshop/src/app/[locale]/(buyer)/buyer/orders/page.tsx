@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -56,11 +56,13 @@ export default function BuyerOrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<TabKey>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const fetchedRef = useRef(false);
 
   useEffect(() => {
-    const loadOrders = async () => {
-      if (!buyer) return;
+    if (!buyer || fetchedRef.current) return;
+    fetchedRef.current = true;
 
+    const loadOrders = async () => {
       try {
         const ordersData = await getBuyerOrders(buyer.id);
         setOrders(ordersData || []);

@@ -83,6 +83,7 @@ export default function CheckoutPage() {
   const { items, clearCart, updateQuantity, removeItem } = useCartStore();
   const buyer = useAuthStore((s) => s.buyer);
   const user = useAuthStore((s) => s.user);
+  const isAuthLoading = useAuthStore((s) => s.isLoading);
   const checkoutDoneRef = useRef(false);
   const addressDetailRef = useRef<HTMLInputElement>(null);
 
@@ -644,7 +645,7 @@ export default function CheckoutPage() {
         </div>
 
         {/* Login Banner */}
-        {!buyer && (
+        {!isAuthLoading && !buyer && (
           <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
             <div className="flex items-start gap-3">
               <Lightbulb className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />

@@ -18,11 +18,11 @@ export function useUser() {
     setBuyer,
     setLoading,
   } = useAuthStore();
+  const fetchedRef = useRef(false);
   const fetchingRef = useRef(false);
 
   useEffect(() => {
     if (status === 'loading') {
-      setLoading(true);
       return;
     }
 
@@ -32,16 +32,18 @@ export function useUser() {
       setCreator(null);
       setBuyer(null);
       setLoading(false);
+      fetchedRef.current = false;
       return;
     }
 
-    if (status === 'authenticated' && session?.user?.id) {
+    if (status === 'authenticated' && session?.user?.id && !fetchedRef.current) {
       fetchUserData(session.user.id);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, session?.user?.id]);
 
   const fetchUserData = async (userId: string) => {
-    if (fetchingRef.current) return;
+    if (fetchingRef.current || fetchedRef.current) return;
     fetchingRef.current = true;
     setLoading(true);
 
@@ -57,6 +59,7 @@ export function useUser() {
       if (data.brand) setBrand(data.brand);
       if (data.creator) setCreator(data.creator);
       if (data.buyer) setBuyer(data.buyer);
+      fetchedRef.current = true;
     } catch (error) {
       console.error('Error fetching user data:', error);
     } finally {
@@ -71,7 +74,15 @@ export function useUser() {
     setBrand(null);
     setCreator(null);
     setBuyer(null);
+    fetchedRef.current = false;
   };
+
+  const refetch = session?.user?.id
+    ? () => {
+        fetchedRef.current = false;
+        fetchUserData(session.user.id);
+      }
+    : undefined;
 
   return {
     user,
@@ -81,6 +92,6 @@ export function useUser() {
     isLoading: status === 'loading' || storeLoading,
     isAuthenticated: status === 'authenticated',
     signOut,
-    refetch: session?.user?.id ? () => fetchUserData(session.user.id) : undefined,
+    refetch,
   };
 }

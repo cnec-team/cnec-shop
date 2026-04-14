@@ -99,7 +99,6 @@ export function ProductDetailPage({
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [shippingOpen, setShippingOpen] = useState(false);
   const [returnOpen, setReturnOpen] = useState(false);
-  const [iframeLoaded, setIframeLoaded] = useState<Record<string, boolean>>({});
   const [expandedCaptions, setExpandedCaptions] = useState<Record<string, boolean>>({});
 
   const campaign = campaignProduct?.campaign as Campaign | undefined;
@@ -411,7 +410,7 @@ export function ProductDetailPage({
           </div>
         )}
 
-        {/* Creator Review Section (Contents + Reels unified) */}
+        {/* Creator Review Section — custom cards, no iframes */}
         {((creatorContents && creatorContents.length > 0) || reelsUrl) && (
           <div className="bg-white mt-2 py-5">
             {/* Section Header */}
@@ -428,156 +427,132 @@ export function ProductDetailPage({
               })()}
             </div>
 
-            {/* Single content - full width, centered */}
-            {creatorContents && creatorContents.length === 1 && !reelsUrl && (
-              <div className="px-4 flex justify-center">
-                <div className="w-full max-w-[300px]">
-                  <div className="relative w-full overflow-hidden rounded-2xl shadow-sm bg-gray-100" style={{ aspectRatio: '9/16' }}>
-                    {!iframeLoaded[creatorContents[0].id] && (
-                      <div className="absolute inset-0 bg-secondary animate-pulse rounded-2xl flex items-center justify-center">
-                        <div className="w-12 h-12 rounded-full bg-white/30 flex items-center justify-center">
-                          <Play className="w-5 h-5 text-gray-400" />
-                        </div>
-                      </div>
-                    )}
-                    {creatorContents[0].embedUrl && (
-                      <iframe
-                        src={creatorContents[0].embedUrl}
-                        className="w-full h-full"
-                        frameBorder="0"
-                        allowFullScreen
-                        scrolling="no"
-                        onLoad={() => setIframeLoaded((prev) => ({ ...prev, [creatorContents[0].id]: true }))}
-                      />
-                    )}
-                  </div>
-                  {creatorContents[0].caption && (
-                    <div className="mt-3">
-                      <p className={`text-sm text-gray-600 leading-relaxed ${!expandedCaptions[creatorContents[0].id] ? 'line-clamp-2' : ''}`}>
-                        {creatorContents[0].caption}
-                      </p>
-                      {creatorContents[0].caption.length > 80 && (
-                        <button
-                          onClick={() => setExpandedCaptions((prev) => ({ ...prev, [creatorContents[0].id]: !prev[creatorContents[0].id] }))}
-                          className="text-xs text-gray-400 hover:text-gray-600 mt-1 font-medium"
-                        >
-                          {expandedCaptions[creatorContents[0].id] ? '접기' : '더보기'}
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+            {/* All review items */}
+            {(() => {
+              const allItems: Array<{ id: string; url: string; caption: string | null; isReels?: boolean }> = [];
 
-            {/* Multiple content or single content + reels - horizontal scroll */}
-            {((creatorContents && creatorContents.length > 1) || (creatorContents && creatorContents.length === 1 && reelsUrl)) && (
-              <div
-                className="flex gap-3 overflow-x-auto px-4 pb-2"
-                style={{ scrollbarWidth: 'none', scrollSnapType: 'x mandatory' }}
-              >
-                {creatorContents.map((content) => (
-                  <div key={content.id} className="flex-shrink-0" style={{ width: '260px', scrollSnapAlign: 'start' }}>
-                    <div className="relative overflow-hidden rounded-2xl shadow-sm bg-gray-100" style={{ aspectRatio: '9/16' }}>
-                      {!iframeLoaded[content.id] && (
-                        <div className="absolute inset-0 bg-secondary animate-pulse rounded-2xl flex items-center justify-center">
-                          <div className="w-10 h-10 rounded-full bg-white/30 flex items-center justify-center">
-                            <Play className="w-4 h-4 text-gray-400" />
+              if (creatorContents) {
+                for (const c of creatorContents) {
+                  allItems.push({ id: c.id, url: c.url, caption: c.caption });
+                }
+              }
+              if (reelsUrl) {
+                allItems.push({ id: 'reels', url: reelsUrl, caption: reelsCaption ?? null, isReels: true });
+              }
+
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const c = creator as any;
+              const creatorName: string = c?.displayName || c?.shopId || '';
+
+              if (allItems.length === 1) {
+                const item = allItems[0];
+                return (
+                  <div className="px-4 flex justify-center">
+                    <div className="w-full max-w-[300px]">
+                      <button
+                        onClick={() => window.open(item.url, '_blank')}
+                        className="relative w-full overflow-hidden rounded-2xl shadow-sm block"
+                        style={{ aspectRatio: '9/16' }}
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-b from-purple-500/10 to-pink-500/10" />
+                        {/* Creator avatar + name */}
+                        <div className="absolute top-3 left-3 flex items-center gap-2 z-10">
+                          <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-500">
+                            {creatorName.charAt(0)}
+                          </div>
+                          <span className="text-xs font-medium text-gray-800">{creatorName}</span>
+                        </div>
+                        {/* Play button */}
+                        <div className="absolute inset-0 flex items-center justify-center z-10">
+                          <div className="w-16 h-16 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center">
+                            <Play className="w-7 h-7 text-white ml-1" />
                           </div>
                         </div>
-                      )}
-                      {content.embedUrl && (
-                        <iframe
-                          src={content.embedUrl}
-                          className="w-full h-full"
-                          frameBorder="0"
-                          allowFullScreen
-                          scrolling="no"
-                          onLoad={() => setIframeLoaded((prev) => ({ ...prev, [content.id]: true }))}
-                        />
-                      )}
-                    </div>
-                    {content.caption && (
-                      <div className="mt-2">
-                        <p className={`text-sm text-gray-600 leading-relaxed ${!expandedCaptions[content.id] ? 'line-clamp-2' : ''}`}>
-                          {content.caption}
-                        </p>
-                        {content.caption.length > 60 && (
-                          <button
-                            onClick={() => setExpandedCaptions((prev) => ({ ...prev, [content.id]: !prev[content.id] }))}
-                            className="text-xs text-gray-400 hover:text-gray-600 mt-1 font-medium"
-                          >
-                            {expandedCaptions[content.id] ? '접기' : '더보기'}
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))}
-
-                {/* Reels card in horizontal scroll */}
-                {reelsUrl && (
-                  <div className="flex-shrink-0" style={{ width: '260px', scrollSnapAlign: 'start' }}>
-                    <a
-                      href={reelsUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block rounded-2xl shadow-sm overflow-hidden bg-gradient-to-br from-pink-50 to-purple-50"
-                      style={{ aspectRatio: '9/16' }}
-                    >
-                      <div className="w-full h-full flex flex-col items-center justify-center gap-4 px-6 text-center">
-                        <div className="w-14 h-14 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center">
-                          <Play className="w-6 h-6 text-white" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-gray-900 mb-1">
-                            {(creator as any).displayName || (creator as any).shopId}의 릴스
+                      </button>
+                      {item.caption && (
+                        <div className="mt-3">
+                          <p className={`text-sm text-gray-600 leading-relaxed ${!expandedCaptions[item.id] ? 'line-clamp-2' : ''}`}>
+                            {item.caption}
                           </p>
-                          {reelsCaption && (
-                            <p className="text-xs text-gray-500 line-clamp-2 mb-3">{reelsCaption}</p>
+                          {item.caption.length > 80 && (
+                            <button
+                              onClick={() => setExpandedCaptions((prev) => ({ ...prev, [item.id]: !prev[item.id] }))}
+                              className="text-xs text-gray-400 hover:text-gray-600 mt-1 font-medium"
+                            >
+                              {expandedCaptions[item.id] ? '접기' : '더보기'}
+                            </button>
                           )}
                         </div>
-                        <span className="inline-flex items-center gap-1.5 bg-white/80 backdrop-blur rounded-full px-4 py-2 text-sm font-medium text-gray-900 shadow-sm">
-                          <ExternalLink className="w-3.5 h-3.5" />
-                          인스타그램에서 보기
-                        </span>
-                      </div>
-                    </a>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Reels only - standalone card (no creatorContents) */}
-            {(!creatorContents || creatorContents.length === 0) && reelsUrl && (
-              <div className="px-4 flex justify-center">
-                <a
-                  href={reelsUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block w-full max-w-[300px] rounded-2xl shadow-sm overflow-hidden bg-gradient-to-br from-pink-50 to-purple-50"
-                  style={{ aspectRatio: '9/16' }}
-                >
-                  <div className="w-full h-full flex flex-col items-center justify-center gap-4 px-6 text-center">
-                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center">
-                      <Play className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900 mb-1">
-                        {(creator as any).displayName || (creator as any).shopId}의 릴스 리뷰
-                      </p>
-                      {reelsCaption && (
-                        <p className="text-xs text-gray-500 line-clamp-2 mb-3">{reelsCaption}</p>
                       )}
+                      <a
+                        href={item.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-1 text-xs text-gray-400 hover:text-gray-600 mt-2"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        인스타그램에서 보기
+                      </a>
                     </div>
-                    <span className="inline-flex items-center gap-1.5 bg-white/80 backdrop-blur rounded-full px-4 py-2 text-sm font-medium text-gray-900 shadow-sm">
-                      <ExternalLink className="w-3.5 h-3.5" />
-                      인스타그램에서 보기
-                    </span>
                   </div>
-                </a>
-              </div>
-            )}
+                );
+              }
+
+              // Multiple items — horizontal scroll
+              return (
+                <div
+                  className="flex gap-3 overflow-x-auto px-4 pb-2"
+                  style={{ scrollbarWidth: 'none', scrollSnapType: 'x mandatory' }}
+                >
+                  {allItems.map((item) => (
+                    <div key={item.id} className="flex-shrink-0" style={{ width: '240px', scrollSnapAlign: 'start' }}>
+                      <button
+                        onClick={() => window.open(item.url, '_blank')}
+                        className="relative w-full overflow-hidden rounded-2xl shadow-sm block"
+                        style={{ aspectRatio: '9/16' }}
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-b from-purple-500/10 to-pink-500/10" />
+                        <div className="absolute top-3 left-3 flex items-center gap-2 z-10">
+                          <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-500">
+                            {creatorName.charAt(0)}
+                          </div>
+                          <span className="text-[11px] font-medium text-gray-800">{creatorName}</span>
+                        </div>
+                        <div className="absolute inset-0 flex items-center justify-center z-10">
+                          <div className="w-14 h-14 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center">
+                            <Play className="w-6 h-6 text-white ml-0.5" />
+                          </div>
+                        </div>
+                      </button>
+                      {item.caption && (
+                        <div className="mt-2">
+                          <p className={`text-sm text-gray-600 leading-relaxed ${!expandedCaptions[item.id] ? 'line-clamp-2' : ''}`}>
+                            {item.caption}
+                          </p>
+                          {item.caption.length > 60 && (
+                            <button
+                              onClick={() => setExpandedCaptions((prev) => ({ ...prev, [item.id]: !prev[item.id] }))}
+                              className="text-xs text-gray-400 hover:text-gray-600 mt-1 font-medium"
+                            >
+                              {expandedCaptions[item.id] ? '접기' : '더보기'}
+                            </button>
+                          )}
+                        </div>
+                      )}
+                      <a
+                        href={item.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-1 text-xs text-gray-400 hover:text-gray-600 mt-1.5"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        인스타그램에서 보기
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         )}
 
