@@ -67,7 +67,7 @@ export default function BuyerReviewsPage() {
 
   const handleSubmitReview = async () => {
     if (!buyer || !selectedProduct || !reviewForm.content) {
-      toast.error('Please fill in the review content');
+      toast.error('리뷰 내용을 입력해주세요');
       return;
     }
 
@@ -107,7 +107,7 @@ export default function BuyerReviewsPage() {
       );
     } catch (error) {
       console.error('Submit error:', error);
-      toast.error('Failed to submit review');
+      toast.error('리뷰 등록에 실패했습니다');
     } finally {
       setIsSubmitting(false);
     }

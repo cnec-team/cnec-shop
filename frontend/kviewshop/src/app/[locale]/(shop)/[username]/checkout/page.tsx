@@ -177,7 +177,7 @@ export default function CheckoutPage() {
     loadData();
   }, [username, items, locale, router]);
 
-  // Auto-fill for logged-in buyers
+  // Auto-fill for logged-in buyers — use stable primitives as deps
   const buyerId = buyer?.id;
   const userEmail = user?.email;
   useEffect(() => {

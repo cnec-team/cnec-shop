@@ -32,7 +32,7 @@ export default function BuyerLayout({
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const redirectedRef = useRef(false);
 
-  // Use stable primitives to avoid re-triggering on object reference changes
+  // Use stable primitives as dependencies instead of object references
   const userId = user?.id;
   const userRole = user?.role;
 
@@ -42,7 +42,7 @@ export default function BuyerLayout({
     if (!userId) {
       redirectedRef.current = true;
       router.push(`/${locale}/buyer/login`);
-    } else if (userRole !== 'buyer') {
+    } else if (userRole && userRole !== 'buyer') {
       redirectedRef.current = true;
       if (userRole === 'creator') router.push(`/${locale}/creator/dashboard`);
       else if (userRole === 'brand_admin') router.push(`/${locale}/brand/dashboard`);
@@ -137,6 +137,9 @@ export default function BuyerLayout({
           {children}
         </main>
       </div>
+
+      {/* Legal Footer */}
+      <LegalFooter locale={locale} />
 
       {/* Mobile Bottom Nav */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 border-t border-border/50 bg-background/95 backdrop-blur">

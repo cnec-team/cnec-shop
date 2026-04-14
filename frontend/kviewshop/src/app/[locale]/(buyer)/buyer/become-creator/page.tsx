@@ -119,7 +119,7 @@ export default function BecomeCreatorPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!buyer || !form.desired_username || !form.display_name) {
-      toast.error('Please fill in required fields');
+      toast.error('필수 항목을 입력해주세요');
       return;
     }
 
@@ -129,7 +129,7 @@ export default function BecomeCreatorPage() {
       const isAvailable = await checkUsernameAvailability(form.desired_username.toLowerCase());
 
       if (!isAvailable) {
-        toast.error('This username is already taken');
+        toast.error('이미 사용 중인 아이디입니다');
         setIsSubmitting(false);
         return;
       }
@@ -148,12 +148,12 @@ export default function BecomeCreatorPage() {
         contentPlan: form.content_plan || undefined,
       });
 
-      toast.success('Application submitted successfully!');
+      toast.success('크리에이터 신청이 완료되었습니다!');
       // Reload to show application status
       setExistingApplication({ status: 'pending', desiredUsername: form.desired_username });
     } catch (error) {
       console.error('Submit error:', error);
-      toast.error('Failed to submit application');
+      toast.error('신청에 실패했습니다. 다시 시도해주세요');
     } finally {
       setIsSubmitting(false);
     }

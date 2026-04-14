@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useUser } from '@/lib/hooks/use-user';
@@ -27,19 +27,20 @@ export default function BuyerSubscriptionsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
 
-  // Use stable primitive ID instead of object reference as dependency
   const buyerId = buyer?.id;
+  const fetchedRef = useRef(false);
 
   useEffect(() => {
-    const loadSubscriptions = async () => {
-      if (!buyerId) return;
+    if (!buyerId || fetchedRef.current) return;
+    fetchedRef.current = true;
 
+    const loadSubscriptions = async () => {
       try {
         const data = await getBuyerSubscriptions(buyerId);
         setSubscriptions(data || []);
       } catch (error) {
         console.error('Failed to load subscriptions:', error);
-        toast.error('Failed to load subscriptions');
+        toast.error('구독 목록을 불러오는데 실패했습니다');
       } finally {
         setIsLoading(false);
       }
@@ -58,9 +59,9 @@ export default function BuyerSubscriptionsPage() {
       setSubscriptions(subs =>
         subs.map(s => s.id === subId ? { ...s, [field]: value } : s)
       );
-      toast.success('Notification settings updated');
+      toast.success('알림 설정이 변경되었습니다');
     } catch (error) {
-      toast.error('Failed to update settings');
+      toast.error('설정 변경에 실패했습니다');
     }
   };
 
@@ -68,9 +69,9 @@ export default function BuyerSubscriptionsPage() {
     try {
       await unsubscribeFromCreator(subId);
       setSubscriptions(subs => subs.filter(s => s.id !== subId));
-      toast.success('Unsubscribed successfully');
+      toast.success('구독이 해제되었습니다');
     } catch (error) {
-      toast.error('Failed to unsubscribe');
+      toast.error('구독 해제에 실패했습니다');
     }
   };
 
