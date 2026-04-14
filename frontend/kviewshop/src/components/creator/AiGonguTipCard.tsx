@@ -279,22 +279,47 @@ function AiGonguTipSheet({
               </Button>
             </div>
           ) : (
-            <div className="text-center py-8 space-y-4">
-              <div className="w-16 h-16 rounded-full bg-purple-50 flex items-center justify-center mx-auto">
-                <Sparkles className="h-7 w-7 text-purple-400" />
+            <div className="space-y-5 py-4">
+              {/* 안내 영역 */}
+              <div className="text-center space-y-3">
+                <div className="w-16 h-16 rounded-full bg-purple-50 flex items-center justify-center mx-auto">
+                  <Sparkles className="h-7 w-7 text-purple-400" />
+                </div>
+                <p className="text-base font-semibold text-gray-900">
+                  AI가 이 상품의 공구 전략을 만들어드려요
+                </p>
+                <div className="text-sm text-gray-500 leading-relaxed">
+                  <p>상품 정보와 가격을 분석해서</p>
+                  <p>릴스 훅, 캡션, 해시태그까지</p>
+                  <p>바로 쓸 수 있는 공구 전략 3가지를 제안해요</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-medium text-gray-900">공구팁이 없어요</p>
-                <p className="text-xs text-gray-400 mt-1">AI가 최적의 공구 전략을 제안해드려요</p>
+
+              {/* 예시 미리보기 */}
+              <div className="bg-gray-50 rounded-xl p-4 mx-auto max-w-sm">
+                <p className="text-xs font-medium text-gray-400 mb-1.5">예시</p>
+                <p className="text-sm text-gray-700 font-medium">
+                  &ldquo;속건조 10년 만에 해결한 방법&rdquo;
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  → 예상 전환율 3~5%
+                </p>
               </div>
-              <Button
-                onClick={handleGenerate}
-                disabled={generating}
-                className="bg-purple-600 hover:bg-purple-700 text-white rounded-xl h-11 px-6"
-              >
-                <Sparkles className="h-4 w-4 mr-1.5" />
-                공구팁 생성하기
-              </Button>
+
+              {/* 생성 버튼 */}
+              <div className="text-center space-y-2">
+                <Button
+                  onClick={handleGenerate}
+                  disabled={generating}
+                  className="bg-purple-600 hover:bg-purple-700 text-white rounded-xl h-12 px-8 text-sm font-semibold"
+                >
+                  <Sparkles className="h-4 w-4 mr-1.5" />
+                  무료로 공구 전략 받기
+                </Button>
+                <p className="text-[11px] text-gray-400">
+                  약 10초 소요 · 1일 1회 생성 가능
+                </p>
+              </div>
             </div>
           )}
         </div>
