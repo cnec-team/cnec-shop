@@ -249,6 +249,12 @@ export default function CreatorDashboardPage() {
         </div>
       </div>
 
+      {/* Creator earnings assurance */}
+      <div className="text-center mt-1">
+        <p className="text-sm font-semibold text-gray-900">내 수익, 그대로 받아요</p>
+        <p className="text-xs text-gray-500">크넥은 크리에이터 수익에서 수수료를 떼지 않습니다. 100% 전액 지급.</p>
+      </div>
+
       {/* Recommended Products — horizontal scroll */}
       {recommendedProducts.length > 0 && (
         <div>

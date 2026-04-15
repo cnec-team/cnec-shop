@@ -236,6 +236,16 @@ export default function CreatorSettlementsPage() {
         <p className="text-sm text-muted-foreground">입금 내역을 확인하세요</p>
       </div>
 
+      {/* Zero fee banner */}
+      <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-6">
+        <p className="text-2xl font-bold text-gray-900">크넥 수수료 0%</p>
+        <div className="text-sm text-gray-600 mt-2 leading-relaxed">
+          <p>판매 수익이 그대로 내 통장에 들어와요.</p>
+          <p>수수료, 중개비, 숨은 비용 — 전부 없습니다.</p>
+          <p className="text-sm font-medium text-blue-600">브랜드가 설정한 수수료가 곧 내 수익이에요.</p>
+        </div>
+      </div>
+
       {/* Settlement Progress Bar */}
       <SettlementProgressBar pendingSettlement={pendingSettlement} />
 

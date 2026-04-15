@@ -283,8 +283,8 @@ export default function CreatorGongguPage() {
                       </span>
                     )}
                     {Number(campaign.commissionRate) > 0 && (
-                      <span className="text-gray-500">
-                        커미션 {Math.round(Number(campaign.commissionRate) * 100)}%
+                      <span className="text-blue-600 font-semibold">
+                        내 수익 {Math.round(Number(campaign.commissionRate) * 100)}%
                       </span>
                     )}
                     {campaign.endAt && (

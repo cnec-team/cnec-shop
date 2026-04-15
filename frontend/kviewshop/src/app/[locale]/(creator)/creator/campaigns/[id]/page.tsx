@@ -503,7 +503,7 @@ export default function CreatorCampaignDetailPage() {
             <span className="text-sm text-gray-500">/ 1개 판매 시</span>
           </div>
           <p className="text-xs text-gray-500">
-            커미션율 {commissionPct}% 기준
+            내 수익 {commissionPct}% 기준
           </p>
           <div className="grid grid-cols-3 gap-2 pt-2 border-t border-white/80">
             {[1, 5, 10].map((qty) => (
@@ -520,6 +520,33 @@ export default function CreatorCampaignDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Earnings structure */}
+      <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-3">
+        <h3 className="text-sm font-semibold text-gray-900">내 수익 구조</h3>
+        <div className="space-y-2.5">
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-600">상품 판매가</span>
+            <span className="font-semibold text-gray-900">{formatWon(salePrice)}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-600">내 수익 {commissionPct}%</span>
+            <span className="font-semibold text-blue-600">{formatWon(earnPerUnit)}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-600">크넥 수수료</span>
+            <span className="font-bold text-green-600">0원</span>
+          </div>
+          <div className="border-t border-gray-100 pt-2">
+            <p className="text-sm font-medium text-gray-900">
+              1개 팔면 {formatWon(earnPerUnit)}이 내 통장에 들어와요.
+            </p>
+          </div>
+        </div>
+        <p className="text-xs text-gray-500 pt-1">
+          수수료는 브랜드가 부담해요. 크리에이터님은 추천만 하세요.
+        </p>
+      </div>
 
       {/* Sticky CTA */}
       <div className="fixed bottom-0 left-0 right-0 lg:left-60 z-40 bg-white border-t border-gray-100 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
