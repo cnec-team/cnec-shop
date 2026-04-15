@@ -83,7 +83,7 @@ export default function DashboardCharts({ period }: { period: Period }) {
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
                 <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={v => formatAmt(Number(v))} width={60} />
-                <Tooltip formatter={(v) => [`${Number(v).toLocaleString()}원`, '매출']} />
+                <Tooltip formatter={(v) => [`${Number(v ?? 0).toLocaleString()}원`, '매출']} />
                 <Line type="monotone" dataKey="sales" stroke="#1A73E8" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
               </LineChart>
             </ResponsiveContainer>
@@ -100,7 +100,7 @@ export default function DashboardCharts({ period }: { period: Period }) {
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
                 <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-                <Tooltip formatter={(v) => [`${v}건`, '주문']} />
+                <Tooltip formatter={(v) => [`${v ?? 0}건`, '주문']} />
                 <Bar dataKey="orders" fill="#1A73E8" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -117,7 +117,7 @@ export default function DashboardCharts({ period }: { period: Period }) {
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
                 <XAxis type="number" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={v => formatAmt(Number(v))} />
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={90} />
-                <Tooltip formatter={(v) => [`${Number(v).toLocaleString()}원`, '매출']} />
+                <Tooltip formatter={(v) => [`${Number(v ?? 0).toLocaleString()}원`, '매출']} />
                 <Bar dataKey="sales" radius={[0, 4, 4, 0]}>{data.topBrands.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}</Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -134,7 +134,7 @@ export default function DashboardCharts({ period }: { period: Period }) {
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
                 <XAxis type="number" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={v => formatAmt(Number(v))} />
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={90} />
-                <Tooltip formatter={(v) => [`${Number(v).toLocaleString()}원`, '매출']} />
+                <Tooltip formatter={(v) => [`${Number(v ?? 0).toLocaleString()}원`, '매출']} />
                 <Bar dataKey="sales" radius={[0, 4, 4, 0]}>{data.topCreators.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}</Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -167,7 +167,7 @@ export default function DashboardCharts({ period }: { period: Period }) {
                 <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={4} dataKey="value" label={({ name, percent }: { name?: string; percent?: number }) => `${name || ''} ${Math.round((percent || 0) * 100)}%`}>
                   <Cell fill="#9334E6" /><Cell fill="#FBBC04" />
                 </Pie>
-                <Tooltip formatter={(v) => [`${Number(v).toLocaleString()}원`]} />
+                <Tooltip formatter={(v) => [`${Number(v ?? 0).toLocaleString()}원`]} />
                 <Legend />
               </PieChart>
             </ResponsiveContainer>
