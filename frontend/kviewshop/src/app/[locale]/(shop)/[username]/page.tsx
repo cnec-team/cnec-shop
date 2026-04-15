@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { CreatorShopPage } from '@/components/shop/creator-shop';
+import type { ShopCreator, ShopItem, ShopCollection } from '@/components/shop/creator-shop';
 import { OrganizationJsonLd } from '@/components/seo/JsonLd';
 import type { Metadata } from 'next';
 
@@ -148,19 +149,19 @@ export async function generateMetadata({ params }: ShopPageProps): Promise<Metad
 
   const displayName = creator.displayName || creator.shopId;
 
-  const shopDesc = creator.bio || `${displayName}이(가) 추천하는 뷰티 아이템을 만나보세요`;
+  const shopDesc = creator.bio || `${displayName}이(가) 추천하는 K-뷰티 아이템을 만나보세요`;
   const ogImage = creator.coverImageUrl || creator.profileImageUrl;
 
   const canonicalUrl = `${BASE_URL}/${username}`;
 
   return {
-    title: `${displayName}의 셀렉트샵 — CNEC`,
+    title: `${displayName}의 K-뷰티 샵 — CNEC`,
     description: shopDesc,
     alternates: {
       canonical: canonicalUrl,
     },
     openGraph: {
-      title: `${displayName}의 셀렉트샵 — CNEC`,
+      title: `${displayName}의 K-뷰티 샵`,
       description: shopDesc,
       url: canonicalUrl,
       images: ogImage ? [{ url: ogImage, width: 1200, height: 630 }] : [],
@@ -169,7 +170,7 @@ export async function generateMetadata({ params }: ShopPageProps): Promise<Metad
     },
     twitter: {
       card: 'summary_large_image',
-      title: `${displayName}의 셀렉트샵 — CNEC`,
+      title: `${displayName}의 K-뷰티 샵`,
       description: shopDesc,
       images: ogImage ? [ogImage] : [],
     },
@@ -212,9 +213,9 @@ export default async function ShopPage({ params }: ShopPageProps) {
         description={creator.bio || undefined}
       />
       <CreatorShopPage
-        creator={serializedCreator as any}
-        shopItems={shopItems as any}
-        collections={collections as any}
+        creator={serializedCreator as ShopCreator}
+        shopItems={shopItems as ShopItem[]}
+        collections={collections as ShopCollection[]}
         locale={locale}
       />
     </>
