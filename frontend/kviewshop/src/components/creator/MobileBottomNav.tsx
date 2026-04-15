@@ -53,11 +53,11 @@ export function MobileBottomNav() {
   const base = `/${locale}/creator`;
 
   const tabs = [
-    { title: '홈', href: `${base}/dashboard`, icon: LayoutDashboard },
-    { title: '캠페인', href: `${base}/campaigns/gonggu`, icon: Megaphone },
-    { title: '내 샵', href: `${base}/shop/products`, icon: Store },
-    { title: '판매', href: `${base}/sales`, icon: TrendingUp },
-    { title: '더보기', href: '#more', icon: MoreHorizontal },
+    { title: '홈', href: `${base}/dashboard`, icon: LayoutDashboard, badge: false },
+    { title: '캠페인', href: `${base}/campaigns/gonggu`, icon: Megaphone, badge: true },
+    { title: '내 샵', href: `${base}/shop/products`, icon: Store, badge: false },
+    { title: '판매', href: `${base}/sales`, icon: TrendingUp, badge: false },
+    { title: '더보기', href: '#more', icon: MoreHorizontal, badge: false },
   ] as const;
 
   const moreMenuSections: MoreMenuSection[] = [
@@ -105,18 +105,19 @@ export function MobileBottomNav() {
 
   const isTabActive = (href: string) => {
     if (href === '#more') return false;
+    if (href.includes('/campaigns/')) {
+      return pathname.includes('/campaigns');
+    }
     return pathname === href || pathname.startsWith(href + '/');
   };
 
-  // Check if any "more" menu item is active
   const isMoreActive = moreMenuSections.some((section) =>
     section.items.some((item) => pathname === item.href || pathname.startsWith(item.href + '/'))
   );
 
   return (
     <>
-      {/* Bottom Tab Bar - mobile only */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-background border-t border-border">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-background/95 backdrop-blur-sm border-t border-border">
         <div
           className="flex items-center justify-around"
           style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
@@ -132,7 +133,7 @@ export function MobileBottomNav() {
                   onClick={() => setMoreOpen(true)}
                   className={cn(
                     'flex flex-col items-center justify-center gap-0.5 py-2 px-3 min-w-[64px] min-h-[56px] transition-colors',
-                    active ? 'text-primary' : 'text-gray-400'
+                    active ? 'text-blue-600' : 'text-muted-foreground'
                   )}
                 >
                   <MoreHorizontal className="h-5 w-5" />
@@ -146,11 +147,16 @@ export function MobileBottomNav() {
                 key={tab.href}
                 href={tab.href}
                 className={cn(
-                  'flex flex-col items-center justify-center gap-0.5 py-2 px-3 min-w-[64px] min-h-[56px] transition-colors',
-                  active ? 'text-primary' : 'text-gray-400'
+                  'relative flex flex-col items-center justify-center gap-0.5 py-2 px-3 min-w-[64px] min-h-[56px] transition-colors',
+                  active ? 'text-blue-600' : 'text-muted-foreground'
                 )}
               >
-                <tab.icon className="h-5 w-5" />
+                <div className="relative">
+                  <tab.icon className={cn('h-5 w-5', active && 'fill-blue-600/20')} />
+                  {tab.badge && (
+                    <span className="absolute -top-1 -right-1.5 h-2 w-2 rounded-full bg-red-500" />
+                  )}
+                </div>
                 <span className="text-[10px] font-medium">{tab.title}</span>
               </Link>
             );
@@ -158,7 +164,6 @@ export function MobileBottomNav() {
         </div>
       </nav>
 
-      {/* More Drawer — list card style */}
       <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
         <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-2xl">
           <SheetHeader className="pb-3">
@@ -180,19 +185,19 @@ export function MobileBottomNav() {
                         onClick={() => setMoreOpen(false)}
                         className={cn(
                           'flex items-center gap-4 px-4 py-3.5 transition-colors',
-                          active ? 'bg-primary/5' : 'hover:bg-gray-50'
+                          active ? 'bg-blue-50/50' : 'hover:bg-gray-50'
                         )}
                       >
                         <div className={cn(
                           'w-10 h-10 rounded-xl flex items-center justify-center shrink-0',
-                          active ? 'bg-primary/10 text-primary' : 'bg-gray-50 text-gray-400'
+                          active ? 'bg-blue-100 text-blue-600' : 'bg-gray-50 text-gray-400'
                         )}>
                           <item.icon className="h-5 w-5" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className={cn(
                             'text-sm font-medium',
-                            active ? 'text-primary' : 'text-gray-900'
+                            active ? 'text-blue-600' : 'text-gray-900'
                           )}>
                             {item.title}
                           </p>

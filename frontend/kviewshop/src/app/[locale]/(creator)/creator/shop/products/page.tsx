@@ -4,16 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,16 +17,13 @@ import {
 } from '@/components/ui/alert-dialog';
 import {
   Package,
-  Play,
-  Trash2,
   Loader2,
   AlertCircle,
-  X,
+  Plus,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { BrandBadge } from '@/components/common/BrandBadge';
-import { SafeImage } from '@/components/common/SafeImage';
-import { formatCurrency } from '@/lib/i18n/config';
+import { CreatorProductCard } from '@/components/creator/CreatorProductCard';
+import { CreatorProductGrid } from '@/components/creator/CreatorProductGrid';
 import {
   getCreatorSession,
   getCreatorCollections,
@@ -61,15 +49,6 @@ interface ShopItem {
   type: string;
   isVisible: boolean;
   displayOrder: number;
-}
-
-interface ContentItem {
-  id: string;
-  type: string;
-  url: string;
-  embedUrl: string | null;
-  caption: string | null;
-  sortOrder: number;
 }
 
 export default function MyShopProductsPage() {
@@ -102,15 +81,6 @@ export default function MyShopProductsPage() {
       setRemovingId(null);
     }
   };
-
-  // Content modal
-  const [contentItem, setContentItem] = useState<ShopItem | null>(null);
-  const [contents, setContents] = useState<ContentItem[]>([]);
-  const [contentUrl, setContentUrl] = useState('');
-  const [contentCaption, setContentCaption] = useState('');
-  const [contentSubmitting, setContentSubmitting] = useState(false);
-  const [contentLoading, setContentLoading] = useState(false);
-  const [deletingContentId, setDeletingContentId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -151,80 +121,6 @@ export default function MyShopProductsPage() {
       toast.error('변경에 실패했습니다');
     } finally {
       setTogglingId(null);
-    }
-  };
-
-  // Content management
-  const fetchContents = async (productId: string) => {
-    setContentLoading(true);
-    try {
-      const res = await fetch(`/api/creator/products/${productId}/content`);
-      if (res.ok) {
-        setContents(await res.json());
-      }
-    } catch {
-      // ignore
-    } finally {
-      setContentLoading(false);
-    }
-  };
-
-  const openContentModal = (item: ShopItem) => {
-    setContentItem(item);
-    setContentUrl('');
-    setContentCaption('');
-    setContents([]);
-    fetchContents(item.productId);
-  };
-
-  const handleContentSubmit = async () => {
-    if (!contentItem || !contentUrl.trim()) {
-      toast.error('URL을 입력해주세요');
-      return;
-    }
-    setContentSubmitting(true);
-    try {
-      const res = await fetch(`/api/creator/products/${contentItem.productId}/content`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          url: contentUrl.trim(),
-          caption: contentCaption.trim() || undefined,
-        }),
-      });
-      if (res.ok) {
-        toast.success('리뷰 영상이 등록되었습니다');
-        setContentUrl('');
-        setContentCaption('');
-        fetchContents(contentItem.productId);
-      } else {
-        const data = await res.json();
-        toast.error(data.error || '등록에 실패했습니다');
-      }
-    } catch {
-      toast.error('등록에 실패했습니다');
-    } finally {
-      setContentSubmitting(false);
-    }
-  };
-
-  const handleContentDelete = async (contentId: string) => {
-    if (!contentItem) return;
-    setDeletingContentId(contentId);
-    try {
-      const res = await fetch(`/api/creator/products/${contentItem.productId}/content/${contentId}`, {
-        method: 'DELETE',
-      });
-      if (res.ok) {
-        toast.success('삭제되었습니다');
-        setContents((prev) => prev.filter((c) => c.id !== contentId));
-      } else {
-        toast.error('삭제에 실패했습니다');
-      }
-    } catch {
-      toast.error('삭제에 실패했습니다');
-    } finally {
-      setDeletingContentId(null);
     }
   };
 

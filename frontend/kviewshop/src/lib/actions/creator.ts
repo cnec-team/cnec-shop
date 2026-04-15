@@ -640,7 +640,7 @@ export async function getPickableProducts(creatorId: string) {
     brandMap[b.id] = { brandName: b.brandName ?? '' }
   }
 
-  const campaignMap: Record<string, { id: string; type: string; commissionRate: unknown; recruitmentType: string | null; campaignProduct: { campaignPrice: unknown } }> = {}
+  const campaignMap: Record<string, { id: string; type: string; commissionRate: Prisma.Decimal | number; recruitmentType: string | null; campaignProduct: { campaignPrice: Prisma.Decimal | number } }> = {}
   for (const cp of campaignProducts) {
     const campaign = campaigns.find((c) => c.id === cp.campaignId)
     if (campaign) {
@@ -657,25 +657,34 @@ export async function getPickableProducts(creatorId: string) {
   const myShopItemProductIds = new Set(shopItems.map((i) => i.productId))
 
   return {
-    products: products.map((p) => ({
-      id: p.id,
-      name: p.name,
-      nameKo: p.nameKo,
-      nameEn: p.nameEn,
-      originalPrice: p.originalPrice,
-      salePrice: p.salePrice,
-      images: p.images,
-      imageUrl: p.imageUrl,
-      category: p.category,
-      defaultCommissionRate: p.defaultCommissionRate,
-      brandId: p.brandId,
-      brand: brandMap[p.brandId] ?? null,
-      activeCampaign: campaignMap[p.id] ?? null,
-      allowTrial: p.allowTrial,
-      volume: p.volume,
-      description: p.description,
-      descriptionKo: p.descriptionKo,
-    })),
+    products: products.map((p) => {
+      const ac = campaignMap[p.id] ?? null
+      return {
+        id: p.id,
+        name: p.name,
+        nameKo: p.nameKo,
+        nameEn: p.nameEn,
+        originalPrice: Number(p.originalPrice),
+        salePrice: Number(p.salePrice),
+        images: p.images,
+        imageUrl: p.imageUrl,
+        category: p.category,
+        defaultCommissionRate: Number(p.defaultCommissionRate),
+        brandId: p.brandId,
+        brand: brandMap[p.brandId] ?? null,
+        activeCampaign: ac
+          ? {
+              ...ac,
+              commissionRate: Number(ac.commissionRate),
+              campaignProduct: { campaignPrice: Number(ac.campaignProduct.campaignPrice) },
+            }
+          : null,
+        allowTrial: p.allowTrial,
+        volume: p.volume,
+        description: p.description,
+        descriptionKo: p.descriptionKo,
+      }
+    }),
     myShopItemProductIds: Array.from(myShopItemProductIds),
   }
 }
