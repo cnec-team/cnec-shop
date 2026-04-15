@@ -5,7 +5,7 @@ import { Home, PenTool, Heart, User } from 'lucide-react';
 
 const NAV_ITEMS = [
   { href: '', icon: Home, label: '홈' },
-  { href: '/creators', icon: PenTool, label: '콘텐츠' },
+  { href: '/content', icon: PenTool, label: '콘텐츠' },
   { href: '/buyer/subscriptions', icon: Heart, label: '관심' },
   { href: '/buyer/dashboard', icon: User, label: '마이' },
 ];
