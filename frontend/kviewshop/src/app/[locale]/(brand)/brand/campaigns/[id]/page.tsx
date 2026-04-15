@@ -28,8 +28,9 @@ import {
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, Info } from 'lucide-react';
 import { toast } from 'sonner';
+import { CNEC_COMMISSION_RATE } from '@/lib/constants';
 
 function formatCurrency(num: number): string {
   return `${num.toLocaleString('ko-KR')}원`;
@@ -381,6 +382,54 @@ export default function CampaignDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Fee Summary */}
+      {(() => {
+        const commRate = Number(campaign.commissionRate);
+        const commPct = Math.round(commRate * 100);
+        const cnecPct = Math.round(CNEC_COMMISSION_RATE * 100);
+        const firstProduct = campaign.products[0];
+        const productPrice = firstProduct ? Number(firstProduct.campaignPrice) : 0;
+        if (productPrice <= 0) return null;
+        const creatorFee = Math.round(productPrice * commRate);
+        const cnecFee = Math.round(productPrice * CNEC_COMMISSION_RATE);
+        const brandNet = productPrice - creatorFee - cnecFee;
+        const brandPct = Math.round((brandNet / productPrice) * 100);
+        return (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle>수수료 요약</CardTitle>
+              <CardDescription>상품 1개 판매 기준</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">크리에이터 수수료 {commPct}%</span>
+                  <span className="font-semibold">{formatCurrency(creatorFee)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <div>
+                    <span className="text-muted-foreground">크넥 수수료 {cnecPct}%</span>
+                    <span className="text-xs text-muted-foreground ml-1">(결제 수수료 포함)</span>
+                  </div>
+                  <span className="font-semibold">{formatCurrency(cnecFee)}</span>
+                </div>
+                <Separator />
+                <div className="flex justify-between">
+                  <span className="font-bold">브랜드 정산 예상 {brandPct}%</span>
+                  <span className="text-lg font-bold text-blue-600">{formatCurrency(brandNet)}</span>
+                </div>
+              </div>
+              <div className="flex items-start gap-1.5 mt-4 pt-3 border-t">
+                <Info className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                <p className="text-xs text-muted-foreground">
+                  크넥 수수료 {cnecPct}%에 PG 결제 수수료가 포함되어 있어요. 추가 비용은 없습니다.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Products */}
       <Card>

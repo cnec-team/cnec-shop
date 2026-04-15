@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DatePicker } from '@/components/ui/date-picker';
+import { Slider } from '@/components/ui/slider';
 import {
   AlertCircle,
   Check,
@@ -21,9 +22,11 @@ import {
   Users,
   Repeat,
   Info,
+  Lightbulb,
   X,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { CNEC_COMMISSION_RATE } from '@/lib/constants';
 
 type CampaignType = 'GONGGU' | 'ALWAYS';
 type RecruitmentType = 'OPEN' | 'APPROVAL';
@@ -127,7 +130,7 @@ export default function NewCampaignPage() {
   const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>([]);
 
   // Step 3: Commission
-  const [commissionRate, setCommissionRate] = useState('10');
+  const [commissionRate, setCommissionRate] = useState('15');
   const [totalStock, setTotalStock] = useState('');
 
   // Price Scout warnings
@@ -560,44 +563,147 @@ export default function NewCampaignPage() {
         )}
 
         {/* ── Step 3: 크리에이터 수익 설정 ──────── */}
-        {currentStep === 2 && (
-          <SectionCard title="크리에이터 수익 설정">
-            <div className="space-y-2">
-              <Label htmlFor="commissionRate" className={labelCls}>
-                크리에이터 수익률 (%) <span className="text-blue-600">*</span>
-              </Label>
-              <p className="text-[12px] text-gray-400">
-                크리에이터가 판매를 성사시켰을 때 지급되는 수익 비율입니다.
-              </p>
-              <Input
-                id="commissionRate"
-                type="number"
-                min="0"
-                max="100"
-                value={commissionRate}
-                onChange={(e) => setCommissionRate(e.target.value)}
-                className={`w-40 ${inputCls} text-right`}
-                style={{ fontVariantNumeric: 'tabular-nums' }}
-              />
-            </div>
+        {currentStep === 2 && (() => {
+          const rate = Number(commissionRate) || 15;
+          const firstProduct = selectedProducts[0];
+          const rawPrice = firstProduct ? Number(firstProduct.campaignPrice) : 0;
+          const hasProduct = rawPrice > 0;
+          const basePrice = hasProduct ? rawPrice : 30000;
+          const creatorFee = Math.round(basePrice * (rate / 100));
+          const cnecFee = Math.round(basePrice * CNEC_COMMISSION_RATE);
+          const brandNet = basePrice - creatorFee - cnecFee;
+          const brandPct = Math.round((brandNet / basePrice) * 100);
 
-            <div className="border-t border-gray-100 pt-5 space-y-2">
-              <Label htmlFor="totalStock" className={labelCls}>전체 수량 제한</Label>
-              <p className="text-[12px] text-gray-400">
-                캠페인 전체에서 판매 가능한 총 수량입니다. 비워두면 제한 없음.
-              </p>
-              <Input
-                id="totalStock"
-                type="number"
-                min="0"
-                value={totalStock}
-                onChange={(e) => setTotalStock(e.target.value)}
-                className={`w-40 ${inputCls}`}
-                placeholder="제한 없음"
-              />
-            </div>
-          </SectionCard>
-        )}
+          const guidelines = [
+            { range: '10~15%', label: '일반 크리에이터 참여에 적합해요', min: 10, max: 15 },
+            { range: '15~20%', label: '인기 크리에이터도 적극 참여하는 수수료예요', min: 15, max: 20 },
+            { range: '20~25%', label: '프리미엄 크리에이터 확보에 유리해요', min: 20, max: 25 },
+            { range: '25%+', label: '대부분의 크리에이터가 우선 참여하고 싶어해요', min: 25, max: 100 },
+          ];
+
+          return (
+            <>
+              <SectionCard title="크리에이터 수익 설정">
+                {/* Slider */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label className={labelCls}>
+                      크리에이터 수익률 <span className="text-blue-600">*</span>
+                    </Label>
+                    <span className="text-2xl font-bold text-blue-600" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                      {rate}%
+                    </span>
+                  </div>
+                  <Slider
+                    value={[rate]}
+                    onValueChange={([v]) => setCommissionRate(String(v))}
+                    min={5}
+                    max={40}
+                    step={1}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-[11px] text-gray-400">
+                    <span>5%</span>
+                    <span>40%</span>
+                  </div>
+                </div>
+
+                {/* Guideline Card */}
+                <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+                  <div className="flex items-center gap-1.5 mb-3">
+                    <Lightbulb className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm font-semibold text-blue-900">수수료 가이드</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {guidelines.map((g) => {
+                      const active = rate >= g.min && rate < (g.min === 25 ? 101 : g.max + 1);
+                      return (
+                        <div key={g.range} className="flex gap-2 text-sm">
+                          <span className={`w-16 shrink-0 font-medium ${active ? 'text-blue-600' : 'text-gray-500'}`}>
+                            {g.range}
+                          </span>
+                          <span className={active ? 'text-blue-600 font-medium' : 'text-gray-600'}>
+                            {g.label}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-blue-700 mt-3">
+                    높은 수수료 = 더 많은 크리에이터 참여 = 더 많은 판매
+                  </p>
+                </div>
+
+                {/* Settlement Simulation */}
+                <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-4">예상 정산 시뮬레이션</h3>
+                  {!hasProduct && (
+                    <p className="text-xs text-gray-400 mb-3">예시: ₩30,000 기준</p>
+                  )}
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">상품 판매가</span>
+                      <span className="text-sm font-semibold text-gray-900">₩{basePrice.toLocaleString('ko-KR')}</span>
+                    </div>
+                    <div className="border-t border-gray-100" />
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">크리에이터 수수료 {rate}%</span>
+                      <span className="text-sm font-semibold text-gray-900">-₩{creatorFee.toLocaleString('ko-KR')}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <span className="text-sm text-gray-600">크넥 수수료 {Math.round(CNEC_COMMISSION_RATE * 100)}%</span>
+                        <p className="text-xs text-gray-400">결제 수수료 포함</p>
+                      </div>
+                      <span className="text-sm font-semibold text-gray-900">-₩{cnecFee.toLocaleString('ko-KR')}</span>
+                    </div>
+                    <div className="border-t border-gray-100" />
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-bold text-gray-900">브랜드 정산 예상액</span>
+                      <span className="text-lg font-bold text-blue-600">
+                        ₩{brandNet.toLocaleString('ko-KR')}
+                        <span className="text-sm font-medium text-gray-500 ml-1">({brandPct}%)</span>
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-1.5 mt-4 pt-3 border-t border-gray-50">
+                    <Info className="h-3.5 w-3.5 text-gray-400 shrink-0 mt-0.5" />
+                    <p className="text-xs text-gray-500">
+                      크넥 수수료 {Math.round(CNEC_COMMISSION_RATE * 100)}%에 PG 결제 수수료가 포함되어 있어요. 추가 비용은 없습니다.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Zero-cost banner */}
+                <div className="flex items-start gap-2.5 bg-green-50 border border-green-100 rounded-lg p-3">
+                  <Check className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-green-800">사용료 0원. 팔린 만큼만 수수료가 발생해요.</p>
+                    <p className="text-xs text-green-700 mt-0.5">월 고정비, 입점비, 광고비 — 전부 없습니다.</p>
+                  </div>
+                </div>
+              </SectionCard>
+
+              <SectionCard title="수량 제한">
+                <div className="space-y-2">
+                  <Label htmlFor="totalStock" className={labelCls}>전체 수량 제한</Label>
+                  <p className="text-[12px] text-gray-400">
+                    캠페인 전체에서 판매 가능한 총 수량입니다. 비워두면 제한 없음.
+                  </p>
+                  <Input
+                    id="totalStock"
+                    type="number"
+                    min="0"
+                    value={totalStock}
+                    onChange={(e) => setTotalStock(e.target.value)}
+                    className={`w-40 ${inputCls}`}
+                    placeholder="제한 없음"
+                  />
+                </div>
+              </SectionCard>
+            </>
+          );
+        })()}
 
         {/* ── Step 4: 모집 방식 ──────────────────── */}
         {currentStep === 3 && (
