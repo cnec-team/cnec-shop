@@ -22,9 +22,9 @@ export default async function CreatorLayout({
   if (session?.user?.id) {
     const creator = await prisma.creator.findFirst({
       where: { userId: session.user.id },
-      select: { onboardingStatus: true },
+      select: { onboardingStatus: true, onboardingCompleted: true },
     });
-    if (creator && creator.onboardingStatus !== 'COMPLETE') {
+    if (creator && creator.onboardingStatus !== 'COMPLETE' && !creator.onboardingCompleted) {
       redirect(`/${locale}/creator/onboarding`);
     }
   }

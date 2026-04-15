@@ -71,7 +71,7 @@ export default function CreatorOnboardingPage() {
     async function init() {
       try {
         const data = await getOnboardingData()
-        if (data.onboardingStatus === 'COMPLETE') {
+        if (data.onboardingStatus === 'COMPLETE' || data.onboardingCompleted) {
           router.replace(`/${locale}/creator/dashboard`)
           return
         }
