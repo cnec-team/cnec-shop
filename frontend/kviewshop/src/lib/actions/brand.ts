@@ -236,14 +236,27 @@ export async function getBrandCampaigns(
   }))
 }
 
+function serializeProductDecimals<T extends Record<string, unknown>>(p: T) {
+  return {
+    ...p,
+    ...('price' in p && p.price != null ? { price: Number(p.price) } : {}),
+    ...('originalPrice' in p && p.originalPrice != null ? { originalPrice: Number(p.originalPrice) } : {}),
+    ...('salePrice' in p && p.salePrice != null ? { salePrice: Number(p.salePrice) } : {}),
+    ...('defaultCommissionRate' in p ? { defaultCommissionRate: Number(p.defaultCommissionRate) } : {}),
+    ...('shippingFee' in p ? { shippingFee: Number(p.shippingFee) } : {}),
+    ...('freeShippingThreshold' in p && p.freeShippingThreshold != null ? { freeShippingThreshold: Number(p.freeShippingThreshold) } : {}),
+  }
+}
+
 export async function getActiveProducts(brandId: string) {
   const { brand } = await requireBrand()
   if (brand.id !== brandId) throw new Error('Forbidden')
 
-  return prisma.product.findMany({
+  const products = await prisma.product.findMany({
     where: { brandId: brand.id, status: 'ACTIVE' },
     orderBy: { name: 'asc' },
   })
+  return products.map(serializeProductDecimals)
 }
 
 export async function createCampaign(data: {
@@ -923,10 +936,11 @@ export async function getBrandProducts(
     where.category = categoryFilter
   }
 
-  return prisma.product.findMany({
+  const products = await prisma.product.findMany({
     where: where as any,
     orderBy: { createdAt: 'desc' },
   })
+  return products.map(serializeProductDecimals)
 }
 
 export async function getBrandProductById(productId: string) {
@@ -940,7 +954,7 @@ export async function getBrandProductById(productId: string) {
     return null
   }
 
-  return product
+  return serializeProductDecimals(product)
 }
 
 export async function updateProduct(

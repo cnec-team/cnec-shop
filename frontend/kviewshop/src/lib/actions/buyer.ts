@@ -164,7 +164,7 @@ export async function submitCreatorApplication(data: {
 
 export async function getCartProducts(productIds: string[]) {
   if (productIds.length === 0) return []
-  return prisma.product.findMany({
+  const products = await prisma.product.findMany({
     where: { id: { in: productIds } },
     select: {
       id: true,
@@ -184,6 +184,11 @@ export async function getCartProducts(productIds: string[]) {
       },
     },
   })
+  return products.map((p) => ({
+    ...p,
+    originalPrice: Number(p.originalPrice),
+    salePrice: Number(p.salePrice),
+  }))
 }
 
 export async function getCartCreators(creatorIds: string[]) {

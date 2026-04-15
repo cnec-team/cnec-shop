@@ -37,7 +37,7 @@ interface CampaignWithDetails {
   targetParticipants?: number | null;
   conditions?: string | null;
   createdAt: string;
-  brand?: { id: string; brandName: string; companyName: string } | null;
+  brand?: { id: string; brandName: string; companyName: string; logoUrl?: string | null } | null;
   products?: Array<{ id: string; campaignId: string; productId: string; campaignPrice: number; product?: { id: string; name: string | null; nameKo: string | null; thumbnailUrl: string | null; imageUrl: string | null; images: string[] } | null }>;
   participantCount?: number;
 }
@@ -257,11 +257,23 @@ export default function CreatorGongguPage() {
                     </div>
                   )}
 
+                  {/* Brand */}
+                  {campaign.brand && (
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      {campaign.brand.logoUrl && (
+                        <img
+                          src={campaign.brand.logoUrl}
+                          alt={campaign.brand.brandName}
+                          className="h-6 w-6 rounded-full object-cover shrink-0"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        />
+                      )}
+                      <span className="text-xs font-semibold text-gray-700">{campaign.brand.brandName}</span>
+                    </div>
+                  )}
+
                   {/* Title */}
                   <h3 className="font-semibold text-sm text-gray-900 line-clamp-2 mb-1">{campaign.title}</h3>
-                  {campaign.brand && (
-                    <BrandBadge brandName={campaign.brand.brandName} />
-                  )}
 
                   {/* Stats */}
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-3 text-xs">
@@ -337,7 +349,19 @@ export default function CreatorGongguPage() {
                       {dDay && <span className="text-[10px] text-gray-400">{dDay}</span>}
                     </div>
                     <p className="text-sm font-medium text-gray-900 truncate">{campaign.title}</p>
-                    {campaign.brand && <BrandBadge brandName={campaign.brand.brandName} />}
+                    {campaign.brand && (
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {campaign.brand.logoUrl && (
+                          <img
+                            src={campaign.brand.logoUrl}
+                            alt={campaign.brand.brandName}
+                            className="h-4 w-4 rounded-full object-cover shrink-0"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                          />
+                        )}
+                        <span className="text-[10px] text-gray-400 font-medium">{campaign.brand.brandName}</span>
+                      </div>
+                    )}
                   </div>
                   <span className="text-xs text-earnings font-semibold whitespace-nowrap">
                     팔면 ₩{getEstimatedEarnings(campaign).toLocaleString()}
@@ -377,7 +401,19 @@ export default function CreatorGongguPage() {
                       {dDay && <span className="text-[10px] text-gray-400">{dDay}</span>}
                     </div>
                     <p className="text-sm font-medium text-gray-900 truncate">{campaign.title}</p>
-                    {campaign.brand && <BrandBadge brandName={campaign.brand.brandName} />}
+                    {campaign.brand && (
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {campaign.brand.logoUrl && (
+                          <img
+                            src={campaign.brand.logoUrl}
+                            alt={campaign.brand.brandName}
+                            className="h-4 w-4 rounded-full object-cover shrink-0"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                          />
+                        )}
+                        <span className="text-[10px] text-gray-400 font-medium">{campaign.brand.brandName}</span>
+                      </div>
+                    )}
                   </div>
                   <span className="text-xs text-earnings font-semibold whitespace-nowrap">
                     팔면 ₩{getEstimatedEarnings(campaign).toLocaleString()}
