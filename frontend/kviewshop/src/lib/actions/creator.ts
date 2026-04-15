@@ -231,9 +231,9 @@ export async function getAvailableCampaigns() {
     }),
   ])
 
-  const brandMap: Record<string, { id: string; brandName: string; companyName: string }> = {}
+  const brandMap: Record<string, { id: string; brandName: string; companyName: string; logoUrl: string | null }> = {}
   for (const b of brands) {
-    brandMap[b.id] = { id: b.id, brandName: b.brandName ?? '', companyName: b.companyName ?? '' }
+    brandMap[b.id] = { id: b.id, brandName: b.brandName ?? '', companyName: b.companyName ?? '', logoUrl: b.logoUrl ?? null }
   }
 
   const productsByCampaign: Record<string, typeof campaignProducts> = {}
@@ -635,21 +635,30 @@ export async function getPickableProducts(creatorId: string) {
     },
   })
 
-  const brandMap: Record<string, { brandName: string }> = {}
+  const brandMap: Record<string, { brandName: string; logoUrl: string | null; description: string | null }> = {}
   for (const b of brands) {
-    brandMap[b.id] = { brandName: b.brandName ?? '' }
+    brandMap[b.id] = { brandName: b.brandName ?? '', logoUrl: b.logoUrl ?? null, description: b.description ?? null }
   }
 
-  const campaignMap: Record<string, { id: string; type: string; commissionRate: unknown; recruitmentType: string | null; campaignProduct: { campaignPrice: unknown } }> = {}
+  const campaignMap: Record<
+    string,
+    {
+      id: string
+      type: string
+      commissionRate: number
+      recruitmentType: string | null
+      campaignProduct: { campaignPrice: number }
+    }
+  > = {}
   for (const cp of campaignProducts) {
     const campaign = campaigns.find((c) => c.id === cp.campaignId)
     if (campaign) {
       campaignMap[cp.productId] = {
         id: campaign.id,
         type: campaign.type,
-        commissionRate: campaign.commissionRate,
+        commissionRate: Number(campaign.commissionRate),
         recruitmentType: campaign.recruitmentType,
-        campaignProduct: { campaignPrice: cp.campaignPrice },
+        campaignProduct: { campaignPrice: Number(cp.campaignPrice) },
       }
     }
   }
@@ -662,12 +671,12 @@ export async function getPickableProducts(creatorId: string) {
       name: p.name,
       nameKo: p.nameKo,
       nameEn: p.nameEn,
-      originalPrice: p.originalPrice,
-      salePrice: p.salePrice,
+      originalPrice: Number(p.originalPrice),
+      salePrice: Number(p.salePrice),
       images: p.images,
       imageUrl: p.imageUrl,
       category: p.category,
-      defaultCommissionRate: p.defaultCommissionRate,
+      defaultCommissionRate: Number(p.defaultCommissionRate),
       brandId: p.brandId,
       brand: brandMap[p.brandId] ?? null,
       activeCampaign: campaignMap[p.id] ?? null,

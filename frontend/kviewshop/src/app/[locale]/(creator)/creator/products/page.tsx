@@ -65,7 +65,7 @@ interface ProductWithCampaign {
   category: string | null;
   defaultCommissionRate: number;
   brandId: string;
-  brand: { brandName: string } | null;
+  brand: { brandName: string; logoUrl?: string | null } | null;
   allowTrial: boolean;
   activeCampaign: {
     id: string;
@@ -346,11 +346,11 @@ export default function CreatorProductsPage() {
     return (
       <div className="space-y-4 max-w-4xl">
         <Skeleton className="h-10 w-full rounded-xl" />
-        <div className="grid gap-3 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <CreatorProductGrid>
           {Array.from({ length: 8 }).map((_, i) => (
             <Skeleton key={i} className="h-72 rounded-2xl" />
           ))}
-        </div>
+        </CreatorProductGrid>
       </div>
     );
   }
@@ -439,7 +439,7 @@ export default function CreatorProductsPage() {
           </Button>
         </div>
       ) : (
-        <div className="grid gap-3 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <CreatorProductGrid>
           {filteredProducts.map((product) => {
             const discount = getDiscountRate(product);
             const earnings = getEarnings(product);
@@ -459,7 +459,7 @@ export default function CreatorProductsPage() {
                       sizes="(max-width: 768px) 50vw, 25vw"
                     />
                     {isGonggu && (
-                      <span className="absolute top-2 left-2 bg-blue-50 text-blue-700 text-[10px] font-medium px-2 py-0.5 rounded-full">
+                      <span className="absolute top-2 left-2 bg-blue-100 text-blue-700 text-[10px] font-medium px-2 py-0.5 rounded-full">
                         공구
                       </span>
                     )}
@@ -467,7 +467,17 @@ export default function CreatorProductsPage() {
 
                   <div className="p-3">
                     {product.brand && (
-                      <BrandBadge brandName={product.brand.brandName} />
+                      <div className="flex items-center gap-1 mb-0.5">
+                        {product.brand.logoUrl && (
+                          <img
+                            src={product.brand.logoUrl}
+                            alt={product.brand.brandName}
+                            className="h-4 w-4 rounded-full object-cover"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                          />
+                        )}
+                        <BrandBadge brandName={product.brand.brandName} />
+                      </div>
                     )}
                     <p className="text-xs font-medium text-gray-900 line-clamp-2 mt-0.5 leading-tight">{product.name}</p>
                     <div className="flex items-center gap-1.5 mt-1.5">
@@ -563,7 +573,7 @@ export default function CreatorProductsPage() {
               </div>
             );
           })}
-        </div>
+        </CreatorProductGrid>
       )}
 
       {/* Category Overlap Warning Dialog */}

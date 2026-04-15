@@ -15,11 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import {
-  Package,
-  AlertCircle,
-  Plus,
-} from 'lucide-react';
+import { Package, AlertCircle, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { CreatorProductCard } from '@/components/creator/CreatorProductCard';
 import { CreatorProductGrid } from '@/components/creator/CreatorProductGrid';

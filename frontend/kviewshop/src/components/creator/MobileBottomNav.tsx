@@ -53,11 +53,11 @@ export function MobileBottomNav() {
   const base = `/${locale}/creator`;
 
   const tabs = [
-    { title: '홈', href: `${base}/dashboard`, icon: LayoutDashboard },
-    { title: '캠페인', href: `${base}/campaigns/gonggu`, icon: Megaphone },
-    { title: '내 샵', href: `${base}/shop/products`, icon: Store },
-    { title: '판매', href: `${base}/sales`, icon: TrendingUp },
-    { title: '더보기', href: '#more', icon: MoreHorizontal },
+    { title: '홈', href: `${base}/dashboard`, icon: LayoutDashboard, badge: false },
+    { title: '캠페인', href: `${base}/campaigns/gonggu`, icon: Megaphone, badge: true },
+    { title: '내 샵', href: `${base}/shop/products`, icon: Store, badge: false },
+    { title: '판매', href: `${base}/sales`, icon: TrendingUp, badge: false },
+    { title: '더보기', href: '#more', icon: MoreHorizontal, badge: false },
   ] as const;
 
   const moreMenuSections: MoreMenuSection[] = [
@@ -111,14 +111,12 @@ export function MobileBottomNav() {
     return pathname === href || pathname.startsWith(href + '/');
   };
 
-  // Check if any "more" menu item is active
   const isMoreActive = moreMenuSections.some((section) =>
     section.items.some((item) => pathname === item.href || pathname.startsWith(item.href + '/'))
   );
 
   return (
     <>
-      {/* Bottom Tab Bar - mobile only */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-background/95 backdrop-blur-sm border-t border-border">
         <div
           className="flex items-center justify-around"
@@ -155,7 +153,7 @@ export function MobileBottomNav() {
               >
                 <div className="relative">
                   <tab.icon className={cn('h-5 w-5', active && 'fill-blue-600/20')} />
-                  {tab.title === '캠페인' && (
+                  {tab.badge && (
                     <span className="absolute -top-1 -right-1.5 h-2 w-2 rounded-full bg-red-500" />
                   )}
                 </div>
@@ -166,7 +164,6 @@ export function MobileBottomNav() {
         </div>
       </nav>
 
-      {/* More Drawer — list card style */}
       <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
         <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-2xl">
           <SheetHeader className="pb-3">

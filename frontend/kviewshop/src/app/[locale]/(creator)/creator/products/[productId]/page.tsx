@@ -53,7 +53,7 @@ interface ProductDetail {
   descriptionKo: string | null
   defaultCommissionRate: number
   brandId: string
-  brand: { brandName: string } | null
+  brand: { brandName: string; logoUrl?: string | null; description?: string | null } | null
   allowTrial: boolean
   activeCampaign: {
     id: string
@@ -361,9 +361,32 @@ export default function CreatorProductDetailPage() {
         )}
       </div>
 
+      {/* Brand Profile */}
+      {product.brand && (
+        <div className="flex items-center gap-3 bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+          {product.brand.logoUrl ? (
+            <img
+              src={product.brand.logoUrl}
+              alt={product.brand.brandName}
+              className="h-8 w-8 rounded-full object-cover shrink-0"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
+          ) : (
+            <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+              <span className="text-xs font-bold text-gray-400">{product.brand.brandName.charAt(0)}</span>
+            </div>
+          )}
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-gray-900">{product.brand.brandName}</p>
+            {product.brand.description && (
+              <p className="text-sm text-gray-500 line-clamp-1">{product.brand.description}</p>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Product Info */}
       <div className="space-y-2">
-        {product.brand && <BrandBadge brandName={product.brand.brandName} />}
         <h1 className="text-lg font-bold text-gray-900">{product.nameKo || product.name}</h1>
         <div className="flex items-center gap-2 flex-wrap">
           {categoryLabel && (
@@ -501,40 +524,64 @@ export default function CreatorProductDetailPage() {
       {/* Fixed Bottom Actions */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 z-50">
         <div className="max-w-2xl mx-auto space-y-2">
-          {/* Trial Button */}
-          {product.allowTrial && (
-            <Button
-              onClick={openTrialModal}
-              className="w-full h-12 rounded-xl bg-purple-50 text-purple-700 hover:bg-purple-100 font-medium text-sm border-0"
-            >
-              <Gift className="w-4 h-4 mr-2" />
-              체험 신청하기
-            </Button>
-          )}
-
-          {/* Gonggu / Shop Add */}
           {isAdded ? (
-            <Button variant="outline" className="w-full h-12 rounded-xl font-medium text-sm" disabled>
-              <Check className="w-4 h-4 mr-2" /> 이미 추가됨
-            </Button>
+            <>
+              <Button variant="outline" className="w-full h-12 rounded-xl font-medium text-sm" disabled>
+                <Check className="w-4 h-4 mr-2" /> 이미 추가된 상품이에요
+              </Button>
+              {product.allowTrial && (
+                <Button
+                  onClick={openTrialModal}
+                  variant="outline"
+                  className="w-full h-12 rounded-xl font-medium text-sm text-purple-700 border-purple-200 hover:bg-purple-50"
+                >
+                  <Gift className="w-4 h-4 mr-2" />
+                  체험 신청하기
+                </Button>
+              )}
+            </>
           ) : isGonggu ? (
-            <Button
-              onClick={handleGonggu}
-              disabled={actionLoading}
-              className="w-full h-12 rounded-xl bg-blue-600 text-white hover:bg-blue-700 font-medium text-sm"
-            >
-              {actionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ShoppingBag className="w-4 h-4 mr-2" />}
-              바로 공구 신청하기
-            </Button>
+            <>
+              <Button
+                onClick={handleGonggu}
+                disabled={actionLoading}
+                className="w-full h-12 rounded-xl bg-blue-600 text-white hover:bg-blue-700 font-medium text-sm"
+              >
+                {actionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ShoppingBag className="w-4 h-4 mr-2" />}
+                공구 참여하기
+              </Button>
+              {product.allowTrial && (
+                <Button
+                  onClick={openTrialModal}
+                  variant="outline"
+                  className="w-full h-12 rounded-xl font-medium text-sm text-purple-700 border-purple-200 hover:bg-purple-50"
+                >
+                  <Gift className="w-4 h-4 mr-2" />
+                  체험 신청하기
+                </Button>
+              )}
+            </>
           ) : (
-            <Button
-              onClick={handleAddToShop}
-              disabled={actionLoading}
-              className="w-full h-12 rounded-xl bg-gray-900 text-white hover:bg-gray-800 font-medium text-sm"
-            >
-              {actionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-              내 샵에 추가
-            </Button>
+            <>
+              <Button
+                onClick={handleAddToShop}
+                disabled={actionLoading}
+                className="w-full h-12 rounded-xl bg-gray-900 text-white hover:bg-gray-800 font-medium text-sm"
+              >
+                {actionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+                내 샵에 추가하기
+              </Button>
+              {product.allowTrial && (
+                <Button
+                  onClick={openTrialModal}
+                  variant="outline"
+                  className="w-full h-12 rounded-xl font-medium text-sm text-purple-700 border-purple-200 hover:bg-purple-50"
+                >
+                  <Gift className="w-4 h-4 mr-2" />
+                  체험 신청하기
+                </Button>
+              )}
+            </>
           )}
         </div>
       </div>
