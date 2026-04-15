@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useCartStore } from '@/lib/store/auth';
 import {
@@ -18,6 +19,9 @@ import {
   Flame,
   Play,
   ExternalLink,
+  Heart,
+  X,
+  BadgeCheck,
 } from 'lucide-react';
 import {
   Accordion,
@@ -27,7 +31,7 @@ import {
 } from '@/components/ui/accordion';
 import { ShareSheet } from '@/components/shop/ShareSheet';
 import { BrandBadge } from '@/components/common/BrandBadge';
-import { calculateDDay, getDDayLabel, getTimeRemaining, hasCampaignStarted } from '@/lib/utils/date';
+import { calculateDDay, getTimeRemaining, hasCampaignStarted } from '@/lib/utils/date';
 import type {
   Product,
   CampaignProduct,
@@ -100,21 +104,29 @@ export function ProductDetailPage({
   const [shippingOpen, setShippingOpen] = useState(false);
   const [returnOpen, setReturnOpen] = useState(false);
   const [expandedCaptions, setExpandedCaptions] = useState<Record<string, boolean>>({});
+  const [liked, setLiked] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   const campaign = campaignProduct?.campaign as Campaign | undefined;
-  const startAt = (campaign as any)?.start_at ?? (campaign as any)?.startAt;
-  const isGonggu = !!campaignProduct && campaign?.type === 'GONGGU' && campaign?.status === 'ACTIVE' && hasCampaignStarted(startAt);
-  const isNotYetStarted = !!campaignProduct && campaign?.type === 'GONGGU' && !hasCampaignStarted(startAt);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const campaignAny = campaign as any;
+  const startAt = campaignAny?.start_at ?? campaignAny?.startAt;
+  const isGonggu = !!campaignProduct && campaign?.type === 'GONGGU' && campaign?.status === 'ACTIVE' && hasCampaignStarted(startAt as string | undefined);
+  const isNotYetStarted = !!campaignProduct && campaign?.type === 'GONGGU' && !hasCampaignStarted(startAt as string | undefined);
 
-  // Normalize snake_case/camelCase: Prisma returns camelCase, but database.ts types use snake_case
+  // Normalize snake_case/camelCase — Prisma types don't expose snake_case fields but DB returns them
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const p = product as any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const cp = campaignProduct as any;
-  const c = campaign as any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const c = campaignAny;
 
   const effectivePrice = Number(cp?.campaign_price ?? cp?.campaignPrice ?? p.sale_price ?? p.salePrice ?? 0);
   const originalPrice = Number(p.original_price ?? p.originalPrice ?? 0);
   const discountPercent = calculateDiscountPercent(originalPrice, effectivePrice);
   const brandName = p.brand?.brand_name || p.brand?.brandName || '';
+  const brandLogo = p.brand?.logo_url || p.brand?.logoUrl || '';
   const images = product.images && product.images.length > 0 ? product.images : [];
   const campaignId = cp?.campaign_id ?? cp?.campaignId;
   const productUrl = `https://www.cnecshop.com/${username}/product/${product.id}${campaignId ? `?campaign=${campaignId}` : ''}`;
@@ -125,21 +137,23 @@ export function ProductDetailPage({
   const totalStock = Number(c?.total_stock ?? c?.totalStock ?? 0);
   const soldCount = Number(c?.sold_count ?? c?.soldCount ?? 0);
   const progressPercent = totalStock > 0 ? Math.min(Math.round((soldCount / totalStock) * 100), 100) : 0;
+  const remainingStock = totalStock > 0 ? totalStock - soldCount : product.stock;
 
-  // D-day calculation
+  // D-day / ended check
   const endAt = c?.end_at ?? c?.endAt;
-  const dDayNum = calculateDDay(endAt);
+  const dDayNum = calculateDDay(endAt as string | undefined);
+  const isEnded = isGonggu && endAt && new Date(endAt as string).getTime() <= Date.now();
 
-  // Countdown timer for gonggu
+  // Countdown timer
   const [countdown, setCountdown] = useState('');
 
   useEffect(() => {
     if (!isGonggu || !endAt) return;
 
     const updateCountdown = () => {
-      const t = getTimeRemaining(endAt);
+      const t = getTimeRemaining(endAt as string);
       if (t.total <= 0) {
-        setCountdown('마감되었습니다');
+        setCountdown('');
         return;
       }
       const pad = (n: number) => n.toString().padStart(2, '0');
@@ -164,7 +178,7 @@ export function ProductDetailPage({
   const handleAddToCart = () => {
     addItem({
       productId: product.id,
-      campaignId,
+      campaignId: campaignId as string | undefined,
       quantity,
       creatorId: creator.id,
       unitPrice: effectivePrice,
@@ -173,13 +187,45 @@ export function ProductDetailPage({
 
   const handleBuy = () => {
     handleAddToCart();
+    setSheetOpen(false);
     router.push(`/${locale}/${username}/checkout`);
   };
 
+  const handleAddToCartAndClose = () => {
+    handleAddToCart();
+    setSheetOpen(false);
+  };
+
+  // Creator name
+  const cAny = creator as unknown as Record<string, unknown>;
+  const creatorName = (cAny.displayName || cAny.display_name || cAny.shopId || cAny.shop_id || '') as string;
+  const creatorProfileUrl = (cAny.profileImageUrl || cAny.profile_image_url || '') as string;
+
+  const canBuy = !isEnded && !isNotYetStarted && product.stock > 0;
+
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
-      {/* Top Navigation - sticky */}
-      <header className="sticky top-0 z-10 bg-white/80 backdrop-blur">
+    <div className="min-h-screen bg-gray-50 pb-24">
+      {/* A. Countdown Banner — sticky */}
+      {isGonggu && (
+        <div
+          className={`sticky top-0 z-40 text-center py-2.5 px-4 ${
+            isEnded
+              ? 'bg-[#F5F5F5]'
+              : 'bg-[#FF3B30]'
+          }`}
+        >
+          {isEnded ? (
+            <p className="text-[15px] font-bold text-[#8E8E93]">공구가 마감되었습니다</p>
+          ) : countdown ? (
+            <p className="text-[15px] font-bold text-white" style={{ fontVariantNumeric: 'tabular-nums' }}>
+              공구 마감까지 {countdown}
+            </p>
+          ) : null}
+        </div>
+      )}
+
+      {/* Top Navigation */}
+      <header className={`sticky ${isGonggu ? 'top-[42px]' : 'top-0'} z-30 bg-white/80 backdrop-blur`}>
         <div className="max-w-lg mx-auto flex items-center justify-between h-12 px-4">
           <Link
             href={`/${locale}/${username}`}
@@ -192,7 +238,7 @@ export function ProductDetailPage({
             url={productUrl}
             title={ogTitle}
             description={ogDesc}
-            imageUrl={p.thumbnail_url || p.thumbnailUrl || images[0]}
+            imageUrl={(p.thumbnail_url || p.thumbnailUrl || images[0]) as string}
             trigger={
               <button className="flex items-center gap-1 text-gray-500 hover:text-gray-900 transition-colors">
                 <Share2 className="w-5 h-5" />
@@ -203,7 +249,7 @@ export function ProductDetailPage({
       </header>
 
       <div className="max-w-lg mx-auto">
-        {/* Image Slider - full width */}
+        {/* B. Image Carousel */}
         {images.length > 0 ? (
           <div className="relative bg-white">
             <div className="aspect-square relative overflow-hidden">
@@ -212,7 +258,6 @@ export function ProductDetailPage({
                 alt={`${product.name} - ${currentImageIndex + 1}`}
                 className="w-full h-full object-cover"
               />
-
               {images.length > 1 && (
                 <>
                   <button
@@ -229,7 +274,7 @@ export function ProductDetailPage({
                   </button>
                 </>
               )}
-
+              {/* Indicator dots */}
               {images.length > 1 && (
                 <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
                   {images.map((_, idx) => (
@@ -237,7 +282,7 @@ export function ProductDetailPage({
                       key={idx}
                       onClick={() => setCurrentImageIndex(idx)}
                       className={`w-2 h-2 rounded-full transition-colors ${
-                        idx === currentImageIndex ? 'bg-gray-900' : 'bg-gray-900/30'
+                        idx === currentImageIndex ? 'bg-white' : 'bg-white/40'
                       }`}
                     />
                   ))}
@@ -251,106 +296,168 @@ export function ProductDetailPage({
           </div>
         )}
 
-        {/* Product Info Section */}
-        <div className="bg-white px-4 pt-4 pb-5">
+        {/* C. Price Area */}
+        <div className="bg-white px-4 py-4">
+          {/* Brand name */}
           {brandName && (
-            <>
-              <BrandBadge brandName={brandName} size="md" />
-              <p className="text-xs text-gray-400 mt-1">크넥 인증 브랜드</p>
-            </>
+            <p className="text-[14px] text-[#8E8E93] mb-1">{brandName}</p>
           )}
-          <h1 className="text-xl font-bold text-gray-900 leading-snug mt-1">
+
+          {/* Product name */}
+          <h1 className="text-[18px] font-bold text-[#1A1A1A] leading-snug">
             {product.name}
           </h1>
 
           {product.volume && (
-            <p className="text-sm text-gray-400 mt-1">{product.volume}</p>
+            <p className="text-sm text-gray-400 mt-0.5">{product.volume}</p>
+          )}
+
+          {/* Pricing */}
+          <div className="mt-3">
+            {discountPercent > 0 && (
+              <p className="text-[16px] text-[#8E8E93] line-through">
+                {formatKRW(originalPrice)}
+              </p>
+            )}
+            <div className="flex items-baseline gap-2">
+              {discountPercent > 0 && (
+                <span className="text-[24px] font-bold text-[#FF3B30]">
+                  {discountPercent}%
+                </span>
+              )}
+              <span className="text-[24px] font-bold text-[#1A1A1A]">
+                {formatKRW(effectivePrice)}
+              </span>
+            </div>
+          </div>
+
+          {/* Gonggu-only badges */}
+          {isGonggu && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#E8F0FE] text-[#007AFF] text-[12px] font-medium px-2.5 py-1">
+                크리에이터 단독가
+              </span>
+              {totalStock > 0 && progressPercent > 0 && (
+                <span className="text-xs text-gray-500">
+                  {soldCount}/{totalStock}개 판매
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Low stock warning */}
+          {remainingStock > 0 && remainingStock <= 10 && (
+            <p className="text-[14px] text-[#FF3B30] font-medium mt-2">
+              한정 수량 {remainingStock}개 남음
+            </p>
+          )}
+
+          {/* Gonggu progress bar */}
+          {isGonggu && totalStock > 0 && (
+            <div className="mt-3">
+              <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-[#FF3B30] rounded-full transition-all"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+              <p className="text-xs text-gray-400 mt-1 text-right">{progressPercent}%</p>
+            </div>
           )}
         </div>
 
-        {/* Gonggu Banner */}
-        {isGonggu && (
-          <div className="bg-orange-50 border-y border-orange-100 px-4 py-4">
-            <div className="max-w-lg mx-auto">
-              <div className="flex items-center gap-2 mb-2">
-                <Flame className="h-4 w-4 text-orange-500" />
-                <span className="text-sm font-semibold text-gray-900">공구 진행중</span>
-                {dDayNum >= 0 && (
-                  <span className="bg-red-500 text-white rounded-full px-2 py-0.5 text-xs font-bold">
-                    D-{dDayNum} 남음
-                  </span>
-                )}
+        {/* D. Creator Recommendation Card */}
+        <Link
+          href={`/${locale}/${username}`}
+          className="block mx-4 mt-4 rounded-xl bg-[#F5F5F5] p-3"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gray-300 overflow-hidden shrink-0">
+              {creatorProfileUrl ? (
+                <Image
+                  src={creatorProfileUrl}
+                  alt={creatorName}
+                  width={40}
+                  height={40}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-sm font-bold text-gray-500">
+                  {creatorName.charAt(0)}
+                </div>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-[#1A1A1A]">{creatorName}</p>
+              <p className="text-xs text-[#8E8E93] line-clamp-1">
+                {isGonggu ? '이 크리에이터가 추천하는 공구 상품이에요' : '이 크리에이터가 추천하는 상품이에요'}
+              </p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
+          </div>
+        </Link>
+
+        {/* E. Brand Info + CS */}
+        <div className="mx-4 mt-4 bg-white rounded-xl border border-gray-100 p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gray-100 overflow-hidden shrink-0 flex items-center justify-center">
+              {brandLogo ? (
+                <Image
+                  src={brandLogo}
+                  alt={brandName}
+                  width={40}
+                  height={40}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="text-xs font-bold text-gray-400">{brandName.charAt(0)}</span>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1">
+                <BrandBadge brandName={brandName} size="sm" />
+                <BadgeCheck className="w-3.5 h-3.5 text-blue-500" />
               </div>
-              {totalStock > 0 && (
-                <>
-                  <p className="text-xs text-gray-500 mb-2">
-                    한정 {totalStock}개 중 {soldCount}개 판매
-                  </p>
-                  <div className="w-full h-2 bg-orange-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-orange-500 rounded-full transition-all"
-                      style={{ width: `${progressPercent}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-gray-400 mt-1 text-right">{progressPercent}%</p>
-                </>
-              )}
-              {countdown && (
-                <p className="text-xs text-orange-600 mt-1">마감까지: {countdown}</p>
-              )}
+              <p className="text-xs text-[#8E8E93] mt-0.5">크넥 인증 브랜드</p>
+            </div>
+          </div>
+          <div className="border-t border-gray-100 mt-3 pt-3">
+            <p className="text-xs text-[#8E8E93]">
+              배송/교환/환불은 {brandName || '브랜드'}이(가) 처리합니다
+            </p>
+          </div>
+        </div>
+
+        {/* Quantity Selector (inline, non-gonggu) */}
+        {!isGonggu && (
+          <div className="bg-white px-4 py-4 mt-4 mx-4 rounded-xl border border-gray-100">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-900">수량</span>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                  className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50"
+                  disabled={quantity <= 1}
+                >
+                  <Minus className="w-4 h-4 text-gray-600" />
+                </button>
+                <span className="w-8 text-center font-medium text-gray-900">{quantity}</span>
+                <button
+                  onClick={() => setQuantity((q) => Math.min(product.stock, q + 1))}
+                  className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50"
+                  disabled={quantity >= product.stock}
+                >
+                  <Plus className="w-4 h-4 text-gray-600" />
+                </button>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Price Section */}
-        <div className="bg-white px-4 py-4 mt-2">
-          <div className="flex items-baseline gap-2">
-            {discountPercent > 0 && (
-              <span className="text-2xl font-bold text-red-500">
-                {discountPercent}%
-              </span>
-            )}
-            <span className="text-2xl font-bold text-gray-900">
-              {formatKRW(effectivePrice)}
-            </span>
-          </div>
-          {discountPercent > 0 && (
-            <p className="text-sm text-gray-300 line-through mt-0.5">
-              {formatKRW(originalPrice)}
-            </p>
-          )}
-        </div>
-
-        {/* Quantity Selector */}
-        <div className="bg-white px-4 py-4 mt-2">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-900">수량</span>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors"
-                disabled={quantity <= 1}
-              >
-                <Minus className="w-4 h-4 text-gray-600" />
-              </button>
-              <span className="w-8 text-center font-medium text-gray-900">
-                {quantity}
-              </span>
-              <button
-                onClick={() => setQuantity((q) => Math.min(product.stock, q + 1))}
-                className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors"
-                disabled={quantity >= product.stock}
-              >
-                <Plus className="w-4 h-4 text-gray-600" />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Brand Product Detail Accordion */}
-        {(p.description || p.descriptionKo || p.howToUse || p.how_to_use || p.ingredients) && (
-          <div className="bg-white mt-2 px-4">
-            <Accordion type="multiple" defaultValue={["description", "howToUse", "ingredients"]}>
+        {/* Product Details Accordion */}
+        {((p.description || p.descriptionKo) || (p.howToUse || p.how_to_use) || p.ingredients) && (
+          <div className="bg-white mt-4 px-4 mx-4 rounded-xl border border-gray-100">
+            <Accordion type="multiple" defaultValue={["description"]}>
               {(p.description || p.descriptionKo) && (
                 <AccordionItem value="description">
                   <AccordionTrigger className="text-sm font-medium text-gray-900">
@@ -360,7 +467,7 @@ export function ProductDetailPage({
                     <div
                       className="text-sm text-gray-600 leading-relaxed whitespace-pre-line"
                       dangerouslySetInnerHTML={{
-                        __html: (p.descriptionKo || p.description || '').replace(/\n/g, '<br />'),
+                        __html: ((p.descriptionKo || p.description || '') as string).replace(/\n/g, '<br />'),
                       }}
                     />
                   </AccordionContent>
@@ -375,7 +482,7 @@ export function ProductDetailPage({
                     <div
                       className="text-sm text-gray-600 leading-relaxed whitespace-pre-line"
                       dangerouslySetInnerHTML={{
-                        __html: (p.howToUse || p.how_to_use || '').replace(/\n/g, '<br />'),
+                        __html: ((p.howToUse || p.how_to_use || '') as string).replace(/\n/g, '<br />'),
                       }}
                     />
                   </AccordionContent>
@@ -388,7 +495,7 @@ export function ProductDetailPage({
                   </AccordionTrigger>
                   <AccordionContent>
                     <p className="text-xs text-gray-400 leading-relaxed whitespace-pre-line">
-                      {p.ingredients}
+                      {p.ingredients as string}
                     </p>
                   </AccordionContent>
                 </AccordionItem>
@@ -397,7 +504,7 @@ export function ProductDetailPage({
             {(p.detailUrl || p.detail_url) && (
               <div className="py-3 border-t border-gray-100">
                 <a
-                  href={p.detailUrl || p.detail_url}
+                  href={(p.detailUrl || p.detail_url) as string}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 text-sm text-primary font-medium hover:underline"
@@ -410,10 +517,9 @@ export function ProductDetailPage({
           </div>
         )}
 
-        {/* Creator Review Section — custom cards, no iframes */}
+        {/* Creator Review Section */}
         {((creatorContents && creatorContents.length > 0) || reelsUrl) && (
-          <div className="bg-white mt-2 py-5">
-            {/* Section Header */}
+          <div className="bg-white mt-4 py-5 mx-4 rounded-xl border border-gray-100">
             <div className="flex items-center gap-2 px-4 mb-4">
               <Play className="w-4 h-4 text-gray-600" />
               <h2 className="text-base font-semibold text-gray-900">크리에이터 리뷰</h2>
@@ -427,22 +533,16 @@ export function ProductDetailPage({
               })()}
             </div>
 
-            {/* All review items */}
             {(() => {
               const allItems: Array<{ id: string; url: string; caption: string | null; isReels?: boolean }> = [];
-
               if (creatorContents) {
-                for (const c of creatorContents) {
-                  allItems.push({ id: c.id, url: c.url, caption: c.caption });
+                for (const ci of creatorContents) {
+                  allItems.push({ id: ci.id, url: ci.url, caption: ci.caption });
                 }
               }
               if (reelsUrl) {
                 allItems.push({ id: 'reels', url: reelsUrl, caption: reelsCaption ?? null, isReels: true });
               }
-
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const c = creator as any;
-              const creatorName: string = c?.displayName || c?.shopId || '';
 
               if (allItems.length === 1) {
                 const item = allItems[0];
@@ -455,14 +555,12 @@ export function ProductDetailPage({
                         style={{ aspectRatio: '9/16' }}
                       >
                         <div className="absolute inset-0 bg-gradient-to-b from-purple-500/10 to-pink-500/10" />
-                        {/* Creator avatar + name */}
                         <div className="absolute top-3 left-3 flex items-center gap-2 z-10">
                           <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-500">
                             {creatorName.charAt(0)}
                           </div>
                           <span className="text-xs font-medium text-gray-800">{creatorName}</span>
                         </div>
-                        {/* Play button */}
                         <div className="absolute inset-0 flex items-center justify-center z-10">
                           <div className="w-16 h-16 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center">
                             <Play className="w-7 h-7 text-white ml-1" />
@@ -484,26 +582,18 @@ export function ProductDetailPage({
                           )}
                         </div>
                       )}
-                      <a
-                        href={item.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <a href={item.url} target="_blank" rel="noopener noreferrer"
                         className="flex items-center justify-center gap-1 text-xs text-gray-400 hover:text-gray-600 mt-2"
                       >
-                        <ExternalLink className="w-3 h-3" />
-                        인스타그램에서 보기
+                        <ExternalLink className="w-3 h-3" /> 인스타그램에서 보기
                       </a>
                     </div>
                   </div>
                 );
               }
 
-              // Multiple items — horizontal scroll
               return (
-                <div
-                  className="flex gap-3 overflow-x-auto px-4 pb-2"
-                  style={{ scrollbarWidth: 'none', scrollSnapType: 'x mandatory' }}
-                >
+                <div className="flex gap-3 overflow-x-auto px-4 pb-2 scrollbar-hide" style={{ scrollSnapType: 'x mandatory' }}>
                   {allItems.map((item) => (
                     <div key={item.id} className="flex-shrink-0" style={{ width: '240px', scrollSnapAlign: 'start' }}>
                       <button
@@ -539,14 +629,10 @@ export function ProductDetailPage({
                           )}
                         </div>
                       )}
-                      <a
-                        href={item.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <a href={item.url} target="_blank" rel="noopener noreferrer"
                         className="flex items-center justify-center gap-1 text-xs text-gray-400 hover:text-gray-600 mt-1.5"
                       >
-                        <ExternalLink className="w-3 h-3" />
-                        인스타그램에서 보기
+                        <ExternalLink className="w-3 h-3" /> 인스타그램에서 보기
                       </a>
                     </div>
                   ))}
@@ -556,8 +642,8 @@ export function ProductDetailPage({
           </div>
         )}
 
-        {/* Shipping Info Accordion */}
-        <div className="bg-white mt-2">
+        {/* Shipping Info */}
+        <div className="bg-white mt-4 mx-4 rounded-xl border border-gray-100">
           <button
             onClick={() => setShippingOpen(!shippingOpen)}
             className="w-full px-4 py-4 flex items-center justify-between text-left"
@@ -566,20 +652,16 @@ export function ProductDetailPage({
               <Truck className="w-4 h-4 text-gray-400" />
               <span className="text-sm font-medium text-gray-900">배송 안내</span>
             </div>
-            <ChevronDown
-              className={`w-4 h-4 text-gray-400 transition-transform ${
-                shippingOpen ? 'rotate-180' : ''
-              }`}
-            />
+            <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${shippingOpen ? 'rotate-180' : ''}`} />
           </button>
           {shippingOpen && (
             <div className="px-4 pb-4 text-sm text-gray-500 space-y-2">
               {(p.shipping_info || p.shippingInfo) ? (
-                <p>{p.shipping_info || p.shippingInfo}</p>
+                <p>{(p.shipping_info || p.shippingInfo) as string}</p>
               ) : (
                 <>
                   <p>배송비: {(() => {
-                    const feeType = p.shipping_fee_type || p.shippingFeeType || 'FREE';
+                    const feeType = (p.shipping_fee_type || p.shippingFeeType || 'FREE') as string;
                     const fee = Number(p.shipping_fee ?? p.shippingFee ?? 3000);
                     const threshold = Number(p.free_shipping_threshold ?? p.freeShippingThreshold ?? 50000);
                     if (feeType === 'FREE') return '무료배송';
@@ -594,8 +676,8 @@ export function ProductDetailPage({
           )}
         </div>
 
-        {/* Return/Exchange Info Accordion */}
-        <div className="bg-white mt-2">
+        {/* Return/Exchange */}
+        <div className="bg-white mt-2 mx-4 rounded-xl border border-gray-100">
           <button
             onClick={() => setReturnOpen(!returnOpen)}
             className="w-full px-4 py-4 flex items-center justify-between text-left"
@@ -604,16 +686,12 @@ export function ProductDetailPage({
               <RotateCcw className="w-4 h-4 text-gray-400" />
               <span className="text-sm font-medium text-gray-900">교환/환불 안내</span>
             </div>
-            <ChevronDown
-              className={`w-4 h-4 text-gray-400 transition-transform ${
-                returnOpen ? 'rotate-180' : ''
-              }`}
-            />
+            <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${returnOpen ? 'rotate-180' : ''}`} />
           </button>
           {returnOpen && (
             <div className="px-4 pb-4 text-sm text-gray-500 space-y-2">
               {(p.return_policy || p.returnPolicy) ? (
-                <p>{p.return_policy || p.returnPolicy}</p>
+                <p>{(p.return_policy || p.returnPolicy) as string}</p>
               ) : (
                 <>
                   <p>수령 후 7일 이내 교환/환불 가능</p>
@@ -626,39 +704,24 @@ export function ProductDetailPage({
           )}
         </div>
 
-        {/* Other Products from this Creator */}
+        {/* Other Products */}
         {otherProducts && otherProducts.length > 0 && (
-          <div className="bg-white mt-2 py-5">
+          <div className="bg-white mt-4 py-5 mx-4 rounded-xl border border-gray-100">
             <h2 className="px-4 text-base font-semibold text-gray-900 mb-3">
               이 크리에이터의 다른 상품
             </h2>
-            <div
-              className="flex gap-3 overflow-x-auto px-4 pb-2"
-              style={{ scrollbarWidth: 'none' }}
-            >
-              {otherProducts.map((p) => (
-                <Link
-                  key={p.id}
-                  href={`/${locale}/${username}/product/${p.id}`}
-                  className="flex-shrink-0 w-32"
-                >
+            <div className="flex gap-3 overflow-x-auto px-4 pb-2 scrollbar-hide">
+              {otherProducts.map((op) => (
+                <Link key={op.id} href={`/${locale}/${username}/product/${op.id}`} className="flex-shrink-0 w-32">
                   <div className="w-32 h-32 rounded-xl overflow-hidden bg-gray-100">
-                    {p.images?.[0] ? (
-                      <img
-                        src={p.images[0]}
-                        alt={p.name}
-                        className="w-full h-full object-cover"
-                      />
+                    {op.images?.[0] ? (
+                      <img src={op.images[0]} alt={op.name} className="w-full h-full object-cover" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
-                        이미지 없음
-                      </div>
+                      <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">이미지 없음</div>
                     )}
                   </div>
-                  <p className="text-xs text-gray-900 line-clamp-1 mt-1.5">{p.name}</p>
-                  <p className="text-sm font-bold text-gray-900 mt-0.5">
-                    {formatKRW(Number(p.salePrice ?? 0))}
-                  </p>
+                  <p className="text-xs text-gray-900 line-clamp-1 mt-1.5">{op.name}</p>
+                  <p className="text-sm font-bold text-gray-900 mt-0.5">{formatKRW(Number(op.salePrice ?? 0))}</p>
                 </Link>
               ))}
             </div>
@@ -673,29 +736,134 @@ export function ProductDetailPage({
         </div>
       </div>
 
-      {/* Fixed Bottom Bar */}
+      {/* F. Fixed Bottom Purchase Bar */}
       <div className="fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-gray-100 shadow-lg" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-        <div className="max-w-lg mx-auto flex items-center gap-3 px-4 py-3">
+        <div className="max-w-lg mx-auto flex items-center gap-3 px-4 h-[80px]">
           <button
-            onClick={handleAddToCart}
-            disabled={isNotYetStarted}
-            className="w-14 h-14 flex items-center justify-center border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={() => setLiked(!liked)}
+            className="w-14 h-14 flex items-center justify-center border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
           >
-            <ShoppingBag className="w-5 h-5 text-gray-600" />
+            <Heart className={`w-5 h-5 ${liked ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
           </button>
-          <button
-            onClick={handleBuy}
-            disabled={product.stock === 0 || isNotYetStarted}
-            className={`flex-1 h-14 rounded-xl font-semibold text-lg text-white transition-colors ${
-              isGonggu
-                ? 'bg-orange-500 hover:bg-orange-600'
-                : 'bg-gray-900 hover:bg-gray-800'
-            } disabled:opacity-50 disabled:cursor-not-allowed`}
-          >
-            {isNotYetStarted ? '오픈 예정' : product.stock === 0 ? '품절' : `구매하기 ${formatKRW(effectivePrice * quantity)}`}
-          </button>
+          {isEnded ? (
+            <button
+              disabled
+              className="flex-1 h-14 rounded-xl font-semibold text-[15px] bg-[#F5F5F5] text-[#8E8E93]"
+            >
+              마감된 공구입니다
+            </button>
+          ) : isNotYetStarted ? (
+            <button
+              disabled
+              className="flex-1 h-14 rounded-xl font-semibold text-[15px] bg-[#F5F5F5] text-[#8E8E93]"
+            >
+              오픈 예정
+            </button>
+          ) : product.stock === 0 ? (
+            <button
+              disabled
+              className="flex-1 h-14 rounded-xl font-semibold text-[15px] bg-[#F5F5F5] text-[#8E8E93]"
+            >
+              품절
+            </button>
+          ) : (
+            <button
+              onClick={() => setSheetOpen(true)}
+              className="flex-1 h-14 rounded-xl font-semibold text-[15px] bg-[#1A1A1A] text-white active:scale-[0.98] transition-transform"
+            >
+              {isGonggu ? '공구 참여하기' : '구매하기'}
+            </button>
+          )}
         </div>
       </div>
+
+      {/* G. Option Bottom Sheet */}
+      {sheetOpen && (
+        <>
+          {/* Dim overlay */}
+          <div
+            className="fixed inset-0 z-40 bg-black/40"
+            onClick={() => setSheetOpen(false)}
+          />
+          {/* Sheet */}
+          <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl animate-in slide-in-from-bottom duration-300" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+            <div className="max-w-lg mx-auto px-5 pt-4 pb-5">
+              {/* Handle */}
+              <div className="flex justify-center mb-4">
+                <div className="w-10 h-1 rounded-full bg-gray-300" />
+              </div>
+
+              {/* Close */}
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-[16px] font-bold text-[#1A1A1A]">옵션 선택</h3>
+                <button onClick={() => setSheetOpen(false)} className="p-1">
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              {/* Product summary */}
+              <div className="flex items-center gap-3 mb-5 pb-4 border-b border-gray-100">
+                {images[0] && (
+                  <div className="w-14 h-14 rounded-lg bg-gray-100 overflow-hidden shrink-0">
+                    <img src={images[0]} alt={product.name || ''} className="w-full h-full object-cover" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-gray-900 line-clamp-1">{product.name}</p>
+                  <p className="text-sm font-bold text-gray-900 mt-0.5">{formatKRW(effectivePrice)}</p>
+                </div>
+              </div>
+
+              {/* Quantity */}
+              <div className="flex items-center justify-between mb-6">
+                <span className="text-sm font-medium text-gray-900">수량</span>
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                    className="w-9 h-9 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50"
+                    disabled={quantity <= 1}
+                  >
+                    <Minus className="w-4 h-4 text-gray-600" />
+                  </button>
+                  <span className="w-6 text-center font-semibold text-gray-900" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                    {quantity}
+                  </span>
+                  <button
+                    onClick={() => setQuantity((q) => Math.min(product.stock, q + 1))}
+                    className="w-9 h-9 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50"
+                    disabled={quantity >= product.stock}
+                  >
+                    <Plus className="w-4 h-4 text-gray-600" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Total */}
+              <div className="flex items-center justify-between mb-5 pt-4 border-t border-gray-100">
+                <span className="text-sm text-gray-500">총 금액</span>
+                <span className="text-xl font-bold text-[#1A1A1A]">{formatKRW(effectivePrice * quantity)}</span>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={handleAddToCartAndClose}
+                  className="flex-1 h-[52px] rounded-xl font-semibold text-[15px] border border-gray-200 text-[#1A1A1A] hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                >
+                  <ShoppingBag className="w-4 h-4" />
+                  장바구니
+                </button>
+                <button
+                  onClick={handleBuy}
+                  className="flex-1 h-[52px] rounded-xl font-semibold text-[15px] bg-[#1A1A1A] text-white active:scale-[0.98] transition-transform"
+                >
+                  바로 구매
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
