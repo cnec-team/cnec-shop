@@ -424,6 +424,11 @@ model Creator {
   interests            String[]  @default([])
   // Onboarding
   onboardingCompleted  Boolean   @default(false) @map("onboarding_completed")
+  onboardingStatus     String    @default("PENDING") @map("onboarding_status") @db.VarChar(20)
+  categories           String[]  @default([])
+  snsChannels          Json?     @map("sns_channels") @db.JsonB
+  sellingExperience    Boolean?  @map("selling_experience")
+  avgRevenue           String?   @map("avg_revenue") @db.VarChar(30)
   // Stats
   totalSales           Decimal   @default(0) @map("total_sales") @db.Decimal(12, 0)
   totalEarnings        Decimal   @default(0) @map("total_earnings") @db.Decimal(12, 0)

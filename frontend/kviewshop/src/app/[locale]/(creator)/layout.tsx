@@ -1,3 +1,6 @@
+import { redirect } from 'next/navigation';
+import { auth } from '@/lib/auth';
+import { prisma } from '@/lib/db';
 import { Header } from '@/components/layout/header';
 import { Sidebar } from '@/components/layout/sidebar';
 import { MobileBottomNav } from '@/components/creator/MobileBottomNav';
@@ -13,6 +16,18 @@ export default async function CreatorLayout({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
+
+  // Check onboarding status — redirect if not completed
+  const session = await auth();
+  if (session?.user?.id) {
+    const creator = await prisma.creator.findFirst({
+      where: { userId: session.user.id },
+      select: { onboardingStatus: true },
+    });
+    if (creator && creator.onboardingStatus !== 'COMPLETE') {
+      redirect(`/${locale}/creator/onboarding`);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background">

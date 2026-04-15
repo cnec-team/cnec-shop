@@ -1,8 +1,7 @@
-import Link from 'next/link';
 import { prisma } from '@/lib/db';
-import { ArrowRight, Users, Flame } from 'lucide-react';
 import type { Metadata } from 'next';
 import { LegalFooter } from '@/components/shop/legal-footer';
+import { BuyerHomePage } from '@/components/buyer/BuyerHomePage';
 
 export const revalidate = 120;
 
@@ -48,7 +47,15 @@ async function getActiveGonggu() {
       },
       products: {
         include: {
-          product: true,
+          product: {
+            include: {
+              brand: {
+                select: {
+                  brandName: true,
+                },
+              },
+            },
+          },
         },
       },
     },
@@ -177,155 +184,6 @@ async function getTopProducts() {
   return products;
 }
 
-function formatKRW(amount: number): string {
-  return new Intl.NumberFormat('ko-KR', {
-    style: 'currency',
-    currency: 'KRW',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
-
-function GongguCardServer({ campaign, locale }: { campaign: any; locale: string }) {
-  const product = campaign.products?.[0]?.product;
-  const campaignProduct = campaign.products?.[0];
-  if (!product) return null;
-
-  const endAt = campaign.endAt;
-  let dDayLabel = '';
-  if (endAt) {
-    const diff = new Date(endAt).getTime() - Date.now();
-    if (diff > 0) {
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      dDayLabel = days === 0 ? 'D-Day' : `D-${days}`;
-    }
-  }
-
-  const effectivePrice = Number(campaignProduct?.campaignPrice ?? product.salePrice ?? 0);
-  const originalPrice = Number(product.originalPrice ?? 0);
-  const discount =
-    originalPrice > 0
-      ? Math.round(((originalPrice - effectivePrice) / originalPrice) * 100)
-      : 0;
-
-  const imageUrl = product.thumbnailUrl || product.images?.[0];
-
-  return (
-    <div className="flex-shrink-0 w-56 snap-start">
-      <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
-        <div className="relative aspect-square bg-gray-100 overflow-hidden">
-          {imageUrl ? (
-            <img src={imageUrl} alt={product.name} className="object-cover w-full h-full" />
-          ) : (
-            <div className="flex h-full items-center justify-center text-gray-400 text-sm">
-              이미지 없음
-            </div>
-          )}
-          <div className="absolute top-2.5 left-2.5 flex gap-1">
-            {dDayLabel && (
-              <span className="bg-red-500 text-white rounded-full px-2 py-0.5 text-xs font-bold">
-                {dDayLabel}
-              </span>
-            )}
-          </div>
-        </div>
-        <div className="p-3">
-          <h3 className="text-sm font-medium text-gray-900 line-clamp-1">{product.name}</h3>
-          <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{campaign.title}</p>
-          <div className="flex items-baseline gap-1.5 mt-1.5">
-            {discount > 0 && (
-              <span className="text-sm font-bold text-red-500">{discount}%</span>
-            )}
-            <span className="text-sm font-bold text-gray-900">
-              {formatKRW(effectivePrice)}
-            </span>
-          </div>
-          {discount > 0 && (
-            <span className="text-xs text-gray-300 line-through">
-              {formatKRW(originalPrice)}
-            </span>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ProductCardServer({ product, locale }: { product: any; locale: string }) {
-  const originalPrice = Number(product.originalPrice ?? 0);
-  const salePrice = Number(product.salePrice ?? 0);
-  const discount = originalPrice > 0 && salePrice < originalPrice
-    ? Math.round(((originalPrice - salePrice) / originalPrice) * 100)
-    : 0;
-  const imageUrl = product.thumbnailUrl || product.images?.[0];
-  const brandName = product.brand?.brandName || '';
-
-  return (
-    <Link
-      href={`/${locale}/products/${product.id}`}
-      className="block group"
-    >
-      <div className="aspect-square rounded-xl overflow-hidden bg-gray-100">
-        {imageUrl ? (
-          <img
-            src={imageUrl}
-            alt={product.name}
-            className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center text-gray-400 text-sm">
-            이미지 없음
-          </div>
-        )}
-      </div>
-      <div className="mt-2">
-        {brandName && (
-          <p className="text-xs text-gray-400 truncate">{brandName}</p>
-        )}
-        <h3 className="text-sm text-gray-900 line-clamp-2 leading-snug mt-0.5">{product.name}</h3>
-        <div className="flex items-baseline gap-1 mt-1">
-          {discount > 0 && (
-            <span className="text-sm font-bold text-red-500">{discount}%</span>
-          )}
-          <span className="text-base font-bold text-gray-900">{formatKRW(salePrice)}</span>
-        </div>
-        {discount > 0 && (
-          <span className="text-xs text-gray-300 line-through">{formatKRW(originalPrice)}</span>
-        )}
-      </div>
-    </Link>
-  );
-}
-
-function CreatorCardServer({ creator, locale }: { creator: any; locale: string }) {
-  const displayName = creator.displayName || creator.shopId || '';
-  const initials = displayName.slice(0, 1);
-  const productCount = creator.product_count || 0;
-
-  return (
-    <Link
-      href={`/${locale}/${creator.shopId}`}
-      className="flex-shrink-0 w-24 snap-start text-center group"
-    >
-      <div className="w-20 h-20 mx-auto rounded-full overflow-hidden bg-gray-100 ring-2 ring-gray-100 group-hover:ring-gray-300 transition-all">
-        {creator.profileImageUrl ? (
-          <img
-            src={creator.profileImageUrl}
-            alt={displayName}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-lg font-bold text-gray-400">
-            {initials}
-          </div>
-        )}
-      </div>
-      <p className="text-xs font-medium text-gray-900 mt-2 line-clamp-1">{displayName}</p>
-      <p className="text-[10px] text-gray-400">상품 {productCount}개</p>
-    </Link>
-  );
-}
-
 export default async function DiscoveryPage({ params }: PageProps) {
   const { locale } = await params;
 
@@ -335,100 +193,66 @@ export default async function DiscoveryPage({ params }: PageProps) {
     getTopProducts(),
   ]);
 
-  const hasContent = gongguCampaigns.length > 0 || topCreators.length > 0 || topProducts.length > 0;
+  // Serialize data for client component (Decimal -> number, Date -> string)
+  const serializedCreators = topCreators.map(c => ({
+    id: c.id,
+    username: c.username ?? null,
+    shopId: c.shopId ?? null,
+    displayName: c.displayName ?? null,
+    profileImageUrl: c.profileImageUrl ?? null,
+    product_count: c.product_count,
+  }));
+
+  const serializedGonggu = gongguCampaigns.map(campaign => ({
+    id: campaign.id,
+    title: campaign.title,
+    endAt: campaign.endAt ? campaign.endAt.toISOString() : null,
+    brand: campaign.brand ? {
+      brandName: campaign.brand.brandName,
+      logoUrl: campaign.brand.logoUrl ?? null,
+    } : null,
+    products: campaign.products.map(cp => ({
+      campaignPrice: Number(cp.campaignPrice),
+      product: {
+        id: cp.product.id,
+        name: cp.product.name,
+        thumbnailUrl: cp.product.thumbnailUrl ?? null,
+        imageUrl: cp.product.imageUrl ?? null,
+        images: (cp.product.images as string[]) ?? [],
+        originalPrice: Number(cp.product.originalPrice ?? 0),
+        salePrice: Number(cp.product.salePrice ?? 0),
+        category: cp.product.category ?? null,
+        brand: cp.product.brand
+          ? { brandName: cp.product.brand.brandName }
+          : null,
+      },
+    })),
+  }));
+
+  const serializedProducts = topProducts.map(product => ({
+    id: product.id,
+    name: product.name,
+    thumbnailUrl: product.thumbnailUrl ?? null,
+    imageUrl: product.imageUrl ?? null,
+    images: (product.images as string[]) ?? [],
+    originalPrice: Number(product.originalPrice ?? 0),
+    salePrice: Number(product.salePrice ?? 0),
+    category: product.category ?? null,
+    brand: product.brand ? {
+      brandName: product.brand.brandName,
+      logoUrl: product.brand.logoUrl ?? null,
+    } : null,
+  }));
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-100">
-        <div className="max-w-lg mx-auto px-4 h-12 flex items-center">
-          <h1 className="text-lg font-bold text-gray-900">CNEC</h1>
-        </div>
-      </header>
-
-      {!hasContent ? (
-        <div className="max-w-lg mx-auto px-4 py-20 text-center">
-          <Users className="h-10 w-10 mx-auto text-gray-300 mb-3" />
-          <p className="text-sm font-medium text-gray-500">아직 크리에이터가 없어요</p>
-          <p className="text-xs text-gray-400 mt-1 mb-6">첫 번째 크리에이터가 되어보세요</p>
-          <Link
-            href={`/${locale}/creators`}
-            className="inline-flex items-center justify-center h-11 px-6 bg-gray-900 text-white rounded-xl text-sm font-medium"
-          >
-            크리에이터 되기
-          </Link>
-        </div>
-      ) : (
-        <div className="max-w-lg mx-auto">
-          {/* Active Gonggu Section */}
-          {gongguCampaigns.length > 0 && (
-            <section className="py-6">
-              <div className="px-4 flex items-center gap-2 mb-4">
-                <Flame className="h-5 w-5 text-orange-500" />
-                <h2 className="text-lg font-bold text-gray-900">진행중인 공구</h2>
-              </div>
-              <div
-                className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-2 px-4"
-                style={{ scrollbarWidth: 'none' }}
-              >
-                {gongguCampaigns.map((campaign) => (
-                  <GongguCardServer key={campaign.id} campaign={campaign} locale={locale} />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* Top Creators Section */}
-          {topCreators.length > 0 && (
-            <section className="py-6 bg-white">
-              <div className="px-4 flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-gray-900">인기 크리에이터</h2>
-                <Link
-                  href={`/${locale}/creators`}
-                  className="text-xs text-gray-400 flex items-center gap-0.5 hover:text-gray-600"
-                >
-                  전체보기 <ArrowRight className="h-3 w-3" />
-                </Link>
-              </div>
-              <div
-                className="flex gap-4 overflow-x-auto px-4 pb-2"
-                style={{ scrollbarWidth: 'none' }}
-              >
-                {topCreators.map((creator) => (
-                  <CreatorCardServer
-                    key={creator.id}
-                    creator={creator}
-                    locale={locale}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* Top Products Section */}
-          {topProducts.length > 0 && (
-            <section className="py-6">
-              <div className="px-4 flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-gray-900">전체 상품</h2>
-                <Link
-                  href={`/${locale}/products`}
-                  className="text-xs text-gray-400 flex items-center gap-0.5 hover:text-gray-600"
-                >
-                  전체보기 <ArrowRight className="h-3 w-3" />
-                </Link>
-              </div>
-              <div className="px-4 grid grid-cols-2 gap-3">
-                {topProducts.map((product) => (
-                  <ProductCardServer key={product.id} product={product} locale={locale} />
-                ))}
-              </div>
-            </section>
-          )}
-        </div>
-      )}
-
-      {/* Footer */}
+    <>
+      <BuyerHomePage
+        locale={locale}
+        creators={serializedCreators}
+        gongguCampaigns={serializedGonggu}
+        topProducts={serializedProducts}
+      />
       <LegalFooter locale={locale} variant="minimal" />
-    </div>
+    </>
   );
 }

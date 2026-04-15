@@ -1197,3 +1197,83 @@ export async function getCreatorSession() {
 
   return creator
 }
+
+// ==================== Onboarding ====================
+
+export async function getOnboardingData() {
+  const { creator } = await requireCreator()
+  return {
+    id: creator.id,
+    shopId: creator.shopId,
+    displayName: creator.displayName,
+    profileImageUrl: creator.profileImageUrl,
+    categories: creator.categories,
+    skinType: creator.skinType,
+    skinConcerns: creator.skinConcerns,
+    snsChannels: creator.snsChannels as Record<string, { url: string; isMain: boolean }> | null,
+    instagramHandle: creator.instagramHandle,
+    youtubeHandle: creator.youtubeHandle,
+    tiktokHandle: creator.tiktokHandle,
+    bio: creator.bio,
+    sellingExperience: creator.sellingExperience,
+    avgRevenue: creator.avgRevenue,
+    onboardingStatus: creator.onboardingStatus,
+    onboardingCompleted: creator.onboardingCompleted,
+  }
+}
+
+export async function saveOnboardingStep(data: {
+  step: number
+  categories?: string[]
+  skinType?: string
+  skinConcerns?: string[]
+  snsChannels?: Record<string, { url: string; isMain: boolean }>
+  instagramHandle?: string
+  youtubeHandle?: string
+  tiktokHandle?: string
+  bio?: string
+  sellingExperience?: boolean
+  avgRevenue?: string
+  shopId?: string
+  displayName?: string
+  profileImageUrl?: string
+}) {
+  const { creator } = await requireCreator()
+
+  const updateData: Record<string, unknown> = {}
+
+  if (data.step === 0 && data.categories) {
+    updateData.categories = data.categories
+  }
+  if (data.step === 1) {
+    if (data.skinType !== undefined) updateData.skinType = data.skinType
+    if (data.skinConcerns) updateData.skinConcerns = data.skinConcerns
+  }
+  if (data.step === 2 && data.snsChannels) {
+    updateData.snsChannels = data.snsChannels
+    if (data.instagramHandle !== undefined) updateData.instagramHandle = data.instagramHandle
+    if (data.youtubeHandle !== undefined) updateData.youtubeHandle = data.youtubeHandle
+    if (data.tiktokHandle !== undefined) updateData.tiktokHandle = data.tiktokHandle
+  }
+  if (data.step === 3) {
+    if (data.bio !== undefined) updateData.bio = data.bio
+    if (data.sellingExperience !== undefined) updateData.sellingExperience = data.sellingExperience
+    if (data.avgRevenue !== undefined) updateData.avgRevenue = data.avgRevenue
+  }
+  if (data.step === 4) {
+    if (data.shopId) updateData.shopId = data.shopId
+    if (data.displayName) updateData.displayName = data.displayName
+    if (data.profileImageUrl) updateData.profileImageUrl = data.profileImageUrl
+    updateData.onboardingStatus = 'COMPLETE'
+    updateData.onboardingCompleted = true
+  }
+
+  if (Object.keys(updateData).length > 0) {
+    await prisma.creator.update({
+      where: { id: creator.id },
+      data: updateData as Prisma.CreatorUpdateInput,
+    })
+  }
+
+  return { success: true }
+}
