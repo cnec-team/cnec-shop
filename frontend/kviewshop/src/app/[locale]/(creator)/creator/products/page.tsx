@@ -40,6 +40,7 @@ import { toast } from 'sonner';
 import { BrandBadge } from '@/components/common/BrandBadge';
 import { SafeImage } from '@/components/common/SafeImage';
 import { formatCurrency } from '@/lib/i18n/config';
+import { CreatorProductGrid } from '@/components/creator/CreatorProductGrid';
 import { PRODUCT_CATEGORY_LABELS } from '@/types/database';
 import { formatEarnings } from '@/lib/utils/beauty-labels';
 import { PriceBadgeTag, PriceScoutSheet } from '@/components/creator/PriceScout';
