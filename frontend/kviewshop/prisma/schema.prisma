@@ -497,6 +497,24 @@ model Creator {
   igProfileImageR2Url  String?   @map("ig_profile_image_r2_url")
   igTier               String?   @map("ig_tier") @db.VarChar(20)
   igRecentPostThumbnails Json?   @map("ig_recent_post_thumbnails") @db.JsonB
+  // Instagram data (Featuring + Apify 2026-04-16)
+  igUsername             String?   @unique @map("ig_username")
+  igFullName             String?   @map("ig_full_name")
+  igFollowersEffective   Int?      @map("ig_followers_effective")
+  igLanguage             String?   @map("ig_language")
+  igAvgReach             Int?      @map("ig_avg_reach")
+  igAvgLikes             Int?      @map("ig_avg_likes")
+  igAvgVideoViews        Int?      @map("ig_avg_video_views")
+  igAvgVideoLikes        Int?      @map("ig_avg_video_likes")
+  igAvgComments          Int?      @map("ig_avg_comments")
+  igAudienceGender       String?   @map("ig_audience_gender")
+  igAudienceAge          String?   @map("ig_audience_age")
+  igEstimatedCPR         Int?      @map("ig_estimated_cpr")
+  igEstimatedAdCost      Int?      @map("ig_estimated_ad_cost")
+  igProfilePicUrl        String?   @map("ig_profile_pic_url")
+  igEmail                String?   @map("ig_email")
+  igLastUploadDate       String?   @map("ig_last_upload_date")
+  igDataSource           String?   @map("ig_data_source")
   // Timestamps
   createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt            DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
