@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -42,6 +42,7 @@ interface NavItem {
   title: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
+  badge?: number;
 }
 
 interface NavSection {
@@ -52,6 +53,15 @@ interface NavSection {
 export function Sidebar({ role, locale }: SidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [pendingProposalCount, setPendingProposalCount] = useState(0);
+
+  useEffect(() => {
+    if (role !== 'creator') return;
+    fetch('/api/creator/proposals')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => { if (data?.pendingCount) setPendingProposalCount(data.pendingCount); })
+      .catch(() => {});
+  }, [role]);
 
   const getSections = (): NavSection[] => {
     const base = `/${locale}`;
@@ -114,7 +124,7 @@ export function Sidebar({ role, locale }: SidebarProps) {
             items: [
               { title: '공동구매', href: `${base}/creator/campaigns/gonggu`, icon: Megaphone },
               { title: '상시 판매', href: `${base}/creator/campaigns/pick`, icon: ShoppingBag },
-              { title: '받은 제안', href: `${base}/creator/proposals`, icon: Mail },
+              { title: '받은 제안', href: `${base}/creator/proposals`, icon: Mail, badge: pendingProposalCount },
             ],
           },
           {
@@ -186,7 +196,12 @@ export function Sidebar({ role, locale }: SidebarProps) {
                 )}
               >
                 <item.icon className={cn('h-4 w-4 shrink-0', isActive ? 'text-primary' : '')} />
-                {item.title}
+                <span className="flex-1">{item.title}</span>
+                {item.badge && item.badge > 0 ? (
+                  <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">
+                    {item.badge}
+                  </span>
+                ) : null}
               </Link>
             );
           })}
