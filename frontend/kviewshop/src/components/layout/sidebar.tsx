@@ -26,6 +26,7 @@ import {
   HelpCircle,
   Gift,
   ShoppingBag,
+  Mail,
 } from 'lucide-react';
 import type { UserRole } from '@/types/database';
 import type { Locale } from '@/lib/i18n/config';
@@ -109,6 +110,7 @@ export function Sidebar({ role, locale }: SidebarProps) {
             items: [
               { title: '공동구매', href: `${base}/creator/campaigns/gonggu`, icon: Megaphone },
               { title: '상시 판매', href: `${base}/creator/campaigns/pick`, icon: ShoppingBag },
+              { title: '받은 제안', href: `${base}/creator/proposals`, icon: Mail },
             ],
           },
           {
