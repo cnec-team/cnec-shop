@@ -53,14 +53,36 @@ export default function AdminCreatorImportPage() {
     if (!selectedFile) return
     setStatus('importing')
     try {
-      const formData = new FormData()
-      formData.append('file', selectedFile)
+      // 1단계: 프리사인드 R2 업로드 URL 발급 (Vercel 4.5MB 본문 제한 우회)
+      const urlRes = await fetch('/api/admin/import/instagram/upload-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: selectedFile.name }),
+      })
+      if (!urlRes.ok) {
+        const data = await urlRes.json().catch(() => ({}))
+        throw new Error(data.error || '업로드 URL 발급 실패')
+      }
+      const { uploadUrl, key } = await urlRes.json()
+
+      // 2단계: R2로 파일 직접 업로드 (Vercel 경유 X)
+      const putRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'text/csv' },
+        body: selectedFile,
+      })
+      if (!putRes.ok) {
+        throw new Error(`R2 업로드 실패 (${putRes.status})`)
+      }
+
+      // 3단계: R2 키로 임포트 API 호출
       const res = await fetch('/api/admin/import/instagram', {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ r2Key: key }),
       })
       if (!res.ok) {
-        const data = await res.json()
+        const data = await res.json().catch(() => ({}))
         throw new Error(data.error || '임포트 실패')
       }
       const result: ImportResult = await res.json()
