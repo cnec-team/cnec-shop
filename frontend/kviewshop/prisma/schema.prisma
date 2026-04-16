@@ -283,6 +283,18 @@ enum PriceBadgeType {
   UNKNOWN
 }
 
+enum ProposalType {
+  GONGGU
+  CREATOR_PICK
+}
+
+enum ProposalStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
 // ============================================================
 // USERS
 // ============================================================
@@ -375,11 +387,14 @@ model Brand {
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt             DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  products       Product[]
-  campaigns      Campaign[]
-  orders         Order[]
-  supportTickets SupportTicket[]
-  sampleRequests SampleRequest[]
+  products          Product[]
+  campaigns         Campaign[]
+  orders            Order[]
+  supportTickets    SupportTicket[]
+  sampleRequests    SampleRequest[]
+  creatorProposals  CreatorProposal[]
+  creatorGroups     CreatorGroup[]
+  proposalTemplates ProposalTemplate[]
 
   @@index([approved])
   @@index([mocraStatus])
@@ -468,6 +483,20 @@ model Creator {
   pickedProducts       String[]  @default([]) @map("picked_products")
   // Notification settings
   notificationSettings Json?     @map("notification_settings") @db.JsonB
+  // Instagram data (imported)
+  igFollowers          Int?      @map("ig_followers")
+  igFollowing          Int?      @map("ig_following")
+  igPostsCount         Int?      @map("ig_posts_count")
+  igBio                String?   @map("ig_bio")
+  igCategory           String?   @map("ig_category")
+  igVerified           Boolean   @default(false) @map("ig_verified")
+  igExternalUrl        String?   @map("ig_external_url")
+  igIsBusinessAccount  Boolean   @default(false) @map("ig_is_business_account")
+  igEngagementRate     Decimal?  @map("ig_engagement_rate") @db.Decimal(5, 2)
+  igDataImportedAt     DateTime? @map("ig_data_imported_at") @db.Timestamptz
+  igProfileImageR2Url  String?   @map("ig_profile_image_r2_url")
+  igTier               String?   @map("ig_tier") @db.VarChar(20)
+  igRecentPostThumbnails Json?   @map("ig_recent_post_thumbnails") @db.JsonB
   // Timestamps
   createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt            DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
@@ -496,8 +525,14 @@ model Creator {
   buyerWishlists       BuyerWishlist[]
   buyerCarts           BuyerCart[]
   productContents      CreatorProductContent[]
+  receivedProposals    CreatorProposal[]
+  groupMemberships     CreatorGroupMember[]
+  campaignParticipations CampaignParticipation[]
 
   @@index([country])
+  @@index([igFollowers])
+  @@index([igCategory])
+  @@index([igTier])
   @@map("creators")
 }
 
@@ -650,6 +685,7 @@ model Campaign {
   participations CampaignParticipation[]
   shopItems      CreatorShopItem[]
   promotionKit   PromotionKit?
+  proposals      CreatorProposal[]
 
   @@index([status])
   @@index([type])
@@ -681,6 +717,7 @@ model CampaignParticipation {
   campaignId String    @map("campaign_id")
   campaign   Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   creatorId  String    @map("creator_id")
+  creator    Creator   @relation(fields: [creatorId], references: [id])
   status     String    @default("PENDING") @db.VarChar(10)
   message    String?
   appliedAt  DateTime  @default(now()) @map("applied_at") @db.Timestamptz
@@ -1737,4 +1774,89 @@ model AiGonguTip {
 
   @@index([productId])
   @@map("ai_gonggu_tips")
+}
+
+// ============================================================
+// CREATOR PROPOSALS (brand → creator outreach)
+// ============================================================
+
+model CreatorProposal {
+  id              String            @id @default(uuid())
+  brandId         String            @map("brand_id")
+  brand           Brand             @relation(fields: [brandId], references: [id])
+  creatorId       String            @map("creator_id")
+  creator         Creator           @relation(fields: [creatorId], references: [id])
+  type            ProposalType
+  campaignId      String?           @map("campaign_id")
+  campaign        Campaign?         @relation(fields: [campaignId], references: [id])
+  templateId      String?           @map("template_id")
+  template        ProposalTemplate? @relation(fields: [templateId], references: [id])
+  message         String?
+  commissionRate  Decimal?          @map("commission_rate") @db.Decimal(5, 2)
+  status          ProposalStatus    @default(PENDING)
+  respondedAt     DateTime?         @map("responded_at") @db.Timestamptz
+  rejectionReason String?           @map("rejection_reason")
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([brandId, status])
+  @@index([creatorId, status])
+  @@map("creator_proposals")
+}
+
+// ============================================================
+// CREATOR GROUPS (brand-curated lists)
+// ============================================================
+
+model CreatorGroup {
+  id          String             @id @default(uuid())
+  brandId     String             @map("brand_id")
+  brand       Brand              @relation(fields: [brandId], references: [id])
+  name        String             @db.VarChar(50)
+  description String?
+  createdAt   DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  members     CreatorGroupMember[]
+
+  @@index([brandId])
+  @@map("creator_groups")
+}
+
+// ============================================================
+// CREATOR GROUP MEMBERS
+// ============================================================
+
+model CreatorGroupMember {
+  id        String       @id @default(uuid())
+  groupId   String       @map("group_id")
+  group     CreatorGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  creatorId String       @map("creator_id")
+  creator   Creator      @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  memo      String?
+  addedAt   DateTime     @default(now()) @map("added_at") @db.Timestamptz
+
+  @@unique([groupId, creatorId])
+  @@map("creator_group_members")
+}
+
+// ============================================================
+// PROPOSAL TEMPLATES
+// ============================================================
+
+model ProposalTemplate {
+  id             String          @id @default(uuid())
+  brandId        String          @map("brand_id")
+  brand          Brand           @relation(fields: [brandId], references: [id])
+  name           String          @db.VarChar(100)
+  type           ProposalType
+  subject        String?         @db.VarChar(200)
+  body           String
+  commissionRate Decimal?        @map("commission_rate") @db.Decimal(5, 2)
+  isDefault      Boolean         @default(false) @map("is_default")
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  proposals      CreatorProposal[]
+
+  @@index([brandId])
+  @@map("proposal_templates")
 }
