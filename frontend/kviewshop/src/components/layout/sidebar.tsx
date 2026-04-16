@@ -27,6 +27,8 @@ import {
   Gift,
   ShoppingBag,
   Mail,
+  Database,
+  Upload,
 } from 'lucide-react';
 import type { UserRole } from '@/types/database';
 import type { Locale } from '@/lib/i18n/config';
@@ -61,6 +63,8 @@ export function Sidebar({ role, locale }: SidebarProps) {
             { title: '브랜드 관리', href: `${base}/admin/brands`, icon: Store },
             { title: '주문 관리', href: `${base}/admin/orders`, icon: ShoppingBag },
             { title: '크리에이터 관리', href: `${base}/admin/creators`, icon: Users },
+            { title: '크리에이터 데이터', href: `${base}/admin/creator-data`, icon: Database },
+            { title: '데이터 임포트', href: `${base}/admin/creator-data/import`, icon: Upload },
             { title: '캠페인 관리', href: `${base}/admin/campaigns`, icon: Megaphone },
             { title: '샘플 관리', href: `${base}/admin/samples`, icon: Gift },
             { title: '정산 관리', href: `${base}/admin/settlements`, icon: DollarSign },
