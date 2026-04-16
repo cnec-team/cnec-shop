@@ -23,6 +23,9 @@ import {
   Repeat,
   Zap,
   Gift,
+  Search,
+  FolderOpen,
+  FileText,
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
@@ -93,6 +96,9 @@ export function BrandSidebar({ locale, brandName, brandStatus }: BrandSidebarPro
       items: [
         { title: '크리에이터 현황', href: `${base}/brand/creators`, icon: Users },
         { title: '승인 대기', href: `${base}/brand/creators/pending`, icon: UserCheck },
+        { title: '크리에이터 탐색', href: `${base}/brand/creators/explore`, icon: Search },
+        { title: '그룹 관리', href: `${base}/brand/creators/groups`, icon: FolderOpen },
+        { title: '메시지 템플릿', href: `${base}/brand/creators/templates`, icon: FileText },
       ],
     },
     {
