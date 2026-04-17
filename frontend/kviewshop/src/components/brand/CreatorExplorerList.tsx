@@ -17,7 +17,7 @@ import { CreatorFilter } from './CreatorFilter'
 import { CreatorCard } from './CreatorCard'
 import { CreatorTableRow } from './CreatorTableRow'
 import { BulkActionBar } from './BulkActionBar'
-import { ProposalModal } from './ProposalModal'
+import { InviteModal } from './InviteModal'
 import { GroupSaveDialog } from './GroupSaveDialog'
 import { ExportColumnsDialog } from './ExportColumnsDialog'
 import type { CreatorWithIg } from './types'
@@ -119,7 +119,10 @@ function CreatorExplorerContent() {
         onProposeBulk={() =>
           setProposalModal({ open: true, mode: 'bulk', creatorIds: [...selectedIds] })
         }
-        onSaveToGroup={() =>
+        onProductPickBulk={() =>
+          setProposalModal({ open: true, mode: 'bulk', creatorIds: [...selectedIds], defaultType: 'PRODUCT_PICK' })
+        }
+        onAddToGroup={() =>
           setGroupDialog({ open: true, creatorIds: [...selectedIds] })
         }
         onExport={() =>
@@ -249,7 +252,7 @@ function CreatorExplorerContent() {
         </div>
       )}
 
-      <ProposalModal
+      <InviteModal
         open={proposalModal.open}
         onOpenChange={open => setProposalModal(prev => ({ ...prev, open }))}
         mode={proposalModal.mode}
