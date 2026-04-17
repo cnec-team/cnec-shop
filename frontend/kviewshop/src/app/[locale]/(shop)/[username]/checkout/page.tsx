@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCartStore, useAuthStore } from '@/lib/store/auth';
 import { getCreatorByShopId, getCheckoutProducts } from '@/lib/actions/shop';
+import { getCart as getServerCart, clearCart as clearServerCart } from '@/lib/actions/cart';
 import {
   Loader2,
   ArrowLeft,
@@ -129,7 +130,7 @@ export default function CheckoutPage() {
     setReturnUrl(window.location.pathname);
   }, []);
 
-  // Load checkout data
+  // Load checkout data (서버 카트 우선, fallback Zustand)
   useEffect(() => {
     const loadData = async () => {
       if (!username || checkoutDoneRef.current) return;
@@ -144,28 +145,63 @@ export default function CheckoutPage() {
 
         setCreator(creatorData);
 
-        const creatorItems = items.filter((item) => item.creatorId === creatorData.id);
+        // 서버 카트에서 selected 아이템 로드 시도
+        let serverCartItems: CartItemWithProduct[] = [];
+        try {
+          const serverCart = await getServerCart(creatorData.id);
+          if (serverCart && serverCart.items.length > 0) {
+            const selectedServerItems = serverCart.items.filter((i: Record<string, unknown>) => i.selected !== false);
+            if (selectedServerItems.length > 0) {
+              serverCartItems = selectedServerItems.map((si: Record<string, unknown>) => {
+                const prod = si.product as Record<string, unknown> | null;
+                const camp = si.campaign as Record<string, unknown> | null;
+                return {
+                  productId: si.productId as string,
+                  campaignId: (camp?.id as string) || (si.campaignId as string) || undefined,
+                  quantity: si.quantity as number,
+                  creatorId: creatorData.id,
+                  unitPrice: Number(prod?.salePrice ?? 0),
+                  product: prod,
+                };
+              });
+            }
+          }
+        } catch {
+          // 서버 카트 로드 실패 시 fallback
+        }
 
-        if (creatorItems.length === 0) {
+        // 서버 카트에 아이템이 있으면 사용, 없으면 Zustand fallback
+        let finalItems: CartItemWithProduct[];
+        if (serverCartItems.length > 0) {
+          finalItems = serverCartItems;
+        } else {
+          const creatorItems = items.filter((item) => item.creatorId === creatorData.id);
+          if (creatorItems.length === 0) {
+            router.push(`/${locale}/${username}`);
+            return;
+          }
+
+          const productIds = creatorItems.map((item) => item.productId);
+          const products = await getCheckoutProducts(productIds);
+
+          finalItems = creatorItems.map((item) => {
+            const product = products?.find((p: Record<string, unknown>) => p.id === item.productId);
+            const cartPrice = Number(item.unitPrice);
+            const dbPrice = Number((product as Record<string, unknown>)?.salePrice ?? 0);
+            return {
+              ...item,
+              unitPrice: isNaN(cartPrice) || cartPrice <= 0 ? dbPrice : cartPrice,
+              product,
+            };
+          });
+        }
+
+        if (finalItems.length === 0) {
           router.push(`/${locale}/${username}`);
           return;
         }
 
-        const productIds = creatorItems.map((item) => item.productId);
-        const products = await getCheckoutProducts(productIds);
-
-        const itemsWithProducts: CartItemWithProduct[] = creatorItems.map((item) => {
-          const product = products?.find((p: any) => p.id === item.productId);
-          const cartPrice = Number(item.unitPrice);
-          const dbPrice = Number(product?.salePrice ?? 0);
-          return {
-            ...item,
-            unitPrice: isNaN(cartPrice) || cartPrice <= 0 ? dbPrice : cartPrice,
-            product,
-          };
-        });
-
-        setCartItems(itemsWithProducts);
+        setCartItems(finalItems);
       } catch (error) {
         console.error('Failed to load checkout data:', error);
         toast.error('데이터를 불러오는데 실패했습니다.');
@@ -424,6 +460,7 @@ export default function CheckoutPage() {
         }));
         checkoutDoneRef.current = true;
         clearCart();
+        if (creator?.id) clearServerCart(creator.id).catch(() => {});
         router.push(`/${locale}/${username}/order-complete?orderNumber=${orderNumber}`);
         return;
       }
@@ -525,6 +562,7 @@ export default function CheckoutPage() {
       }));
       checkoutDoneRef.current = true;
       clearCart();
+      if (creator?.id) clearServerCart(creator.id).catch(() => {});
       router.push(`/${locale}/${username}/order-complete?orderNumber=${completeOrderNumber}`);
     } catch (error: unknown) {
       console.error('Checkout failed:', error);

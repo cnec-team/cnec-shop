@@ -650,6 +650,9 @@ model Creator {
   campaignParticipations CampaignParticipation[]
   messageCredits       MessageCredit[]
   dmQueues             DmSendQueue[]
+  // Server cart + shop visits
+  cartsAtShop          Cart[]
+  creatorShopVisits    CreatorShopVisit[] @relation("CreatorShopVisits")
 
   @@index([country])
   @@index([igFollowers])
@@ -732,6 +735,9 @@ model Product {
   priceData          ProductPriceData[]
   priceBadge         PriceBadge?
   aiGonguTips        AiGonguTip[]
+  // Server cart + recent view
+  cartItems          CartItem[]
+  recentViews        RecentView[]
 
   @@index([isActive])
   @@index([status])
@@ -808,6 +814,7 @@ model Campaign {
   shopItems      CreatorShopItem[]
   promotionKit   PromotionKit?
   proposals      CreatorProposal[]
+  cartItems      CartItem[]
 
   @@index([status])
   @@index([type])
@@ -1203,6 +1210,9 @@ model Buyer {
   wishlist            BuyerWishlist[]
   cart                BuyerCart[]
   liveChatMessages    LiveChatMessage[]
+  // Server cart + wishlist + recent view
+  carts               Cart[]
+  recentViews         RecentView[]
 
   @@index([pointsBalance])
   @@index([eligibleForCreator])
@@ -1793,7 +1803,7 @@ model BuyerWishlist {
 }
 
 // ============================================================
-// BUYER CART
+// BUYER CART (legacy — 기존 호환)
 // ============================================================
 
 model BuyerCart {
@@ -1810,6 +1820,80 @@ model BuyerCart {
 
   @@unique([buyerId, productId, creatorId])
   @@map("buyer_cart")
+}
+
+// ============================================================
+// SERVER CART (서버 기반 장바구니 — 비회원 + 회원 + 샵별 분리)
+// ============================================================
+
+model Cart {
+  id        String     @id @default(uuid())
+  buyerId   String?    @map("buyer_id")
+  buyer     Buyer?     @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  cookieKey String?    @map("cookie_key") @db.VarChar(64)
+  shopId    String     @map("shop_id")
+  shop      Creator    @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  items     CartItem[]
+
+  @@unique([buyerId, shopId])
+  @@unique([cookieKey, shopId])
+  @@index([buyerId])
+  @@index([cookieKey])
+  @@map("carts")
+}
+
+model CartItem {
+  id         String    @id @default(uuid())
+  cartId     String    @map("cart_id")
+  cart       Cart      @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId  String    @map("product_id")
+  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  campaignId String?   @map("campaign_id")
+  campaign   Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  quantity   Int       @default(1)
+  selected   Boolean   @default(true)
+  addedAt    DateTime  @default(now()) @map("added_at") @db.Timestamptz
+
+  @@unique([cartId, productId, campaignId])
+  @@map("cart_items")
+}
+
+// ============================================================
+// RECENT VIEW (최근 본 상품)
+// ============================================================
+
+model RecentView {
+  id        String   @id @default(uuid())
+  buyerId   String?  @map("buyer_id")
+  buyer     Buyer?   @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  cookieKey String?  @map("cookie_key") @db.VarChar(64)
+  shopId    String   @map("shop_id")
+  productId String   @map("product_id")
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  viewedAt  DateTime @default(now()) @map("viewed_at") @db.Timestamptz
+
+  @@index([buyerId, shopId, viewedAt(sort: Desc)])
+  @@index([cookieKey, shopId, viewedAt(sort: Desc)])
+  @@map("recent_views")
+}
+
+// ============================================================
+// CREATOR SHOP VISIT (샵 방문 기록)
+// ============================================================
+
+model CreatorShopVisit {
+  id        String   @id @default(uuid())
+  buyerId   String?  @map("buyer_id")
+  cookieKey String?  @map("cookie_key") @db.VarChar(64)
+  shopId    String   @map("shop_id")
+  shop      Creator  @relation("CreatorShopVisits", fields: [shopId], references: [id], onDelete: Cascade)
+  source    String?  @db.VarChar(50)
+  visitedAt DateTime @default(now()) @map("visited_at") @db.Timestamptz
+
+  @@index([shopId, visitedAt(sort: Desc)])
+  @@map("creator_shop_visits")
 }
 
 // ============================================================

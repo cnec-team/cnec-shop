@@ -4,7 +4,11 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useCartStore } from '@/lib/store/auth';
+import { addToCart } from '@/lib/actions/cart';
+import { toggleWishlist, isProductWishlisted } from '@/lib/actions/wishlist';
+import { useGuestWishlistStore } from '@/lib/store/guest-wishlist';
+import { useUser } from '@/lib/hooks/use-user';
+import { toast } from 'sonner';
 import {
   ArrowLeft,
   ChevronLeft,
@@ -98,7 +102,8 @@ export function ProductDetailPage({
   reelsCaption,
 }: ProductDetailPageProps) {
   const router = useRouter();
-  const { addItem } = useCartStore();
+  const { buyer } = useUser();
+  const guestWishlist = useGuestWishlistStore();
   const [quantity, setQuantity] = useState(1);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [shippingOpen, setShippingOpen] = useState(false);
@@ -106,6 +111,16 @@ export function ProductDetailPage({
   const [expandedCaptions, setExpandedCaptions] = useState<Record<string, boolean>>({});
   const [liked, setLiked] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+
+  // 찜 상태 초기 로드
+  useEffect(() => {
+    if (buyer) {
+      isProductWishlisted(creator.id, product.id).then(setLiked).catch(() => {});
+    } else {
+      setLiked(guestWishlist.isWishlisted(creator.id, product.id));
+    }
+  }, [buyer, creator.id, product.id, guestWishlist]);
 
   const campaign = campaignProduct?.campaign as Campaign | undefined;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -175,25 +190,51 @@ export function ProductDetailPage({
     setCurrentImageIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
   }, [images.length]);
 
-  const handleAddToCart = () => {
-    addItem({
-      productId: product.id,
-      campaignId: campaignId as string | undefined,
-      quantity,
-      creatorId: creator.id,
-      unitPrice: effectivePrice,
-    });
+  const handleAddToCart = async () => {
+    if (isAddingToCart) return;
+    setIsAddingToCart(true);
+    try {
+      await addToCart({
+        shopId: creator.id,
+        productId: product.id,
+        campaignId: campaignId as string | undefined,
+        quantity,
+      });
+      toast.success('장바구니에 담았습니다');
+    } catch {
+      toast.error('장바구니 추가에 실패했습니다');
+    } finally {
+      setIsAddingToCart(false);
+    }
   };
 
-  const handleBuy = () => {
-    handleAddToCart();
+  const handleBuy = async () => {
+    await handleAddToCart();
     setSheetOpen(false);
     router.push(`/${locale}/${username}/checkout`);
   };
 
-  const handleAddToCartAndClose = () => {
-    handleAddToCart();
+  const handleAddToCartAndClose = async () => {
+    await handleAddToCart();
     setSheetOpen(false);
+  };
+
+  const handleToggleWishlist = async () => {
+    if (buyer) {
+      try {
+        const result = await toggleWishlist({ shopId: creator.id, productId: product.id });
+        setLiked(result.wishlisted);
+        toast.success(result.wishlisted ? '찜 목록에 추가했습니다' : '찜 목록에서 제거했습니다');
+      } catch {
+        toast.error('찜 처리에 실패했습니다');
+      }
+    } else {
+      const wishlisted = guestWishlist.toggle({ shopId: creator.id, productId: product.id });
+      setLiked(wishlisted);
+      if (wishlisted) {
+        toast('찜 목록에 추가했습니다', { description: '회원이면 영구 저장돼요' });
+      }
+    }
   };
 
   // Creator name
@@ -740,7 +781,7 @@ export function ProductDetailPage({
       <div className="fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-gray-100 shadow-lg" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="max-w-lg mx-auto flex items-center gap-3 px-4 h-[80px]">
           <button
-            onClick={() => setLiked(!liked)}
+            onClick={handleToggleWishlist}
             className="w-14 h-14 flex items-center justify-center border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
           >
             <Heart className={`w-5 h-5 ${liked ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />

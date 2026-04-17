@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { CreatorShopPage } from '@/components/shop/creator-shop';
 import type { ShopCreator, ShopItem, ShopCollection } from '@/components/shop/creator-shop';
 import { OrganizationJsonLd } from '@/components/seo/JsonLd';
+import { recordShopVisit } from '@/lib/actions/shop-visit';
 import type { Metadata } from 'next';
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.cnecshop.com';
@@ -188,6 +189,9 @@ export default async function ShopPage({ params }: ShopPageProps) {
   if (!creator) {
     notFound();
   }
+
+  // 샵 방문 기록
+  recordShopVisit(creator.id).catch(() => {});
 
   const [shopItems, collections] = await Promise.all([
     getShopItems(creator.id),

@@ -25,6 +25,10 @@ import {
   Loader2,
 } from 'lucide-react';
 import { getBuyerHomeData } from '@/lib/actions/buyer';
+import { getCartItemCount } from '@/lib/actions/cart';
+import { getWishlistCount } from '@/lib/actions/wishlist';
+import { getRecentViewCount } from '@/lib/actions/recent-view';
+import { resolveCreatorId } from '@/lib/actions/shop-resolve';
 
 interface StatusCounts {
   PAID: number;
@@ -46,6 +50,9 @@ export default function ShopMyPage() {
     REFUNDED: 0,
   });
   const [pointsBalance, setPointsBalance] = useState(0);
+  const [cartCount, setCartCount] = useState(0);
+  const [wishlistCount, setWishlistCount] = useState(0);
+  const [recentCount, setRecentCount] = useState(0);
   const [isDataLoading, setIsDataLoading] = useState(true);
   const fetchedRef = useRef(false);
 
@@ -57,7 +64,15 @@ export default function ShopMyPage() {
 
     const loadData = async () => {
       try {
-        const result = await getBuyerHomeData(buyerId);
+        const creatorId = await resolveCreatorId(username);
+
+        const [result, cc, wc, rc] = await Promise.all([
+          getBuyerHomeData(buyerId),
+          creatorId ? getCartItemCount(creatorId) : Promise.resolve(0),
+          creatorId ? getWishlistCount(creatorId) : Promise.resolve(0),
+          creatorId ? getRecentViewCount(creatorId) : Promise.resolve(0),
+        ]);
+
         if (result?.statusCounts) {
           setStatusCounts({
             PAID: result.statusCounts['PAID'] ?? 0,
@@ -67,6 +82,9 @@ export default function ShopMyPage() {
           });
         }
         setPointsBalance(result?.pointsBalance ?? 0);
+        setCartCount(cc);
+        setWishlistCount(wc);
+        setRecentCount(rc);
       } catch (error) {
         console.error('마이페이지 데이터 로드 실패:', error);
       } finally {
@@ -75,7 +93,7 @@ export default function ShopMyPage() {
     };
 
     loadData();
-  }, [isUserLoading, buyerId]);
+  }, [isUserLoading, buyerId, username]);
 
   // Not logged in → prompt login
   if (!isUserLoading && !user) {
@@ -121,9 +139,9 @@ export default function ShopMyPage() {
   ];
 
   const menuItems = [
-    { label: '장바구니', icon: ShoppingBag, href: `/${locale}/${username}/checkout` },
-    { label: '찜한 상품', icon: Heart, href: `/${locale}/${username}/me/wishlist` },
-    { label: '최근 본 상품', icon: Clock, href: `/${locale}/${username}/me/recent` },
+    { label: '장바구니', icon: ShoppingBag, href: `/${locale}/${username}/cart`, badge: cartCount > 0 ? `${cartCount}` : undefined },
+    { label: '찜한 상품', icon: Heart, href: `/${locale}/${username}/me/wishlist`, badge: wishlistCount > 0 ? `${wishlistCount}` : undefined },
+    { label: '최근 본 상품', icon: Clock, href: `/${locale}/${username}/me/recent`, badge: recentCount > 0 ? `${recentCount}` : undefined },
     { divider: true },
     { label: '배송지 관리', icon: MapPin, href: `/${locale}/buyer/settings` },
     { label: '결제수단', icon: CreditCard, href: `/${locale}/buyer/settings` },
