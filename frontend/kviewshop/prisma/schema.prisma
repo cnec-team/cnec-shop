@@ -295,6 +295,73 @@ enum ProposalStatus {
   EXPIRED
 }
 
+enum SubscriptionPlan {
+  FREE
+  STARTER
+  PRO
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAUSED
+  CANCELLED
+}
+
+enum MessageCreditType {
+  SUBSCRIPTION_FREE
+  PAID
+}
+
+enum SubPaymentStatus {
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum DmQueueStatus {
+  PENDING
+  IN_PROGRESS
+  SENT
+  FAILED
+  SKIPPED
+}
+
+enum DmSendLogEvent {
+  CREATED
+  PICKED
+  SENT
+  FAILED
+  RETRIED
+}
+
+enum BrandIgHandleStatus {
+  NOT_LINKED
+  PENDING
+  VERIFIED
+  FAILED
+}
+
+enum ChannelDeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+enum CreatorCnecJoinStatus {
+  NOT_JOINED
+  JOINED
+  VERIFIED
+}
+
+enum IgSyncStatus {
+  PENDING
+  SYNCING
+  SUCCESS
+  FAILED
+}
+
 // ============================================================
 // USERS
 // ============================================================
@@ -387,14 +454,26 @@ model Brand {
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt             DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  products          Product[]
-  campaigns         Campaign[]
-  orders            Order[]
-  supportTickets    SupportTicket[]
-  sampleRequests    SampleRequest[]
-  creatorProposals  CreatorProposal[]
-  creatorGroups     CreatorGroup[]
-  proposalTemplates ProposalTemplate[]
+  // Instagram 연동 (DM 발송용)
+  brandInstagramHandle              String?           @map("brand_instagram_handle")
+  brandInstagramHandleStatus        BrandIgHandleStatus @default(NOT_LINKED) @map("brand_instagram_handle_status")
+  brandInstagramHandleVerifiedAt    DateTime?         @map("brand_instagram_handle_verified_at") @db.Timestamptz
+  brandInstagramSessionExpiresAt    DateTime?         @map("brand_instagram_session_expires_at") @db.Timestamptz
+  brandInstagramLastUsedAt          DateTime?         @map("brand_instagram_last_used_at") @db.Timestamptz
+  brandInstagramDailySentCount      Int               @default(0) @map("brand_instagram_daily_sent_count")
+
+  products              Product[]
+  campaigns             Campaign[]
+  orders                Order[]
+  supportTickets        SupportTicket[]
+  sampleRequests        SampleRequest[]
+  creatorProposals      CreatorProposal[]
+  creatorGroups         CreatorGroup[]
+  proposalTemplates     ProposalTemplate[]
+  subscription          BrandSubscription?
+  messageCredits        MessageCredit[]
+  subscriptionPayments  SubscriptionPayment[]
+  dmQueues              DmSendQueue[]
 
   @@index([approved])
   @@index([mocraStatus])
@@ -515,6 +594,28 @@ model Creator {
   igEmail                String?   @map("ig_email")
   igLastUploadDate       String?   @map("ig_last_upload_date")
   igDataSource           String?   @map("ig_data_source")
+  // Instagram 상세 지표 (Phase 2)
+  igAvgFeedLikes         Int?      @map("ig_avg_feed_likes")
+  igAvgFeedComments      Int?      @map("ig_avg_feed_comments")
+  igAvgReelViews         Int?      @map("ig_avg_reel_views")
+  igAvgReelLikes         Int?      @map("ig_avg_reel_likes")
+  igEstimatedReach       Int?      @map("ig_estimated_reach")
+  igValidFollowers       Int?      @map("ig_valid_followers")
+  igPrimaryLanguage      String?   @map("ig_primary_language")
+  igLastPostAt           DateTime? @map("ig_last_post_at") @db.Timestamptz
+  igEstimatedCPRDecimal  Decimal?  @map("ig_estimated_cpr_decimal") @db.Decimal(10, 2)
+  igEstimatedAdFee       Decimal?  @map("ig_estimated_ad_fee") @db.Decimal(12, 0)
+  audienceGenderRatio    Json?     @map("audience_gender_ratio") @db.JsonB
+  audienceAgeRatio       Json?     @map("audience_age_ratio") @db.JsonB
+  igLastSyncedAt         DateTime? @map("ig_last_synced_at") @db.Timestamptz
+  igSyncStatus           IgSyncStatus @default(PENDING) @map("ig_sync_status")
+  igHistoricalStats      Json?     @map("ig_historical_stats") @db.JsonB
+  // 연락처 & 발송 가능 채널
+  hasBrandEmail          Boolean   @default(false) @map("has_brand_email")
+  brandContactEmail      String?   @map("brand_contact_email")
+  hasPhone               Boolean   @default(false) @map("has_phone")
+  phoneForAlimtalk       String?   @map("phone_for_alimtalk")
+  cnecJoinStatus         CreatorCnecJoinStatus @default(NOT_JOINED) @map("cnec_join_status")
   // Timestamps
   createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt            DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
@@ -546,6 +647,8 @@ model Creator {
   receivedProposals    CreatorProposal[]
   groupMemberships     CreatorGroupMember[]
   campaignParticipations CampaignParticipation[]
+  messageCredits       MessageCredit[]
+  dmQueues             DmSendQueue[]
 
   @@index([country])
   @@index([igFollowers])
@@ -1814,8 +1917,24 @@ model CreatorProposal {
   status          ProposalStatus    @default(PENDING)
   respondedAt     DateTime?         @map("responded_at") @db.Timestamptz
   rejectionReason String?           @map("rejection_reason")
+  // 메시지 크레딧 연결
+  messageCreditId String?           @map("message_credit_id")
+  messageCredit   MessageCredit?    @relation(fields: [messageCreditId], references: [id])
+  // 채널별 발송 상태
+  inAppSentAt     DateTime?         @map("in_app_sent_at") @db.Timestamptz
+  emailSentAt     DateTime?         @map("email_sent_at") @db.Timestamptz
+  kakaoSentAt     DateTime?         @map("kakao_sent_at") @db.Timestamptz
+  dmQueuedAt      DateTime?         @map("dm_queued_at") @db.Timestamptz
+  inAppStatus     ChannelDeliveryStatus @default(PENDING) @map("in_app_status")
+  emailStatus     ChannelDeliveryStatus @default(PENDING) @map("email_status")
+  kakaoStatus     ChannelDeliveryStatus @default(PENDING) @map("kakao_status")
+  dmStatus        ChannelDeliveryStatus @default(SKIPPED) @map("dm_status")
+  useInstagramDm  Boolean           @default(false) @map("use_instagram_dm")
+  // Timestamps
   createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz
   updatedAt       DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  dmQueues        DmSendQueue[]
 
   @@index([brandId, status])
   @@index([creatorId, status])
@@ -1877,4 +1996,129 @@ model ProposalTemplate {
 
   @@index([brandId])
   @@map("proposal_templates")
+}
+
+// ============================================================
+// BRAND SUBSCRIPTION (구독 플랜)
+// ============================================================
+
+model BrandSubscription {
+  id                    String             @id @default(uuid())
+  brandId               String             @unique @map("brand_id")
+  brand                 Brand              @relation(fields: [brandId], references: [id])
+  plan                  SubscriptionPlan   @default(FREE)
+  status                SubscriptionStatus @default(ACTIVE)
+  startedAt             DateTime           @default(now()) @map("started_at") @db.Timestamptz
+  expiresAt             DateTime?          @map("expires_at") @db.Timestamptz
+  nextBillingAt         DateTime?          @map("next_billing_at") @db.Timestamptz
+  cancelledAt           DateTime?          @map("cancelled_at") @db.Timestamptz
+  monthlyFee            Decimal            @default(0) @map("monthly_fee") @db.Decimal(12, 0)
+  includedMessageQuota  Int                @default(0) @map("included_message_quota")
+  currentMonthUsed      Int                @default(0) @map("current_month_used")
+  currentMonthResetAt   DateTime?          @map("current_month_reset_at") @db.Timestamptz
+  createdAt             DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  payments              SubscriptionPayment[]
+
+  @@index([brandId])
+  @@index([expiresAt])
+  @@map("brand_subscriptions")
+}
+
+// ============================================================
+// MESSAGE CREDIT (건별 과금 로그)
+// ============================================================
+
+model MessageCredit {
+  id                String           @id @default(uuid())
+  brandId           String           @map("brand_id")
+  brand             Brand            @relation(fields: [brandId], references: [id])
+  proposalId        String?          @map("proposal_id")
+  type              MessageCreditType
+  cost              Decimal          @default(0) @db.Decimal(10, 0)
+  pricePerMessage   Decimal          @default(500) @map("price_per_message") @db.Decimal(10, 0)
+  attemptedChannels String[]         @default([]) @map("attempted_channels")
+  succeededChannels String[]         @default([]) @map("succeeded_channels")
+  creatorId         String           @map("creator_id")
+  creator           Creator          @relation(fields: [creatorId], references: [id])
+  sentAt            DateTime         @default(now()) @map("sent_at") @db.Timestamptz
+  createdAt         DateTime         @default(now()) @map("created_at") @db.Timestamptz
+
+  proposals         CreatorProposal[]
+
+  @@index([brandId, sentAt])
+  @@index([proposalId])
+  @@map("message_credits")
+}
+
+// ============================================================
+// SUBSCRIPTION PAYMENT (구독 결제 내역)
+// ============================================================
+
+model SubscriptionPayment {
+  id                String            @id @default(uuid())
+  brandId           String            @map("brand_id")
+  brand             Brand             @relation(fields: [brandId], references: [id])
+  subscriptionId    String            @map("subscription_id")
+  subscription      BrandSubscription @relation(fields: [subscriptionId], references: [id])
+  amount            Decimal           @db.Decimal(12, 0)
+  plan              String
+  paidAt            DateTime          @default(now()) @map("paid_at") @db.Timestamptz
+  portOnePaymentId  String?           @map("portone_payment_id")
+  status            SubPaymentStatus  @default(PAID)
+  periodStart       DateTime          @map("period_start") @db.Timestamptz
+  periodEnd         DateTime          @map("period_end") @db.Timestamptz
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([brandId])
+  @@index([subscriptionId])
+  @@map("subscription_payments")
+}
+
+// ============================================================
+// DM SEND QUEUE (크롬 확장용 DM 발송 큐)
+// ============================================================
+
+model DmSendQueue {
+  id                     String        @id @default(uuid())
+  brandId                String        @map("brand_id")
+  brand                  Brand         @relation(fields: [brandId], references: [id])
+  creatorId              String        @map("creator_id")
+  creator                Creator       @relation(fields: [creatorId], references: [id])
+  proposalId             String        @map("proposal_id")
+  proposal               CreatorProposal @relation(fields: [proposalId], references: [id])
+  instagramUsername       String        @map("instagram_username")
+  messageBody            String        @map("message_body")
+  status                 DmQueueStatus @default(PENDING)
+  attemptCount           Int           @default(0) @map("attempt_count")
+  lastAttemptedAt        DateTime?     @map("last_attempted_at") @db.Timestamptz
+  sentAt                 DateTime?     @map("sent_at") @db.Timestamptz
+  failReason             String?       @map("fail_reason")
+  brandInstagramAccount  String?       @map("brand_instagram_account")
+  priority               Int           @default(0)
+  createdAt              DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt              DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  logs                   DmSendLog[]
+
+  @@index([brandId, status])
+  @@index([status, priority])
+  @@map("dm_send_queues")
+}
+
+// ============================================================
+// DM SEND LOG (DM 발송 이벤트 로그)
+// ============================================================
+
+model DmSendLog {
+  id          String         @id @default(uuid())
+  queueId     String         @map("queue_id")
+  queue       DmSendQueue    @relation(fields: [queueId], references: [id], onDelete: Cascade)
+  event       DmSendLogEvent
+  detail      Json?          @db.JsonB
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([queueId])
+  @@map("dm_send_logs")
 }
