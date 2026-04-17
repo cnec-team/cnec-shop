@@ -14,6 +14,9 @@ export {
   trialShippedMessage,
   trialRequestedMessage,
   settlementConfirmedMessage,
+  proposalGongguInviteMessage,
+  proposalProductPickMessage,
+  bulkSendReportMessage,
 } from './templates'
 
 import { prisma } from '@/lib/db'

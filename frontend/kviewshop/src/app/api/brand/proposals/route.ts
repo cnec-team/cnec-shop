@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getAuthUser } from '@/lib/auth-helpers'
-import { sendNotification } from '@/lib/notifications'
+import { sendNotification, sendEmail, sendKakaoAlimtalk } from '@/lib/notifications'
+import { proposalGongguInviteMessage, proposalProductPickMessage } from '@/lib/notifications/templates'
 import { canSendMessage, consumeMessageCredit } from '@/lib/subscription/check'
 import { getCreatorChannels, canProposalBeSent } from '@/lib/messaging/channel-availability'
-import { sendProposalEmail } from '@/lib/email/resend'
-import { sendProposalAlimtalk } from '@/lib/kakao/solapi'
 import { withRetry } from '@/lib/messaging/retry'
 
 export async function POST(request: NextRequest) {
@@ -88,7 +87,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (type === 'GONGGU' && !campaignId) {
-      return NextResponse.json({ error: '공구 초대 시 캠페인을 선택해주세요' }, { status: 400 })
+      return NextResponse.json({ error: '공구 초대 시 캠페인을 선택��주세요' }, { status: 400 })
     }
 
     if (campaignId) {
@@ -97,7 +96,7 @@ export async function POST(request: NextRequest) {
         select: { id: true, status: true },
       })
       if (!campaign) {
-        return NextResponse.json({ error: '캠페인을 찾을 수 없습니다' }, { status: 404 })
+        return NextResponse.json({ error: '캠페���을 찾을 수 없습니다' }, { status: 404 })
       }
       if (!['RECRUITING', 'ACTIVE'].includes(campaign.status)) {
         return NextResponse.json(
@@ -161,7 +160,32 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // 6. 채널별 발송 시도
+    // 6. 템플릿 빌드
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.cnecshop.com'
+    const acceptUrl = `${siteUrl}/creator/proposals`
+    const campaignName = campaignId
+      ? (await prisma.campaign.findUnique({ where: { id: campaignId }, select: { title: true } }))?.title ?? ''
+      : ''
+
+    const template = type === 'GONGGU'
+      ? proposalGongguInviteMessage({
+          creatorName: creator.displayName ?? '크리에이터',
+          brandName: brand.brandName ?? '브랜드',
+          campaignName,
+          commissionRate: commissionRate ?? undefined,
+          messageBody: message || undefined,
+          acceptUrl,
+        })
+      : proposalProductPickMessage({
+          creatorName: creator.displayName ?? '크리에이터',
+          brandName: brand.brandName ?? '브랜드',
+          productName: campaignName,
+          commissionRate: commissionRate ?? undefined,
+          messageBody: message || undefined,
+          acceptUrl,
+        })
+
+    // 7. 채널별 발송 시도
     const channelResults: Record<string, string> = {}
 
     // IN_APP: 알림 생성
@@ -169,10 +193,10 @@ export async function POST(request: NextRequest) {
       try {
         await sendNotification({
           userId: creator.userId,
-          type: 'CAMPAIGN',
-          title: '새로운 제안이 도착했습니다',
-          message: `${brand.brandName ?? '브랜드'}에서 ${type === 'GONGGU' ? '공구' : '상품 추천'} 제안이 왔습니다`,
-          linkUrl: '/creator/proposals',
+          type: template.inApp.type,
+          title: template.inApp.title,
+          message: template.inApp.message,
+          linkUrl: template.inApp.linkUrl,
         })
         succeededChannels.push('IN_APP')
         channelResults.inApp = 'SENT'
@@ -189,23 +213,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // EMAIL: Resend 발송
+    // EMAIL: Naver Works SMTP 발송
     if (channels.email && creator.brandContactEmail) {
       try {
-        const campaignName = campaignId
-          ? (await prisma.campaign.findUnique({ where: { id: campaignId }, select: { title: true } }))?.title ?? ''
-          : ''
-        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.cnecshop.com'
-        const acceptUrl = `${siteUrl}/creator/proposals`
         const emailResult = await withRetry(
-          () => sendProposalEmail({
+          () => sendEmail({
             to: creator.brandContactEmail!,
-            creatorName: creator.displayName ?? '크리에이터',
-            brandName: brand.brandName ?? '브랜드',
-            proposalType: type,
-            campaignOrProductName: campaignName,
-            messageBody: message || '',
-            acceptUrl,
+            subject: template.email.subject,
+            html: template.email.html,
           }),
           3,
           1000,
@@ -215,7 +230,7 @@ export async function POST(request: NextRequest) {
           channelResults.email = 'SENT'
           await prisma.creatorProposal.update({
             where: { id: proposal.id },
-            data: { emailStatus: 'SENT', emailSentAt: now, emailMessageId: emailResult.id },
+            data: { emailStatus: 'SENT', emailSentAt: now },
           })
         } else {
           channelResults.email = 'FAILED'
@@ -233,7 +248,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // KAKAO: Solapi 알림톡 발송
+    // KAKAO: 팝빌 알림톡 발송
     if (channels.kakao) {
       try {
         const creatorPhone = await prisma.creator.findUnique({
@@ -241,19 +256,13 @@ export async function POST(request: NextRequest) {
           select: { phoneForAlimtalk: true },
         })
         if (creatorPhone?.phoneForAlimtalk) {
-          const campaignName = campaignId
-            ? (await prisma.campaign.findUnique({ where: { id: campaignId }, select: { title: true } }))?.title ?? ''
-            : ''
-          const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.cnecshop.com'
           const kakaoResult = await withRetry(
-            () => sendProposalAlimtalk({
-              to: creatorPhone.phoneForAlimtalk!,
-              creatorName: creator.displayName ?? '크리에이터',
-              brandName: brand.brandName ?? '브랜드',
-              proposalType: type,
-              campaignOrProductName: campaignName,
-              commissionRate: commissionRate ?? undefined,
-              acceptUrl: `${siteUrl}/creator/proposals`,
+            () => sendKakaoAlimtalk({
+              templateCode: template.kakao.templateCode,
+              receiverNum: creatorPhone.phoneForAlimtalk!,
+              receiverName: creator.displayName ?? '크리에이터',
+              message: template.kakao.message,
+              altText: template.kakao.message,
             }),
             3,
             1000,
@@ -308,7 +317,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 7. succeededChannels 업데이트
+    // 8. succeededChannels 업데이트
     await prisma.messageCredit.update({
       where: { id: credit.creditId },
       data: {
@@ -332,7 +341,7 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('제안 발송 오류:', error)
-    return NextResponse.json({ error: '제안 발송 중 오류가 발생했습니다' }, { status: 500 })
+    return NextResponse.json({ error: '제안 발송 중 오류가 발생���습니다' }, { status: 500 })
   }
 }
 

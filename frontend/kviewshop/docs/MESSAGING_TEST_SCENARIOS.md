@@ -5,8 +5,8 @@
 **조건:** cnecJoinStatus=VERIFIED, hasBrandEmail=true, hasPhone=true
 **기대:**
 - [x] 인앱 알림 생성 (notification INSERT)
-- [x] 이메일 발송 (Resend API, emailStatus=SENT)
-- [x] 알림톡 발송 (Solapi API, kakaoStatus=SENT)
+- [x] 이메일 발송 (Naver Works SMTP, emailStatus=SENT)
+- [x] 알림톡 발송 (팝빌 API, kakaoStatus=SENT)
 - [ ] DM 발송 안함 (useInstagramDm=false)
 **DB:** CreatorProposal.inAppStatus=SENT, emailStatus=SENT, kakaoStatus=SENT, dmStatus=SKIPPED
 
@@ -46,11 +46,11 @@
 
 ## 시나리오 6: 50명 일괄 발송
 
-**조건:** 50명 선택, confirm=false → 미리보기 → confirm=true
+**조건:** 50명 선택, confirm=false -> 미리보기 -> confirm=true
 **기대:**
 1. confirm=false: `{ totalCount, freeCount, paidCount, paidAmount, channelBreakdown }`
 2. confirm=true:
-   - 50명 순회 → 각 크리에이터별 가용 채널로 발송
+   - 50명 순회 -> 각 크리에이터별 가용 채널로 발송
    - Promise.allSettled로 병렬 처리
    - 실패해도 다른 크리에이터 계속 진행
 3. 완료 후:
@@ -58,7 +58,7 @@
    - 리포트 내용: 총 발송, 성공/실패, 채널별 breakdown, 유료 비용
 
 **리포트 메일 체크리스트:**
-- [ ] 제목: "[크넥샵] 일괄 발송 완료 — XX건 전송"
+- [ ] 제목: "[크넥샵] 일괄 발송 완료 -- XX건 전송"
 - [ ] 총 발송 건수
 - [ ] 채널별 발송 건수
 - [ ] 유료 발송 비용
@@ -69,14 +69,6 @@
 | 채널 | 재시도 | 횟수 | 간격 |
 |------|--------|------|------|
 | 인앱 | 없음 | - | - |
-| 이메일 | p-retry | 3회 | 1s → 2s → 4s |
-| 알림톡 | p-retry | 3회 | 1s → 2s → 4s |
+| 이메일 | p-retry | 3회 | 1s -> 2s -> 4s |
+| 알림톡 | p-retry | 3회 | 1s -> 2s -> 4s |
 | DM | 수동 (DM 큐) | - | - |
-
-## Resend 웹훅 시나리오
-
-| 이벤트 | 처리 |
-|--------|------|
-| email.delivered | CreatorProposal.emailStatus → SENT |
-| email.bounced | Creator.hasBrandEmail → false, Creator.brandContactEmail → null, emailStatus → FAILED |
-| email.complained | Creator.hasBrandEmail → false |

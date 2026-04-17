@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "tsx scripts/seed-users.ts",
-    "backfill:emails": "tsx scripts/backfill-creator-emails.ts"
+    "backfill:emails": "tsx scripts/backfill-creator-emails.ts",
+    "test:notification": "tsx scripts/test-notification-dry-run.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.88.0",
@@ -46,10 +47,8 @@
     "react-dom": "19.2.3",
     "react-hook-form": "^7.71.1",
     "recharts": "^3.8.1",
-    "resend": "^6.12.0",
     "sharp": "^0.34.5",
     "sonner": "^2.0.7",
-    "svix": "^1.90.0",
     "tailwind-merge": "^3.4.0",
     "xlsx": "^0.18.5",
     "zod": "^4.3.6",

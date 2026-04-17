@@ -11,6 +11,8 @@ export const KAKAO_TEMPLATES = {
   TRIAL_SHIPPED: 'CNECSHOP_010',
   TRIAL_REQUESTED: 'CNECSHOP_011',
   SETTLEMENT_CONFIRMED: 'CNECSHOP_012',
+  PROPOSAL_GONGGU: 'CNECSHOP_013',
+  PROPOSAL_PRODUCT_PICK: 'CNECSHOP_014',
 } as const
 
 const SITE_URL = 'https://www.cnecshop.com'
@@ -462,5 +464,116 @@ export function settlementConfirmedMessage(data: {
       message: `${data.period} - ${formatPrice(data.netAmount)}`,
       linkUrl: '/creator/settlements',
     },
+  }
+}
+
+// ---------- 13. 공구 초대 → 크리에이터 ----------
+
+export function proposalGongguInviteMessage(data: {
+  creatorName: string
+  brandName: string
+  campaignName: string
+  commissionRate?: number
+  messageBody?: string
+  acceptUrl: string
+}) {
+  const commissionInfo = data.commissionRate ? `\n커미션: ${data.commissionRate}%` : ''
+  const kakaoMsg = `[크넥샵] 공구 초대\n\n${data.creatorName}님, 새로운 공구 초대가 도착했어요.\n\n브랜드: ${data.brandName}\n캠페인: ${data.campaignName}${commissionInfo}\n\n아래 링크에서 상세 내용을 확인해주세요.`
+
+  return {
+    kakao: { templateCode: KAKAO_TEMPLATES.PROPOSAL_GONGGU, message: kakaoMsg },
+    email: {
+      subject: `[${data.brandName}] 공구 초대가 도착했어요`,
+      html: emailLayout(`
+        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${data.creatorName}님, 새로운 공구 초대가 도착했어요</h2>
+        ${infoBox(`
+          <div style="margin-bottom:8px"><strong>브랜드</strong>: ${data.brandName}</div>
+          <div style="margin-bottom:8px"><strong>캠페인</strong>: ${data.campaignName}</div>
+          ${data.commissionRate ? `<div><strong>커미션</strong>: ${data.commissionRate}%</div>` : ''}
+        `)}
+        ${data.messageBody ? `<div style="padding:12px 0;font-size:14px;color:#333;white-space:pre-wrap;line-height:1.6">${data.messageBody}</div>` : ''}
+        <p style="color:#6b7280;font-size:14px">답장이나 수락은 크넥샵에 로그인 후 처리해주세요.</p>
+        ${ctaButton('자세히 보기', data.acceptUrl)}
+      `),
+    },
+    inApp: {
+      type: 'CAMPAIGN',
+      title: `${data.brandName}에서 공구 초대가 왔어요`,
+      message: `${data.campaignName} 캠페인`,
+      linkUrl: '/creator/proposals',
+    },
+  }
+}
+
+// ---------- 14. 상품 추천 요청 → 크리에이터 ----------
+
+export function proposalProductPickMessage(data: {
+  creatorName: string
+  brandName: string
+  productName: string
+  commissionRate?: number
+  messageBody?: string
+  acceptUrl: string
+}) {
+  const commissionInfo = data.commissionRate ? `\n커미션: ${data.commissionRate}%` : ''
+  const kakaoMsg = `[크넥샵] 상품 추천 요청\n\n${data.creatorName}님, 새로운 상품 추천 요청이 도착했어요.\n\n브랜드: ${data.brandName}\n상품: ${data.productName}${commissionInfo}\n\n내 샵에 상시 추천 상품으로 등록하실지 확인해주세요.`
+
+  return {
+    kakao: { templateCode: KAKAO_TEMPLATES.PROPOSAL_PRODUCT_PICK, message: kakaoMsg },
+    email: {
+      subject: `[${data.brandName}] 상품 추천 요청이 도착했어요`,
+      html: emailLayout(`
+        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${data.creatorName}님, 새로운 상품 추천 요청이 도착했어요</h2>
+        ${infoBox(`
+          <div style="margin-bottom:8px"><strong>브랜드</strong>: ${data.brandName}</div>
+          <div style="margin-bottom:8px"><strong>상품</strong>: ${data.productName}</div>
+          ${data.commissionRate ? `<div><strong>커미션</strong>: ${data.commissionRate}%</div>` : ''}
+        `)}
+        ${data.messageBody ? `<div style="padding:12px 0;font-size:14px;color:#333;white-space:pre-wrap;line-height:1.6">${data.messageBody}</div>` : ''}
+        <p style="color:#6b7280;font-size:14px">내 샵에 상시 추천 상품으로 등록하실지 확인해주세요.</p>
+        ${ctaButton('상품 확인하기', data.acceptUrl)}
+      `),
+    },
+    inApp: {
+      type: 'CAMPAIGN',
+      title: `${data.brandName}에서 상품 추천 요청`,
+      message: data.productName,
+      linkUrl: '/creator/proposals',
+    },
+  }
+}
+
+// ---------- 15. 일괄 발송 리포트 → 브랜드 (이메일만) ----------
+
+export function bulkSendReportMessage(data: {
+  brandName: string
+  sentCount: number
+  failedCount: number
+  channelBreakdown: Record<string, number>
+  paidCount: number
+  paidAmount: number
+  reportLink: string
+}) {
+  const channels = Object.entries(data.channelBreakdown)
+    .map(([ch, count]) => `<div style="margin-bottom:4px">${ch}: ${count}건</div>`)
+    .join('')
+
+  return {
+    kakao: null,
+    email: {
+      subject: `[크넥샵] 일괄 발송 완료 — ${data.sentCount}건 전송`,
+      html: emailLayout(`
+        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">일괄 발송이 완료되었습니다</h2>
+        ${infoBox(`
+          <div style="margin-bottom:8px"><strong>총 발송</strong>: ${data.sentCount}건</div>
+          ${data.failedCount > 0 ? `<div style="margin-bottom:8px;color:#dc2626"><strong>실패</strong>: ${data.failedCount}건</div>` : ''}
+        `)}
+        <h3 style="font-size:14px;color:#374151;margin:16px 0 8px">채널별 발송</h3>
+        <div style="font-size:13px;color:#6b7280;padding:0 8px">${channels}</div>
+        ${data.paidCount > 0 ? `<p style="font-size:13px;margin-top:12px">유료 발송: ${data.paidCount}건 x 500원 = <strong>${data.paidAmount.toLocaleString()}원</strong></p>` : ''}
+        ${ctaButton('발송 내역 보기', data.reportLink)}
+      `),
+    },
+    inApp: null,
   }
 }
