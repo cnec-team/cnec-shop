@@ -49,6 +49,9 @@ interface CreatorRow {
   igExternalUrl: string | null
   igIsBusinessAccount: boolean
   igProfileImageR2Url: string | null
+  igProfilePicUrl: string | null
+  profileImageUrl: string | null
+  profileImage: string | null
   igDataImportedAt: string | null
 }
 
@@ -307,7 +310,7 @@ export default function AdminCreatorDataPage() {
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src={c.igProfileImageR2Url || undefined} />
+                        <AvatarImage src={c.igProfileImageR2Url || c.igProfilePicUrl || c.profileImageUrl || c.profileImage || undefined} />
                         <AvatarFallback><User className="h-4 w-4" /></AvatarFallback>
                       </Avatar>
                       <div>
