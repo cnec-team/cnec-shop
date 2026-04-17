@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { ShareSheet } from '@/components/shop/ShareSheet';
 import { VisitTracker } from '@/components/shop/VisitTracker';
+import { ProductCardActions } from '@/components/shop/ProductCardActions';
 import { useAuthStore } from '@/lib/store/auth';
 import {
   calculateDDay,
@@ -109,6 +110,8 @@ interface CreatorShopPageProps {
   shopItems: ShopItem[];
   collections: ShopCollection[];
   locale: string;
+  wishlistedProductIds?: string[];
+  isLoggedIn?: boolean;
 }
 
 // =============================================
@@ -165,7 +168,10 @@ export function CreatorShopPage({
   shopItems,
   collections,
   locale,
+  wishlistedProductIds = [],
+  isLoggedIn = false,
 }: CreatorShopPageProps) {
+  const wishlistedSet = useMemo(() => new Set(wishlistedProductIds), [wishlistedProductIds]);
   const params = useParams();
   const router = useRouter();
   const username = params.username as string;
@@ -430,6 +436,9 @@ export function CreatorShopPage({
                       item={item}
                       username={username}
                       locale={locale}
+                      creatorId={creator.id}
+                      isLoggedIn={isLoggedIn}
+                      isWishlisted={wishlistedSet.has(item.productId)}
                     />
                   ))}
                 </div>
@@ -453,6 +462,9 @@ export function CreatorShopPage({
                       item={item}
                       username={username}
                       locale={locale}
+                      creatorId={creator.id}
+                      isLoggedIn={isLoggedIn}
+                      isWishlisted={wishlistedSet.has(item.productId)}
                     />
                   ))}
                 </div>
@@ -566,10 +578,16 @@ function GongguCard({
   item,
   username,
   locale,
+  creatorId,
+  isLoggedIn,
+  isWishlisted,
 }: {
   item: ShopItem;
   username: string;
   locale: string;
+  creatorId: string;
+  isLoggedIn: boolean;
+  isWishlisted: boolean;
 }) {
   const product = item.product;
   const campaign = item.campaign;
@@ -638,6 +656,15 @@ function GongguCard({
               {formatWon(productOriginalPrice)}
             </span>
           )}
+
+          <ProductCardActions
+            creatorId={creatorId}
+            productId={product.id}
+            campaignId={item.campaignId}
+            isWishlisted={isWishlisted}
+            isLoggedIn={isLoggedIn}
+            className="mt-2"
+          />
         </div>
       </div>
     </Link>
@@ -648,10 +675,16 @@ function PickProductCard({
   item,
   username,
   locale,
+  creatorId,
+  isLoggedIn,
+  isWishlisted,
 }: {
   item: ShopItem;
   username: string;
   locale: string;
+  creatorId: string;
+  isLoggedIn: boolean;
+  isWishlisted: boolean;
 }) {
   const product = item.product;
   if (!product) return null;
@@ -706,6 +739,15 @@ function PickProductCard({
               {formatWon(productOriginalPrice)}
             </span>
           )}
+
+          <ProductCardActions
+            creatorId={creatorId}
+            productId={product.id}
+            campaignId={item.campaignId}
+            isWishlisted={isWishlisted}
+            isLoggedIn={isLoggedIn}
+            className="mt-2"
+          />
         </div>
       </div>
     </Link>

@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/db';
+import { auth } from '@/lib/auth';
 import { CreatorShopPage } from '@/components/shop/creator-shop';
 import type { ShopCreator, ShopItem, ShopCollection } from '@/components/shop/creator-shop';
 import { OrganizationJsonLd } from '@/components/seo/JsonLd';
@@ -193,10 +194,38 @@ export default async function ShopPage({ params }: ShopPageProps) {
   // 샵 방문 기록
   recordShopVisit(creator.id).catch(() => {});
 
+  const session = await auth();
+  const isLoggedIn = !!(session?.user?.id && session.user.role === 'buyer');
+
   const [shopItems, collections] = await Promise.all([
     getShopItems(creator.id),
     getCollections(creator.id),
   ]);
+
+  // 찜 목록 한 번에 조회 (N+1 방지)
+  let wishlistedProductIds: string[] = [];
+  if (isLoggedIn) {
+    try {
+      const buyer = await prisma.buyer.findUnique({
+        where: { userId: session!.user!.id },
+        select: { id: true },
+      });
+      if (buyer) {
+        const productIds = shopItems.map((item) => item.productId);
+        const wishes = await prisma.buyerWishlist.findMany({
+          where: {
+            buyerId: buyer.id,
+            creatorId: creator.id,
+            productId: { in: productIds },
+          },
+          select: { productId: true },
+        });
+        wishlistedProductIds = wishes.map((w) => w.productId);
+      }
+    } catch {
+      // 찜 조회 실패가 메인 로직에 영향 주지 않도록
+    }
+  }
 
   // Serialize Decimal fields on creator before passing to client component
   const serializedCreator = {
@@ -221,6 +250,8 @@ export default async function ShopPage({ params }: ShopPageProps) {
         shopItems={shopItems as ShopItem[]}
         collections={collections as ShopCollection[]}
         locale={locale}
+        wishlistedProductIds={wishlistedProductIds}
+        isLoggedIn={isLoggedIn}
       />
     </>
   );
