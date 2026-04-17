@@ -156,7 +156,7 @@ export default function ShopMyPage() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base font-semibold text-gray-900">주문/배송</h2>
             <Link
-              href={`/${locale}/buyer/orders`}
+              href={`/${locale}/${username}/me/orders`}
               className="text-xs text-gray-400 flex items-center gap-0.5"
             >
               전체보기
@@ -167,7 +167,7 @@ export default function ShopMyPage() {
             {orderStatuses.map((status) => (
               <Link
                 key={status.key}
-                href={`/${locale}/buyer/orders?status=${status.key}`}
+                href={`/${locale}/${username}/me/orders?status=${status.key}`}
                 className="flex flex-col items-center gap-1.5 py-2"
               >
                 <div className="relative">

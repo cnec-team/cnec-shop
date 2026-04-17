@@ -223,7 +223,7 @@ export function CreatorShopPage({
 
           <div className="flex items-center gap-0.5">
             <Link
-              href={`/${locale}/${username}/orders`}
+              href={`/${locale}/${username}/me/orders`}
               className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-[#F5F5F5] transition-colors"
               aria-label="주문조회"
             >
