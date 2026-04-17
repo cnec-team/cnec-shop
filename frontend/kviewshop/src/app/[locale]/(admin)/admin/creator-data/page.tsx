@@ -33,6 +33,7 @@ import {
 } from 'lucide-react'
 import { formatFollowerCount } from '@/lib/utils/format'
 import { toast } from 'sonner'
+import { getCreatorProfileImage } from '@/lib/utils/image'
 
 interface CreatorRow {
   id: string
@@ -310,7 +311,7 @@ export default function AdminCreatorDataPage() {
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src={c.igProfileImageR2Url || c.igProfilePicUrl || c.profileImageUrl || c.profileImage || undefined} />
+                        <AvatarImage src={getCreatorProfileImage(c)} />
                         <AvatarFallback><User className="h-4 w-4" /></AvatarFallback>
                       </Avatar>
                       <div>

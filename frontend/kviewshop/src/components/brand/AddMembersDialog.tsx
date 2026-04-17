@@ -15,6 +15,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { User, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatFollowerCount } from '@/lib/utils/format';
+import { getCreatorProfileImage } from '@/lib/utils/image';
 
 interface Creator {
   id: string;
@@ -141,7 +142,7 @@ export default function AddMembersDialog({
             >
               <Checkbox checked={selectedIds.has(c.id)} />
               <Avatar className="h-8 w-8">
-                <AvatarImage src={c.igProfileImageR2Url || c.igProfilePicUrl || undefined} />
+                <AvatarImage src={getCreatorProfileImage(c)} />
                 <AvatarFallback>
                   <User className="h-4 w-4" />
                 </AvatarFallback>

@@ -9,6 +9,7 @@ import { TableRow, TableCell } from '@/components/ui/table'
 import { User, BadgeCheck, BookmarkPlus } from 'lucide-react'
 import { formatFollowerCount } from '@/lib/utils/format'
 import { CreatorContentPreview } from './CreatorContentPreview'
+import { getCreatorProfileImage } from '@/lib/utils/image'
 import type { CreatorWithIg } from './types'
 
 interface CreatorTableRowProps {
@@ -34,7 +35,7 @@ export function CreatorTableRow({ creator, isSelected, onSelect, onPropose, onSa
         <div className="flex items-center gap-2">
           <CreatorContentPreview thumbnails={creator.igRecentPostThumbnails as string[] | null}>
             <Avatar className="h-8 w-8">
-              <AvatarImage src={creator.igProfileImageR2Url || creator.igProfilePicUrl || creator.profileImageUrl || creator.profileImage || undefined} />
+              <AvatarImage src={getCreatorProfileImage(creator)} />
               <AvatarFallback><User className="h-4 w-4" /></AvatarFallback>
             </Avatar>
           </CreatorContentPreview>
