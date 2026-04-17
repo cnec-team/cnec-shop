@@ -4,6 +4,10 @@ import { getAuthUser } from '@/lib/auth-helpers'
 import { sendNotification } from '@/lib/notifications'
 import { canSendMessage, consumeMessageCredit } from '@/lib/subscription/check'
 import { getCreatorChannels, canProposalBeSent } from '@/lib/messaging/channel-availability'
+import { sendProposalEmail } from '@/lib/email/resend'
+import { sendProposalAlimtalk } from '@/lib/kakao/solapi'
+import { sendBulkReportEmail } from '@/lib/email/resend'
+import { withRetry } from '@/lib/messaging/retry'
 
 export async function POST(request: NextRequest) {
   try {
@@ -222,43 +226,142 @@ export async function POST(request: NextRequest) {
             messageCreditId: credit.creditId,
             useInstagramDm: useDm,
             inAppStatus: channels.inApp ? 'PENDING' : 'SKIPPED',
-            emailStatus: 'SKIPPED',
-            kakaoStatus: 'SKIPPED',
+            emailStatus: channels.email ? 'PENDING' : 'SKIPPED',
+            kakaoStatus: channels.kakao ? 'PENDING' : 'SKIPPED',
             dmStatus: useDm ? 'PENDING' : 'SKIPPED',
           },
         })
 
         const channelResults: Record<string, string> = {}
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.cnecshop.com'
+        const acceptUrl = `${siteUrl}/creator/proposals`
+        const campaignName = campaignId
+          ? (await prisma.campaign.findUnique({ where: { id: campaignId }, select: { title: true } }))?.title ?? ''
+          : ''
+
+        // Promise.allSettled for parallel channel sends
+        const tasks: Promise<void>[] = []
 
         // IN_APP
         if (channels.inApp) {
-          try {
-            await sendNotification({
+          tasks.push(
+            sendNotification({
               userId: c.userId,
               type: 'CAMPAIGN',
               title: '새로운 제안이 도착했습니다',
               message: `${brand.brandName ?? '브랜드'}에서 ${type === 'GONGGU' ? '공구' : '상품 추천'} 제안이 왔습니다`,
               linkUrl: '/creator/proposals',
             })
-            succeededChannels.push('IN_APP')
-            channelResults.inApp = 'SENT'
-            await prisma.creatorProposal.update({
-              where: { id: proposal.id },
-              data: { inAppStatus: 'SENT', inAppSentAt: now },
-            })
-          } catch {
-            channelResults.inApp = 'FAILED'
-            await prisma.creatorProposal.update({
-              where: { id: proposal.id },
-              data: { inAppStatus: 'FAILED' },
-            })
-          }
+              .then(() => {
+                succeededChannels.push('IN_APP')
+                channelResults.inApp = 'SENT'
+                return prisma.creatorProposal.update({
+                  where: { id: proposal.id },
+                  data: { inAppStatus: 'SENT', inAppSentAt: now },
+                }).then(() => {})
+              })
+              .catch(() => {
+                channelResults.inApp = 'FAILED'
+                prisma.creatorProposal.update({
+                  where: { id: proposal.id },
+                  data: { inAppStatus: 'FAILED' },
+                }).catch(() => {})
+              }),
+          )
+        }
+
+        // EMAIL
+        if (channels.email && c.brandContactEmail) {
+          tasks.push(
+            withRetry(
+              () => sendProposalEmail({
+                to: c.brandContactEmail!,
+                creatorName: c.displayName ?? '크리에이터',
+                brandName: brand.brandName ?? '브랜드',
+                proposalType: type,
+                campaignOrProductName: campaignName,
+                messageBody: message || '',
+                acceptUrl,
+              }),
+              3,
+              1000,
+            )
+              .then((result) => {
+                if (result.success) {
+                  succeededChannels.push('EMAIL')
+                  channelResults.email = 'SENT'
+                  return prisma.creatorProposal.update({
+                    where: { id: proposal.id },
+                    data: { emailStatus: 'SENT', emailSentAt: now, emailMessageId: result.id },
+                  }).then(() => {})
+                } else {
+                  channelResults.email = 'FAILED'
+                  return prisma.creatorProposal.update({
+                    where: { id: proposal.id },
+                    data: { emailStatus: 'FAILED' },
+                  }).then(() => {})
+                }
+              })
+              .catch(() => {
+                channelResults.email = 'FAILED'
+                prisma.creatorProposal.update({
+                  where: { id: proposal.id },
+                  data: { emailStatus: 'FAILED' },
+                }).catch(() => {})
+              }),
+          )
+        }
+
+        // KAKAO
+        if (channels.kakao) {
+          tasks.push(
+            (async () => {
+              const creatorPhone = await prisma.creator.findUnique({
+                where: { id: c.id },
+                select: { phoneForAlimtalk: true },
+              })
+              if (!creatorPhone?.phoneForAlimtalk) return
+              const kakaoResult = await withRetry(
+                () => sendProposalAlimtalk({
+                  to: creatorPhone.phoneForAlimtalk!,
+                  creatorName: c.displayName ?? '크리에이터',
+                  brandName: brand.brandName ?? '브랜드',
+                  proposalType: type,
+                  campaignOrProductName: campaignName,
+                  commissionRate: commissionRate ?? undefined,
+                  acceptUrl,
+                }),
+                3,
+                1000,
+              )
+              if (kakaoResult.success) {
+                succeededChannels.push('KAKAO')
+                channelResults.kakao = 'SENT'
+                await prisma.creatorProposal.update({
+                  where: { id: proposal.id },
+                  data: { kakaoStatus: 'SENT', kakaoSentAt: now },
+                })
+              } else {
+                channelResults.kakao = 'FAILED'
+                await prisma.creatorProposal.update({
+                  where: { id: proposal.id },
+                  data: { kakaoStatus: 'FAILED' },
+                })
+              }
+            })().catch(() => {
+              channelResults.kakao = 'FAILED'
+              prisma.creatorProposal.update({
+                where: { id: proposal.id },
+                data: { kakaoStatus: 'FAILED' },
+              }).catch(() => {})
+            }),
+          )
         }
 
         // DM
         if (useDm && c.igUsername) {
-          try {
-            await prisma.dmSendQueue.create({
+          tasks.push(
+            prisma.dmSendQueue.create({
               data: {
                 brandId: brand.id,
                 creatorId: c.id,
@@ -271,15 +374,21 @@ export async function POST(request: NextRequest) {
                 brandInstagramAccount: brand.brandInstagramHandle,
               },
             })
-            channelResults.dm = 'QUEUED'
-            await prisma.creatorProposal.update({
-              where: { id: proposal.id },
-              data: { dmStatus: 'SENT', dmQueuedAt: now },
-            })
-          } catch {
-            channelResults.dm = 'FAILED'
-          }
+              .then(() => {
+                succeededChannels.push('DM')
+                channelResults.dm = 'QUEUED'
+                return prisma.creatorProposal.update({
+                  where: { id: proposal.id },
+                  data: { dmStatus: 'SENT', dmQueuedAt: now },
+                }).then(() => {})
+              })
+              .catch(() => {
+                channelResults.dm = 'FAILED'
+              }),
+          )
         }
+
+        await Promise.allSettled(tasks)
 
         // succeededChannels 업데이트
         await prisma.messageCredit.update({
@@ -300,6 +409,36 @@ export async function POST(request: NextRequest) {
       } catch {
         // 개별 크리에이터 실패 시 건너뛰기
       }
+    }
+
+    // 리포트 메일 (fire-and-forget)
+    const channelSummary: Record<string, number> = {}
+    for (const r of results) {
+      for (const [ch, st] of Object.entries(r.channelResults)) {
+        if (st === 'SENT' || st === 'QUEUED') {
+          channelSummary[ch] = (channelSummary[ch] || 0) + 1
+        }
+      }
+    }
+    const totalPaidCost = results.reduce((sum, r) => sum + r.cost, 0)
+    const paidResults = results.filter(r => r.creditType === 'PAID')
+
+    // Fetch brand contact email for report
+    const brandForReport = await prisma.brand.findUnique({
+      where: { id: brand.id },
+      select: { contactEmail: true },
+    })
+    if (brandForReport?.contactEmail) {
+      sendBulkReportEmail({
+        to: brandForReport.contactEmail,
+        brandName: brand.brandName ?? '브랜드',
+        sentCount: results.length,
+        failedCount: reachableCreators.length - results.length,
+        channelBreakdown: channelSummary,
+        paidCount: paidResults.length,
+        paidAmount: totalPaidCost,
+        reportLink: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://www.cnecshop.com'}/brand/creators/proposals`,
+      }).catch(err => console.error('[bulk-report-email]', err))
     }
 
     return NextResponse.json({
