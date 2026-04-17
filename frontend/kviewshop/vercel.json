@@ -13,6 +13,10 @@
     {
       "path": "/api/cron/price-update",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/sync-creators",
+      "schedule": "0 3 1 * *"
     }
   ]
 }

@@ -4,6 +4,9 @@ import { getAuthUser } from '@/lib/auth-helpers'
 import { sendNotification } from '@/lib/notifications'
 import { canSendMessage, consumeMessageCredit } from '@/lib/subscription/check'
 import { getCreatorChannels, canProposalBeSent } from '@/lib/messaging/channel-availability'
+import { sendProposalEmail } from '@/lib/email/resend'
+import { sendProposalAlimtalk } from '@/lib/kakao/solapi'
+import { withRetry } from '@/lib/messaging/retry'
 
 export async function POST(request: NextRequest) {
   try {
@@ -186,22 +189,97 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // EMAIL: Part C에서 활성화
-    if (channels.email) {
-      channelResults.email = 'SKIPPED'
-      await prisma.creatorProposal.update({
-        where: { id: proposal.id },
-        data: { emailStatus: 'SKIPPED' },
-      })
+    // EMAIL: Resend 발송
+    if (channels.email && creator.brandContactEmail) {
+      try {
+        const campaignName = campaignId
+          ? (await prisma.campaign.findUnique({ where: { id: campaignId }, select: { title: true } }))?.title ?? ''
+          : ''
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.cnecshop.com'
+        const acceptUrl = `${siteUrl}/creator/proposals`
+        const emailResult = await withRetry(
+          () => sendProposalEmail({
+            to: creator.brandContactEmail!,
+            creatorName: creator.displayName ?? '크리에이터',
+            brandName: brand.brandName ?? '브랜드',
+            proposalType: type,
+            campaignOrProductName: campaignName,
+            messageBody: message || '',
+            acceptUrl,
+          }),
+          3,
+          1000,
+        )
+        if (emailResult.success) {
+          succeededChannels.push('EMAIL')
+          channelResults.email = 'SENT'
+          await prisma.creatorProposal.update({
+            where: { id: proposal.id },
+            data: { emailStatus: 'SENT', emailSentAt: now, emailMessageId: emailResult.id },
+          })
+        } else {
+          channelResults.email = 'FAILED'
+          await prisma.creatorProposal.update({
+            where: { id: proposal.id },
+            data: { emailStatus: 'FAILED' },
+          })
+        }
+      } catch {
+        channelResults.email = 'FAILED'
+        await prisma.creatorProposal.update({
+          where: { id: proposal.id },
+          data: { emailStatus: 'FAILED' },
+        })
+      }
     }
 
-    // KAKAO: Part C에서 활성화
+    // KAKAO: Solapi 알림톡 발송
     if (channels.kakao) {
-      channelResults.kakao = 'SKIPPED'
-      await prisma.creatorProposal.update({
-        where: { id: proposal.id },
-        data: { kakaoStatus: 'SKIPPED' },
-      })
+      try {
+        const creatorPhone = await prisma.creator.findUnique({
+          where: { id: creatorId },
+          select: { phoneForAlimtalk: true },
+        })
+        if (creatorPhone?.phoneForAlimtalk) {
+          const campaignName = campaignId
+            ? (await prisma.campaign.findUnique({ where: { id: campaignId }, select: { title: true } }))?.title ?? ''
+            : ''
+          const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.cnecshop.com'
+          const kakaoResult = await withRetry(
+            () => sendProposalAlimtalk({
+              to: creatorPhone.phoneForAlimtalk!,
+              creatorName: creator.displayName ?? '크리에이터',
+              brandName: brand.brandName ?? '브랜드',
+              proposalType: type,
+              campaignOrProductName: campaignName,
+              commissionRate: commissionRate ?? undefined,
+              acceptUrl: `${siteUrl}/creator/proposals`,
+            }),
+            3,
+            1000,
+          )
+          if (kakaoResult.success) {
+            succeededChannels.push('KAKAO')
+            channelResults.kakao = 'SENT'
+            await prisma.creatorProposal.update({
+              where: { id: proposal.id },
+              data: { kakaoStatus: 'SENT', kakaoSentAt: now },
+            })
+          } else {
+            channelResults.kakao = 'FAILED'
+            await prisma.creatorProposal.update({
+              where: { id: proposal.id },
+              data: { kakaoStatus: 'FAILED' },
+            })
+          }
+        }
+      } catch {
+        channelResults.kakao = 'FAILED'
+        await prisma.creatorProposal.update({
+          where: { id: proposal.id },
+          data: { kakaoStatus: 'FAILED' },
+        })
+      }
     }
 
     // DM: DmSendQueue INSERT
