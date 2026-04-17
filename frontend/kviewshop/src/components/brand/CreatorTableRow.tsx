@@ -16,7 +16,7 @@ interface CreatorTableRowProps {
   creator: CreatorWithIg
   isSelected: boolean
   onSelect: (id: string) => void
-  onPropose: (id: string, type: 'GONGGU' | 'CREATOR_PICK') => void
+  onPropose: (id: string, type: 'GONGGU' | 'PRODUCT_PICK') => void
   onSaveToGroup: (id: string) => void
 }
 

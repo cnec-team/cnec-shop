@@ -88,7 +88,7 @@ export default function ProposalTemplatesPage() {
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">제안서 템플릿</h1>
+        <h1 className="text-2xl font-bold">메시지 템플릿</h1>
         <Button onClick={openCreate}>
           <Plus className="h-4 w-4 mr-1" /> 새 템플릿
         </Button>
@@ -103,7 +103,7 @@ export default function ProposalTemplatesPage() {
                   <div className="flex items-center gap-2">
                     <h3 className="font-semibold">{t.name}</h3>
                     <Badge variant={t.type === 'GONGGU' ? 'default' : 'secondary'}>
-                      {t.type === 'GONGGU' ? '공구' : '크리에이터픽'}
+                      {t.type === 'GONGGU' ? '공구' : '상품 추천'}
                     </Badge>
                     {t.isDefault && <Badge variant="outline">기본값</Badge>}
                   </div>

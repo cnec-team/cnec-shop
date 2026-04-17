@@ -249,7 +249,7 @@ export default function CreatorPerformancePage() {
                       <Link href={`../campaigns/new?creator_id=${perf.creator.id}`}>
                         <Button variant="outline" size="sm">
                           <Megaphone className="h-3 w-3 mr-1" />
-                          공구 제안
+                          공구 초대
                         </Button>
                       </Link>
                     </TableCell>

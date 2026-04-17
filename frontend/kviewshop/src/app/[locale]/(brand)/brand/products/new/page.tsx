@@ -571,7 +571,7 @@ export default function NewProductPage() {
 
           <div className="flex items-center justify-between rounded-[14px] border-[1.5px] border-gray-100 p-4">
             <div>
-              <Label className={labelCls}>크리에이터픽 허용</Label>
+              <Label className={labelCls}>상품 추천 허용</Label>
               <p className="text-[12px] text-gray-400 mt-0.5">크리에이터가 자유롭게 이 상품을 픽할 수 있습니다</p>
             </div>
             <Switch checked={allowCreatorPick} onCheckedChange={setAllowCreatorPick} />

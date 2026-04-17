@@ -26,6 +26,9 @@ import {
   Search,
   FolderHeart,
   FileText,
+  Send,
+  CreditCard,
+  Instagram,
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
@@ -95,9 +98,16 @@ export function BrandSidebar({ locale, brandName, brandStatus }: BrandSidebarPro
       label: '크리에이터',
       items: [
         { title: '크리에이터 탐색', href: `${base}/brand/creators`, icon: Search },
-        { title: '크리에이터 그룹', href: `${base}/brand/creators/groups`, icon: FolderHeart },
-        { title: '제안서 템플릿', href: `${base}/brand/creators/templates`, icon: FileText },
+        { title: '그룹 관리', href: `${base}/brand/creators/groups`, icon: FolderHeart },
+        { title: '메시지 템플릿', href: `${base}/brand/creators/templates`, icon: FileText },
+        { title: '보낸 초대', href: `${base}/brand/creators/proposals`, icon: Send },
         { title: '승인 대기', href: `${base}/brand/creators/pending`, icon: UserCheck },
+      ],
+    },
+    {
+      label: '구독',
+      items: [
+        { title: '구독 관리', href: `${base}/brand/subscription`, icon: CreditCard },
       ],
     },
     {
@@ -110,6 +120,7 @@ export function BrandSidebar({ locale, brandName, brandStatus }: BrandSidebarPro
       label: '설정',
       items: [
         { title: '브랜드 설정', href: `${base}/brand/settings`, icon: Settings },
+        { title: '인스타 연동', href: `${base}/brand/settings/integrations`, icon: Instagram },
         { title: '도움말', href: `${base}/brand/guides`, icon: HelpCircle },
       ],
     },

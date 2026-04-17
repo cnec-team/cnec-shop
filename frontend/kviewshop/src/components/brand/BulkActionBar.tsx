@@ -25,7 +25,7 @@ export function BulkActionBar({
       <span className="text-sm font-medium">{selectedCount}명 선택</span>
       <div className="flex gap-2">
         <Button size="sm" onClick={onProposeBulk}>
-          <Send className="h-4 w-4 mr-1" /> 공구 제안
+          <Send className="h-4 w-4 mr-1" /> 공구 초대
         </Button>
         <Button size="sm" variant="outline" onClick={onSaveToGroup}>
           <FolderPlus className="h-4 w-4 mr-1" /> 그룹에 저장

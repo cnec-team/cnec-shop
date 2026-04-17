@@ -114,7 +114,7 @@ export async function PATCH(
             userId: proposal.brand.userId,
             type: 'CAMPAIGN',
             title: '제안 수락',
-            message: `${creatorLabel}님이 ${proposal.type === 'GONGGU' ? '공구' : '크리에이터픽'} 제안을 수락했습니다`,
+            message: `${creatorLabel}님이 ${proposal.type === 'GONGGU' ? '공구' : '상품 추천'} 제안을 수락했습니다`,
             linkUrl: '/brand/creators',
             isRead: false,
           },

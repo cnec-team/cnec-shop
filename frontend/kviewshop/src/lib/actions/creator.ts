@@ -702,7 +702,7 @@ export async function addProductToShop(productId: string) {
     },
   })
 
-  // 브랜드에게 크리에이터픽 알림
+  // 브랜드에게 상품 추천 알림
   const product = await prisma.product.findUnique({
     where: { id: productId },
     select: { name: true, brand: { select: { userId: true } } },
@@ -711,7 +711,7 @@ export async function addProductToShop(productId: string) {
     sendNotification({
       userId: product.brand.userId,
       type: 'CAMPAIGN',
-      title: '크리에이터픽 추가',
+      title: '상품 추천 추가',
       message: `${creator.displayName ?? creator.username ?? '크리에이터'}님이 "${product.name ?? '상품'}"을 픽했어요.`,
       linkUrl: '/brand/creators',
     })

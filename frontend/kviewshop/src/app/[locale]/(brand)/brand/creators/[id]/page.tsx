@@ -49,7 +49,7 @@ export default function CreatorDetailPage() {
   const [loading, setLoading] = useState(true)
   const [proposalModal, setProposalModal] = useState<{
     open: boolean
-    type: 'GONGGU' | 'CREATOR_PICK'
+    type: 'GONGGU' | 'PRODUCT_PICK'
   }>({ open: false, type: 'GONGGU' })
   const [groupDialog, setGroupDialog] = useState(false)
 
@@ -224,10 +224,10 @@ export default function CreatorDetailPage() {
       {/* 하단 고정 액션 */}
       <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-4 flex gap-3 justify-end z-30">
         <Button onClick={() => setProposalModal({ open: true, type: 'GONGGU' })}>
-          공구 제안
+          공구 초대
         </Button>
-        <Button variant="outline" onClick={() => setProposalModal({ open: true, type: 'CREATOR_PICK' })}>
-          크리에이터픽 제안
+        <Button variant="outline" onClick={() => setProposalModal({ open: true, type: 'PRODUCT_PICK' })}>
+          상품 추천
         </Button>
         <Button variant="outline" onClick={() => setGroupDialog(true)}>
           <BookmarkPlus className="h-4 w-4 mr-1" /> 그룹에 저장

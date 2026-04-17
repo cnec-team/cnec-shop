@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       confirm,
     } = body as {
       creatorIds: string[]
-      type: 'GONGGU' | 'CREATOR_PICK'
+      type: 'GONGGU' | 'PRODUCT_PICK'
       campaignId?: string
       templateId?: string
       commissionRate?: number
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (type === 'GONGGU' && !campaignId) {
-      return NextResponse.json({ error: '공구 제안 시 캠페인을 선택해주세요' }, { status: 400 })
+      return NextResponse.json({ error: '공구 초대 시 캠페인을 선택해주세요' }, { status: 400 })
     }
 
     if (campaignId) {
@@ -237,7 +237,7 @@ export async function POST(request: NextRequest) {
               userId: c.userId,
               type: 'CAMPAIGN',
               title: '새로운 제안이 도착했습니다',
-              message: `${brand.brandName ?? '브랜드'}에서 ${type === 'GONGGU' ? '공구' : '크리에이터픽'} 제안이 왔습니다`,
+              message: `${brand.brandName ?? '브랜드'}에서 ${type === 'GONGGU' ? '공구' : '상품 추천'} 제안이 왔습니다`,
               linkUrl: '/creator/proposals',
             })
             succeededChannels.push('IN_APP')
@@ -266,7 +266,7 @@ export async function POST(request: NextRequest) {
                 instagramUsername: c.igUsername,
                 messageBody:
                   message ||
-                  `${brand.brandName ?? '브랜드'}에서 ${type === 'GONGGU' ? '공구' : '크리에이터픽'} 제안을 보냈습니다.`,
+                  `${brand.brandName ?? '브랜드'}에서 ${type === 'GONGGU' ? '공구' : '상품 추천'} 초대를 보냈습니다.`,
                 status: 'PENDING',
                 brandInstagramAccount: brand.brandInstagramHandle,
               },
@@ -309,7 +309,7 @@ export async function POST(request: NextRequest) {
       results,
     })
   } catch (error) {
-    console.error('일괄 제안 발송 오류:', error)
-    return NextResponse.json({ error: '일괄 제안 발송 중 오류가 발생했습니다' }, { status: 500 })
+    console.error('일괄 초대 발송 오류:', error)
+    return NextResponse.json({ error: '일괄 초대 발송 중 오류가 발생했습니다' }, { status: 500 })
   }
 }

@@ -321,7 +321,7 @@ export default function MyTrialsPage() {
                   className="w-full bg-gray-900 text-white rounded-xl h-11 font-medium"
                 >
                   {actionLoading === decideTarget.id ? <Loader2 className="w-4 h-4 animate-spin" /> : (
-                    <><Plus className="w-4 h-4 mr-2" />크리에이터픽에 추가</>
+                    <><Plus className="w-4 h-4 mr-2" />상품 추천에 추가</>
                   )}
                 </Button>
                 <Button

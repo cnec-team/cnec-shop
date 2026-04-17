@@ -101,7 +101,7 @@
     "community": "커뮤니티",
     "shareShop": "공유",
     "gonggu": "공구",
-    "creatorPick": "크리에이터픽",
+    "creatorPick": "상품 추천",
     "gongguDesc": "기간한정 특별가 상품",
     "creatorPickDesc": "크리에이터가 직접 골라 추천하는 상품",
     "dDay": "D-{days}",
@@ -149,7 +149,7 @@
     "status": "판매 상태",
     "active": "판매중",
     "inactive": "판매중지",
-    "allowCreatorPick": "크리에이터픽 허용",
+    "allowCreatorPick": "상품 추천 허용",
     "defaultCommission": "기본 수수료율",
     "commission": "수수료",
     "estimatedCommission": "예상 수수료",
@@ -570,7 +570,7 @@
     "whyKviewshop": "왜 크넥인가요?",
     "benefit1Title": "내 셀렉트샵",
     "benefit1Desc": "나만의 뷰티 셀렉트샵을 운영하고 팔로워에게 직접 판매하세요",
-    "benefit2Title": "공구 + 크리에이터픽",
+    "benefit2Title": "공구 + 상품 추천",
     "benefit2Desc": "기간한정 공구와 상시 큐레이션, 두 가지 판매 방식",
     "benefit3Title": "자동 정산",
     "benefit3Desc": "직접 전환 + 간접 전환(3%), 투명한 수익 정산",
@@ -927,8 +927,8 @@
     "exchangePolicyPlaceholder": "교환/반품 관련 안내사항을 입력하세요",
     "defaultCommissionRateLabel": "기본 수수료율 (%)",
     "defaultCommissionRateDesc": "새 상품 등록 시 기본 수수료율로 적용됩니다",
-    "allowCreatorPickGlobal": "크리에이터픽 허용",
-    "allowCreatorPickGlobalDesc": "전체 상품에 대해 크리에이터픽을 허용합니다 (개별 상품에서 덮어쓸 수 있음)"
+    "allowCreatorPickGlobal": "상품 추천 허용",
+    "allowCreatorPickGlobalDesc": "전체 상품에 대해 상품 추천을 허용합니다 (개별 상품에서 덮어쓸 수 있음)"
   },
   "support": {
     "title": "고객 지원",

@@ -616,7 +616,7 @@ export default function ProductDetailPage() {
           <Separator />
           <div className="flex items-center justify-between">
             <div>
-              <Label>크리에이터픽 허용</Label>
+              <Label>상품 추천 허용</Label>
               <p className="text-sm text-muted-foreground">
                 크리에이터가 자유롭게 이 상품을 픽할 수 있도록 허용합니다.
               </p>
@@ -637,7 +637,7 @@ export default function ProductDetailPage() {
           <div className="space-y-2">
             <Label htmlFor="commissionRate">크리에이터 수익률 (%)</Label>
             <p className="text-sm text-muted-foreground">
-              크리에이터픽 시 적용되는 기본 수익률입니다.
+              상품 추천 시 적용되는 기본 수익률입니다.
             </p>
             <Input
               id="commissionRate"

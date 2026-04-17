@@ -16,7 +16,7 @@ interface CreatorCardProps {
   creator: CreatorWithIg
   isSelected: boolean
   onSelect: (id: string) => void
-  onPropose: (id: string, type: 'GONGGU' | 'CREATOR_PICK') => void
+  onPropose: (id: string, type: 'GONGGU' | 'PRODUCT_PICK') => void
   onSaveToGroup: (id: string) => void
 }
 
@@ -84,10 +84,10 @@ export function CreatorCard({ creator, isSelected, onSelect, onPropose, onSaveTo
 
         <div className="flex gap-2 mt-3" onClick={e => e.stopPropagation()}>
           <Button size="sm" className="flex-1" onClick={() => onPropose(creator.id, 'GONGGU')}>
-            공구 제안
+            공구 초대
           </Button>
-          <Button size="sm" variant="outline" className="flex-1" onClick={() => onPropose(creator.id, 'CREATOR_PICK')}>
-            픽 제안
+          <Button size="sm" variant="outline" className="flex-1" onClick={() => onPropose(creator.id, 'PRODUCT_PICK')}>
+            추천 요청
           </Button>
         </div>
       </CardContent>

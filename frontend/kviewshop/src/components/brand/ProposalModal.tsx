@@ -43,7 +43,7 @@ interface ProposalModalProps {
   onOpenChange: (open: boolean) => void
   mode: 'single' | 'bulk'
   creatorIds: string[]
-  defaultType?: 'GONGGU' | 'CREATOR_PICK'
+  defaultType?: 'GONGGU' | 'PRODUCT_PICK'
   onSuccess: () => void
 }
 
@@ -55,7 +55,7 @@ export function ProposalModal({
   defaultType,
   onSuccess,
 }: ProposalModalProps) {
-  const [type, setType] = useState<'GONGGU' | 'CREATOR_PICK'>(defaultType ?? 'GONGGU')
+  const [type, setType] = useState<'GONGGU' | 'PRODUCT_PICK'>(defaultType ?? 'GONGGU')
   const [campaignId, setCampaignId] = useState<string>('')
   const [templateId, setTemplateId] = useState<string>('')
   const [commissionRate, setCommissionRate] = useState<string>('')
@@ -96,13 +96,13 @@ export function ProposalModal({
     if (t) {
       setMessage(t.body)
       if (t.commissionRate) setCommissionRate(String(t.commissionRate))
-      setType(t.type as 'GONGGU' | 'CREATOR_PICK')
+      setType(t.type as 'GONGGU' | 'PRODUCT_PICK')
     }
   }
 
   const handleSubmit = async () => {
     if (type === 'GONGGU' && !campaignId) {
-      toast.error('공구 제안 시 캠페인을 선택해주세요')
+      toast.error('공구 초대 시 캠페인을 선택해주세요')
       return
     }
 
@@ -128,19 +128,19 @@ export function ProposalModal({
 
       if (!res.ok) {
         const data = await res.json()
-        toast.error(data.error || '제안 전송에 실패했습니다')
+        toast.error(data.error || '초대 전송에 실패했습니다')
         return
       }
 
       toast.success(
         mode === 'single'
-          ? '제안을 보냈습니다'
-          : `${creatorIds.length}명에게 제안을 보냈습니다`
+          ? '초대를 보냈습니다'
+          : `${creatorIds.length}명에게 초대를 보냈습니다`
       )
       onSuccess()
       onOpenChange(false)
     } catch {
-      toast.error('제안 전송 중 오류가 발생했습니다')
+      toast.error('초대 전송 중 오류가 발생했습니다')
     } finally {
       setIsSubmitting(false)
     }
@@ -151,7 +151,7 @@ export function ProposalModal({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>
-            {mode === 'single' ? '크리에이터에게 제안' : `${creatorIds.length}명에게 일괄 제안`}
+            {mode === 'single' ? '크리에이터에게 초대' : `${creatorIds.length}명에게 일괄 초대`}
           </DialogTitle>
         </DialogHeader>
 
@@ -172,10 +172,10 @@ export function ProposalModal({
 
           <div>
             <Label>제안 유형</Label>
-            <Tabs value={type} onValueChange={v => setType(v as 'GONGGU' | 'CREATOR_PICK')}>
+            <Tabs value={type} onValueChange={v => setType(v as 'GONGGU' | 'PRODUCT_PICK')}>
               <TabsList className="w-full">
                 <TabsTrigger value="GONGGU" className="flex-1">공구</TabsTrigger>
-                <TabsTrigger value="CREATOR_PICK" className="flex-1">크리에이터픽</TabsTrigger>
+                <TabsTrigger value="PRODUCT_PICK" className="flex-1">상품 추천</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
@@ -224,7 +224,7 @@ export function ProposalModal({
             disabled={isSubmitting || (type === 'GONGGU' && !campaignId)}
           >
             {isSubmitting && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
-            {mode === 'single' ? '제안 보내기' : `${creatorIds.length}명에게 일괄 전송`}
+            {mode === 'single' ? '초대 보내기' : `${creatorIds.length}명에게 일괄 전송`}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -38,7 +38,7 @@ function CreatorExplorerContent() {
     open: boolean
     mode: 'single' | 'bulk'
     creatorIds: string[]
-    defaultType?: 'GONGGU' | 'CREATOR_PICK'
+    defaultType?: 'GONGGU' | 'PRODUCT_PICK'
   }>({ open: false, mode: 'single', creatorIds: [] })
   const [groupDialog, setGroupDialog] = useState<{
     open: boolean

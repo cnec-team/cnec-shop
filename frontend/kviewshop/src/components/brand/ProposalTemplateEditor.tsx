@@ -160,7 +160,7 @@ export default function ProposalTemplateEditor({
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="예: 여름 공구 제안"
+                placeholder="예: 여름 공구 초대"
               />
             </div>
 
@@ -172,7 +172,7 @@ export default function ProposalTemplateEditor({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="GONGGU">공구</SelectItem>
-                  <SelectItem value="CREATOR_PICK">크리에이터픽</SelectItem>
+                  <SelectItem value="PRODUCT_PICK">상품 추천</SelectItem>
                 </SelectContent>
               </Select>
             </div>

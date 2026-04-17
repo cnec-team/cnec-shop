@@ -35,7 +35,7 @@ import { toast } from 'sonner'
 
 interface Proposal {
   id: string
-  type: 'GONGGU' | 'CREATOR_PICK'
+  type: 'GONGGU' | 'PRODUCT_PICK'
   status: string
   commissionRate: number | null
   message: string | null
@@ -193,7 +193,7 @@ export default function CreatorProposalsPage() {
                     </p>
                   </div>
                   <Badge variant={p.type === 'GONGGU' ? 'default' : 'secondary'}>
-                    {p.type === 'GONGGU' ? '공구' : '크리에이터픽'}
+                    {p.type === 'GONGGU' ? '공구' : '상품 추천'}
                   </Badge>
                 </div>
 

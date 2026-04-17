@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: '필수 항목을 입력해주세요' }, { status: 400 });
   }
 
-  if (!['GONGGU', 'CREATOR_PICK'].includes(type)) {
+  if (!['GONGGU', 'PRODUCT_PICK'].includes(type)) {
     return NextResponse.json({ error: '유효하지 않은 제안 유형입니다' }, { status: 400 });
   }
 

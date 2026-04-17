@@ -285,7 +285,7 @@ enum PriceBadgeType {
 
 enum ProposalType {
   GONGGU
-  CREATOR_PICK
+  PRODUCT_PICK
 }
 
 enum ProposalStatus {
@@ -474,6 +474,7 @@ model Brand {
   messageCredits        MessageCredit[]
   subscriptionPayments  SubscriptionPayment[]
   dmQueues              DmSendQueue[]
+  filterPresets         CreatorFilterPreset[]
 
   @@index([approved])
   @@index([mocraStatus])
@@ -2121,4 +2122,22 @@ model DmSendLog {
 
   @@index([queueId])
   @@map("dm_send_logs")
+}
+
+// ============================================================
+// CREATOR FILTER PRESET (브랜드 필터 프리셋)
+// ============================================================
+
+model CreatorFilterPreset {
+  id        String   @id @default(cuid())
+  brandId   String   @map("brand_id")
+  brand     Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  name      String   @db.VarChar(100)
+  filters   Json     @db.JsonB
+  isDefault Boolean  @default(false) @map("is_default")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([brandId])
+  @@map("creator_filter_presets")
 }

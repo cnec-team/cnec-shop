@@ -343,7 +343,7 @@ export default function BulkUploadPage() {
                     <TableHead className="text-right">할인가</TableHead>
                     <TableHead className="text-right">재고</TableHead>
                     <TableHead className="text-right">수수료(%)</TableHead>
-                    <TableHead>크리에이터픽</TableHead>
+                    <TableHead>상품 추천</TableHead>
                     <TableHead>상태</TableHead>
                   </TableRow>
                 </TableHeader>
