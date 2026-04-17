@@ -5,7 +5,9 @@ import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
   Table,
@@ -47,12 +49,18 @@ import {
 } from '@/components/ui/alert-dialog';
 import {
   ChevronLeft,
+  ChevronRight,
   UserPlus,
   MoreHorizontal,
   X,
   User,
   BadgeCheck,
   Users,
+  FileSpreadsheet,
+  Send,
+  ShoppingBag,
+  Pencil,
+  Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatFollowerCount } from '@/lib/utils/format';
@@ -81,6 +89,7 @@ interface GroupDetail {
   description: string | null;
   members: GroupMember[];
   _count: { members: number };
+  pagination?: { page: number; limit: number; total: number };
 }
 
 function InlineMemoEdit({
@@ -127,26 +136,33 @@ function InlineMemoEdit({
 
 export default function GroupDetailPage() {
   const router = useRouter();
-  const params = useParams();
-  const groupId = params.id as string;
+  const routeParams = useParams();
+  const groupId = routeParams.id as string;
 
   const [group, setGroup] = useState<GroupDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('recent');
+  const [page, setPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [addMembersOpen, setAddMembersOpen] = useState(false);
   const [editNameOpen, setEditNameOpen] = useState(false);
   const [editName, setEditName] = useState('');
   const [editDesc, setEditDesc] = useState('');
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [inlineEditingName, setInlineEditingName] = useState(false);
+  const [inlineEditingDesc, setInlineEditingDesc] = useState(false);
+  const [inlineName, setInlineName] = useState('');
+  const [inlineDesc, setInlineDesc] = useState('');
 
   const fetchGroup = useCallback(async () => {
     try {
-      const params = new URLSearchParams();
-      if (search) params.set('search', search);
-      if (sort) params.set('sort', sort);
-      const res = await fetch(`/api/brand/creator-groups/${groupId}?${params}`);
+      const searchParams = new URLSearchParams();
+      if (search) searchParams.set('search', search);
+      if (sort) searchParams.set('sort', sort);
+      searchParams.set('page', String(page));
+      searchParams.set('limit', '50');
+      const res = await fetch(`/api/brand/creator-groups/${groupId}?${searchParams}`);
       if (!res.ok) throw new Error('Failed');
       const data = await res.json();
       setGroup(data);
@@ -155,7 +171,7 @@ export default function GroupDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [groupId, search, sort]);
+  }, [groupId, search, sort, page]);
 
   useEffect(() => {
     fetchGroup();
@@ -183,6 +199,52 @@ export default function GroupDetailPage() {
       });
     } catch {
       toast.error('메모 저장에 실패했습니다');
+    }
+  };
+
+  const startInlineEditName = () => {
+    if (!group) return;
+    setInlineName(group.name);
+    setInlineEditingName(true);
+  };
+
+  const saveInlineName = async () => {
+    if (!inlineName.trim() || !group) return;
+    try {
+      const res = await fetch(`/api/brand/creator-groups/${groupId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: inlineName.trim() }),
+      });
+      if (!res.ok) throw new Error('Failed');
+      toast.success('그룹명이 수정되었습니다');
+      setInlineEditingName(false);
+      fetchGroup();
+    } catch {
+      toast.error('그룹명 수정에 실패했습니다');
+    }
+  };
+
+  const startInlineEditDesc = () => {
+    if (!group) return;
+    setInlineDesc(group.description || '');
+    setInlineEditingDesc(true);
+  };
+
+  const saveInlineDesc = async () => {
+    if (!group) return;
+    try {
+      const res = await fetch(`/api/brand/creator-groups/${groupId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: inlineDesc.trim() || null }),
+      });
+      if (!res.ok) throw new Error('Failed');
+      toast.success('설명이 수정되었습니다');
+      setInlineEditingDesc(false);
+      fetchGroup();
+    } catch {
+      toast.error('설명 수정에 실패했습니다');
     }
   };
 
@@ -273,38 +335,108 @@ export default function GroupDetailPage() {
     handleExport();
   };
 
+  const totalPages = group?.pagination ? Math.ceil(group.pagination.total / 50) : 1;
+
   if (loading) return null;
   if (!group) return <div className="p-6 text-center">그룹을 찾을 수 없습니다</div>;
 
   return (
     <div className="p-6">
       {/* 상단 */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <Button variant="ghost" onClick={() => router.push('../groups')} className="mb-2">
-            <ChevronLeft className="h-4 w-4 mr-1" /> 그룹 목록
-          </Button>
-          <h1 className="text-2xl font-bold">{group.name}</h1>
-          <p className="text-muted-foreground">{group._count.members}명</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setAddMembersOpen(true)}>
-            <UserPlus className="h-4 w-4 mr-1" /> 크리에이터 추가
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline">
-                <MoreHorizontal />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={handleEditName}>그룹명 수정</DropdownMenuItem>
-              <DropdownMenuItem onClick={handleExport}>엑셀 다운로드</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setDeleteOpen(true)} className="text-destructive">
-                그룹 삭제
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+      <div className="mb-6">
+        <Button variant="ghost" onClick={() => router.push('../groups')} className="mb-2">
+          <ChevronLeft className="h-4 w-4 mr-1" /> 그룹 목록
+        </Button>
+        <div className="flex items-start justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              {inlineEditingName ? (
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={inlineName}
+                    onChange={(e) => setInlineName(e.target.value)}
+                    maxLength={50}
+                    className="text-2xl font-bold h-10 w-64"
+                    autoFocus
+                    onKeyDown={(e) => e.key === 'Enter' && saveInlineName()}
+                  />
+                  <Button size="icon" variant="ghost" onClick={saveInlineName}>
+                    <Check className="h-4 w-4" />
+                  </Button>
+                  <Button size="icon" variant="ghost" onClick={() => setInlineEditingName(false)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <h1
+                  className="text-2xl font-bold cursor-pointer hover:text-muted-foreground group flex items-center gap-2"
+                  onClick={startInlineEditName}
+                >
+                  {group.name}
+                  <Pencil className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </h1>
+              )}
+              <Badge variant="secondary">{group._count.members}/500</Badge>
+            </div>
+            {inlineEditingDesc ? (
+              <div className="flex items-start gap-2 mt-1">
+                <Textarea
+                  value={inlineDesc}
+                  onChange={(e) => setInlineDesc(e.target.value)}
+                  className="text-sm w-80 min-h-[60px]"
+                  autoFocus
+                  placeholder="그룹 설명 (선택)"
+                />
+                <Button size="icon" variant="ghost" onClick={saveInlineDesc}>
+                  <Check className="h-4 w-4" />
+                </Button>
+                <Button size="icon" variant="ghost" onClick={() => setInlineEditingDesc(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <p
+                className="text-muted-foreground mt-1 cursor-pointer hover:text-foreground group flex items-center gap-1"
+                onClick={startInlineEditDesc}
+              >
+                {group.description || '설명 추가'}
+                <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </p>
+            )}
+          </div>
+          <div className="flex gap-2 flex-wrap justify-end">
+            <Button variant="outline" onClick={() => {
+              const creatorIds = group.members.map((m) => m.creator.id).join(',');
+              router.push(`../proposals/new?creatorIds=${creatorIds}`);
+            }}>
+              <Send className="h-4 w-4 mr-1" /> 전체에게 공구 초대
+            </Button>
+            <Button variant="outline" onClick={() => {
+              const creatorIds = group.members.map((m) => m.creator.id).join(',');
+              router.push(`../proposals/new?type=recommend&creatorIds=${creatorIds}`);
+            }}>
+              <ShoppingBag className="h-4 w-4 mr-1" /> 전체에게 상품 추천
+            </Button>
+            <Button variant="outline" onClick={handleExport}>
+              <FileSpreadsheet className="h-4 w-4 mr-1" /> 엑셀 다운로드
+            </Button>
+            <Button variant="outline" onClick={() => setAddMembersOpen(true)}>
+              <UserPlus className="h-4 w-4 mr-1" /> 멤버 추가
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <MoreHorizontal />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={handleEditName}>그룹명 수정</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setDeleteOpen(true)} className="text-destructive">
+                  그룹 삭제
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
 
@@ -333,7 +465,7 @@ export default function GroupDetailPage() {
         <div className="flex items-center gap-3 mb-4 p-3 bg-muted rounded-lg">
           <span className="text-sm">{selectedIds.size}명 선택</span>
           <Button size="sm" onClick={handleBulkPropose}>
-            일괄 공구 제안
+            일괄 초대 보내기
           </Button>
           <Button size="sm" variant="outline" onClick={handleBulkExport}>
             엑셀 다운로드
@@ -412,6 +544,36 @@ export default function GroupDetailPage() {
           <Users className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
           <p className="text-muted-foreground">아직 멤버가 없습니다</p>
           <p className="text-sm text-muted-foreground mt-1">크리에이터를 추가해보세요</p>
+        </div>
+      )}
+
+      {/* 페이지네이션 */}
+      {group.pagination && group.pagination.total > 50 && (
+        <div className="flex items-center justify-between mt-4">
+          <p className="text-sm text-muted-foreground">
+            전체 {group.pagination.total}명 중 {(page - 1) * 50 + 1}-{Math.min(page * 50, group.pagination.total)}명
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+            >
+              <ChevronLeft className="h-4 w-4" /> 이전
+            </Button>
+            <span className="text-sm">
+              {page} / {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => p + 1)}
+              disabled={page >= totalPages}
+            >
+              다음 <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       )}
 

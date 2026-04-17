@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -30,13 +31,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus, Users, MoreHorizontal, FolderHeart } from 'lucide-react';
+import { Plus, Users, MoreHorizontal, FolderHeart, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface CreatorGroup {
   id: string;
   name: string;
   description: string | null;
+  createdAt: string;
+  updatedAt: string;
   _count: { members: number };
 }
 
@@ -137,9 +140,12 @@ export default function CreatorGroupsPage() {
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">크리에이터 그룹</h1>
-        <Button onClick={() => setCreateOpen(true)}>
-          <Plus className="h-4 w-4 mr-1" /> 새 그룹
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold">그룹 관리</h1>
+          <Badge variant="secondary">{groups.length}/20 그룹</Badge>
+        </div>
+        <Button onClick={() => setCreateOpen(true)} disabled={groups.length >= 20}>
+          <Plus className="h-4 w-4 mr-1" /> 새 그룹 만들기
         </Button>
       </div>
 
@@ -162,10 +168,27 @@ export default function CreatorGroupsPage() {
                       <DropdownMenuItem
                         onClick={(e) => {
                           e.stopPropagation();
+                          router.push(`creators/groups/${g.id}`);
+                        }}
+                      >
+                        보기
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
                           handleEdit(g);
                         }}
                       >
                         수정
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.open(`/api/brand/creator-groups/${g.id}/export`, '_blank');
+                        }}
+                      >
+                        <FileSpreadsheet className="h-4 w-4 mr-1" />
+                        엑셀
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={(e) => {
@@ -184,7 +207,7 @@ export default function CreatorGroupsPage() {
                 )}
                 <div className="flex items-center gap-1 mt-3 text-sm text-muted-foreground">
                   <Users className="h-4 w-4" />
-                  <span>{g._count.members}명</span>
+                  <span>{g._count.members}/500</span>
                 </div>
               </CardContent>
             </Card>
