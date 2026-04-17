@@ -2,7 +2,8 @@ import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { ProductDetailPage } from '@/components/shop/product-detail';
 import { ProductJsonLd } from '@/components/seo/JsonLd';
-import { recordRecentView } from '@/lib/actions/recent-view';
+import { recordRecentView, getRecentViews } from '@/lib/actions/recent-view';
+import { RecentViewsSection } from '@/components/shop/RecentViewsSection';
 import type { Metadata } from 'next';
 import type { Product, CampaignProduct, Creator } from '@/types/database';
 
@@ -214,15 +215,21 @@ export default async function ProductPage({ params, searchParams }: ProductPageP
     campaignProduct = await getCampaignProduct(productId, campaignId);
   }
 
-  // Fetch other products, creator contents, and reels info in parallel
-  const [otherProducts, creatorContents, shopItemReels] = await Promise.all([
+  // Fetch other products, creator contents, reels info, and recent views in parallel
+  const [otherProducts, creatorContents, shopItemReels, recentViews] = await Promise.all([
     getOtherProducts(creator.id, productId),
     getCreatorProductContents(creator.id, productId),
     prisma.creatorShopItem.findFirst({
       where: { creatorId: creator.id, productId, isVisible: true },
       select: { reelsUrl: true, reelsCaption: true },
     }),
+    getRecentViews(creator.id, 10).catch(() => []),
   ]);
+
+  // 현재 상품은 제외
+  const filteredRecentViews = recentViews.filter(
+    (v) => v.productId !== productId
+  );
 
   // Serialize Decimal fields before passing to client components
   const serializedProduct = {
@@ -273,6 +280,15 @@ export default async function ProductPage({ params, searchParams }: ProductPageP
         reelsUrl={shopItemReels?.reelsUrl}
         reelsCaption={shopItemReels?.reelsCaption}
       />
+      {filteredRecentViews.length > 0 && (
+        <div className="max-w-[480px] mx-auto">
+          <RecentViewsSection
+            items={filteredRecentViews as any}
+            shopUsername={username}
+            locale={locale}
+          />
+        </div>
+      )}
     </>
   );
 }

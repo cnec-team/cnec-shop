@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import type { Product, Campaign } from '@/types/database';
 import { calculateDDay, getDDayLabel } from '@/lib/utils/date';
+import { ProductCardActions } from './ProductCardActions';
 
 interface ProductCardProps {
   product: Product;
@@ -9,6 +10,9 @@ interface ProductCardProps {
   campaignPrice?: number;
   locale: string;
   shopId?: string;
+  creatorId?: string;
+  isWishlisted?: boolean;
+  isLoggedIn?: boolean;
 }
 
 function formatKRW(amount: number): string {
@@ -32,7 +36,7 @@ function discountPercent(original: number, sale: number): number {
   return Math.round(((original - sale) / original) * 100);
 }
 
-export function ProductCard({ product, campaign, campaignPrice, locale, shopId }: ProductCardProps) {
+export function ProductCard({ product, campaign, campaignPrice, locale, shopId, creatorId, isWishlisted, isLoggedIn }: ProductCardProps) {
   const effectivePrice = campaignPrice ?? product.sale_price;
   const discount = discountPercent(product.original_price, effectivePrice);
   const dDay = campaign ? calcDDay(campaign.end_at) : { label: '', active: false };
@@ -84,6 +88,16 @@ export function ProductCard({ product, campaign, campaignPrice, locale, shopId }
         </div>
         {discount > 0 && (
           <span className="text-xs text-gray-300 line-through">{formatKRW(product.original_price)}</span>
+        )}
+
+        {creatorId && (
+          <ProductCardActions
+            creatorId={creatorId}
+            productId={product.id}
+            isWishlisted={isWishlisted}
+            isLoggedIn={isLoggedIn ?? false}
+            className="mt-2"
+          />
         )}
       </div>
     </Link>
