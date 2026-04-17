@@ -73,6 +73,7 @@ export async function GET(
               igCategory: true,
               igVerified: true,
               igProfileImageR2Url: true,
+              igProfilePicUrl: true,
               igRecentPostThumbnails: true,
             },
           },

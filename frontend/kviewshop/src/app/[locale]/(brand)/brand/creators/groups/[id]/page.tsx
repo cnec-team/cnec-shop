@@ -70,6 +70,7 @@ interface GroupMember {
     igCategory: string | null;
     igVerified: boolean | null;
     igProfileImageR2Url: string | null;
+    igProfilePicUrl: string | null;
   };
 }
 
@@ -369,7 +370,7 @@ export default function GroupDetailPage() {
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={m.creator.igProfileImageR2Url || undefined} />
+                      <AvatarImage src={m.creator.igProfileImageR2Url || m.creator.igProfilePicUrl || undefined} />
                       <AvatarFallback>
                         <User className="h-4 w-4" />
                       </AvatarFallback>

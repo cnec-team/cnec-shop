@@ -22,6 +22,7 @@ interface Creator {
   displayName: string | null;
   igFollowers: number | null;
   igProfileImageR2Url: string | null;
+  igProfilePicUrl: string | null;
 }
 
 interface AddMembersDialogProps {
@@ -140,7 +141,7 @@ export default function AddMembersDialog({
             >
               <Checkbox checked={selectedIds.has(c.id)} />
               <Avatar className="h-8 w-8">
-                <AvatarImage src={c.igProfileImageR2Url || undefined} />
+                <AvatarImage src={c.igProfileImageR2Url || c.igProfilePicUrl || undefined} />
                 <AvatarFallback>
                   <User className="h-4 w-4" />
                 </AvatarFallback>

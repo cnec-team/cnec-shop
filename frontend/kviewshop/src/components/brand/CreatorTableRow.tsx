@@ -34,7 +34,7 @@ export function CreatorTableRow({ creator, isSelected, onSelect, onPropose, onSa
         <div className="flex items-center gap-2">
           <CreatorContentPreview thumbnails={creator.igRecentPostThumbnails as string[] | null}>
             <Avatar className="h-8 w-8">
-              <AvatarImage src={creator.igProfileImageR2Url || undefined} />
+              <AvatarImage src={creator.igProfileImageR2Url || creator.igProfilePicUrl || creator.profileImageUrl || creator.profileImage || undefined} />
               <AvatarFallback><User className="h-4 w-4" /></AvatarFallback>
             </Avatar>
           </CreatorContentPreview>
