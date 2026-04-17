@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getAuthUser } from '@/lib/auth-helpers'
-import { sendNotification } from '@/lib/notifications'
+import { sendNotification, sendEmail, sendKakaoAlimtalk } from '@/lib/notifications'
+import { proposalGongguInviteMessage, proposalProductPickMessage, bulkSendReportMessage } from '@/lib/notifications/templates'
 import { canSendMessage, consumeMessageCredit } from '@/lib/subscription/check'
 import { getCreatorChannels, canProposalBeSent } from '@/lib/messaging/channel-availability'
-import { sendProposalEmail } from '@/lib/email/resend'
-import { sendProposalAlimtalk } from '@/lib/kakao/solapi'
-import { sendBulkReportEmail } from '@/lib/email/resend'
 import { withRetry } from '@/lib/messaging/retry'
 
 export async function POST(request: NextRequest) {
@@ -26,7 +24,7 @@ export async function POST(request: NextRequest) {
       },
     })
     if (!brand) {
-      return NextResponse.json({ error: '브랜드를 찾을 수 없습니다' }, { status: 404 })
+      return NextResponse.json({ error: '브랜드�� 찾을 수 없습니다' }, { status: 404 })
     }
 
     const body = await request.json()
@@ -55,7 +53,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (type === 'GONGGU' && !campaignId) {
-      return NextResponse.json({ error: '공구 초대 시 캠페인을 선택해주세요' }, { status: 400 })
+      return NextResponse.json({ error: '공구 초대 시 캠페인을 선택해주세���' }, { status: 400 })
     }
 
     if (campaignId) {
@@ -192,6 +190,11 @@ export async function POST(request: NextRequest) {
     }> = []
 
     const now = new Date()
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.cnecshop.com'
+    const acceptUrl = `${siteUrl}/creator/proposals`
+    const campaignName = campaignId
+      ? (await prisma.campaign.findUnique({ where: { id: campaignId }, select: { title: true } }))?.title ?? ''
+      : ''
 
     for (const c of reachableCreators) {
       try {
@@ -232,12 +235,26 @@ export async function POST(request: NextRequest) {
           },
         })
 
+        // 템플릿 빌드
+        const template = type === 'GONGGU'
+          ? proposalGongguInviteMessage({
+              creatorName: c.displayName ?? '크리에이터',
+              brandName: brand.brandName ?? '브랜드',
+              campaignName,
+              commissionRate: commissionRate ?? undefined,
+              messageBody: message || undefined,
+              acceptUrl,
+            })
+          : proposalProductPickMessage({
+              creatorName: c.displayName ?? '��리에이터',
+              brandName: brand.brandName ?? '브랜드',
+              productName: campaignName,
+              commissionRate: commissionRate ?? undefined,
+              messageBody: message || undefined,
+              acceptUrl,
+            })
+
         const channelResults: Record<string, string> = {}
-        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.cnecshop.com'
-        const acceptUrl = `${siteUrl}/creator/proposals`
-        const campaignName = campaignId
-          ? (await prisma.campaign.findUnique({ where: { id: campaignId }, select: { title: true } }))?.title ?? ''
-          : ''
 
         // Promise.allSettled for parallel channel sends
         const tasks: Promise<void>[] = []
@@ -247,10 +264,10 @@ export async function POST(request: NextRequest) {
           tasks.push(
             sendNotification({
               userId: c.userId,
-              type: 'CAMPAIGN',
-              title: '새로운 제안이 도착했습니다',
-              message: `${brand.brandName ?? '브랜드'}에서 ${type === 'GONGGU' ? '공구' : '상품 추천'} 제안이 왔습니다`,
-              linkUrl: '/creator/proposals',
+              type: template.inApp.type,
+              title: template.inApp.title,
+              message: template.inApp.message,
+              linkUrl: template.inApp.linkUrl,
             })
               .then(() => {
                 succeededChannels.push('IN_APP')
@@ -270,18 +287,14 @@ export async function POST(request: NextRequest) {
           )
         }
 
-        // EMAIL
+        // EMAIL: Naver Works SMTP
         if (channels.email && c.brandContactEmail) {
           tasks.push(
             withRetry(
-              () => sendProposalEmail({
+              () => sendEmail({
                 to: c.brandContactEmail!,
-                creatorName: c.displayName ?? '크리에이터',
-                brandName: brand.brandName ?? '브랜드',
-                proposalType: type,
-                campaignOrProductName: campaignName,
-                messageBody: message || '',
-                acceptUrl,
+                subject: template.email.subject,
+                html: template.email.html,
               }),
               3,
               1000,
@@ -292,7 +305,7 @@ export async function POST(request: NextRequest) {
                   channelResults.email = 'SENT'
                   return prisma.creatorProposal.update({
                     where: { id: proposal.id },
-                    data: { emailStatus: 'SENT', emailSentAt: now, emailMessageId: result.id },
+                    data: { emailStatus: 'SENT', emailSentAt: now },
                   }).then(() => {})
                 } else {
                   channelResults.email = 'FAILED'
@@ -312,7 +325,7 @@ export async function POST(request: NextRequest) {
           )
         }
 
-        // KAKAO
+        // KAKAO: 팝빌 알림톡
         if (channels.kakao) {
           tasks.push(
             (async () => {
@@ -322,14 +335,12 @@ export async function POST(request: NextRequest) {
               })
               if (!creatorPhone?.phoneForAlimtalk) return
               const kakaoResult = await withRetry(
-                () => sendProposalAlimtalk({
-                  to: creatorPhone.phoneForAlimtalk!,
-                  creatorName: c.displayName ?? '크리에이터',
-                  brandName: brand.brandName ?? '브랜드',
-                  proposalType: type,
-                  campaignOrProductName: campaignName,
-                  commissionRate: commissionRate ?? undefined,
-                  acceptUrl,
+                () => sendKakaoAlimtalk({
+                  templateCode: template.kakao.templateCode,
+                  receiverNum: creatorPhone.phoneForAlimtalk!,
+                  receiverName: c.displayName ?? '크리에이터',
+                  message: template.kakao.message,
+                  altText: template.kakao.message,
                 }),
                 3,
                 1000,
@@ -369,7 +380,7 @@ export async function POST(request: NextRequest) {
                 instagramUsername: c.igUsername,
                 messageBody:
                   message ||
-                  `${brand.brandName ?? '브랜드'}에서 ${type === 'GONGGU' ? '공구' : '상품 추천'} 초대를 보냈습니다.`,
+                  `${brand.brandName ?? '브��드'}에서 ${type === 'GONGGU' ? '공구' : '상품 추천'} ���대를 보냈습니다.`,
                 status: 'PENDING',
                 brandInstagramAccount: brand.brandInstagramHandle,
               },
@@ -429,16 +440,22 @@ export async function POST(request: NextRequest) {
       select: { contactEmail: true },
     })
     if (brandForReport?.contactEmail) {
-      sendBulkReportEmail({
-        to: brandForReport.contactEmail,
+      const report = bulkSendReportMessage({
         brandName: brand.brandName ?? '브랜드',
         sentCount: results.length,
         failedCount: reachableCreators.length - results.length,
         channelBreakdown: channelSummary,
         paidCount: paidResults.length,
         paidAmount: totalPaidCost,
-        reportLink: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://www.cnecshop.com'}/brand/creators/proposals`,
-      }).catch(err => console.error('[bulk-report-email]', err))
+        reportLink: `${siteUrl}/brand/creators/proposals`,
+      })
+      if (report.email) {
+        sendEmail({
+          to: brandForReport.contactEmail,
+          subject: report.email.subject,
+          html: report.email.html,
+        }).catch(err => console.error('[bulk-report-email]', err))
+      }
     }
 
     return NextResponse.json({
