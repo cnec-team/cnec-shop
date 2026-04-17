@@ -1,5 +1,6 @@
 "use client";
 
+import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { AlertCircle } from "lucide-react";
 
@@ -10,6 +11,10 @@ export default function ErrorPage({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const params = useParams();
+  const locale = params.locale as string;
+  const username = params.username as string;
+
   return (
     <div className="flex flex-col items-center justify-center py-20 px-4">
       <div className="h-16 w-16 rounded-2xl bg-red-50 flex items-center justify-center mb-4">
@@ -24,7 +29,7 @@ export default function ErrorPage({
           다시 시도
         </Button>
         <Button variant="outline" className="rounded-xl" asChild>
-          <a href="/">홈으로 돌아가기</a>
+          <a href={`/${locale}/${username}`}>샵으로 돌아가기</a>
         </Button>
       </div>
     </div>

@@ -188,7 +188,7 @@ export function BuyerHomePage({ locale, creators, gongguCampaigns, topProducts }
               href={`/${locale}/creators`}
               className="inline-flex items-center justify-center h-11 px-6 bg-[#1A1A1A] text-white rounded-full text-sm font-medium"
             >
-              크리에이터 되기
+              크리에이터 샵 둘러보기
             </Link>
           </div>
         ) : (

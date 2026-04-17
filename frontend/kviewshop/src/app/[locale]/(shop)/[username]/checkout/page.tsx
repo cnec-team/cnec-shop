@@ -138,7 +138,7 @@ export default function CheckoutPage() {
         const creatorData = await getCreatorByShopId(username);
 
         if (!creatorData) {
-          router.push(`/${locale}`);
+          router.push(`/${locale}/${username}`);
           return;
         }
 
@@ -402,9 +402,12 @@ export default function CheckoutPage() {
         sessionStorage.setItem('cnec-order-complete', JSON.stringify({
           orderNumber,
           totalAmount: Number(serverTotal),
+          createdAt: new Date().toISOString(),
           isBankTransfer: true,
           bankInfo: bankInfo || undefined,
           shopUsername: username,
+          creatorName: creator.displayName || username,
+          isLoggedIn: !!buyer,
           items: cartItems.map((item) => ({
             id: item.productId,
             productName: item.product?.name || item.product?.nameKo || '상품',
@@ -421,7 +424,7 @@ export default function CheckoutPage() {
         }));
         checkoutDoneRef.current = true;
         clearCart();
-        router.push(`/${locale}/order-complete?orderNumber=${orderNumber}`);
+        router.push(`/${locale}/${username}/order-complete?orderNumber=${orderNumber}`);
         return;
       }
 
@@ -502,7 +505,10 @@ export default function CheckoutPage() {
       sessionStorage.setItem('cnec-order-complete', JSON.stringify({
         orderNumber: completeOrderNumber,
         totalAmount: Number(serverTotal),
+        createdAt: new Date().toISOString(),
         shopUsername: username,
+        creatorName: creator.displayName || username,
+        isLoggedIn: !!buyer,
         items: cartItems.map((item) => ({
           id: item.productId,
           productName: item.product?.name || item.product?.nameKo || '상품',
@@ -519,7 +525,7 @@ export default function CheckoutPage() {
       }));
       checkoutDoneRef.current = true;
       clearCart();
-      router.push(`/${locale}/order-complete?orderNumber=${completeOrderNumber}`);
+      router.push(`/${locale}/${username}/order-complete?orderNumber=${completeOrderNumber}`);
     } catch (error: unknown) {
       console.error('Checkout failed:', error);
       toast.error(error instanceof Error ? error.message : '네트워크 오류가 발생했어요. 다시 시도해주세요.');
