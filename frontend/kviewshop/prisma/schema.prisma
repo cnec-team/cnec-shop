@@ -1930,7 +1930,7 @@ model CreatorProposal {
   emailStatus     ChannelDeliveryStatus @default(PENDING) @map("email_status")
   kakaoStatus     ChannelDeliveryStatus @default(PENDING) @map("kakao_status")
   dmStatus        ChannelDeliveryStatus @default(SKIPPED) @map("dm_status")
-  emailMessageId  String?           @map("email_message_id") // Resend email ID for webhook tracking
+  emailMessageId  String?           @map("email_message_id") // 이메일 메시지 ID (발송 추적용)
   useInstagramDm  Boolean           @default(false) @map("use_instagram_dm")
   // Timestamps
   createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz
