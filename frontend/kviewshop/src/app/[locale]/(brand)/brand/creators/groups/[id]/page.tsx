@@ -66,6 +66,7 @@ import { toast } from 'sonner';
 import { formatFollowerCount } from '@/lib/utils/format';
 import { getCreatorProfileImage } from '@/lib/utils/image';
 import AddMembersDialog from '@/components/brand/AddMembersDialog';
+import { InviteModal } from '@/components/brand/InviteModal';
 
 interface GroupMember {
   id: string;
@@ -146,6 +147,11 @@ export default function GroupDetailPage() {
   const [page, setPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [addMembersOpen, setAddMembersOpen] = useState(false);
+  const [inviteModal, setInviteModal] = useState<{
+    open: boolean;
+    type: 'GONGGU' | 'PRODUCT_PICK';
+    creatorIds: string[];
+  }>({ open: false, type: 'GONGGU', creatorIds: [] });
   const [editNameOpen, setEditNameOpen] = useState(false);
   const [editName, setEditName] = useState('');
   const [editDesc, setEditDesc] = useState('');
@@ -324,11 +330,10 @@ export default function GroupDetailPage() {
   };
 
   const handleBulkPropose = () => {
-    const creatorIds = group?.members
+    const ids = group?.members
       .filter((m) => selectedIds.has(m.id))
-      .map((m) => m.creator.id)
-      .join(',');
-    router.push(`../proposals/new?creatorIds=${creatorIds}`);
+      .map((m) => m.creator.id) ?? [];
+    setInviteModal({ open: true, type: 'GONGGU', creatorIds: ids });
   };
 
   const handleBulkExport = () => {
@@ -406,14 +411,14 @@ export default function GroupDetailPage() {
           </div>
           <div className="flex gap-2 flex-wrap justify-end">
             <Button variant="outline" onClick={() => {
-              const creatorIds = group.members.map((m) => m.creator.id).join(',');
-              router.push(`../proposals/new?creatorIds=${creatorIds}`);
+              const ids = group.members.map((m) => m.creator.id);
+              setInviteModal({ open: true, type: 'GONGGU', creatorIds: ids });
             }}>
               <Send className="h-4 w-4 mr-1" /> 전체에게 공구 초대
             </Button>
             <Button variant="outline" onClick={() => {
-              const creatorIds = group.members.map((m) => m.creator.id).join(',');
-              router.push(`../proposals/new?type=recommend&creatorIds=${creatorIds}`);
+              const ids = group.members.map((m) => m.creator.id);
+              setInviteModal({ open: true, type: 'PRODUCT_PICK', creatorIds: ids });
             }}>
               <ShoppingBag className="h-4 w-4 mr-1" /> 전체에게 상품 추천
             </Button>
@@ -631,6 +636,16 @@ export default function GroupDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* InviteModal */}
+      <InviteModal
+        open={inviteModal.open}
+        onOpenChange={(open) => setInviteModal((prev) => ({ ...prev, open }))}
+        mode={inviteModal.creatorIds.length === 1 ? 'single' : 'bulk'}
+        creatorIds={inviteModal.creatorIds}
+        defaultType={inviteModal.type}
+        onSuccess={fetchGroup}
+      />
     </div>
   );
 }

@@ -24,7 +24,7 @@ import {
   Loader2,
 } from 'lucide-react'
 import { formatFollowerCount } from '@/lib/utils/format'
-import { ProposalModal } from '@/components/brand/ProposalModal'
+import { InviteModal } from '@/components/brand/InviteModal'
 import { GroupSaveDialog } from '@/components/brand/GroupSaveDialog'
 import { getCreatorProfileImage } from '@/lib/utils/image'
 import type { CreatorWithIg } from '@/components/brand/types'
@@ -234,7 +234,7 @@ export default function CreatorDetailPage() {
         </Button>
       </div>
 
-      <ProposalModal
+      <InviteModal
         open={proposalModal.open}
         onOpenChange={open => setProposalModal(prev => ({ ...prev, open }))}
         mode="single"
