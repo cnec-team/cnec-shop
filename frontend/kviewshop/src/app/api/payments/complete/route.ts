@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { auth } from '@/lib/auth';
+import { sendNotification, orderCompleteMessage, newOrderBrandMessage, saleOccurredMessage } from '@/lib/notifications';
 
 // Inline types
 type ConversionType = 'DIRECT' | 'INDIRECT';
@@ -184,6 +185,104 @@ export async function POST(request: NextRequest) {
           // Non-fatal: order is already paid
         }
       }
+    }
+
+    // ── 결제 완료 3채널 알림 ──
+    try {
+      const orderWithDetails = await prisma.order.findUnique({
+        where: { id: orderId },
+        include: {
+          items: { include: { product: { include: { brand: { include: { user: true } } } } } },
+          buyer: { include: { user: true } },
+          creator: { include: { user: true } },
+        },
+      })
+
+      if (orderWithDetails) {
+        const firstProduct = orderWithDetails.items[0]
+        const productName = firstProduct?.productName ?? firstProduct?.product.name ?? '상품'
+        const totalAmount = Number(orderWithDetails.totalAmount)
+        const totalQuantity = orderWithDetails.items.reduce((sum, i) => sum + i.quantity, 0)
+
+        // 1. 구매자 알림
+        const buyerUserId = orderWithDetails.buyer?.userId
+        const buyerEmail = orderWithDetails.buyerEmail ?? orderWithDetails.buyer?.user.email
+        const buyerPhone = orderWithDetails.buyerPhone ?? orderWithDetails.buyer?.user.phone
+        const buyerName = orderWithDetails.buyerName ?? orderWithDetails.buyer?.user.name ?? '고객'
+
+        if (buyerUserId) {
+          const tmpl = orderCompleteMessage({
+            buyerName,
+            orderNumber: orderWithDetails.orderNumber ?? '',
+            productName,
+            totalAmount,
+          })
+          try {
+            await sendNotification({
+              userId: buyerUserId,
+              ...tmpl.inApp,
+              phone: buyerPhone ?? undefined,
+              kakaoTemplate: buyerPhone ? tmpl.kakao : undefined,
+              email: buyerEmail ?? undefined,
+              emailTemplate: buyerEmail ? tmpl.email : undefined,
+            })
+          } catch (e) { console.error('[payment] buyer notification failed:', e) }
+        }
+
+        // 2. 브랜드 알림 (주문에 포함된 브랜드별)
+        const brandMap = new Map<string, typeof firstProduct.product.brand>()
+        for (const item of orderWithDetails.items) {
+          if (item.product.brand && !brandMap.has(item.product.brandId)) {
+            brandMap.set(item.product.brandId, item.product.brand)
+          }
+        }
+        for (const [, brand] of brandMap) {
+          if (!brand) continue
+          const tmpl = newOrderBrandMessage({
+            brandName: brand.brandName ?? '',
+            orderNumber: orderWithDetails.orderNumber ?? '',
+            productName,
+            quantity: totalQuantity,
+            totalAmount,
+            buyerName,
+          })
+          try {
+            await sendNotification({
+              userId: brand.userId,
+              ...tmpl.inApp,
+              phone: brand.user.phone ?? undefined,
+              kakaoTemplate: brand.user.phone ? tmpl.kakao : undefined,
+              email: brand.user.email ?? undefined,
+              emailTemplate: brand.user.email ? tmpl.email : undefined,
+            })
+          } catch (e) { console.error('[payment] brand notification failed:', e) }
+        }
+
+        // 3. 크리에이터 알림 (판매 발생)
+        if (orderWithDetails.creator) {
+          const creator = orderWithDetails.creator
+          const commissionRate = 0.10
+          const commissionAmount = Math.round(totalAmount * commissionRate)
+          const tmpl = saleOccurredMessage({
+            creatorName: creator.user.name ?? '',
+            productName,
+            orderAmount: totalAmount,
+            commissionAmount,
+          })
+          try {
+            await sendNotification({
+              userId: creator.userId,
+              ...tmpl.inApp,
+              phone: creator.user.phone ?? undefined,
+              kakaoTemplate: creator.user.phone ? tmpl.kakao : undefined,
+              email: creator.user.email ?? undefined,
+              emailTemplate: creator.user.email ? tmpl.email : undefined,
+            })
+          } catch (e) { console.error('[payment] creator notification failed:', e) }
+        }
+      }
+    } catch (notifErr) {
+      console.error('[payment] notification error (non-fatal):', notifErr)
     }
 
     return NextResponse.json({
