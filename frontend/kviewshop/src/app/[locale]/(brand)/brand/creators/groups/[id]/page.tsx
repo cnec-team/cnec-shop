@@ -56,6 +56,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatFollowerCount } from '@/lib/utils/format';
+import { getCreatorProfileImage } from '@/lib/utils/image';
 import AddMembersDialog from '@/components/brand/AddMembersDialog';
 
 interface GroupMember {
@@ -370,7 +371,7 @@ export default function GroupDetailPage() {
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={m.creator.igProfileImageR2Url || m.creator.igProfilePicUrl || undefined} />
+                      <AvatarImage src={getCreatorProfileImage(m.creator)} />
                       <AvatarFallback>
                         <User className="h-4 w-4" />
                       </AvatarFallback>

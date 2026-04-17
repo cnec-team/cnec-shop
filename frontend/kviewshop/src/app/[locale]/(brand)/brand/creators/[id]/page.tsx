@@ -26,6 +26,7 @@ import {
 import { formatFollowerCount } from '@/lib/utils/format'
 import { ProposalModal } from '@/components/brand/ProposalModal'
 import { GroupSaveDialog } from '@/components/brand/GroupSaveDialog'
+import { getCreatorProfileImage } from '@/lib/utils/image'
 import type { CreatorWithIg } from '@/components/brand/types'
 
 interface CampaignHistory {
@@ -112,7 +113,7 @@ export default function CreatorDetailPage() {
       {/* 프로필 헤더 */}
       <div className="flex items-start gap-6 mb-8">
         <Avatar className="h-24 w-24">
-          <AvatarImage src={creator.igProfileImageR2Url || creator.igProfilePicUrl || creator.profileImageUrl || creator.profileImage || undefined} />
+          <AvatarImage src={getCreatorProfileImage(creator)} />
           <AvatarFallback className="text-2xl"><User /></AvatarFallback>
         </Avatar>
         <div className="flex-1">

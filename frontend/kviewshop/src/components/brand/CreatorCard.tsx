@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { User, BadgeCheck, BookmarkPlus } from 'lucide-react'
 import { formatFollowerCount } from '@/lib/utils/format'
 import { CreatorContentPreview } from './CreatorContentPreview'
+import { getCreatorProfileImage } from '@/lib/utils/image'
 import type { CreatorWithIg } from './types'
 
 interface CreatorCardProps {
@@ -35,7 +36,7 @@ export function CreatorCard({ creator, isSelected, onSelect, onPropose, onSaveTo
         <div className="flex items-start gap-3">
           <CreatorContentPreview thumbnails={creator.igRecentPostThumbnails as string[] | null}>
             <Avatar className="h-12 w-12 cursor-pointer">
-              <AvatarImage src={creator.igProfileImageR2Url || creator.igProfilePicUrl || creator.profileImageUrl || creator.profileImage || undefined} />
+              <AvatarImage src={getCreatorProfileImage(creator)} />
               <AvatarFallback><User className="h-6 w-6" /></AvatarFallback>
             </Avatar>
           </CreatorContentPreview>
