@@ -375,7 +375,7 @@ export default function ShopOrderCompletePage() {
               비회원 주문 조회는 주문번호 + 전화번호로 가능해요
             </p>
             <Link
-              href={`/${locale}/orders?orderNumber=${data.orderNumber}&guest=1`}
+              href={`/${locale}/${username}/orders/lookup?orderNumber=${data.orderNumber}`}
               className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700"
             >
               <Search className="w-3 h-3" />
@@ -394,8 +394,8 @@ export default function ShopOrderCompletePage() {
           <Link
             href={
               isLoggedIn
-                ? `/${locale}/buyer/orders`
-                : `/${locale}/orders?orderNumber=${data.orderNumber}&guest=1`
+                ? `/${locale}/${username}/me/orders`
+                : `/${locale}/${username}/orders/lookup?orderNumber=${data.orderNumber}`
             }
             className="flex-1 flex items-center justify-center gap-2 h-12 bg-gray-900 text-white rounded-xl font-semibold text-sm"
           >
