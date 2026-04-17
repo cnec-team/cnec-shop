@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { ProductDetailPage } from '@/components/shop/product-detail';
 import { ProductJsonLd } from '@/components/seo/JsonLd';
+import { recordRecentView } from '@/lib/actions/recent-view';
 import type { Metadata } from 'next';
 import type { Product, CampaignProduct, Creator } from '@/types/database';
 
@@ -204,6 +205,9 @@ export default async function ProductPage({ params, searchParams }: ProductPageP
   if (!creator || !product) {
     notFound();
   }
+
+  // 최근 본 상품 기록
+  recordRecentView(creator.id, productId).catch(() => {});
 
   let campaignProduct: any = null;
   if (campaignId) {
