@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { AlertCircle } from "lucide-react";
+import { useParams } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { AlertCircle } from 'lucide-react';
 
 export default function ErrorPage({
   error,
@@ -13,6 +13,7 @@ export default function ErrorPage({
 }) {
   const params = useParams();
   const locale = params.locale as string;
+  const username = params.username as string;
 
   return (
     <div className="flex flex-col items-center justify-center py-20 px-4">
@@ -21,17 +22,16 @@ export default function ErrorPage({
       </div>
       <h2 className="text-lg font-semibold text-gray-900 mb-1">문제가 발생했습니다</h2>
       <p className="text-sm text-gray-500 text-center max-w-sm mb-6">
-        {error.message || "일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요."}
+        {error.message || '일시적인 오류가 발생했습니다.'}
       </p>
       <div className="flex gap-3">
         <Button onClick={reset} className="rounded-xl">
           다시 시도
         </Button>
         <Button variant="outline" className="rounded-xl" asChild>
-          <a href={`/${locale}/orders`}>주문조회로 돌아가기</a>
+          <a href={`/${locale}/${username}`}>샵으로 돌아가기</a>
         </Button>
       </div>
     </div>
   );
 }
-

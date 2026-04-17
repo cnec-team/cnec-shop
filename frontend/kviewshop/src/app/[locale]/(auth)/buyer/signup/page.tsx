@@ -118,8 +118,19 @@ export default function BuyerSignupPage() {
         return;
       }
 
-      toast.success('가입이 완료되었습니다!');
-      router.push(returnUrl || `/${locale}`);
+      toast.success('가입 축하드려요!');
+      // Redirect: returnUrl > last_shop_id cookie > no-shop-context
+      if (returnUrl) {
+        router.push(returnUrl);
+      } else {
+        const cookies = document.cookie.split(';').reduce((acc, c) => {
+          const [key, val] = c.trim().split('=');
+          if (key && val) acc[key] = val;
+          return acc;
+        }, {} as Record<string, string>);
+        const lastShopId = cookies['last_shop_id'];
+        router.push(lastShopId ? `/${locale}/${lastShopId}` : `/${locale}/no-shop-context`);
+      }
       router.refresh();
     } catch {
       setSignupError('가입 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');

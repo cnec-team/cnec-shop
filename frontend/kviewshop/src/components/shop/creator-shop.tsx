@@ -223,7 +223,7 @@ export function CreatorShopPage({
 
           <div className="flex items-center gap-0.5">
             <Link
-              href={`/${locale}/orders`}
+              href={`/${locale}/${username}/orders`}
               className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-[#F5F5F5] transition-colors"
               aria-label="주문조회"
             >
@@ -231,7 +231,7 @@ export function CreatorShopPage({
             </Link>
             {buyer ? (
               <Link
-                href={`/${locale}/buyer/dashboard`}
+                href={`/${locale}/${username}/me`}
                 className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-[#F5F5F5] transition-colors"
                 aria-label="마이페이지"
               >
@@ -239,7 +239,7 @@ export function CreatorShopPage({
               </Link>
             ) : (
               <Link
-                href={`/${locale}/buyer/login`}
+                href={`/${locale}/buyer/login?returnUrl=${encodeURIComponent(`/${locale}/${username}`)}`}
                 className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-[#F5F5F5] transition-colors"
                 aria-label="로그인"
               >

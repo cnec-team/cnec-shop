@@ -1,4 +1,5 @@
 import { LegalFooter } from '@/components/shop/legal-footer';
+import { ShopBottomNav } from '@/components/shop/ShopBottomNav';
 
 interface ShopUsernameLayoutProps {
   children: React.ReactNode;
@@ -9,11 +10,12 @@ export default async function ShopUsernameLayout({
   children,
   params,
 }: ShopUsernameLayoutProps) {
-  const { locale } = await params;
+  const { locale, username } = await params;
 
   return (
     <>
       {children}
+      <ShopBottomNav locale={locale} username={username} />
       <LegalFooter locale={locale} variant="minimal" />
     </>
   );

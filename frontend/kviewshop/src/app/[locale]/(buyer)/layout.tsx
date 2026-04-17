@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter, useParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useUser } from '@/lib/hooks/use-user';
-import { Loader2, Home, ShoppingBag, Heart, Star, Bell, Settings, LogOut, User, Gift, TrendingUp } from 'lucide-react';
+import { Loader2, Home, ShoppingBag, Heart, Star, Bell, Settings, LogOut, User, Gift } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { LegalFooter } from '@/components/shop/legal-footer';
@@ -15,7 +15,6 @@ const buyerNavItems = [
   { href: '/buyer/subscriptions', label: '구독', icon: Heart },
   { href: '/buyer/reviews', label: '리뷰', icon: Star },
   { href: '/buyer/points', label: '포인트', icon: Gift },
-  { href: '/buyer/become-creator', label: '크리에이터 되기', icon: TrendingUp },
   { href: '/buyer/settings', label: '설정', icon: Settings },
 ];
 

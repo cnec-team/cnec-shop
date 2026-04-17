@@ -71,6 +71,15 @@ const brandRouteRegex = new RegExp(`^/(${LP})/brand`);
 const creatorRouteRegex = new RegExp(`^/(${LP})/creator`);
 const buyerRouteRegex = new RegExp(`^/(${LP})/buyer`);
 
+// Known platform route prefixes (non-shop pages)
+const PLATFORM_PREFIXES = [
+  'admin', 'brand', 'creator', 'buyer',
+  'login', 'signup', 'auth',
+  'policies', 'help', 'no-shop-context',
+  'order-complete', 'payment',
+  'products', 'creators', 'content', 'orders',
+];
+
 export default auth(async function middleware(request) {
   const pathname = request.nextUrl.pathname;
 
@@ -91,6 +100,79 @@ export default auth(async function middleware(request) {
     return NextResponse.redirect(
       new URL(`/${defaultLocale}/${rest}`, request.url)
     );
+  }
+
+  // ─── Set last_shop_id cookie when visiting a creator shop ───
+  // Detect /{locale}/{username} where username is NOT a known platform prefix
+  const shopVisitRegex = new RegExp(`^/(${LP})/([a-zA-Z0-9_][a-zA-Z0-9_-]*)(/.*)?$`);
+  const shopVisitMatch = pathname.match(shopVisitRegex);
+  if (shopVisitMatch) {
+    const possibleUsername = shopVisitMatch[2];
+    const isKnownPrefix = PLATFORM_PREFIXES.some(
+      (prefix) => possibleUsername === prefix || possibleUsername.startsWith(prefix + '/')
+    );
+    if (!isKnownPrefix) {
+      // This looks like a creator shop visit — set cookie
+      const response = intlMiddleware(request);
+      response.cookies.set('last_shop_id', possibleUsername, {
+        maxAge: 60 * 60 * 24 * 30, // 30 days
+        sameSite: 'lax',
+        path: '/',
+      });
+
+      // Continue with the rest of the middleware checks on this response
+      // but first check auth rules
+      const user = request.auth?.user;
+      const isAuthPage =
+        loginPageRegex.test(pathname) ||
+        signupPageRegex.test(pathname) ||
+        generalLoginRegex.test(pathname) ||
+        generalSignupRegex.test(pathname);
+
+      const protectedPaths = ['/admin', '/brand', '/creator', '/buyer'];
+      const isProtectedRoute = !isAuthPage && protectedPaths.some((path) => {
+        const pattern = new RegExp(`^/(${LP})${path}`);
+        return pattern.test(pathname);
+      });
+
+      if (isProtectedRoute && !user) {
+        const locale = pathname.split('/')[1] || defaultLocale;
+        const returnUrl = encodeURIComponent(pathname);
+        if (buyerRouteRegex.test(pathname)) {
+          return NextResponse.redirect(
+            new URL(`/${locale}/buyer/login?returnUrl=${returnUrl}`, request.url)
+          );
+        }
+        return NextResponse.redirect(
+          new URL(`/${locale}/login?returnUrl=${returnUrl}`, request.url)
+        );
+      }
+
+      return response;
+    }
+  }
+
+  // ─── Buyer/guest root redirect: /{locale} → last shop or /no-shop-context ───
+  const rootPageRegex = new RegExp(`^/(${LP})/?$`);
+  if (rootPageRegex.test(pathname)) {
+    const user = request.auth?.user;
+    const isBuyerOrGuest = !user || user.role === 'buyer';
+
+    if (isBuyerOrGuest) {
+      const lastShopId = request.cookies.get('last_shop_id')?.value;
+      if (lastShopId) {
+        const locale = pathname.split('/')[1] || defaultLocale;
+        return NextResponse.redirect(
+          new URL(`/${locale}/${lastShopId}`, request.url),
+          302
+        );
+      }
+      // No cookie → show no-shop-context page via rewrite (keeps URL clean)
+      const locale = pathname.split('/')[1] || defaultLocale;
+      return NextResponse.rewrite(
+        new URL(`/${locale}/no-shop-context`, request.url)
+      );
+    }
   }
 
   // Geo-based locale detection

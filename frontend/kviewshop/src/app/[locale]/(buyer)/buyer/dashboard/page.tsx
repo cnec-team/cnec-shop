@@ -158,9 +158,9 @@ export default function BuyerDashboardPage() {
             <p className="text-sm text-gray-400 mb-5">
               크리에이터가 추천하는 상품을 구경해보세요
             </p>
-            <Link href={`/${locale}`}>
+            <Link href={`/${locale}/creators`}>
               <Button size="sm" variant="outline" className="rounded-full">
-                크리에이터 샵 둘러보기
+                쇼핑하러 가기
               </Button>
             </Link>
           </div>

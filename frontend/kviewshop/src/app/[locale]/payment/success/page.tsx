@@ -5,7 +5,7 @@ import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useCartStore, useAuthStore } from '@/lib/store/auth';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Package, Home, Loader2, AlertCircle } from 'lucide-react';
+import { CheckCircle, Package, ShoppingBag, Loader2, AlertCircle } from 'lucide-react';
 
 export default function PaymentSuccessPage() {
   const router = useRouter();
@@ -99,9 +99,9 @@ export default function PaymentSuccessPage() {
             <Button variant="outline" className="flex-1 h-12 rounded-xl" onClick={() => router.back()}>
               돌아가기
             </Button>
-            <Link href={'/' + locale} className="flex-1">
+            <Link href={'/' + locale + '/no-shop-context'} className="flex-1">
               <Button className="w-full h-12 bg-gray-900 text-white hover:bg-gray-800 rounded-xl">
-                홈으로
+                돌아가기
               </Button>
             </Link>
           </div>
@@ -160,21 +160,41 @@ export default function PaymentSuccessPage() {
 
           {/* Actions */}
           <div className="flex flex-col gap-3">
-            <Link href={buyer ? ('/' + locale + '/buyer/orders') : ('/' + locale + '/orders' + (orderNumber ? '?orderNumber=' + encodeURIComponent(orderNumber) : ''))}>
+            <Link href={buyer ? ('/' + locale + '/buyer/orders') : ('/' + locale + '/orders' + (orderNumber ? '?orderNumber=' + encodeURIComponent(orderNumber) + '&guest=1' : '?guest=1'))}>
               <Button className="w-full h-12 bg-gray-900 text-white hover:bg-gray-800 rounded-xl gap-2">
                 <Package className="h-4 w-4" />
                 주문 내역 보기
               </Button>
             </Link>
-            <Link href={'/' + locale}>
-              <Button variant="outline" className="w-full h-12 rounded-xl gap-2">
-                <Home className="h-4 w-4" />
-                쇼핑 계속하기
-              </Button>
-            </Link>
+            <ShopContinueButton locale={locale} />
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+function ShopContinueButton({ locale }: { locale: string }) {
+  const [href, setHref] = useState(`/${locale}`);
+
+  useEffect(() => {
+    const cookies = document.cookie.split(';').reduce((acc, c) => {
+      const [key, val] = c.trim().split('=');
+      if (key && val) acc[key] = val;
+      return acc;
+    }, {} as Record<string, string>);
+    const lastShopId = cookies['last_shop_id'];
+    if (lastShopId) {
+      setHref(`/${locale}/${lastShopId}`);
+    }
+  }, [locale]);
+
+  return (
+    <Link href={href}>
+      <Button variant="outline" className="w-full h-12 rounded-xl gap-2">
+        <ShoppingBag className="h-4 w-4" />
+        샵 둘러보기
+      </Button>
+    </Link>
   );
 }
