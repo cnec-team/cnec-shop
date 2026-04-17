@@ -112,7 +112,7 @@ export default function CreatorDetailPage() {
       {/* 프로필 헤더 */}
       <div className="flex items-start gap-6 mb-8">
         <Avatar className="h-24 w-24">
-          <AvatarImage src={creator.igProfileImageR2Url || undefined} />
+          <AvatarImage src={creator.igProfileImageR2Url || creator.igProfilePicUrl || creator.profileImageUrl || creator.profileImage || undefined} />
           <AvatarFallback className="text-2xl"><User /></AvatarFallback>
         </Avatar>
         <div className="flex-1">

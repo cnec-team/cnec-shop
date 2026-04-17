@@ -14,6 +14,9 @@ export interface CreatorWithIg {
   igEngagementRate: number | null
   igDataImportedAt: string | null
   igProfileImageR2Url: string | null
+  igProfilePicUrl: string | null
   igTier: string | null
   igRecentPostThumbnails: unknown
+  profileImageUrl: string | null
+  profileImage: string | null
 }
