@@ -143,14 +143,13 @@ export default function ShopMyPage() {
     { label: '찜한 상품', icon: Heart, href: `/${locale}/${username}/me/wishlist`, badge: wishlistCount > 0 ? `${wishlistCount}` : undefined },
     { label: '최근 본 상품', icon: Clock, href: `/${locale}/${username}/me/recent`, badge: recentCount > 0 ? `${recentCount}` : undefined },
     { divider: true },
-    { label: '배송지 관리', icon: MapPin, href: `/${locale}/buyer/settings` },
-    { label: '결제수단', icon: CreditCard, href: `/${locale}/buyer/settings` },
-    { label: '쿠폰함', icon: Ticket, href: `/${locale}/buyer/points` },
-    { label: '포인트', icon: Gift, href: `/${locale}/buyer/points`, badge: `${pointsBalance.toLocaleString()}P` },
+    { label: '1:1 문의', icon: HelpCircle, href: `/${locale}/${username}/me/inquiries` },
+    { label: '배송지 관리', icon: MapPin, href: `/${locale}/${username}/me/addresses` },
+    { label: '포인트', icon: Gift, href: `/${locale}/${username}/me/points`, badge: `${pointsBalance.toLocaleString()}P` },
+    { label: '쿠폰함', icon: Ticket, href: `/${locale}/${username}/me/coupons` },
     { divider: true },
-    { label: '회원정보', icon: Settings, href: `/${locale}/buyer/settings` },
-    { label: '알림설정', icon: Bell, href: `/${locale}/buyer/settings` },
-    { label: '1:1 문의', icon: HelpCircle, href: `/${locale}/help` },
+    { label: '회원정보', icon: Settings, href: `/${locale}/${username}/me/profile` },
+    { label: '알림설정', icon: Bell, href: `/${locale}/${username}/me/notifications` },
   ];
 
   return (
