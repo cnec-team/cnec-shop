@@ -1,4 +1,3 @@
-import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { LegalFooter } from '@/components/shop/legal-footer';
@@ -26,12 +25,6 @@ export default async function ShopUsernameLayout({
   });
 
   if (!creator || creator.status !== 'active') {
-    // 오염된 쿠키 정리
-    const cookieStore = await cookies();
-    const cookieVal = cookieStore.get('last_shop_id')?.value;
-    if (cookieVal?.toLowerCase() === username.toLowerCase()) {
-      cookieStore.delete('last_shop_id');
-    }
     notFound();
   }
 

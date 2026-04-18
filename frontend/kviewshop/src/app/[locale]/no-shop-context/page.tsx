@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { prisma } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { Users, ArrowRight } from 'lucide-react';
+import { ClearLastShopCookie } from '@/components/shop/ClearLastShopCookie';
 
 interface PageProps {
   params: Promise<{ locale: string }>;
@@ -42,6 +43,7 @@ export default async function NoShopContextPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <ClearLastShopCookie />
       <div className="max-w-lg mx-auto px-4 py-16">
         <div className="text-center mb-10">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
