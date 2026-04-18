@@ -1,5 +1,4 @@
-import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { BackToShopButton } from '@/components/BackToShopButton';
 
 interface TermsPageProps {
   params: Promise<{ locale: string }>;
@@ -12,13 +11,7 @@ export default async function TermsPage({ params }: TermsPageProps) {
     <div className="min-h-screen bg-white">
       <div className="max-w-3xl mx-auto px-4 py-12">
         {/* 상단 네비게이션 */}
-        <Link
-          href={`/${locale}`}
-          className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition-colors mb-8"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          돌아가기
-        </Link>
+        <BackToShopButton locale={locale} />
 
         <h1 className="text-2xl font-bold text-gray-900 mb-2">이용약관</h1>
         <p className="text-sm text-gray-500 mb-10">

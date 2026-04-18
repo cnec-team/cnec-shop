@@ -23,6 +23,14 @@ const loginSchema = z.object({
 
 type LoginForm = z.infer<typeof loginSchema>;
 
+const RESERVED_PATHS = [
+  'admin', 'brand', 'creator', 'buyer', 'login', 'signup', 'auth',
+  'terms', 'privacy', 'policies', 'help', 'about', 'faq', 'contact',
+  'no-shop-context', 'auth-error', 'error', '404', '500', 'not-found',
+  'order-complete', 'payment', 'me', 'cart', 'checkout', 'orders', 'order',
+  'products', 'creators', 'content', 'sitemap', 'og',
+];
+
 function getCallbackUrl(locale: string, returnUrl: string | null): string {
   if (returnUrl) return returnUrl;
   const cookies = document.cookie.split(';').reduce((acc, c) => {
@@ -31,7 +39,8 @@ function getCallbackUrl(locale: string, returnUrl: string | null): string {
     return acc;
   }, {} as Record<string, string>);
   const lastShopId = cookies['last_shop_id'];
-  return lastShopId ? `/${locale}/${lastShopId}` : `/${locale}/no-shop-context`;
+  const isValid = lastShopId && !RESERVED_PATHS.includes(lastShopId);
+  return isValid ? `/${locale}/${lastShopId}` : `/${locale}/no-shop-context`;
 }
 
 export default function BuyerLoginPage() {

@@ -75,10 +75,15 @@ const buyerRouteRegex = new RegExp(`^/(${LP})/buyer`);
 const PLATFORM_PREFIXES = [
   'admin', 'brand', 'creator', 'buyer',
   'login', 'signup', 'auth',
-  'policies', 'help', 'no-shop-context',
+  'terms', 'privacy', 'policies', 'help', 'about', 'faq', 'contact',
+  'no-shop-context', 'auth-error', 'error', '404', '500', 'not-found',
   'order-complete', 'payment',
-  'products', 'creators', 'content', 'orders',
+  'me', 'cart', 'checkout', 'orders', 'order',
+  'products', 'creators', 'content',
+  'sitemap', 'manifest.json', 'og',
 ];
+
+const USERNAME_PATTERN = /^[a-zA-Z0-9_-]{3,50}$/;
 
 export default auth(async function middleware(request) {
   const pathname = request.nextUrl.pathname;
@@ -102,6 +107,14 @@ export default auth(async function middleware(request) {
     );
   }
 
+  // ─── Sanitize: if cookie already holds a reserved value, delete it ───
+  const currentCookie = request.cookies.get('last_shop_id')?.value;
+  if (currentCookie && PLATFORM_PREFIXES.includes(currentCookie)) {
+    const res = intlMiddleware(request);
+    res.cookies.delete('last_shop_id');
+    return res;
+  }
+
   // ─── Set last_shop_id cookie when visiting a creator shop ───
   // Detect /{locale}/{username} where username is NOT a known platform prefix
   const shopVisitRegex = new RegExp(`^/(${LP})/([a-zA-Z0-9_][a-zA-Z0-9_-]*)(/.*)?$`);
@@ -111,7 +124,7 @@ export default auth(async function middleware(request) {
     const isKnownPrefix = PLATFORM_PREFIXES.some(
       (prefix) => possibleUsername === prefix || possibleUsername.startsWith(prefix + '/')
     );
-    if (!isKnownPrefix) {
+    if (!isKnownPrefix && USERNAME_PATTERN.test(possibleUsername)) {
       // This looks like a creator shop visit — set cookie
       const response = intlMiddleware(request);
       response.cookies.set('last_shop_id', possibleUsername, {
@@ -160,7 +173,7 @@ export default auth(async function middleware(request) {
 
     if (isBuyerOrGuest) {
       const lastShopId = request.cookies.get('last_shop_id')?.value;
-      if (lastShopId) {
+      if (lastShopId && !PLATFORM_PREFIXES.includes(lastShopId) && USERNAME_PATTERN.test(lastShopId)) {
         const locale = pathname.split('/')[1] || defaultLocale;
         return NextResponse.redirect(
           new URL(`/${locale}/${lastShopId}`, request.url),
