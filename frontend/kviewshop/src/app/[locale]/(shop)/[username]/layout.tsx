@@ -1,6 +1,7 @@
 import { LegalFooter } from '@/components/shop/legal-footer';
 import { ShopBottomNav } from '@/components/shop/ShopBottomNav';
 import { GuestSyncEffect } from '@/components/shop/GuestSyncEffect';
+import { WelcomeToastEffect } from '@/components/shop/WelcomeToastEffect';
 
 interface ShopUsernameLayoutProps {
   children: React.ReactNode;
@@ -16,6 +17,7 @@ export default async function ShopUsernameLayout({
   return (
     <>
       <GuestSyncEffect />
+      <WelcomeToastEffect />
       {children}
       <ShopBottomNav locale={locale} username={username} />
       <LegalFooter locale={locale} variant="minimal" />

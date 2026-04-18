@@ -58,7 +58,38 @@
     "brandPendingApproval": "브랜드 승인 대기 중입니다.",
     "emailNotConfirmed": "이메일이 인증되지 않았습니다. 이메일을 확인해 주세요.",
     "loginError": "로그인 중 오류가 발생했습니다. 다시 시도해 주세요.",
-    "or": "또는"
+    "or": "또는",
+    "emailFirst": {
+      "title": "시작하려면 이메일을 입력해주세요",
+      "placeholder": "example@email.com",
+      "continue": "계속하기"
+    },
+    "existing": {
+      "welcomeBack": "다시 오셨군요!",
+      "nameGreeting": "{name}님, 환영합니다",
+      "socialNotice": "{provider}로 가입하셨어요"
+    },
+    "new": {
+      "title": "새로 가입하시는군요!",
+      "passwordHint": "8자 이상 · 영문+숫자 포함",
+      "completeButton": "가입 완료"
+    },
+    "terms": {
+      "age": "만 14세 이상",
+      "service": "이용약관 동의",
+      "privacy": "개인정보 수집·이용 동의",
+      "electronic": "전자금융거래 이용약관",
+      "marketing": "마케팅 정보 수신 동의",
+      "allAgree": "전체 동의"
+    },
+    "accountLocked": "5회 실패로 5분간 잠겼습니다",
+    "welcome": {
+      "toast": "가입 축하드려요! 3,000P가 지급됐어요"
+    },
+    "benefits": {
+      "title": "크넥샵 회원 7가지 혜택",
+      "cta": "지금 가입하기"
+    }
   },
   "nav": {
     "home": "홈",
