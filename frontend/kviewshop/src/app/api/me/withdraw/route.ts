@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { auth } from '@/lib/auth';
+import { rateLimit } from '@/lib/rate-limit';
 import bcrypt from 'bcryptjs';
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = req.headers.get('x-forwarded-for') ?? 'unknown';
+    if (await rateLimit(`me-withdraw:${ip}`, 2, 60)) {
+      return NextResponse.json({ error: 'too_many_requests', message: '잠시 후 다시 시도해주세요' }, { status: 429 });
+    }
+
     const session = await auth();
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
