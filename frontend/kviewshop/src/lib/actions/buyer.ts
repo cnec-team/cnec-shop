@@ -307,6 +307,11 @@ export async function getBuyerOrderDetail(orderId: string, buyerId: string) {
           logoUrl: true,
           contactPhone: true,
           contactEmail: true,
+          csPhone: true,
+          csEmail: true,
+          csHours: true,
+          shippingReturnAddress: true,
+          shippingReturnZipcode: true,
         },
       },
       items: {

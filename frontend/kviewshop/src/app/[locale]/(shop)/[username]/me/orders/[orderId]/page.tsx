@@ -459,30 +459,59 @@ export default function ShopOrderDetailPage() {
               <p className="font-medium text-gray-900">
                 {order.brand.brandName || order.brand.companyName}
               </p>
-              {order.brand.contactPhone && (
-                <a href={`tel:${order.brand.contactPhone}`} className="flex items-center gap-2 text-gray-500 hover:text-gray-900">
+              {/* CS 정보 */}
+              {(order.brand.csPhone || order.brand.contactPhone) && (
+                <a href={`tel:${order.brand.csPhone || order.brand.contactPhone}`} className="flex items-center gap-2 text-gray-500 hover:text-gray-900">
                   <Phone className="h-3 w-3" />
-                  {order.brand.contactPhone}
+                  {order.brand.csPhone || order.brand.contactPhone}
                 </a>
               )}
-              {order.brand.contactEmail && (
-                <a href={`mailto:${order.brand.contactEmail}`} className="flex items-center gap-2 text-gray-500 hover:text-gray-900">
+              {(order.brand.csEmail || order.brand.contactEmail) && (
+                <a href={`mailto:${order.brand.csEmail || order.brand.contactEmail}`} className="flex items-center gap-2 text-gray-500 hover:text-gray-900">
                   <Mail className="h-3 w-3" />
-                  {order.brand.contactEmail}
+                  {order.brand.csEmail || order.brand.contactEmail}
                 </a>
+              )}
+              {order.brand.csHours && (
+                <p className="text-xs text-gray-400">운영시간: {order.brand.csHours}</p>
+              )}
+              {order.brand.shippingReturnAddress && (
+                <div className="mt-2">
+                  <p className="text-xs text-gray-400">반품 주소: {order.brand.shippingReturnAddress}</p>
+                </div>
               )}
               <div className="h-px bg-gray-100 my-2" />
-              <p className="text-xs text-gray-400">
-                배송/교환/환불은 {order.brand.brandName || order.brand.companyName}이 처리합니다
-              </p>
+              <div className="bg-amber-50 border border-amber-100 rounded-xl p-3">
+                <p className="text-xs font-medium text-amber-700">
+                  배송/교환/환불은 {order.brand.brandName || order.brand.companyName}이(가) 처리합니다
+                </p>
+              </div>
             </div>
-            <button
-              onClick={() => toast.info('1:1 문의는 준비 중입니다')}
-              className="mt-3 w-full flex items-center justify-center gap-2 h-10 border border-gray-200 rounded-xl text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              <MessageCircle className="h-4 w-4" />
-              1:1 문의
-            </button>
+            <div className="mt-3 space-y-2">
+              <Link
+                href={`/${locale}/${username}/me/orders/${orderId}/inquiry`}
+                className="w-full flex items-center justify-center gap-2 h-10 border border-gray-200 rounded-xl text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                <MessageCircle className="h-4 w-4" />
+                1:1 문의
+              </Link>
+              {['DELIVERED', 'CONFIRMED'].includes(order.status) && (
+                <div className="flex gap-2">
+                  <Link
+                    href={`/${locale}/${username}/me/orders/${orderId}/exchange`}
+                    className="flex-1 flex items-center justify-center gap-1 h-10 border border-gray-200 rounded-xl text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    교환 신청
+                  </Link>
+                  <Link
+                    href={`/${locale}/${username}/me/orders/${orderId}/refund`}
+                    className="flex-1 flex items-center justify-center gap-1 h-10 border border-gray-200 rounded-xl text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    반품 신청
+                  </Link>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -518,23 +547,29 @@ export default function ShopOrderDetailPage() {
                 {isConfirming ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
                 구매 확정
               </Button>
-              <Button
-                variant="outline"
-                onClick={() => toast.info('후기 작성은 준비 중입니다')}
-                className="flex-1 h-12 rounded-xl gap-2"
-              >
-                <Star className="h-4 w-4" />
-                후기 작성
-              </Button>
+              <Link href={`/${locale}/${username}/me/orders/${orderId}/review/write`} className="flex-1">
+                <Button variant="outline" className="w-full h-12 rounded-xl gap-2">
+                  <Star className="h-4 w-4" />
+                  후기 작성
+                </Button>
+              </Link>
             </>
           )}
           {order.status === 'CONFIRMED' && (
-            <Link href={`/${locale}/${username}`} className="flex-1">
-              <Button className="w-full h-12 bg-gray-900 text-white rounded-xl font-semibold gap-2">
-                <ShoppingBag className="h-4 w-4" />
-                재구매하기
-              </Button>
-            </Link>
+            <>
+              <Link href={`/${locale}/${username}/me/orders/${orderId}/review/write`} className="flex-1">
+                <Button variant="outline" className="w-full h-12 rounded-xl gap-2">
+                  <Star className="h-4 w-4" />
+                  후기 작성
+                </Button>
+              </Link>
+              <Link href={`/${locale}/${username}`} className="flex-1">
+                <Button className="w-full h-12 bg-gray-900 text-white rounded-xl font-semibold gap-2">
+                  <ShoppingBag className="h-4 w-4" />
+                  재구매
+                </Button>
+              </Link>
+            </>
           )}
           {['PENDING', 'PAID', 'PREPARING'].includes(order.status) && (
             <Button

@@ -186,6 +186,9 @@ enum PointsHistoryType {
   expiry
   use_order
   admin_adjustment
+  signup_bonus
+  review_reward
+  cancel_refund
 }
 
 enum CreatorPointType {
@@ -367,22 +370,22 @@ enum IgSyncStatus {
 // ============================================================
 
 model User {
-  id        String     @id @default(uuid())
-  email     String     @unique @db.VarChar(255)
-  name      String     @db.VarChar(100)
-  passwordHash String? @map("password_hash") @db.VarChar(255)
-  role      UserRole
-  status    UserStatus @default(active)
-  phone     String?    @db.VarChar(20)
-  avatarUrl String?    @map("avatar_url")
-  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  id           String     @id @default(uuid())
+  email        String     @unique @db.VarChar(255)
+  name         String     @db.VarChar(100)
+  passwordHash String?    @map("password_hash") @db.VarChar(255)
+  role         UserRole
+  status       UserStatus @default(active)
+  phone        String?    @db.VarChar(20)
+  avatarUrl    String?    @map("avatar_url")
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  brand         Brand?
-  creator       Creator?
-  buyer         Buyer?
-  settlements   Settlement[]
-  notifications Notification[]
+  brand             Brand?
+  creator           Creator?
+  buyer             Buyer?
+  settlements       Settlement[]
+  notifications     Notification[]
   answeredQuestions ProductQuestion[] @relation("QuestionAnswerer")
 
   @@map("users")
@@ -393,88 +396,95 @@ model User {
 // ============================================================
 
 model Brand {
-  id                    String    @id @default(uuid())
-  userId                String    @unique @map("user_id")
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                      String      @id @default(uuid())
+  userId                  String      @unique @map("user_id")
+  user                    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   // Names
-  brandName             String?   @map("brand_name")
-  companyName           String?   @map("company_name")
-  companyNameEn         String?   @map("company_name_en")
-  companyNameJp         String?   @map("company_name_jp")
-  representativeName    String?   @map("representative_name") @db.VarChar(100)
+  brandName               String?     @map("brand_name")
+  companyName             String?     @map("company_name")
+  companyNameEn           String?     @map("company_name_en")
+  companyNameJp           String?     @map("company_name_jp")
+  representativeName      String?     @map("representative_name") @db.VarChar(100)
   // Info
-  businessNumber        String?   @map("business_number") @db.VarChar(50)
-  businessRegistrationUrl String? @map("business_registration_url")
-  logoUrl               String?   @map("logo_url")
-  description           String?
-  descriptionEn         String?   @map("description_en")
-  descriptionJp         String?   @map("description_jp")
-  contactEmail          String?   @map("contact_email") @db.VarChar(255)
-  contactPhone          String?   @map("contact_phone") @db.VarChar(20)
+  businessNumber          String?     @map("business_number") @db.VarChar(50)
+  businessRegistrationUrl String?     @map("business_registration_url")
+  logoUrl                 String?     @map("logo_url")
+  description             String?
+  descriptionEn           String?     @map("description_en")
+  descriptionJp           String?     @map("description_jp")
+  contactEmail            String?     @map("contact_email") @db.VarChar(255)
+  contactPhone            String?     @map("contact_phone") @db.VarChar(20)
   // Commission
-  platformFeeRate       Decimal   @default(0.03) @map("platform_fee_rate") @db.Decimal(5, 4)
-  creatorCommissionRate Int?      @default(25) @map("creator_commission_rate")
-  enableTieredCommission Boolean  @default(false) @map("enable_tiered_commission")
-  tier1Rate             Int?      @map("tier1_rate")
-  tier2Rate             Int?      @map("tier2_rate")
-  tier3Rate             Int?      @map("tier3_rate")
-  tier4Rate             Int?      @map("tier4_rate")
+  platformFeeRate         Decimal     @default(0.03) @map("platform_fee_rate") @db.Decimal(5, 4)
+  creatorCommissionRate   Int?        @default(25) @map("creator_commission_rate")
+  enableTieredCommission  Boolean     @default(false) @map("enable_tiered_commission")
+  tier1Rate               Int?        @map("tier1_rate")
+  tier2Rate               Int?        @map("tier2_rate")
+  tier3Rate               Int?        @map("tier3_rate")
+  tier4Rate               Int?        @map("tier4_rate")
+  // CS 정보
+  csPhone                 String?     @map("cs_phone")
+  csEmail                 String?     @map("cs_email")
+  csHours                 String?     @map("cs_hours")
+  shippingReturnAddress   String?     @map("shipping_return_address")
+  shippingReturnZipcode   String?     @map("shipping_return_zipcode") @db.VarChar(10)
   // Shipping
-  shippingCountries     String[]  @default([]) @map("shipping_countries")
-  defaultShippingFee    Decimal   @default(0) @map("default_shipping_fee") @db.Decimal(10, 0)
-  freeShippingThreshold Decimal?  @map("free_shipping_threshold") @db.Decimal(10, 0)
-  defaultCourier        String?   @map("default_courier") @db.VarChar(20)
-  returnAddress         String?   @map("return_address")
-  exchangePolicy        String?   @map("exchange_policy")
+  shippingCountries       String[]    @default([]) @map("shipping_countries")
+  defaultShippingFee      Decimal     @default(0) @map("default_shipping_fee") @db.Decimal(10, 0)
+  freeShippingThreshold   Decimal?    @map("free_shipping_threshold") @db.Decimal(10, 0)
+  defaultCourier          String?     @map("default_courier") @db.VarChar(20)
+  returnAddress           String?     @map("return_address")
+  exchangePolicy          String?     @map("exchange_policy")
   // Certifications
-  certifications        Json      @default("[]") @db.JsonB
+  certifications          Json        @default("[]") @db.JsonB
   // MoCRA
-  mocraStatus           MocraStatus @default(green) @map("mocra_status")
-  usSalesYtd            Decimal   @default(0) @map("us_sales_ytd")
-  jpSalesYtd            Decimal   @default(0) @map("jp_sales_ytd")
-  monthlyFee            Int       @default(55000) @map("monthly_fee")
+  mocraStatus             MocraStatus @default(green) @map("mocra_status")
+  usSalesYtd              Decimal     @default(0) @map("us_sales_ytd")
+  jpSalesYtd              Decimal     @default(0) @map("jp_sales_ytd")
+  monthlyFee              Int         @default(55000) @map("monthly_fee")
   // Bank
-  bankName              String?   @map("bank_name")
-  bankAccount           String?   @map("bank_account")
-  accountNumber         String?   @map("account_number")
-  accountHolder         String?   @map("account_holder")
-  bankHolder            String?   @map("bank_holder") @db.VarChar(50)
-  bankCode              String?   @map("bank_code")
-  bankVerified          Boolean   @default(false) @map("bank_verified")
-  bankVerifiedAt        DateTime? @map("bank_verified_at") @db.Timestamptz
+  bankName                String?     @map("bank_name")
+  bankAccount             String?     @map("bank_account")
+  accountNumber           String?     @map("account_number")
+  accountHolder           String?     @map("account_holder")
+  bankHolder              String?     @map("bank_holder") @db.VarChar(50)
+  bankCode                String?     @map("bank_code")
+  bankVerified            Boolean     @default(false) @map("bank_verified")
+  bankVerifiedAt          DateTime?   @map("bank_verified_at") @db.Timestamptz
   // Settlement
-  settlementCycle       String    @default("monthly") @map("settlement_cycle")
-  minimumPayout         Int       @default(50) @map("minimum_payout")
+  settlementCycle         String      @default("monthly") @map("settlement_cycle")
+  minimumPayout           Int         @default(50) @map("minimum_payout")
   // Approval
-  approved              Boolean   @default(false)
-  approvedAt            DateTime? @map("approved_at") @db.Timestamptz
+  approved                Boolean     @default(false)
+  approvedAt              DateTime?   @map("approved_at") @db.Timestamptz
   // Brand lines
-  brandLines            Json      @default("[]") @map("brand_lines") @db.JsonB
+  brandLines              Json        @default("[]") @map("brand_lines") @db.JsonB
   // Timestamps
-  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt             DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  createdAt               DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt               DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   // Instagram 연동 (DM 발송용)
-  brandInstagramHandle              String?           @map("brand_instagram_handle")
-  brandInstagramHandleStatus        BrandIgHandleStatus @default(NOT_LINKED) @map("brand_instagram_handle_status")
-  brandInstagramHandleVerifiedAt    DateTime?         @map("brand_instagram_handle_verified_at") @db.Timestamptz
-  brandInstagramSessionExpiresAt    DateTime?         @map("brand_instagram_session_expires_at") @db.Timestamptz
-  brandInstagramLastUsedAt          DateTime?         @map("brand_instagram_last_used_at") @db.Timestamptz
-  brandInstagramDailySentCount      Int               @default(0) @map("brand_instagram_daily_sent_count")
+  brandInstagramHandle           String?             @map("brand_instagram_handle")
+  brandInstagramHandleStatus     BrandIgHandleStatus @default(NOT_LINKED) @map("brand_instagram_handle_status")
+  brandInstagramHandleVerifiedAt DateTime?           @map("brand_instagram_handle_verified_at") @db.Timestamptz
+  brandInstagramSessionExpiresAt DateTime?           @map("brand_instagram_session_expires_at") @db.Timestamptz
+  brandInstagramLastUsedAt       DateTime?           @map("brand_instagram_last_used_at") @db.Timestamptz
+  brandInstagramDailySentCount   Int                 @default(0) @map("brand_instagram_daily_sent_count")
 
-  products              Product[]
-  campaigns             Campaign[]
-  orders                Order[]
-  supportTickets        SupportTicket[]
-  sampleRequests        SampleRequest[]
-  creatorProposals      CreatorProposal[]
-  creatorGroups         CreatorGroup[]
-  proposalTemplates     ProposalTemplate[]
-  subscription          BrandSubscription?
-  messageCredits        MessageCredit[]
-  subscriptionPayments  SubscriptionPayment[]
-  dmQueues              DmSendQueue[]
-  filterPresets         CreatorFilterPreset[]
+  products             Product[]
+  campaigns            Campaign[]
+  orders               Order[]
+  supportTickets       SupportTicket[]
+  sampleRequests       SampleRequest[]
+  creatorProposals     CreatorProposal[]
+  creatorGroups        CreatorGroup[]
+  proposalTemplates    ProposalTemplate[]
+  subscription         BrandSubscription?
+  messageCredits       MessageCredit[]
+  subscriptionPayments SubscriptionPayment[]
+  dmQueues             DmSendQueue[]
+  filterPresets        CreatorFilterPreset[]
+  orderInquiries       OrderInquiry[]
 
   @@index([approved])
   @@index([mocraStatus])
@@ -486,173 +496,173 @@ model Brand {
 // ============================================================
 
 model Creator {
-  id                   String    @id @default(uuid())
-  userId               String    @unique @map("user_id")
-  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                     String                @id @default(uuid())
+  userId                 String                @unique @map("user_id")
+  user                   User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   // Identity (from both migration 001 and 002)
-  username             String?   @unique
-  shopId               String?   @unique @map("shop_id") @db.VarChar(50)
-  displayName          String?   @map("display_name") @db.VarChar(50)
-  bio                  String?
-  bioEn                String?   @map("bio_en")
-  bioJp                String?   @map("bio_jp")
+  username               String?               @unique
+  shopId                 String?               @unique @map("shop_id") @db.VarChar(50)
+  displayName            String?               @map("display_name") @db.VarChar(50)
+  bio                    String?
+  bioEn                  String?               @map("bio_en")
+  bioJp                  String?               @map("bio_jp")
   // Images
-  profileImage         String?   @map("profile_image")
-  profileImageUrl      String?   @map("profile_image_url")
-  coverImageUrl        String?   @map("cover_image_url")
-  bannerImageUrl       String?   @map("banner_image_url")
-  bannerLink           String?   @map("banner_link")
+  profileImage           String?               @map("profile_image")
+  profileImageUrl        String?               @map("profile_image_url")
+  coverImageUrl          String?               @map("cover_image_url")
+  bannerImageUrl         String?               @map("banner_image_url")
+  bannerLink             String?               @map("banner_link")
   // Social handles
-  instagramHandle      String?   @map("instagram_handle") @db.VarChar(100)
-  youtubeHandle        String?   @map("youtube_handle") @db.VarChar(100)
-  tiktokHandle         String?   @map("tiktok_handle") @db.VarChar(100)
-  instagram            String?
-  youtube              String?
-  tiktok               String?
-  socialLinks          Json      @default("{}") @map("social_links") @db.JsonB
+  instagramHandle        String?               @map("instagram_handle") @db.VarChar(100)
+  youtubeHandle          String?               @map("youtube_handle") @db.VarChar(100)
+  tiktokHandle           String?               @map("tiktok_handle") @db.VarChar(100)
+  instagram              String?
+  youtube                String?
+  tiktok                 String?
+  socialLinks            Json                  @default("{}") @map("social_links") @db.JsonB
   // Beauty persona
-  skinType             String?   @map("skin_type") @db.VarChar(20)
-  personalColor        String?   @map("personal_color") @db.VarChar(20)
-  skinConcerns         String[]  @default([]) @map("skin_concerns")
-  scalpConcerns        String[]  @default([]) @map("scalp_concerns")
-  ageRange             String?   @map("age_range") @db.VarChar(20)
-  interests            String[]  @default([])
+  skinType               String?               @map("skin_type") @db.VarChar(20)
+  personalColor          String?               @map("personal_color") @db.VarChar(20)
+  skinConcerns           String[]              @default([]) @map("skin_concerns")
+  scalpConcerns          String[]              @default([]) @map("scalp_concerns")
+  ageRange               String?               @map("age_range") @db.VarChar(20)
+  interests              String[]              @default([])
   // Onboarding
-  onboardingCompleted  Boolean   @default(false) @map("onboarding_completed")
-  onboardingStatus     String    @default("PENDING") @map("onboarding_status") @db.VarChar(20)
-  categories           String[]  @default([])
-  snsChannels          Json?     @map("sns_channels") @db.JsonB
-  sellingExperience    Boolean?  @map("selling_experience")
-  avgRevenue           String?   @map("avg_revenue") @db.VarChar(30)
+  onboardingCompleted    Boolean               @default(false) @map("onboarding_completed")
+  onboardingStatus       String                @default("PENDING") @map("onboarding_status") @db.VarChar(20)
+  categories             String[]              @default([])
+  snsChannels            Json?                 @map("sns_channels") @db.JsonB
+  sellingExperience      Boolean?              @map("selling_experience")
+  avgRevenue             String?               @map("avg_revenue") @db.VarChar(30)
   // Stats
-  totalSales           Decimal   @default(0) @map("total_sales") @db.Decimal(12, 0)
-  totalEarnings        Decimal   @default(0) @map("total_earnings") @db.Decimal(12, 0)
-  totalRevenue         Decimal   @default(0) @map("total_revenue")
-  totalOrders          Int       @default(0) @map("total_orders")
+  totalSales             Decimal               @default(0) @map("total_sales") @db.Decimal(12, 0)
+  totalEarnings          Decimal               @default(0) @map("total_earnings") @db.Decimal(12, 0)
+  totalRevenue           Decimal               @default(0) @map("total_revenue")
+  totalOrders            Int                   @default(0) @map("total_orders")
   // Business
-  isBusiness           Boolean   @default(false) @map("is_business")
-  businessNumber       String?   @map("business_number") @db.VarChar(50)
+  isBusiness             Boolean               @default(false) @map("is_business")
+  businessNumber         String?               @map("business_number") @db.VarChar(50)
   // Bank/Payment
-  bankName             String?   @map("bank_name")
-  bankAccount          String?   @map("bank_account")
-  paymentMethod        String?   @default("paypal") @map("payment_method")
-  paypalEmail          String?   @map("paypal_email")
-  accountNumber        String?   @map("account_number")
-  swiftCode            String?   @map("swift_code")
+  bankName               String?               @map("bank_name")
+  bankAccount            String?               @map("bank_account")
+  paymentMethod          String?               @default("paypal") @map("payment_method")
+  paypalEmail            String?               @map("paypal_email")
+  accountNumber          String?               @map("account_number")
+  swiftCode              String?               @map("swift_code")
   // Contact
-  email                String?
-  phone                String?
-  defaultShippingAddress Json? @map("default_shipping_address") @db.JsonB
+  email                  String?
+  phone                  String?
+  defaultShippingAddress Json?                 @map("default_shipping_address") @db.JsonB
   // Shop design
-  themeColor           String    @default("#1a1a1a") @map("theme_color")
-  backgroundColor      String    @default("#1a1a1a") @map("background_color")
-  backgroundImage      String?   @map("background_image")
-  textColor            String    @default("#ffffff") @map("text_color")
-  shopSettings         Json      @default("{}") @map("shop_settings") @db.JsonB
+  themeColor             String                @default("#1a1a1a") @map("theme_color")
+  backgroundColor        String                @default("#1a1a1a") @map("background_color")
+  backgroundImage        String?               @map("background_image")
+  textColor              String                @default("#ffffff") @map("text_color")
+  shopSettings           Json                  @default("{}") @map("shop_settings") @db.JsonB
   // Level system
-  level                String?   @default("bronze")
-  levelPoints          Int       @default(0) @map("level_points")
-  levelUpdatedAt       DateTime? @map("level_updated_at") @db.Timestamptz
+  level                  String?               @default("bronze")
+  levelPoints            Int                   @default(0) @map("level_points")
+  levelUpdatedAt         DateTime?             @map("level_updated_at") @db.Timestamptz
   // Community
-  communityEnabled     Boolean   @default(false) @map("community_enabled")
-  communityType        String    @default("board") @map("community_type")
+  communityEnabled       Boolean               @default(false) @map("community_enabled")
+  communityType          String                @default("board") @map("community_type")
   // Status
-  status               String    @default("ACTIVE") @map("status") @db.VarChar(10)
-  country              String?
+  status                 String                @default("ACTIVE") @map("status") @db.VarChar(10)
+  country                String?
   // Picked products
-  pickedProducts       String[]  @default([]) @map("picked_products")
+  pickedProducts         String[]              @default([]) @map("picked_products")
   // Notification settings
-  notificationSettings Json?     @map("notification_settings") @db.JsonB
+  notificationSettings   Json?                 @map("notification_settings") @db.JsonB
   // Instagram data (imported)
-  igFollowers          Int?      @map("ig_followers")
-  igFollowing          Int?      @map("ig_following")
-  igPostsCount         Int?      @map("ig_posts_count")
-  igBio                String?   @map("ig_bio")
-  igCategory           String?   @map("ig_category")
-  igVerified           Boolean   @default(false) @map("ig_verified")
-  igExternalUrl        String?   @map("ig_external_url")
-  igIsBusinessAccount  Boolean   @default(false) @map("ig_is_business_account")
-  igEngagementRate     Decimal?  @map("ig_engagement_rate") @db.Decimal(5, 2)
-  igDataImportedAt     DateTime? @map("ig_data_imported_at") @db.Timestamptz
-  igProfileImageR2Url  String?   @map("ig_profile_image_r2_url")
-  igTier               String?   @map("ig_tier") @db.VarChar(20)
-  igRecentPostThumbnails Json?   @map("ig_recent_post_thumbnails") @db.JsonB
+  igFollowers            Int?                  @map("ig_followers")
+  igFollowing            Int?                  @map("ig_following")
+  igPostsCount           Int?                  @map("ig_posts_count")
+  igBio                  String?               @map("ig_bio")
+  igCategory             String?               @map("ig_category")
+  igVerified             Boolean               @default(false) @map("ig_verified")
+  igExternalUrl          String?               @map("ig_external_url")
+  igIsBusinessAccount    Boolean               @default(false) @map("ig_is_business_account")
+  igEngagementRate       Decimal?              @map("ig_engagement_rate") @db.Decimal(5, 2)
+  igDataImportedAt       DateTime?             @map("ig_data_imported_at") @db.Timestamptz
+  igProfileImageR2Url    String?               @map("ig_profile_image_r2_url")
+  igTier                 String?               @map("ig_tier") @db.VarChar(20)
+  igRecentPostThumbnails Json?                 @map("ig_recent_post_thumbnails") @db.JsonB
   // Instagram data (Featuring + Apify 2026-04-16)
-  igUsername             String?   @unique @map("ig_username")
-  igFullName             String?   @map("ig_full_name")
-  igFollowersEffective   Int?      @map("ig_followers_effective")
-  igLanguage             String?   @map("ig_language")
-  igAvgReach             Int?      @map("ig_avg_reach")
-  igAvgLikes             Int?      @map("ig_avg_likes")
-  igAvgVideoViews        Int?      @map("ig_avg_video_views")
-  igAvgVideoLikes        Int?      @map("ig_avg_video_likes")
-  igAvgComments          Int?      @map("ig_avg_comments")
-  igAudienceGender       String?   @map("ig_audience_gender")
-  igAudienceAge          String?   @map("ig_audience_age")
-  igEstimatedCPR         Int?      @map("ig_estimated_cpr")
-  igEstimatedAdCost      Int?      @map("ig_estimated_ad_cost")
-  igProfilePicUrl        String?   @map("ig_profile_pic_url")
-  igEmail                String?   @map("ig_email")
-  igLastUploadDate       String?   @map("ig_last_upload_date")
-  igDataSource           String?   @map("ig_data_source")
+  igUsername             String?               @unique @map("ig_username")
+  igFullName             String?               @map("ig_full_name")
+  igFollowersEffective   Int?                  @map("ig_followers_effective")
+  igLanguage             String?               @map("ig_language")
+  igAvgReach             Int?                  @map("ig_avg_reach")
+  igAvgLikes             Int?                  @map("ig_avg_likes")
+  igAvgVideoViews        Int?                  @map("ig_avg_video_views")
+  igAvgVideoLikes        Int?                  @map("ig_avg_video_likes")
+  igAvgComments          Int?                  @map("ig_avg_comments")
+  igAudienceGender       String?               @map("ig_audience_gender")
+  igAudienceAge          String?               @map("ig_audience_age")
+  igEstimatedCPR         Int?                  @map("ig_estimated_cpr")
+  igEstimatedAdCost      Int?                  @map("ig_estimated_ad_cost")
+  igProfilePicUrl        String?               @map("ig_profile_pic_url")
+  igEmail                String?               @map("ig_email")
+  igLastUploadDate       String?               @map("ig_last_upload_date")
+  igDataSource           String?               @map("ig_data_source")
   // Instagram 상세 지표 (Phase 2)
-  igAvgFeedLikes         Int?      @map("ig_avg_feed_likes")
-  igAvgFeedComments      Int?      @map("ig_avg_feed_comments")
-  igAvgReelViews         Int?      @map("ig_avg_reel_views")
-  igAvgReelLikes         Int?      @map("ig_avg_reel_likes")
-  igEstimatedReach       Int?      @map("ig_estimated_reach")
-  igValidFollowers       Int?      @map("ig_valid_followers")
-  igPrimaryLanguage      String?   @map("ig_primary_language")
-  igLastPostAt           DateTime? @map("ig_last_post_at") @db.Timestamptz
-  igEstimatedCPRDecimal  Decimal?  @map("ig_estimated_cpr_decimal") @db.Decimal(10, 2)
-  igEstimatedAdFee       Decimal?  @map("ig_estimated_ad_fee") @db.Decimal(12, 0)
-  audienceGenderRatio    Json?     @map("audience_gender_ratio") @db.JsonB
-  audienceAgeRatio       Json?     @map("audience_age_ratio") @db.JsonB
-  igLastSyncedAt         DateTime? @map("ig_last_synced_at") @db.Timestamptz
-  igSyncStatus           IgSyncStatus @default(PENDING) @map("ig_sync_status")
-  igHistoricalStats      Json?     @map("ig_historical_stats") @db.JsonB
+  igAvgFeedLikes         Int?                  @map("ig_avg_feed_likes")
+  igAvgFeedComments      Int?                  @map("ig_avg_feed_comments")
+  igAvgReelViews         Int?                  @map("ig_avg_reel_views")
+  igAvgReelLikes         Int?                  @map("ig_avg_reel_likes")
+  igEstimatedReach       Int?                  @map("ig_estimated_reach")
+  igValidFollowers       Int?                  @map("ig_valid_followers")
+  igPrimaryLanguage      String?               @map("ig_primary_language")
+  igLastPostAt           DateTime?             @map("ig_last_post_at") @db.Timestamptz
+  igEstimatedCPRDecimal  Decimal?              @map("ig_estimated_cpr_decimal") @db.Decimal(10, 2)
+  igEstimatedAdFee       Decimal?              @map("ig_estimated_ad_fee") @db.Decimal(12, 0)
+  audienceGenderRatio    Json?                 @map("audience_gender_ratio") @db.JsonB
+  audienceAgeRatio       Json?                 @map("audience_age_ratio") @db.JsonB
+  igLastSyncedAt         DateTime?             @map("ig_last_synced_at") @db.Timestamptz
+  igSyncStatus           IgSyncStatus          @default(PENDING) @map("ig_sync_status")
+  igHistoricalStats      Json?                 @map("ig_historical_stats") @db.JsonB
   // 연락처 & 발송 가능 채널
-  hasBrandEmail          Boolean   @default(false) @map("has_brand_email")
-  brandContactEmail      String?   @map("brand_contact_email")
-  hasPhone               Boolean   @default(false) @map("has_phone")
-  phoneForAlimtalk       String?   @map("phone_for_alimtalk")
+  hasBrandEmail          Boolean               @default(false) @map("has_brand_email")
+  brandContactEmail      String?               @map("brand_contact_email")
+  hasPhone               Boolean               @default(false) @map("has_phone")
+  phoneForAlimtalk       String?               @map("phone_for_alimtalk")
   cnecJoinStatus         CreatorCnecJoinStatus @default(NOT_JOINED) @map("cnec_join_status")
   // Timestamps
-  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt            DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  createdAt              DateTime              @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt              DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  shopItems            CreatorShopItem[]
-  collections          Collection[]
-  routines             BeautyRoutine[]
-  orders               Order[]
-  conversions          Conversion[]
-  settlements          Settlement[]
-  shopVisits           ShopVisit[]
-  points               CreatorPoint[]
-  referralsGiven       CreatorReferral[] @relation("Referrer")
-  referralsReceived    CreatorReferral[] @relation("Referred")
-  grade                CreatorGrade?
-  missions             CreatorMission[]
-  banners              Banner[]
-  creatorProducts      CreatorProduct[]
-  shortUrls            ShortUrl[]
-  liveSessions         LiveSession[]
-  liveBotSetting       LiveBotSetting?
-  levelHistory         CreatorLevelHistory[]
-  mallSubscriptions    MallSubscription[]
-  communityPosts       CommunityPost[]
-  sampleRequests       SampleRequest[]
-  buyerWishlists       BuyerWishlist[]
-  buyerCarts           BuyerCart[]
-  productContents      CreatorProductContent[]
-  receivedProposals    CreatorProposal[]
-  groupMemberships     CreatorGroupMember[]
+  shopItems              CreatorShopItem[]
+  collections            Collection[]
+  routines               BeautyRoutine[]
+  orders                 Order[]
+  conversions            Conversion[]
+  settlements            Settlement[]
+  shopVisits             ShopVisit[]
+  points                 CreatorPoint[]
+  referralsGiven         CreatorReferral[]       @relation("Referrer")
+  referralsReceived      CreatorReferral[]       @relation("Referred")
+  grade                  CreatorGrade?
+  missions               CreatorMission[]
+  banners                Banner[]
+  creatorProducts        CreatorProduct[]
+  shortUrls              ShortUrl[]
+  liveSessions           LiveSession[]
+  liveBotSetting         LiveBotSetting?
+  levelHistory           CreatorLevelHistory[]
+  mallSubscriptions      MallSubscription[]
+  communityPosts         CommunityPost[]
+  sampleRequests         SampleRequest[]
+  buyerWishlists         BuyerWishlist[]
+  buyerCarts             BuyerCart[]
+  productContents        CreatorProductContent[]
+  receivedProposals      CreatorProposal[]
+  groupMemberships       CreatorGroupMember[]
   campaignParticipations CampaignParticipation[]
-  messageCredits       MessageCredit[]
-  dmQueues             DmSendQueue[]
+  messageCredits         MessageCredit[]
+  dmQueues               DmSendQueue[]
   // Server cart + shop visits
-  cartsAtShop          Cart[]
-  creatorShopVisits    CreatorShopVisit[] @relation("CreatorShopVisits")
+  cartsAtShop            Cart[]
+  creatorShopVisits      CreatorShopVisit[]      @relation("CreatorShopVisits")
 
   @@index([country])
   @@index([igFollowers])
@@ -666,78 +676,78 @@ model Creator {
 // ============================================================
 
 model Product {
-  id                    String         @id @default(uuid())
-  brandId               String         @map("brand_id")
-  brand                 Brand          @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  id                    String          @id @default(uuid())
+  brandId               String          @map("brand_id")
+  brand                 Brand           @relation(fields: [brandId], references: [id], onDelete: Cascade)
   // Names (multi-lang)
-  name                  String?        @db.VarChar(200)
-  nameKo                String?        @map("name_ko")
-  nameEn                String?        @map("name_en")
-  nameJp                String?        @map("name_jp")
+  name                  String?         @db.VarChar(200)
+  nameKo                String?         @map("name_ko")
+  nameEn                String?         @map("name_en")
+  nameJp                String?         @map("name_jp")
   sku                   String?
   // Prices
   price                 Decimal?
-  originalPrice         Decimal?       @map("original_price") @db.Decimal(10, 0)
-  salePrice             Decimal?       @map("sale_price") @db.Decimal(10, 0)
-  priceUsd              Int?           @map("price_usd")
-  priceJpy              Int?           @map("price_jpy")
-  originalPriceUsd      Int?           @map("original_price_usd")
-  originalPriceJpy      Int?           @map("original_price_jpy")
+  originalPrice         Decimal?        @map("original_price") @db.Decimal(10, 0)
+  salePrice             Decimal?        @map("sale_price") @db.Decimal(10, 0)
+  priceUsd              Int?            @map("price_usd")
+  priceJpy              Int?            @map("price_jpy")
+  originalPriceUsd      Int?            @map("original_price_usd")
+  originalPriceJpy      Int?            @map("original_price_jpy")
   // Stock
-  stock                 Int            @default(0)
+  stock                 Int             @default(0)
   // Description (multi-lang)
   description           String?
-  descriptionKo         String?        @map("description_ko")
-  descriptionEn         String?        @map("description_en")
-  descriptionJp         String?        @map("description_jp")
+  descriptionKo         String?         @map("description_ko")
+  descriptionEn         String?         @map("description_en")
+  descriptionJp         String?         @map("description_jp")
   // Media
-  images                String[]       @default([])
-  imageUrl              String?        @map("image_url")
-  thumbnailUrl          String?        @map("thumbnail_url")
+  images                String[]        @default([])
+  imageUrl              String?         @map("image_url")
+  thumbnailUrl          String?         @map("thumbnail_url")
   // Details
-  category              String?        @db.VarChar(20)
-  volume                String?        @db.VarChar(100)
+  category              String?         @db.VarChar(20)
+  volume                String?         @db.VarChar(100)
   ingredients           String?
-  howToUse              String?        @map("how_to_use")
-  usageInfo             String?        @map("usage_info")
+  howToUse              String?         @map("how_to_use")
+  usageInfo             String?         @map("usage_info")
   // Flags
-  isCosmetic            Boolean        @default(false) @map("is_cosmetic")
-  isActive              Boolean        @default(true) @map("is_active")
-  status                String         @default("ACTIVE") @db.VarChar(10)
-  allowCreatorPick      Boolean        @default(true) @map("allow_creator_pick")
-  allowTrial            Boolean        @default(true) @map("allow_trial")
-  defaultCommissionRate Decimal        @default(0.10) @map("default_commission_rate") @db.Decimal(5, 4)
+  isCosmetic            Boolean         @default(false) @map("is_cosmetic")
+  isActive              Boolean         @default(true) @map("is_active")
+  status                String          @default("ACTIVE") @db.VarChar(10)
+  allowCreatorPick      Boolean         @default(true) @map("allow_creator_pick")
+  allowTrial            Boolean         @default(true) @map("allow_trial")
+  defaultCommissionRate Decimal         @default(0.10) @map("default_commission_rate") @db.Decimal(5, 4)
   // Shipping
   shippingFeeType       ShippingFeeType @default(FREE) @map("shipping_fee_type")
-  shippingFee           Decimal        @default(0) @map("shipping_fee") @db.Decimal(10, 0)
-  freeShippingThreshold Decimal?       @map("free_shipping_threshold") @db.Decimal(10, 0)
-  courier               String?        @db.VarChar(20)
-  shippingInfo          String?        @map("shipping_info")
-  returnPolicy          String?        @map("return_policy")
+  shippingFee           Decimal         @default(0) @map("shipping_fee") @db.Decimal(10, 0)
+  freeShippingThreshold Decimal?        @map("free_shipping_threshold") @db.Decimal(10, 0)
+  courier               String?         @db.VarChar(20)
+  shippingInfo          String?         @map("shipping_info")
+  returnPolicy          String?         @map("return_policy")
   // External detail page
-  detailUrl             String?        @map("detail_url")
+  detailUrl             String?         @map("detail_url")
   // Timestamps
-  createdAt             DateTime       @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt             DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  createdAt             DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  shopItems          CreatorShopItem[]
-  campaignProducts   CampaignProduct[]
-  orderItems         OrderItem[]
-  creatorProducts    CreatorProduct[]
-  liveProducts       LiveProduct[]
-  productQuestions   ProductQuestion[]
-  productReviews     ProductReview[]
-  sampleRequests     SampleRequest[]
-  buyerWishlists     BuyerWishlist[]
-  buyerCarts         BuyerCart[]
-  liveChatMessages   LiveChatMessage[]
-  creatorContents    CreatorProductContent[]
-  priceData          ProductPriceData[]
-  priceBadge         PriceBadge?
-  aiGonguTips        AiGonguTip[]
+  shopItems        CreatorShopItem[]
+  campaignProducts CampaignProduct[]
+  orderItems       OrderItem[]
+  creatorProducts  CreatorProduct[]
+  liveProducts     LiveProduct[]
+  productQuestions ProductQuestion[]
+  productReviews   ProductReview[]
+  sampleRequests   SampleRequest[]
+  buyerWishlists   BuyerWishlist[]
+  buyerCarts       BuyerCart[]
+  liveChatMessages LiveChatMessage[]
+  creatorContents  CreatorProductContent[]
+  priceData        ProductPriceData[]
+  priceBadge       PriceBadge?
+  aiGonguTips      AiGonguTip[]
   // Server cart + recent view
-  cartItems          CartItem[]
-  recentViews        RecentView[]
+  cartItems        CartItem[]
+  recentViews      RecentView[]
 
   @@index([isActive])
   @@index([status])
@@ -767,20 +777,20 @@ model CreatorProduct {
 // ============================================================
 
 model CreatorProductContent {
-  id          String   @id @default(cuid())
-  creatorId   String   @map("creator_id")
-  productId   String   @map("product_id")
-  type        String   @default("INSTAGRAM_REEL") @db.VarChar(30)
-  url         String
-  embedUrl    String?  @map("embed_url")
-  caption     String?
-  sortOrder   Int      @default(0) @map("sort_order")
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  id        String   @id @default(cuid())
+  creatorId String   @map("creator_id")
+  productId String   @map("product_id")
+  type      String   @default("INSTAGRAM_REEL") @db.VarChar(30)
+  url       String
+  embedUrl  String?  @map("embed_url")
+  caption   String?
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  creator     Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
-  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  creator Creator @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([creatorId, productId, url])
   @@map("creator_product_contents")
@@ -791,23 +801,23 @@ model CreatorProductContent {
 // ============================================================
 
 model Campaign {
-  id               String         @id @default(uuid())
-  brandId          String         @map("brand_id")
-  brand            Brand          @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  type             CampaignType
-  title            String         @db.VarChar(200)
-  description      String?
-  status           CampaignStatus @default(DRAFT)
-  startAt          DateTime?      @map("start_at") @db.Timestamptz
-  endAt            DateTime?      @map("end_at") @db.Timestamptz
-  recruitmentType  String         @default("OPEN") @map("recruitment_type") @db.VarChar(10)
-  commissionRate   Decimal        @default(0.10) @map("commission_rate") @db.Decimal(5, 4)
-  totalStock       Int?           @map("total_stock")
-  soldCount        Int            @default(0) @map("sold_count")
-  targetParticipants Int?         @map("target_participants")
-  conditions       String?
-  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt        DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  id                 String         @id @default(uuid())
+  brandId            String         @map("brand_id")
+  brand              Brand          @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  type               CampaignType
+  title              String         @db.VarChar(200)
+  description        String?
+  status             CampaignStatus @default(DRAFT)
+  startAt            DateTime?      @map("start_at") @db.Timestamptz
+  endAt              DateTime?      @map("end_at") @db.Timestamptz
+  recruitmentType    String         @default("OPEN") @map("recruitment_type") @db.VarChar(10)
+  commissionRate     Decimal        @default(0.10) @map("commission_rate") @db.Decimal(5, 4)
+  totalStock         Int?           @map("total_stock")
+  soldCount          Int            @default(0) @map("sold_count")
+  targetParticipants Int?           @map("target_participants")
+  conditions         String?
+  createdAt          DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   products       CampaignProduct[]
   participations CampaignParticipation[]
@@ -924,15 +934,15 @@ model BeautyRoutine {
 // ============================================================
 
 model RoutineStep {
-  id              String @id @default(uuid())
-  routineId       String @map("routine_id")
+  id              String        @id @default(uuid())
+  routineId       String        @map("routine_id")
   routine         BeautyRoutine @relation(fields: [routineId], references: [id], onDelete: Cascade)
-  stepName        String @map("step_name") @db.VarChar(50)
-  stepDescription String @map("step_description")
-  imageUrl        String? @map("image_url")
-  linkUrl         String? @map("link_url")
-  productTags     Json    @default("[]") @map("product_tags") @db.JsonB
-  displayOrder    Int     @default(0) @map("display_order")
+  stepName        String        @map("step_name") @db.VarChar(50)
+  stepDescription String        @map("step_description")
+  imageUrl        String?       @map("image_url")
+  linkUrl         String?       @map("link_url")
+  productTags     Json          @default("[]") @map("product_tags") @db.JsonB
+  displayOrder    Int           @default(0) @map("display_order")
 
   @@map("routine_steps")
 }
@@ -942,66 +952,67 @@ model RoutineStep {
 // ============================================================
 
 model Order {
-  id              String      @id @default(uuid())
-  orderNumber     String?     @unique @map("order_number") @db.VarChar(20)
+  id              String    @id @default(uuid())
+  orderNumber     String?   @unique @map("order_number") @db.VarChar(20)
   // Parties
-  creatorId       String?     @map("creator_id")
-  creator         Creator?    @relation(fields: [creatorId], references: [id])
-  brandId         String?     @map("brand_id")
-  brand           Brand?      @relation(fields: [brandId], references: [id])
-  buyerId         String?     @map("buyer_id")
-  buyer           Buyer?      @relation(fields: [buyerId], references: [id], onDelete: SetNull)
+  creatorId       String?   @map("creator_id")
+  creator         Creator?  @relation(fields: [creatorId], references: [id])
+  brandId         String?   @map("brand_id")
+  brand           Brand?    @relation(fields: [brandId], references: [id])
+  buyerId         String?   @map("buyer_id")
+  buyer           Buyer?    @relation(fields: [buyerId], references: [id], onDelete: SetNull)
   // Customer info (from migration 001)
-  customerEmail   String?     @map("customer_email")
-  customerName    String?     @map("customer_name")
-  customerPhone   String?     @map("customer_phone")
+  customerEmail   String?   @map("customer_email")
+  customerName    String?   @map("customer_name")
+  customerPhone   String?   @map("customer_phone")
   // Buyer info (from migration 002)
-  buyerName       String?     @map("buyer_name") @db.VarChar(100)
-  buyerPhone      String?     @map("buyer_phone") @db.VarChar(30)
-  buyerEmail      String?     @map("buyer_email") @db.VarChar(200)
+  buyerName       String?   @map("buyer_name") @db.VarChar(100)
+  buyerPhone      String?   @map("buyer_phone") @db.VarChar(30)
+  buyerEmail      String?   @map("buyer_email") @db.VarChar(200)
   // Shipping
-  shippingAddress String?     @map("shipping_address")
-  shippingDetail  String?     @map("shipping_detail")
-  shippingZipcode String?     @map("shipping_zipcode") @db.VarChar(20)
-  shippingMemo    String?     @map("shipping_memo")
-  shippingFee     Decimal     @default(0) @map("shipping_fee") @db.Decimal(12, 0)
+  shippingAddress String?   @map("shipping_address")
+  shippingDetail  String?   @map("shipping_detail")
+  shippingZipcode String?   @map("shipping_zipcode") @db.VarChar(20)
+  shippingMemo    String?   @map("shipping_memo")
+  shippingFee     Decimal   @default(0) @map("shipping_fee") @db.Decimal(12, 0)
   // Amounts
   subtotal        Decimal?
-  productAmount   Decimal?    @map("product_amount") @db.Decimal(10, 0)
-  totalAmount     Decimal     @map("total_amount")
+  productAmount   Decimal?  @map("product_amount") @db.Decimal(10, 0)
+  totalAmount     Decimal   @map("total_amount")
   // Revenue split (from migration 001)
-  creatorRevenue  Decimal?    @map("creator_revenue")
-  platformRevenue Decimal?    @map("platform_revenue")
-  brandRevenue    Decimal?    @map("brand_revenue")
+  creatorRevenue  Decimal?  @map("creator_revenue")
+  platformRevenue Decimal?  @map("platform_revenue")
+  brandRevenue    Decimal?  @map("brand_revenue")
   // Location
   country         String?
   currency        String?
   // Status
-  status          String      @default("PAID")
+  status          String    @default("PAID")
   // Payment
-  paymentMethod   String?     @map("payment_method") @db.VarChar(50)
-  paymentKey      String?     @map("payment_key") @db.VarChar(100)
-  paymentIntentId String?     @map("payment_intent_id")
-  pgTransactionId String?     @map("pg_transaction_id") @db.VarChar(200)
-  pgProvider      String?     @map("pg_provider") @db.VarChar(50)
+  paymentMethod   String?   @map("payment_method") @db.VarChar(50)
+  paymentKey      String?   @map("payment_key") @db.VarChar(100)
+  paymentIntentId String?   @map("payment_intent_id")
+  pgTransactionId String?   @map("pg_transaction_id") @db.VarChar(200)
+  pgProvider      String?   @map("pg_provider") @db.VarChar(50)
   // Tracking
-  trackingNumber  String?     @map("tracking_number") @db.VarChar(100)
-  courierCode     String?     @map("courier_code") @db.VarChar(20)
+  trackingNumber  String?   @map("tracking_number") @db.VarChar(100)
+  courierCode     String?   @map("courier_code") @db.VarChar(20)
   notes           String?
   // Timestamps
-  paidAt          DateTime?   @map("paid_at") @db.Timestamptz
-  shippedAt       DateTime?   @map("shipped_at") @db.Timestamptz
-  deliveredAt     DateTime?   @map("delivered_at") @db.Timestamptz
-  confirmedAt     DateTime?   @map("confirmed_at") @db.Timestamptz
-  completedAt     DateTime?   @map("completed_at") @db.Timestamptz
-  cancelledAt     DateTime?   @map("cancelled_at") @db.Timestamptz
-  cancelReason    String?     @map("cancel_reason")
-  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt       DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  paidAt          DateTime? @map("paid_at") @db.Timestamptz
+  shippedAt       DateTime? @map("shipped_at") @db.Timestamptz
+  deliveredAt     DateTime? @map("delivered_at") @db.Timestamptz
+  confirmedAt     DateTime? @map("confirmed_at") @db.Timestamptz
+  completedAt     DateTime? @map("completed_at") @db.Timestamptz
+  cancelledAt     DateTime? @map("cancelled_at") @db.Timestamptz
+  cancelReason    String?   @map("cancel_reason")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   items       OrderItem[]
   conversions Conversion[]
   reviews     ProductReview[]
+  inquiries   OrderInquiry[]
 
   @@index([status])
   @@index([country])
@@ -1037,19 +1048,19 @@ model OrderItem {
 // ============================================================
 
 model Conversion {
-  id               String   @id @default(uuid())
-  orderId          String   @map("order_id")
-  order            Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  orderItemId      String   @map("order_item_id")
+  id               String    @id @default(uuid())
+  orderId          String    @map("order_id")
+  order            Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItemId      String    @map("order_item_id")
   orderItem        OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
-  creatorId        String   @map("creator_id")
-  creator          Creator  @relation(fields: [creatorId], references: [id])
-  conversionType   String   @map("conversion_type") @db.VarChar(10)
-  orderAmount      Decimal  @map("order_amount") @db.Decimal(10, 0)
-  commissionRate   Decimal  @map("commission_rate") @db.Decimal(5, 4)
-  commissionAmount Decimal  @map("commission_amount") @db.Decimal(10, 0)
-  status           String   @default("PENDING") @db.VarChar(10)
-  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+  creatorId        String    @map("creator_id")
+  creator          Creator   @relation(fields: [creatorId], references: [id])
+  conversionType   String    @map("conversion_type") @db.VarChar(10)
+  orderAmount      Decimal   @map("order_amount") @db.Decimal(10, 0)
+  commissionRate   Decimal   @map("commission_rate") @db.Decimal(5, 4)
+  commissionAmount Decimal   @map("commission_amount") @db.Decimal(10, 0)
+  status           String    @default("PENDING") @db.VarChar(10)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz
   confirmedAt      DateTime? @map("confirmed_at") @db.Timestamptz
 
   @@map("conversions")
@@ -1152,13 +1163,13 @@ model Notification {
 // ============================================================
 
 model PromotionKit {
-  id                String   @id @default(uuid())
-  campaignId        String   @unique @map("campaign_id")
-  campaign          Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  productImages     String[] @default([]) @map("product_images")
-  storyTemplates    String[] @default([]) @map("story_templates")
-  recommendedCaption String? @map("recommended_caption")
-  hashtags          String[] @default([])
+  id                 String   @id @default(uuid())
+  campaignId         String   @unique @map("campaign_id")
+  campaign           Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  productImages      String[] @default([]) @map("product_images")
+  storyTemplates     String[] @default([]) @map("story_templates")
+  recommendedCaption String?  @map("recommended_caption")
+  hashtags           String[] @default([])
 
   @@map("promotion_kits")
 }
@@ -1223,6 +1234,12 @@ model Buyer {
   carts               Cart[]
   recentViews         RecentView[]
   passwordResetTokens PasswordResetToken[]
+  // P4: 마이페이지 확장
+  orderInquiries      OrderInquiry[]
+  addresses           Address[]
+  paymentMethods      BuyerPaymentMethod[]
+  notificationSetting BuyerNotificationSetting?
+  coupons             Coupon[]
 
   @@index([pointsBalance])
   @@index([eligibleForCreator])
@@ -1235,36 +1252,36 @@ model Buyer {
 // ============================================================
 
 model SampleRequest {
-  id              String   @id @default(uuid())
-  creatorId       String   @map("creator_id")
-  creator         Creator  @relation(fields: [creatorId], references: [id])
-  brandId         String   @map("brand_id")
-  brand           Brand    @relation(fields: [brandId], references: [id])
-  productIds      String[] @default([]) @map("product_ids")
+  id              String              @id @default(uuid())
+  creatorId       String              @map("creator_id")
+  creator         Creator             @relation(fields: [creatorId], references: [id])
+  brandId         String              @map("brand_id")
+  brand           Brand               @relation(fields: [brandId], references: [id])
+  productIds      String[]            @default([]) @map("product_ids")
   status          SampleRequestStatus @default(pending)
-  shippingAddress Json?    @map("shipping_address") @db.JsonB
+  shippingAddress Json?               @map("shipping_address") @db.JsonB
   message         String?
-  adminNote       String?  @map("admin_note")
-  trackingNumber  String?  @map("tracking_number")
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  adminNote       String?             @map("admin_note")
+  trackingNumber  String?             @map("tracking_number")
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   // Product trial fields
-  productId       String?  @map("product_id")
-  product         Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
-  decision        SampleRequestDecision?
-  rejectReason    String?  @map("reject_reason")
-  passReason      String?  @map("pass_reason")
-  feedback        String?
-  respondedAt     DateTime? @map("responded_at") @db.Timestamptz
-  shippedAt       DateTime? @map("shipped_at") @db.Timestamptz
-  receivedAt      DateTime? @map("received_at") @db.Timestamptz
-  decidedAt       DateTime? @map("decided_at") @db.Timestamptz
-  convertedTo     String?  @map("converted_to")
+  productId             String?                @map("product_id")
+  product               Product?               @relation(fields: [productId], references: [id], onDelete: SetNull)
+  decision              SampleRequestDecision?
+  rejectReason          String?                @map("reject_reason")
+  passReason            String?                @map("pass_reason")
+  feedback              String?
+  respondedAt           DateTime?              @map("responded_at") @db.Timestamptz
+  shippedAt             DateTime?              @map("shipped_at") @db.Timestamptz
+  receivedAt            DateTime?              @map("received_at") @db.Timestamptz
+  decidedAt             DateTime?              @map("decided_at") @db.Timestamptz
+  convertedTo           String?                @map("converted_to")
   // 일정 변경 요청
-  scheduleChangeRequest  String?  @map("schedule_change_request")
-  scheduleChangeBy       String?  @map("schedule_change_by")
-  scheduleChangeStatus   String?  @map("schedule_change_status")  // pending, accepted, rejected
+  scheduleChangeRequest String?                @map("schedule_change_request")
+  scheduleChangeBy      String?                @map("schedule_change_by")
+  scheduleChangeStatus  String?                @map("schedule_change_status") // pending, accepted, rejected
 
   @@index([status])
   @@index([brandId, status])
@@ -1323,14 +1340,14 @@ model ShortUrl {
 // ============================================================
 
 model ShortUrlAnalytic {
-  id          String   @id @default(uuid())
-  shortUrlId  String   @map("short_url_id")
-  shortUrl    ShortUrl @relation(fields: [shortUrlId], references: [id], onDelete: Cascade)
-  clickedAt   DateTime @default(now()) @map("clicked_at") @db.Timestamptz
-  referrer    String?
-  userAgent   String?  @map("user_agent")
-  ipCountry   String?  @map("ip_country")
-  deviceType  String?  @map("device_type")
+  id         String   @id @default(uuid())
+  shortUrlId String   @map("short_url_id")
+  shortUrl   ShortUrl @relation(fields: [shortUrlId], references: [id], onDelete: Cascade)
+  clickedAt  DateTime @default(now()) @map("clicked_at") @db.Timestamptz
+  referrer   String?
+  userAgent  String?  @map("user_agent")
+  ipCountry  String?  @map("ip_country")
+  deviceType String?  @map("device_type")
 
   @@index([clickedAt])
   @@map("short_url_analytics")
@@ -1349,7 +1366,7 @@ model MallSubscription {
   status            String    @default("active")
   notifyNewProducts Boolean   @default(true) @map("notify_new_products")
   notifySales       Boolean   @default(true) @map("notify_sales")
-  notifyLiveStreams  Boolean   @default(true) @map("notify_live_streams")
+  notifyLiveStreams Boolean   @default(true) @map("notify_live_streams")
   subscribedAt      DateTime  @default(now()) @map("subscribed_at") @db.Timestamptz
   unsubscribedAt    DateTime? @map("unsubscribed_at") @db.Timestamptz
 
@@ -1394,19 +1411,19 @@ model CommunityPost {
 // ============================================================
 
 model CommunityComment {
-  id              String   @id @default(uuid())
-  postId          String   @map("post_id")
-  post            CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
-  buyerId         String?  @map("buyer_id")
-  buyer           Buyer?   @relation(fields: [buyerId], references: [id], onDelete: SetNull)
-  parentCommentId String?  @map("parent_comment_id")
+  id              String             @id @default(uuid())
+  postId          String             @map("post_id")
+  post            CommunityPost      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  buyerId         String?            @map("buyer_id")
+  buyer           Buyer?             @relation(fields: [buyerId], references: [id], onDelete: SetNull)
+  parentCommentId String?            @map("parent_comment_id")
   parentComment   CommunityComment?  @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
   replies         CommunityComment[] @relation("CommentReplies")
   content         String
-  likesCount      Int      @default(0) @map("likes_count")
-  isHidden        Boolean  @default(false) @map("is_hidden")
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  likesCount      Int                @default(0) @map("likes_count")
+  isHidden        Boolean            @default(false) @map("is_hidden")
+  createdAt       DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("community_comments")
 }
@@ -1416,12 +1433,12 @@ model CommunityComment {
 // ============================================================
 
 model CommunityLike {
-  id        String   @id @default(uuid())
-  postId    String   @map("post_id")
+  id        String        @id @default(uuid())
+  postId    String        @map("post_id")
   post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
-  buyerId   String   @map("buyer_id")
-  buyer     Buyer    @relation(fields: [buyerId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  buyerId   String        @map("buyer_id")
+  buyer     Buyer         @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz
 
   @@unique([postId, buyerId])
   @@map("community_likes")
@@ -1432,20 +1449,20 @@ model CommunityLike {
 // ============================================================
 
 model ProductQuestion {
-  id          String    @id @default(uuid())
-  productId   String    @map("product_id")
-  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
-  buyerId     String?   @map("buyer_id")
-  buyer       Buyer?    @relation(fields: [buyerId], references: [id], onDelete: SetNull)
-  question    String
-  answer      String?
-  answeredBy  String?   @map("answered_by")
-  answerer    User?     @relation("QuestionAnswerer", fields: [answeredBy], references: [id])
-  answeredAt  DateTime? @map("answered_at") @db.Timestamptz
-  isPublic    Boolean   @default(true) @map("is_public")
-  isAnswered  Boolean   @default(false) @map("is_answered")
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  id         String    @id @default(uuid())
+  productId  String    @map("product_id")
+  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  buyerId    String?   @map("buyer_id")
+  buyer      Buyer?    @relation(fields: [buyerId], references: [id], onDelete: SetNull)
+  question   String
+  answer     String?
+  answeredBy String?   @map("answered_by")
+  answerer   User?     @relation("QuestionAnswerer", fields: [answeredBy], references: [id])
+  answeredAt DateTime? @map("answered_at") @db.Timestamptz
+  isPublic   Boolean   @default(true) @map("is_public")
+  isAnswered Boolean   @default(false) @map("is_answered")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@index([isAnswered])
   @@map("product_questions")
@@ -1456,28 +1473,29 @@ model ProductQuestion {
 // ============================================================
 
 model ProductReview {
-  id                String    @id @default(uuid())
-  productId         String    @map("product_id")
-  product           Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
-  buyerId           String?   @map("buyer_id")
-  buyer             Buyer?    @relation(fields: [buyerId], references: [id], onDelete: SetNull)
-  orderId           String?   @map("order_id")
-  order             Order?    @relation(fields: [orderId], references: [id], onDelete: SetNull)
-  rating            Int
-  title             String?
-  content           String
-  images            String[]  @default([])
-  instagramPostUrl  String?   @map("instagram_post_url")
-  instagramVerified Boolean   @default(false) @map("instagram_verified")
-  pointsAwarded     Int       @default(0) @map("points_awarded")
-  pointsAwardedAt   DateTime? @map("points_awarded_at") @db.Timestamptz
-  helpfulCount      Int       @default(0) @map("helpful_count")
-  isVerifiedPurchase Boolean  @default(false) @map("is_verified_purchase")
-  isApproved        Boolean   @default(true) @map("is_approved")
-  isFeatured        Boolean   @default(false) @map("is_featured")
-  rejectionReason   String?   @map("rejection_reason")
-  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  id                 String    @id @default(uuid())
+  productId          String    @map("product_id")
+  product            Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  buyerId            String?   @map("buyer_id")
+  buyer              Buyer?    @relation(fields: [buyerId], references: [id], onDelete: SetNull)
+  orderId            String?   @map("order_id")
+  order              Order?    @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  orderItemId        String?   @unique @map("order_item_id")
+  rating             Int
+  title              String?
+  content            String
+  images             String[]  @default([])
+  instagramPostUrl   String?   @map("instagram_post_url")
+  instagramVerified  Boolean   @default(false) @map("instagram_verified")
+  pointsAwarded      Int       @default(0) @map("points_awarded")
+  pointsAwardedAt    DateTime? @map("points_awarded_at") @db.Timestamptz
+  helpfulCount       Int       @default(0) @map("helpful_count")
+  isVerifiedPurchase Boolean   @default(false) @map("is_verified_purchase")
+  isApproved         Boolean   @default(true) @map("is_approved")
+  isFeatured         Boolean   @default(false) @map("is_featured")
+  rejectionReason    String?   @map("rejection_reason")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   helpfulVotes ReviewHelpfulVote[]
 
@@ -1491,12 +1509,12 @@ model ProductReview {
 // ============================================================
 
 model ReviewHelpfulVote {
-  id        String   @id @default(uuid())
-  reviewId  String   @map("review_id")
+  id        String        @id @default(uuid())
+  reviewId  String        @map("review_id")
   review    ProductReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
-  buyerId   String   @map("buyer_id")
-  buyer     Buyer    @relation(fields: [buyerId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  buyerId   String        @map("buyer_id")
+  buyer     Buyer         @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz
 
   @@unique([reviewId, buyerId])
   @@map("review_helpful_votes")
@@ -1528,15 +1546,15 @@ model PointsHistory {
 // ============================================================
 
 model CreatorPoint {
-  id          String   @id @default(uuid())
-  creatorId   String   @map("creator_id")
-  creator     Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
-  pointType   String   @map("point_type") @db.VarChar(20)
-  amount      Int
-  balanceAfter Int     @map("balance_after")
-  description String?
-  relatedId   String?  @map("related_id")
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id           String   @id @default(uuid())
+  creatorId    String   @map("creator_id")
+  creator      Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  pointType    String   @map("point_type") @db.VarChar(20)
+  amount       Int
+  balanceAfter Int      @map("balance_after")
+  description  String?
+  relatedId    String?  @map("related_id")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   @@index([creatorId, createdAt(sort: Desc)])
   @@map("creator_points")
@@ -1547,17 +1565,17 @@ model CreatorPoint {
 // ============================================================
 
 model CreatorReferral {
-  id                 String   @id @default(uuid())
-  referrerId         String   @map("referrer_id")
-  referrer           Creator  @relation("Referrer", fields: [referrerId], references: [id], onDelete: Cascade)
-  referredId         String?  @map("referred_id")
-  referred           Creator? @relation("Referred", fields: [referredId], references: [id], onDelete: SetNull)
-  referralCode       String   @unique @map("referral_code") @db.VarChar(20)
-  status             String   @default("PENDING") @db.VarChar(20)
-  referrerRewardTotal Int     @default(0) @map("referrer_reward_total")
-  referredRewardTotal Int     @default(0) @map("referred_reward_total")
-  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  id                  String   @id @default(uuid())
+  referrerId          String   @map("referrer_id")
+  referrer            Creator  @relation("Referrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  referredId          String?  @map("referred_id")
+  referred            Creator? @relation("Referred", fields: [referredId], references: [id], onDelete: SetNull)
+  referralCode        String   @unique @map("referral_code") @db.VarChar(20)
+  status              String   @default("PENDING") @db.VarChar(20)
+  referrerRewardTotal Int      @default(0) @map("referrer_reward_total")
+  referredRewardTotal Int      @default(0) @map("referred_reward_total")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("creator_referrals")
 }
@@ -1584,15 +1602,15 @@ model CreatorGrade {
 // ============================================================
 
 model CreatorMission {
-  id           String    @id @default(uuid())
-  creatorId    String    @map("creator_id")
-  creator      Creator   @relation(fields: [creatorId], references: [id], onDelete: Cascade)
-  missionKey   String    @map("mission_key") @db.VarChar(30)
-  isCompleted  Boolean   @default(false) @map("is_completed")
-  completedAt  DateTime? @map("completed_at") @db.Timestamptz
-  rewardAmount Int       @default(0) @map("reward_amount")
-  rewardClaimed Boolean  @default(false) @map("reward_claimed")
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  id            String    @id @default(uuid())
+  creatorId     String    @map("creator_id")
+  creator       Creator   @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  missionKey    String    @map("mission_key") @db.VarChar(30)
+  isCompleted   Boolean   @default(false) @map("is_completed")
+  completedAt   DateTime? @map("completed_at") @db.Timestamptz
+  rewardAmount  Int       @default(0) @map("reward_amount")
+  rewardClaimed Boolean   @default(false) @map("reward_claimed")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
   @@unique([creatorId, missionKey])
   @@map("creator_missions")
@@ -1657,30 +1675,30 @@ model CreatorLevelHistory {
 // ============================================================
 
 model LiveSession {
-  id                  String    @id @default(uuid())
-  creatorId           String    @map("creator_id")
-  creator             Creator   @relation(fields: [creatorId], references: [id], onDelete: Cascade)
-  title               String
-  description         String?
-  platform            String
-  externalUrl         String?   @map("external_url")
-  streamKey           String?   @map("stream_key")
-  scheduledAt         DateTime? @map("scheduled_at") @db.Timestamptz
-  startedAt           DateTime? @map("started_at") @db.Timestamptz
-  endedAt             DateTime? @map("ended_at") @db.Timestamptz
-  status              String    @default("scheduled")
-  featuredProductIds  String[]  @default([]) @map("featured_product_ids")
-  peakViewers         Int       @default(0) @map("peak_viewers")
-  totalViewers        Int       @default(0) @map("total_viewers")
-  totalOrders         Int       @default(0) @map("total_orders")
-  totalRevenue        Decimal   @default(0) @map("total_revenue")
-  chatEnabled         Boolean   @default(true) @map("chat_enabled")
-  botEnabled          Boolean   @default(false) @map("bot_enabled")
-  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt           DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  id                 String    @id @default(uuid())
+  creatorId          String    @map("creator_id")
+  creator            Creator   @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  title              String
+  description        String?
+  platform           String
+  externalUrl        String?   @map("external_url")
+  streamKey          String?   @map("stream_key")
+  scheduledAt        DateTime? @map("scheduled_at") @db.Timestamptz
+  startedAt          DateTime? @map("started_at") @db.Timestamptz
+  endedAt            DateTime? @map("ended_at") @db.Timestamptz
+  status             String    @default("scheduled")
+  featuredProductIds String[]  @default([]) @map("featured_product_ids")
+  peakViewers        Int       @default(0) @map("peak_viewers")
+  totalViewers       Int       @default(0) @map("total_viewers")
+  totalOrders        Int       @default(0) @map("total_orders")
+  totalRevenue       Decimal   @default(0) @map("total_revenue")
+  chatEnabled        Boolean   @default(true) @map("chat_enabled")
+  botEnabled         Boolean   @default(false) @map("bot_enabled")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  liveProducts    LiveProduct[]
-  chatMessages    LiveChatMessage[]
+  liveProducts LiveProduct[]
+  chatMessages LiveChatMessage[]
 
   @@index([status])
   @@index([scheduledAt])
@@ -1692,17 +1710,17 @@ model LiveSession {
 // ============================================================
 
 model LiveProduct {
-  id            String   @id @default(uuid())
-  liveSessionId String   @map("live_session_id")
+  id            String      @id @default(uuid())
+  liveSessionId String      @map("live_session_id")
   liveSession   LiveSession @relation(fields: [liveSessionId], references: [id], onDelete: Cascade)
-  productId     String   @map("product_id")
-  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  displayOrder  Int      @default(0) @map("display_order")
-  livePriceUsd  Decimal? @map("live_price_usd")
-  livePriceJpy  Decimal? @map("live_price_jpy")
-  clicks        Int      @default(0)
-  orders        Int      @default(0)
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  productId     String      @map("product_id")
+  product       Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  displayOrder  Int         @default(0) @map("display_order")
+  livePriceUsd  Decimal?    @map("live_price_usd")
+  livePriceJpy  Decimal?    @map("live_price_jpy")
+  clicks        Int         @default(0)
+  orders        Int         @default(0)
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz
 
   @@map("live_products")
 }
@@ -1757,7 +1775,7 @@ model CreatorApplication {
   id               String    @id @default(uuid())
   buyerId          String    @map("buyer_id")
   buyer            Buyer     @relation(fields: [buyerId], references: [id], onDelete: Cascade)
-  desiredUsername   String    @map("desired_username")
+  desiredUsername  String    @map("desired_username")
   displayName      String    @map("display_name")
   bio              String?
   instagramUrl     String?   @map("instagram_url")
@@ -1783,14 +1801,14 @@ model CreatorApplication {
 // ============================================================
 
 model ConversionCriteria {
-  id               String   @id @default(uuid())
-  minOrders        Int      @default(5) @map("min_orders")
-  minReviews       Int      @default(3) @map("min_reviews")
-  minSpent         Decimal  @default(100) @map("min_spent")
-  minAccountAgeDays Int     @default(30) @map("min_account_age_days")
-  isActive         Boolean  @default(true) @map("is_active")
-  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  id                String   @id @default(uuid())
+  minOrders         Int      @default(5) @map("min_orders")
+  minReviews        Int      @default(3) @map("min_reviews")
+  minSpent          Decimal  @default(100) @map("min_spent")
+  minAccountAgeDays Int      @default(30) @map("min_account_age_days")
+  isActive          Boolean  @default(true) @map("is_active")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("conversion_criteria")
 }
@@ -1976,18 +1994,18 @@ model PriceBadge {
 }
 
 model AiGonguTip {
-  id             String   @id @default(uuid())
-  productId      String   @map("product_id")
-  product        Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  strategy       String   @db.VarChar(20)
-  hook           String
-  targetMessage  String   @map("target_message")
-  estimatedCvr   String   @map("estimated_cvr") @db.VarChar(20)
-  caption        String
-  hashtags       String[] @default([])
-  reasoning      String?
-  modelUsed      String   @default("claude-sonnet-4-6") @map("model_used")
-  generatedAt    DateTime @default(now()) @map("generated_at") @db.Timestamptz
+  id            String   @id @default(uuid())
+  productId     String   @map("product_id")
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  strategy      String   @db.VarChar(20)
+  hook          String
+  targetMessage String   @map("target_message")
+  estimatedCvr  String   @map("estimated_cvr") @db.VarChar(20)
+  caption       String
+  hashtags      String[] @default([])
+  reasoning     String?
+  modelUsed     String   @default("claude-sonnet-4-6") @map("model_used")
+  generatedAt   DateTime @default(now()) @map("generated_at") @db.Timestamptz
 
   @@index([productId])
   @@map("ai_gonggu_tips")
@@ -1998,40 +2016,40 @@ model AiGonguTip {
 // ============================================================
 
 model CreatorProposal {
-  id              String            @id @default(uuid())
-  brandId         String            @map("brand_id")
-  brand           Brand             @relation(fields: [brandId], references: [id])
-  creatorId       String            @map("creator_id")
-  creator         Creator           @relation(fields: [creatorId], references: [id])
+  id              String                @id @default(uuid())
+  brandId         String                @map("brand_id")
+  brand           Brand                 @relation(fields: [brandId], references: [id])
+  creatorId       String                @map("creator_id")
+  creator         Creator               @relation(fields: [creatorId], references: [id])
   type            ProposalType
-  campaignId      String?           @map("campaign_id")
-  campaign        Campaign?         @relation(fields: [campaignId], references: [id])
-  templateId      String?           @map("template_id")
-  template        ProposalTemplate? @relation(fields: [templateId], references: [id])
+  campaignId      String?               @map("campaign_id")
+  campaign        Campaign?             @relation(fields: [campaignId], references: [id])
+  templateId      String?               @map("template_id")
+  template        ProposalTemplate?     @relation(fields: [templateId], references: [id])
   message         String?
-  commissionRate  Decimal?          @map("commission_rate") @db.Decimal(5, 2)
-  status          ProposalStatus    @default(PENDING)
-  respondedAt     DateTime?         @map("responded_at") @db.Timestamptz
-  rejectionReason String?           @map("rejection_reason")
+  commissionRate  Decimal?              @map("commission_rate") @db.Decimal(5, 2)
+  status          ProposalStatus        @default(PENDING)
+  respondedAt     DateTime?             @map("responded_at") @db.Timestamptz
+  rejectionReason String?               @map("rejection_reason")
   // 메시지 크레딧 연결
-  messageCreditId String?           @map("message_credit_id")
-  messageCredit   MessageCredit?    @relation(fields: [messageCreditId], references: [id])
+  messageCreditId String?               @map("message_credit_id")
+  messageCredit   MessageCredit?        @relation(fields: [messageCreditId], references: [id])
   // 채널별 발송 상태
-  inAppSentAt     DateTime?         @map("in_app_sent_at") @db.Timestamptz
-  emailSentAt     DateTime?         @map("email_sent_at") @db.Timestamptz
-  kakaoSentAt     DateTime?         @map("kakao_sent_at") @db.Timestamptz
-  dmQueuedAt      DateTime?         @map("dm_queued_at") @db.Timestamptz
+  inAppSentAt     DateTime?             @map("in_app_sent_at") @db.Timestamptz
+  emailSentAt     DateTime?             @map("email_sent_at") @db.Timestamptz
+  kakaoSentAt     DateTime?             @map("kakao_sent_at") @db.Timestamptz
+  dmQueuedAt      DateTime?             @map("dm_queued_at") @db.Timestamptz
   inAppStatus     ChannelDeliveryStatus @default(PENDING) @map("in_app_status")
   emailStatus     ChannelDeliveryStatus @default(PENDING) @map("email_status")
   kakaoStatus     ChannelDeliveryStatus @default(PENDING) @map("kakao_status")
   dmStatus        ChannelDeliveryStatus @default(SKIPPED) @map("dm_status")
-  emailMessageId  String?           @map("email_message_id") // 이메일 메시지 ID (발송 추적용)
-  useInstagramDm  Boolean           @default(false) @map("use_instagram_dm")
+  emailMessageId  String?               @map("email_message_id") // 이메일 메시지 ID (발송 추적용)
+  useInstagramDm  Boolean               @default(false) @map("use_instagram_dm")
   // Timestamps
-  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt       DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  createdAt       DateTime              @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  dmQueues        DmSendQueue[]
+  dmQueues DmSendQueue[]
 
   @@index([brandId, status])
   @@index([creatorId, status])
@@ -2043,13 +2061,13 @@ model CreatorProposal {
 // ============================================================
 
 model CreatorGroup {
-  id          String             @id @default(uuid())
-  brandId     String             @map("brand_id")
-  brand       Brand              @relation(fields: [brandId], references: [id])
-  name        String             @db.VarChar(50)
+  id          String               @id @default(uuid())
+  brandId     String               @map("brand_id")
+  brand       Brand                @relation(fields: [brandId], references: [id])
+  name        String               @db.VarChar(50)
   description String?
-  createdAt   DateTime           @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt   DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  createdAt   DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
   members     CreatorGroupMember[]
 
   @@index([brandId])
@@ -2078,17 +2096,17 @@ model CreatorGroupMember {
 // ============================================================
 
 model ProposalTemplate {
-  id             String          @id @default(uuid())
-  brandId        String          @map("brand_id")
-  brand          Brand           @relation(fields: [brandId], references: [id])
-  name           String          @db.VarChar(100)
+  id             String            @id @default(uuid())
+  brandId        String            @map("brand_id")
+  brand          Brand             @relation(fields: [brandId], references: [id])
+  name           String            @db.VarChar(100)
   type           ProposalType
-  subject        String?         @db.VarChar(200)
+  subject        String?           @db.VarChar(200)
   body           String
-  commissionRate Decimal?        @map("commission_rate") @db.Decimal(5, 2)
-  isDefault      Boolean         @default(false) @map("is_default")
-  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  commissionRate Decimal?          @map("commission_rate") @db.Decimal(5, 2)
+  isDefault      Boolean           @default(false) @map("is_default")
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
   proposals      CreatorProposal[]
 
   @@index([brandId])
@@ -2100,23 +2118,23 @@ model ProposalTemplate {
 // ============================================================
 
 model BrandSubscription {
-  id                    String             @id @default(uuid())
-  brandId               String             @unique @map("brand_id")
-  brand                 Brand              @relation(fields: [brandId], references: [id])
-  plan                  SubscriptionPlan   @default(FREE)
-  status                SubscriptionStatus @default(ACTIVE)
-  startedAt             DateTime           @default(now()) @map("started_at") @db.Timestamptz
-  expiresAt             DateTime?          @map("expires_at") @db.Timestamptz
-  nextBillingAt         DateTime?          @map("next_billing_at") @db.Timestamptz
-  cancelledAt           DateTime?          @map("cancelled_at") @db.Timestamptz
-  monthlyFee            Decimal            @default(0) @map("monthly_fee") @db.Decimal(12, 0)
-  includedMessageQuota  Int                @default(0) @map("included_message_quota")
-  currentMonthUsed      Int                @default(0) @map("current_month_used")
-  currentMonthResetAt   DateTime?          @map("current_month_reset_at") @db.Timestamptz
-  createdAt             DateTime           @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt             DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  id                   String             @id @default(uuid())
+  brandId              String             @unique @map("brand_id")
+  brand                Brand              @relation(fields: [brandId], references: [id])
+  plan                 SubscriptionPlan   @default(FREE)
+  status               SubscriptionStatus @default(ACTIVE)
+  startedAt            DateTime           @default(now()) @map("started_at") @db.Timestamptz
+  expiresAt            DateTime?          @map("expires_at") @db.Timestamptz
+  nextBillingAt        DateTime?          @map("next_billing_at") @db.Timestamptz
+  cancelledAt          DateTime?          @map("cancelled_at") @db.Timestamptz
+  monthlyFee           Decimal            @default(0) @map("monthly_fee") @db.Decimal(12, 0)
+  includedMessageQuota Int                @default(0) @map("included_message_quota")
+  currentMonthUsed     Int                @default(0) @map("current_month_used")
+  currentMonthResetAt  DateTime?          @map("current_month_reset_at") @db.Timestamptz
+  createdAt            DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  payments              SubscriptionPayment[]
+  payments SubscriptionPayment[]
 
   @@index([brandId])
   @@index([expiresAt])
@@ -2128,21 +2146,21 @@ model BrandSubscription {
 // ============================================================
 
 model MessageCredit {
-  id                String           @id @default(uuid())
-  brandId           String           @map("brand_id")
-  brand             Brand            @relation(fields: [brandId], references: [id])
-  proposalId        String?          @map("proposal_id")
+  id                String            @id @default(uuid())
+  brandId           String            @map("brand_id")
+  brand             Brand             @relation(fields: [brandId], references: [id])
+  proposalId        String?           @map("proposal_id")
   type              MessageCreditType
-  cost              Decimal          @default(0) @db.Decimal(10, 0)
-  pricePerMessage   Decimal          @default(500) @map("price_per_message") @db.Decimal(10, 0)
-  attemptedChannels String[]         @default([]) @map("attempted_channels")
-  succeededChannels String[]         @default([]) @map("succeeded_channels")
-  creatorId         String           @map("creator_id")
-  creator           Creator          @relation(fields: [creatorId], references: [id])
-  sentAt            DateTime         @default(now()) @map("sent_at") @db.Timestamptz
-  createdAt         DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  cost              Decimal           @default(0) @db.Decimal(10, 0)
+  pricePerMessage   Decimal           @default(500) @map("price_per_message") @db.Decimal(10, 0)
+  attemptedChannels String[]          @default([]) @map("attempted_channels")
+  succeededChannels String[]          @default([]) @map("succeeded_channels")
+  creatorId         String            @map("creator_id")
+  creator           Creator           @relation(fields: [creatorId], references: [id])
+  sentAt            DateTime          @default(now()) @map("sent_at") @db.Timestamptz
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz
 
-  proposals         CreatorProposal[]
+  proposals CreatorProposal[]
 
   @@index([brandId, sentAt])
   @@index([proposalId])
@@ -2154,19 +2172,19 @@ model MessageCredit {
 // ============================================================
 
 model SubscriptionPayment {
-  id                String            @id @default(uuid())
-  brandId           String            @map("brand_id")
-  brand             Brand             @relation(fields: [brandId], references: [id])
-  subscriptionId    String            @map("subscription_id")
-  subscription      BrandSubscription @relation(fields: [subscriptionId], references: [id])
-  amount            Decimal           @db.Decimal(12, 0)
-  plan              String
-  paidAt            DateTime          @default(now()) @map("paid_at") @db.Timestamptz
-  portOnePaymentId  String?           @map("portone_payment_id")
-  status            SubPaymentStatus  @default(PAID)
-  periodStart       DateTime          @map("period_start") @db.Timestamptz
-  periodEnd         DateTime          @map("period_end") @db.Timestamptz
-  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  id               String            @id @default(uuid())
+  brandId          String            @map("brand_id")
+  brand            Brand             @relation(fields: [brandId], references: [id])
+  subscriptionId   String            @map("subscription_id")
+  subscription     BrandSubscription @relation(fields: [subscriptionId], references: [id])
+  amount           Decimal           @db.Decimal(12, 0)
+  plan             String
+  paidAt           DateTime          @default(now()) @map("paid_at") @db.Timestamptz
+  portOnePaymentId String?           @map("portone_payment_id")
+  status           SubPaymentStatus  @default(PAID)
+  periodStart      DateTime          @map("period_start") @db.Timestamptz
+  periodEnd        DateTime          @map("period_end") @db.Timestamptz
+  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz
 
   @@index([brandId])
   @@index([subscriptionId])
@@ -2178,26 +2196,26 @@ model SubscriptionPayment {
 // ============================================================
 
 model DmSendQueue {
-  id                     String        @id @default(uuid())
-  brandId                String        @map("brand_id")
-  brand                  Brand         @relation(fields: [brandId], references: [id])
-  creatorId              String        @map("creator_id")
-  creator                Creator       @relation(fields: [creatorId], references: [id])
-  proposalId             String        @map("proposal_id")
-  proposal               CreatorProposal @relation(fields: [proposalId], references: [id])
-  instagramUsername       String        @map("instagram_username")
-  messageBody            String        @map("message_body")
-  status                 DmQueueStatus @default(PENDING)
-  attemptCount           Int           @default(0) @map("attempt_count")
-  lastAttemptedAt        DateTime?     @map("last_attempted_at") @db.Timestamptz
-  sentAt                 DateTime?     @map("sent_at") @db.Timestamptz
-  failReason             String?       @map("fail_reason")
-  brandInstagramAccount  String?       @map("brand_instagram_account")
-  priority               Int           @default(0)
-  createdAt              DateTime      @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt              DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  id                    String          @id @default(uuid())
+  brandId               String          @map("brand_id")
+  brand                 Brand           @relation(fields: [brandId], references: [id])
+  creatorId             String          @map("creator_id")
+  creator               Creator         @relation(fields: [creatorId], references: [id])
+  proposalId            String          @map("proposal_id")
+  proposal              CreatorProposal @relation(fields: [proposalId], references: [id])
+  instagramUsername     String          @map("instagram_username")
+  messageBody           String          @map("message_body")
+  status                DmQueueStatus   @default(PENDING)
+  attemptCount          Int             @default(0) @map("attempt_count")
+  lastAttemptedAt       DateTime?       @map("last_attempted_at") @db.Timestamptz
+  sentAt                DateTime?       @map("sent_at") @db.Timestamptz
+  failReason            String?         @map("fail_reason")
+  brandInstagramAccount String?         @map("brand_instagram_account")
+  priority              Int             @default(0)
+  createdAt             DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  logs                   DmSendLog[]
+  logs DmSendLog[]
 
   @@index([brandId, status])
   @@index([status, priority])
@@ -2209,12 +2227,12 @@ model DmSendQueue {
 // ============================================================
 
 model DmSendLog {
-  id          String         @id @default(uuid())
-  queueId     String         @map("queue_id")
-  queue       DmSendQueue    @relation(fields: [queueId], references: [id], onDelete: Cascade)
-  event       DmSendLogEvent
-  detail      Json?          @db.JsonB
-  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  id        String         @id @default(uuid())
+  queueId   String         @map("queue_id")
+  queue     DmSendQueue    @relation(fields: [queueId], references: [id], onDelete: Cascade)
+  event     DmSendLogEvent
+  detail    Json?          @db.JsonB
+  createdAt DateTime       @default(now()) @map("created_at") @db.Timestamptz
 
   @@index([queueId])
   @@map("dm_send_logs")
@@ -2254,4 +2272,138 @@ model PasswordResetToken {
   @@index([buyerId])
   @@index([token])
   @@map("password_reset_tokens")
+}
+
+// ============================================================
+// ORDER INQUIRIES (P4: 1:1 문의)
+// ============================================================
+
+model OrderInquiry {
+  id      String  @id @default(uuid())
+  orderId String  @map("order_id")
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  buyerId String? @map("buyer_id")
+  buyer   Buyer?  @relation(fields: [buyerId], references: [id], onDelete: SetNull)
+
+  guestEmail String? @map("guest_email")
+  guestPhone String? @map("guest_phone")
+  guestName  String? @map("guest_name")
+
+  category   String   @db.VarChar(30)
+  title      String   @db.VarChar(200)
+  content    String
+  status     String   @default("OPEN") @db.VarChar(20)
+  assignedTo String   @default("BRAND") @db.VarChar(20)
+  brandId    String?  @map("brand_id")
+  brand      Brand?   @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  images     String[] @default([])
+
+  createdAt DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  answers   OrderInquiryAnswer[]
+
+  @@index([buyerId, createdAt(sort: Desc)])
+  @@index([orderId])
+  @@index([status])
+  @@index([brandId, status])
+  @@index([guestEmail])
+  @@map("order_inquiries")
+}
+
+model OrderInquiryAnswer {
+  id           String       @id @default(uuid())
+  inquiryId    String       @map("inquiry_id")
+  inquiry      OrderInquiry @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+  answerBy     String       @map("answer_by")
+  answerByType String       @map("answer_by_type") @db.VarChar(20)
+  content      String
+  images       String[]     @default([])
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("order_inquiry_answers")
+}
+
+// ============================================================
+// ADDRESSES (P4: 배송지 관리)
+// ============================================================
+
+model Address {
+  id        String   @id @default(uuid())
+  buyerId   String   @map("buyer_id")
+  buyer     Buyer    @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  label     String?  @db.VarChar(50)
+  recipient String
+  phone     String
+  zipcode   String   @db.VarChar(10)
+  address   String
+  detail    String
+  isDefault Boolean  @default(false) @map("is_default")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([buyerId, isDefault])
+  @@map("addresses")
+}
+
+// ============================================================
+// BUYER PAYMENT METHODS (P4)
+// ============================================================
+
+model BuyerPaymentMethod {
+  id          String   @id @default(uuid())
+  buyerId     String   @map("buyer_id")
+  buyer       Buyer    @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  providerKey String   @map("provider_key")
+  cardType    String?  @map("card_type") @db.VarChar(50)
+  last4       String?  @db.VarChar(4)
+  bin         String?  @db.VarChar(6)
+  isDefault   Boolean  @default(false) @map("is_default")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([buyerId])
+  @@map("buyer_payment_methods")
+}
+
+// ============================================================
+// BUYER NOTIFICATION SETTINGS (P4)
+// ============================================================
+
+model BuyerNotificationSetting {
+  id            String   @id @default(uuid())
+  buyerId       String   @unique @map("buyer_id")
+  buyer         Buyer    @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  kakaoOrder    Boolean  @default(true) @map("kakao_order")
+  kakaoShipping Boolean  @default(true) @map("kakao_shipping")
+  kakaoDeliver  Boolean  @default(true) @map("kakao_deliver")
+  kakaoGonggu   Boolean  @default(true) @map("kakao_gonggu")
+  emailOrder    Boolean  @default(true) @map("email_order")
+  emailShipping Boolean  @default(true) @map("email_shipping")
+  emailDeliver  Boolean  @default(true) @map("email_deliver")
+  emailGonggu   Boolean  @default(true) @map("email_gonggu")
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("buyer_notification_settings")
+}
+
+// ============================================================
+// COUPONS (P4)
+// ============================================================
+
+model Coupon {
+  id             String    @id @default(uuid())
+  buyerId        String    @map("buyer_id")
+  buyer          Buyer     @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  code           String?
+  name           String?   @db.VarChar(100)
+  discountType   String    @map("discount_type") @db.VarChar(20)
+  discountValue  Int       @map("discount_value")
+  minOrderAmount Int?      @map("min_order_amount")
+  usedAt         DateTime? @map("used_at")
+  usedOrderId    String?   @map("used_order_id")
+  expiresAt      DateTime  @map("expires_at") @db.Timestamptz
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([buyerId, usedAt])
+  @@index([buyerId, expiresAt])
+  @@map("coupons")
 }
