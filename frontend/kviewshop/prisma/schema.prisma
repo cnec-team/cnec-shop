@@ -1193,6 +1193,15 @@ model Buyer {
   // Instagram
   instagramUsername      String?   @map("instagram_username")
   instagramVerified      Boolean   @default(false) @map("instagram_verified")
+  // Social Auth (P3)
+  socialProvider         String?   @map("social_provider") @db.VarChar(20)
+  socialProviderId       String?   @unique @map("social_provider_id") @db.VarChar(100)
+  tier                   String    @default("ROOKIE") @db.VarChar(20)
+  createdVia             String?   @map("created_via") @db.VarChar(20)
+  createdAtShopId        String?   @map("created_at_shop_id")
+  // Login Security (P3)
+  failedLoginCount       Int       @default(0) @map("failed_login_count")
+  lockedUntil            DateTime? @map("locked_until") @db.Timestamptz
   // Timestamps
   createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt              DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
@@ -1213,9 +1222,11 @@ model Buyer {
   // Server cart + wishlist + recent view
   carts               Cart[]
   recentViews         RecentView[]
+  passwordResetTokens PasswordResetToken[]
 
   @@index([pointsBalance])
   @@index([eligibleForCreator])
+  @@index([socialProviderId])
   @@map("buyers")
 }
 
@@ -2225,4 +2236,22 @@ model CreatorFilterPreset {
 
   @@index([brandId])
   @@map("creator_filter_presets")
+}
+
+// ============================================================
+// PASSWORD RESET TOKENS (P3)
+// ============================================================
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  token     String    @unique @db.VarChar(128)
+  buyerId   String    @map("buyer_id")
+  buyer     Buyer     @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz
+  usedAt    DateTime? @map("used_at") @db.Timestamptz
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([buyerId])
+  @@index([token])
+  @@map("password_reset_tokens")
 }

@@ -15,18 +15,49 @@ const providers = [
       if (!credentials?.email || !credentials?.password) return null
 
       try {
+        const email = (credentials.email as string).trim().toLowerCase()
+        const password = credentials.password as string
+
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email as string }
+          where: { email },
+          include: { buyer: { select: { id: true, failedLoginCount: true, lockedUntil: true } } },
         })
 
         if (!user || !user.passwordHash) return null
 
-        const isValid = await bcrypt.compare(
-          credentials.password as string,
-          user.passwordHash
-        )
+        // 5회 실패 잠금 체크 (buyer만)
+        if (user.buyer) {
+          if (user.buyer.lockedUntil && user.buyer.lockedUntil > new Date()) {
+            throw new Error('account_locked')
+          }
+        }
 
-        if (!isValid) return null
+        const isValid = await bcrypt.compare(password, user.passwordHash)
+
+        if (!isValid) {
+          // buyer인 경우 실패 카운트 증가
+          if (user.buyer) {
+            const newCount = (user.buyer.failedLoginCount || 0) + 1
+            await prisma.buyer.update({
+              where: { id: user.buyer.id },
+              data: {
+                failedLoginCount: newCount,
+                lockedUntil: newCount >= 5
+                  ? new Date(Date.now() + 5 * 60 * 1000)
+                  : null,
+              },
+            })
+          }
+          return null
+        }
+
+        // 성공 시 카운터 리셋
+        if (user.buyer && user.buyer.failedLoginCount > 0) {
+          await prisma.buyer.update({
+            where: { id: user.buyer.id },
+            data: { failedLoginCount: 0, lockedUntil: null },
+          })
+        }
 
         return {
           id: user.id,
@@ -35,6 +66,9 @@ const providers = [
           role: user.role,
         }
       } catch (error) {
+        if (error instanceof Error && error.message === 'account_locked') {
+          throw error
+        }
         console.error('Auth authorize error:', error)
         return null
       }
@@ -50,6 +84,8 @@ if (process.env.KAKAO_CLIENT_ID && process.env.KAKAO_CLIENT_SECRET) {
       clientSecret: process.env.KAKAO_CLIENT_SECRET,
     }) as any
   )
+} else {
+  console.warn('[auth] KAKAO_CLIENT_ID 없음 - 카카오 로그인 비활성화')
 }
 
 // 네이버 로그인 (환경변수 있을 때만 활성화)
@@ -76,6 +112,26 @@ if (process.env.NAVER_CLIENT_ID && process.env.NAVER_CLIENT_SECRET) {
       }
     },
   } as any)
+} else {
+  console.warn('[auth] NAVER_CLIENT_ID 없음 - 네이버 로그인 비활성화')
+}
+
+// Apple 로그인 (환경변수 있을 때만 활성화)
+if (process.env.APPLE_CLIENT_ID && process.env.APPLE_PRIVATE_KEY) {
+  const Apple = require('next-auth/providers/apple').default
+  providers.push(
+    Apple({
+      clientId: process.env.APPLE_CLIENT_ID,
+      clientSecret: {
+        appleId: process.env.APPLE_CLIENT_ID,
+        teamId: process.env.APPLE_TEAM_ID!,
+        privateKey: process.env.APPLE_PRIVATE_KEY,
+        keyId: process.env.APPLE_KEY_ID!,
+      } as any,
+    }) as any
+  )
+} else {
+  console.warn('[auth] APPLE_CLIENT_ID 없음 - 애플 로그인 비활성화')
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -87,38 +143,117 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // Credentials — 기본 허용
       if (account?.provider === 'credentials') return true
 
-      // OAuth (카카오/네이버) — DB에 유저 없으면 자동 생성
-      if (account?.provider === 'kakao' || account?.provider === 'naver') {
-        try {
-          const email = user.email
-          if (!email) return false
+      // OAuth (카카오/네이버/애플) — DB에 유저 없으면 자동 생성 + 3000P
+      const isSocial = account?.provider && ['kakao', 'naver', 'apple'].includes(account.provider)
+      if (!isSocial || !account) return true
 
-          const existingUser = await prisma.user.findUnique({ where: { email } })
-          if (!existingUser) {
-            const displayName = user.name || email.split('@')[0]
-            const newUser = await prisma.user.create({
+      try {
+        const providerKey = `${account.provider}:${account.providerAccountId}`
+
+        // 이메일 없는 카카오 fallback
+        const effectiveEmail = user.email
+          ?? `${account.provider}_${account.providerAccountId}@cnecshop.local`
+
+        // last_shop_id 쿠키 읽기
+        let lastShopId: string | null = null
+        try {
+          const { cookies } = await import('next/headers')
+          const cookieStore = await cookies()
+          lastShopId = cookieStore.get('last_shop_id')?.value ?? null
+        } catch {}
+
+        // 기존 유저 검색: socialProviderId 우선, 이메일 fallback
+        let existingUser = await prisma.user.findFirst({
+          where: {
+            buyer: { socialProviderId: providerKey },
+          },
+          include: { buyer: true },
+        })
+
+        if (!existingUser && user.email) {
+          existingUser = await prisma.user.findUnique({
+            where: { email: user.email },
+            include: { buyer: true },
+          })
+        }
+
+        if (existingUser) {
+          // 기존 유저: 소셜 정보 병합 (아직 없으면)
+          if (existingUser.buyer && !existingUser.buyer.socialProvider) {
+            await prisma.buyer.update({
+              where: { id: existingUser.buyer.id },
               data: {
-                email,
-                name: displayName,
-                role: 'buyer',
-                passwordHash: null,
-              }
-            })
-            await prisma.buyer.create({
-              data: {
-                userId: newUser.id,
-                nickname: displayName,
-              }
+                socialProvider: account.provider,
+                socialProviderId: providerKey,
+              },
             })
           }
-          return true
-        } catch (error) {
-          console.error('OAuth signIn callback error:', error)
-          return false
-        }
-      }
 
-      return true
+          // buyer가 없는 경우 (creator/brand 계정) 생성
+          if (!existingUser.buyer && existingUser.role === 'buyer') {
+            await prisma.buyer.create({
+              data: {
+                userId: existingUser.id,
+                nickname: existingUser.name || '회원',
+                socialProvider: account.provider,
+                socialProviderId: providerKey,
+              },
+            })
+          }
+        } else {
+          // 신규 유저 자동 생성
+          const displayName = user.name || effectiveEmail.split('@')[0]
+          const newUser = await prisma.user.create({
+            data: {
+              email: effectiveEmail,
+              name: displayName,
+              role: 'buyer',
+              passwordHash: null,
+            }
+          })
+
+          const newBuyer = await prisma.buyer.create({
+            data: {
+              userId: newUser.id,
+              nickname: displayName,
+              socialProvider: account.provider,
+              socialProviderId: providerKey,
+              pointsBalance: 3000,
+              totalPointsEarned: 3000,
+              tier: 'ROOKIE',
+              createdVia: account.provider.toUpperCase(),
+              createdAtShopId: lastShopId,
+            },
+          })
+
+          // 3000P 기록
+          await prisma.pointsHistory.create({
+            data: {
+              buyerId: newBuyer.id,
+              amount: 3000,
+              balanceAfter: 3000,
+              type: 'signup_bonus',
+              description: '가입 축하 포인트',
+            },
+          })
+
+          // 신규 가입 쿠키
+          try {
+            const { cookies } = await import('next/headers')
+            const cookieStore = await cookies()
+            cookieStore.set('welcome_new_signup', '1', {
+              maxAge: 300,
+              sameSite: 'lax',
+              path: '/',
+            })
+          } catch {}
+        }
+
+        return true
+      } catch (error) {
+        console.error('OAuth signIn callback error:', error)
+        return false
+      }
     },
     async jwt({ token, user, account }) {
       // Credentials 로그인
@@ -128,7 +263,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
 
       // OAuth 로그인 — DB에서 role/userId 조회
-      if (account && (account.provider === 'kakao' || account.provider === 'naver')) {
+      if (account && account.provider !== 'credentials') {
         try {
           const email = token.email
           if (email) {
@@ -136,6 +271,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             if (dbUser) {
               token.role = dbUser.role
               token.userId = dbUser.id
+            }
+          }
+
+          // 이메일 없는 카카오 fallback
+          if (!email && account.providerAccountId) {
+            const fallbackEmail = `${account.provider}_${account.providerAccountId}@cnecshop.local`
+            const dbUser = await prisma.user.findUnique({ where: { email: fallbackEmail } })
+            if (dbUser) {
+              token.role = dbUser.role
+              token.userId = dbUser.id
+              token.email = fallbackEmail
             }
           }
         } catch (error) {
@@ -151,6 +297,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.id = token.userId as string
       }
       return session
+    },
+  },
+  events: {
+    async signIn({ user }) {
+      // buyer 카트 sync (비회원 → 회원)
+      if ((user as any).role !== 'buyer') return
+      try {
+        const buyer = await prisma.buyer.findUnique({
+          where: { userId: (user as any).id || user.id },
+          select: { id: true },
+        })
+        if (buyer) {
+          const { syncGuestCartToUser } = await import('@/lib/actions/cart')
+          await syncGuestCartToUser(buyer.id)
+        }
+      } catch (e) {
+        console.error('[auth] cart sync failed', e)
+      }
     },
   },
 })

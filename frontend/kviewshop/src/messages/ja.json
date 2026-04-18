@@ -58,7 +58,38 @@
     "brandPendingApproval": "企業登録は承認待ちです。管理者の承認後にログインできます。",
     "emailNotConfirmed": "メールアドレスが確認されていません。メールをご確認ください。",
     "loginError": "ログイン中にエラーが発生しました。もう一度お試しください。",
-    "or": "または"
+    "or": "または",
+    "emailFirst": {
+      "title": "メールアドレスを入力してください",
+      "placeholder": "example@email.com",
+      "continue": "続ける"
+    },
+    "existing": {
+      "welcomeBack": "おかえりなさい！",
+      "nameGreeting": "{name}さん、こんにちは",
+      "socialNotice": "{provider}で登録済みです"
+    },
+    "new": {
+      "title": "新規登録",
+      "passwordHint": "8文字以上・英数字を含む",
+      "completeButton": "登録完了"
+    },
+    "terms": {
+      "age": "14歳以上です",
+      "service": "利用規約",
+      "privacy": "プライバシーポリシー",
+      "electronic": "電子金融取引利用規約",
+      "marketing": "マーケティング情報受信",
+      "allAgree": "すべてに同意"
+    },
+    "accountLocked": "5回失敗のため5分間ロックされています",
+    "welcome": {
+      "toast": "登録おめでとうございます！3,000Pが付与されました！"
+    },
+    "benefits": {
+      "title": "会員7大特典",
+      "cta": "今すぐ登録"
+    }
   },
   "nav": {
     "home": "ホーム",

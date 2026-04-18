@@ -58,7 +58,38 @@
     "brandPendingApproval": "Your business registration is pending approval. You can login after admin approval.",
     "emailNotConfirmed": "Email not confirmed. Please check your email.",
     "loginError": "An error occurred during login. Please try again.",
-    "or": "or"
+    "or": "or",
+    "emailFirst": {
+      "title": "Enter your email to get started",
+      "placeholder": "example@email.com",
+      "continue": "Continue"
+    },
+    "existing": {
+      "welcomeBack": "Welcome back!",
+      "nameGreeting": "Hi {name}!",
+      "socialNotice": "You signed up with {provider}"
+    },
+    "new": {
+      "title": "Welcome! Let's create your account",
+      "passwordHint": "8+ characters, letters + numbers",
+      "completeButton": "Sign Up"
+    },
+    "terms": {
+      "age": "I am 14 years or older",
+      "service": "Terms of Service",
+      "privacy": "Privacy Policy",
+      "electronic": "Electronic Transaction Terms",
+      "marketing": "Marketing Communications",
+      "allAgree": "Agree to all"
+    },
+    "accountLocked": "Account locked for 5 min after 5 failed attempts",
+    "welcome": {
+      "toast": "Welcome! 3,000P has been credited!"
+    },
+    "benefits": {
+      "title": "7 Member Benefits",
+      "cta": "Sign Up Now"
+    }
   },
   "nav": {
     "home": "Home",
