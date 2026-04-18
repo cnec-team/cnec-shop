@@ -24,7 +24,7 @@ export default async function ShopUsernameLayout({
     select: { id: true, status: true },
   });
 
-  if (!creator || creator.status !== 'active') {
+  if (!creator || creator.status !== 'ACTIVE') {
     notFound();
   }
 
