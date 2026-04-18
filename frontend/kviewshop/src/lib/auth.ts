@@ -154,12 +154,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const effectiveEmail = user.email
           ?? `${account.provider}_${account.providerAccountId}@cnecshop.local`
 
-        // last_shop_id 쿠키 읽기
+        // last_shop_id 쿠키 읽기 + reserved 값 필터링
+        const RESERVED_SHOP_IDS = [
+          'admin', 'brand', 'creator', 'buyer', 'login', 'signup', 'auth',
+          'terms', 'privacy', 'policies', 'help', 'about', 'faq', 'contact',
+          'no-shop-context', 'auth-error', 'error', '404', '500', 'not-found',
+          'order-complete', 'payment', 'me', 'cart', 'checkout', 'orders', 'order',
+          'products', 'creators', 'content', 'sitemap', 'og',
+        ]
         let lastShopId: string | null = null
         try {
           const { cookies } = await import('next/headers')
           const cookieStore = await cookies()
-          lastShopId = cookieStore.get('last_shop_id')?.value ?? null
+          const raw = cookieStore.get('last_shop_id')?.value ?? null
+          lastShopId = raw && !RESERVED_SHOP_IDS.includes(raw) ? raw : null
         } catch {}
 
         // 기존 유저 검색: socialProviderId 우선, 이메일 fallback
