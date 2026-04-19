@@ -182,6 +182,8 @@ function CreatorExplorerContent() {
                 </TableHead>
                 <TableHead>계정</TableHead>
                 <TableHead>카테고리</TableHead>
+                <TableHead>CNEC</TableHead>
+                <TableHead className="text-right">협업</TableHead>
                 <TableHead className="text-right">팔로워</TableHead>
                 <TableHead className="text-right">ER</TableHead>
                 <TableHead className="text-right">게시물</TableHead>

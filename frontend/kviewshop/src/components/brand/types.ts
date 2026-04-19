@@ -19,4 +19,10 @@ export interface CreatorWithIg {
   igRecentPostThumbnails: unknown
   profileImageUrl: string | null
   profileImage: string | null
+  cnecIsPartner: boolean
+  cnecReliabilityScore: number | null
+  cnecTotalTrials: number
+  cnecCompletedPayments: number
+  hasPhone: boolean
+  phoneForAlimtalk: string | null
 }

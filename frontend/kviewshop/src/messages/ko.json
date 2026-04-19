@@ -1156,5 +1156,10 @@
     "ogProductsDesc": "크리에이터가 추천하는 K-뷰티 상품",
     "exploreCreators": "크리에이터 탐색",
     "exploreProducts": "상품 탐색"
+  },
+  "creators": {
+    "filters": {
+      "cnecPartnerOnly": "CNEC 파트너만 보기"
+    }
   }
 }

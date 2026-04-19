@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
   const excludeKeywordsParam = sp.get('excludeKeywords') || ''
   const excludeKeywords = excludeKeywordsParam ? excludeKeywordsParam.split(',').map(k => k.trim()).filter(Boolean) : []
   const searchScope = sp.get('searchScope') === 'bio' ? 'bio' : 'all'
+  const cnecPartnerOnly = sp.get('cnecPartnerOnly') === 'true'
   const sort = sp.get('sort') || 'followers'
   const page = Math.max(1, parseInt(sp.get('page') || '1', 10))
   const limit = Math.min(50, Math.max(1, parseInt(sp.get('limit') || '20', 10)))
@@ -61,6 +62,8 @@ export async function GET(request: NextRequest) {
 
   if (verified === 'true') where.igVerified = true
   if (verified === 'false') where.igVerified = false
+
+  if (cnecPartnerOnly) where.cnecIsPartner = true
 
   if (includeKeywords.length > 0) {
     const keywordConditions = includeKeywords.map(kw => {
@@ -118,6 +121,7 @@ export async function GET(request: NextRequest) {
   const serialized = creators.map(c => ({
     ...c,
     igEngagementRate: c.igEngagementRate ? Number(c.igEngagementRate) : null,
+    cnecReliabilityScore: c.cnecReliabilityScore ? Number(c.cnecReliabilityScore) : null,
     totalSales: Number(c.totalSales),
     totalEarnings: Number(c.totalEarnings),
     totalRevenue: Number(c.totalRevenue),

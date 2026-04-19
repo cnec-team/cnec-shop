@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import {
   Select,
   SelectContent,
@@ -54,6 +55,7 @@ export function CreatorFilter() {
   const [minEngagement, setMinEngagement] = useState(searchParams.get('minEngagement') || '')
   const [maxEngagement, setMaxEngagement] = useState(searchParams.get('maxEngagement') || '')
   const [verified, setVerified] = useState(searchParams.get('verified') || '')
+  const [cnecPartnerOnly, setCnecPartnerOnly] = useState(searchParams.get('cnecPartnerOnly') === 'true')
   const [includeKeywords, setIncludeKeywords] = useState<string[]>(() => {
     const kw = searchParams.get('includeKeywords')?.split(',').filter(Boolean) || []
     while (kw.length < 3) kw.push('')
@@ -77,6 +79,7 @@ export function CreatorFilter() {
     if (minEngagement) params.set('minEngagement', minEngagement)
     if (maxEngagement) params.set('maxEngagement', maxEngagement)
     if (verified) params.set('verified', verified)
+    if (cnecPartnerOnly) params.set('cnecPartnerOnly', 'true')
     const ik = includeKeywords.filter(Boolean)
     if (ik.length > 0) params.set('includeKeywords', ik.join(','))
     if (keywordOperator !== 'OR') params.set('keywordOperator', keywordOperator)
@@ -84,11 +87,10 @@ export function CreatorFilter() {
     if (ek.length > 0) params.set('excludeKeywords', ek.join(','))
     if (searchScope !== 'all') params.set('searchScope', searchScope)
     if (sort !== 'followers') params.set('sort', sort)
-    // preserve view param
     const view = searchParams.get('view')
     if (view) params.set('view', view)
     return params
-  }, [tier, categories, minEngagement, maxEngagement, verified, includeKeywords, keywordOperator, excludeKeywords, searchScope, sort, searchParams])
+  }, [tier, categories, minEngagement, maxEngagement, verified, cnecPartnerOnly, includeKeywords, keywordOperator, excludeKeywords, searchScope, sort, searchParams])
 
   const applyFilters = useCallback(() => {
     const params = buildParams()
@@ -100,13 +102,11 @@ export function CreatorFilter() {
     debounceRef.current = setTimeout(applyFilters, 300)
   }, [applyFilters])
 
-  // Apply immediately for non-keyword changes
   useEffect(() => {
     applyFilters()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tier, categories, verified, sort, searchScope, keywordOperator])
+  }, [tier, categories, verified, cnecPartnerOnly, sort, searchScope, keywordOperator])
 
-  // Debounce for keyword/engagement inputs
   useEffect(() => {
     applyFiltersDebounced()
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
@@ -119,6 +119,7 @@ export function CreatorFilter() {
     setMinEngagement('')
     setMaxEngagement('')
     setVerified('')
+    setCnecPartnerOnly(false)
     setIncludeKeywords(['', '', ''])
     setKeywordOperator('OR')
     setExcludeKeywords(['', '', ''])
@@ -140,6 +141,7 @@ export function CreatorFilter() {
       case 'category': setCategories(prev => prev.filter(c => c !== value)); break
       case 'engagement': setMinEngagement(''); setMaxEngagement(''); break
       case 'verified': setVerified(''); break
+      case 'cnecPartner': setCnecPartnerOnly(false); break
       case 'includeKeyword':
         setIncludeKeywords(prev => prev.map(k => k === value ? '' : k))
         break
@@ -149,7 +151,6 @@ export function CreatorFilter() {
     }
   }
 
-  // Active filter tags
   const activeTags: { label: string; type: string; value?: string; color: string }[] = []
   if (tier) activeTags.push({ label: `티어: ${TIER_OPTIONS.find(t => t.value === tier)?.label || tier}`, type: 'tier', color: 'bg-purple-100 text-purple-700' })
   for (const cat of categories) {
@@ -160,6 +161,9 @@ export function CreatorFilter() {
   }
   if (verified) {
     activeTags.push({ label: verified === 'true' ? '인증됨' : '미인증', type: 'verified', color: 'bg-purple-100 text-purple-700' })
+  }
+  if (cnecPartnerOnly) {
+    activeTags.push({ label: 'CNEC 파트너', type: 'cnecPartner', color: 'bg-purple-100 text-purple-700' })
   }
   for (const kw of includeKeywords.filter(Boolean)) {
     activeTags.push({ label: `+${kw}`, type: 'includeKeyword', value: kw, color: 'bg-green-100 text-green-700' })
@@ -199,7 +203,6 @@ export function CreatorFilter() {
 
       {expanded && (
         <div className="space-y-4">
-          {/* 팔로워 티어 */}
           <div>
             <Label className="text-xs mb-1.5 block">팔로워 구간</Label>
             <div className="flex gap-2 flex-wrap">
@@ -216,7 +219,6 @@ export function CreatorFilter() {
             </div>
           </div>
 
-          {/* 카테고리 */}
           <div>
             <Label className="text-xs mb-1.5 block">카테고리</Label>
             <div className="flex gap-1.5 flex-wrap">
@@ -234,7 +236,6 @@ export function CreatorFilter() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* 참여율 */}
             <div>
               <Label className="text-xs mb-1.5 block">참여율 (%)</Label>
               <div className="flex items-center gap-2">
@@ -256,7 +257,6 @@ export function CreatorFilter() {
               </div>
             </div>
 
-            {/* 인증 여부 */}
             <div>
               <Label className="text-xs mb-1.5 block">인증 여부</Label>
               <div className="flex gap-2">
@@ -278,7 +278,14 @@ export function CreatorFilter() {
             </div>
           </div>
 
-          {/* 포함 키워드 */}
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-xs block">CNEC 파트너만 보기</Label>
+              <p className="text-xs text-muted-foreground">협업 경험이 있는 신뢰 크리에이터</p>
+            </div>
+            <Switch checked={cnecPartnerOnly} onCheckedChange={setCnecPartnerOnly} />
+          </div>
+
           <div>
             <div className="flex items-center gap-2 mb-1.5">
               <Label className="text-xs">포함 키워드</Label>
@@ -322,7 +329,6 @@ export function CreatorFilter() {
             </div>
           </div>
 
-          {/* 제외 키워드 */}
           <div>
             <Label className="text-xs mb-1.5 block">제외 키워드</Label>
             <div className="flex gap-2">
@@ -344,7 +350,6 @@ export function CreatorFilter() {
         </div>
       )}
 
-      {/* 적용된 필터 태그 */}
       {activeTags.length > 0 && (
         <div className="flex gap-1.5 flex-wrap mt-3 pt-3 border-t">
           {activeTags.map((tag, i) => (

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { TableRow, TableCell } from '@/components/ui/table'
-import { User, BadgeCheck, BookmarkPlus } from 'lucide-react'
+import { User, BadgeCheck, BookmarkPlus, ShieldCheck, Star } from 'lucide-react'
 import { formatFollowerCount } from '@/lib/utils/format'
 import { CreatorContentPreview } from './CreatorContentPreview'
 import { getCreatorProfileImage } from '@/lib/utils/image'
@@ -22,6 +22,13 @@ interface CreatorTableRowProps {
 
 export function CreatorTableRow({ creator, isSelected, onSelect, onPropose, onSaveToGroup }: CreatorTableRowProps) {
   const router = useRouter()
+
+  const scorePercent = creator.cnecReliabilityScore !== null
+    ? (creator.cnecReliabilityScore <= 1
+        ? Math.round(creator.cnecReliabilityScore * 100)
+        : Math.round(creator.cnecReliabilityScore))
+    : null
+  const starCount = scorePercent !== null ? Math.round(scorePercent / 20) : 0
 
   return (
     <TableRow
@@ -50,6 +57,34 @@ export function CreatorTableRow({ creator, isSelected, onSelect, onPropose, onSa
       </TableCell>
       <TableCell>
         <Badge variant="secondary" className="text-xs">{creator.igCategory || '-'}</Badge>
+      </TableCell>
+      <TableCell>
+        <div className="flex flex-col gap-1">
+          {creator.cnecIsPartner && (
+            <Badge variant="secondary" className="bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300 text-xs w-fit px-1.5 py-0 gap-0.5">
+              <ShieldCheck className="h-3 w-3" />
+              파트너
+            </Badge>
+          )}
+          {scorePercent !== null && (
+            <div className="flex items-center">
+              {Array.from({ length: 5 }, (_, i) => (
+                <Star
+                  key={i}
+                  className={`h-3 w-3 ${i < starCount ? 'text-yellow-500 fill-current' : 'text-muted-foreground'}`}
+                />
+              ))}
+            </div>
+          )}
+          {!creator.cnecIsPartner && scorePercent === null && (
+            <span className="text-xs text-muted-foreground">-</span>
+          )}
+        </div>
+      </TableCell>
+      <TableCell className="text-right">
+        {creator.cnecTotalTrials > 0 ? creator.cnecTotalTrials : (
+          <span className="text-xs text-muted-foreground">-</span>
+        )}
       </TableCell>
       <TableCell className="text-right">{formatFollowerCount(creator.igFollowers ?? 0)}</TableCell>
       <TableCell className="text-right">{creator.igEngagementRate?.toFixed(1) ?? '-'}%</TableCell>
