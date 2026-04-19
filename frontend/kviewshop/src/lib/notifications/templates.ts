@@ -1,3 +1,6 @@
+import { escapeHtml, safeUrl } from './email-utils'
+import { getEmailFooter } from './email-footer'
+
 export const KAKAO_TEMPLATES = {
   ORDER_COMPLETE: 'CNECSHOP_001',
   SHIPPING_START: 'CNECSHOP_002',
@@ -15,13 +18,14 @@ export const KAKAO_TEMPLATES = {
   PROPOSAL_PRODUCT_PICK: 'CNECSHOP_014',
 } as const
 
-const SITE_URL = 'https://www.cnecshop.com'
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.cnecshop.com'
 
 function formatPrice(amount: number): string {
   return amount.toLocaleString('ko-KR') + '원'
 }
 
-function emailLayout(body: string): string {
+function emailLayout(body: string, recipientEmail?: string): string {
+  const footer = recipientEmail ? getEmailFooter(recipientEmail) : ''
   return `<!DOCTYPE html>
 <html lang="ko">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
@@ -37,6 +41,7 @@ ${body}
 </td></tr>
 <tr><td style="padding:16px 24px;border-top:1px solid #e5e7eb;text-align:center;color:#9ca3af;font-size:12px">
 크넥샵 | cnecshop.com
+${footer}
 </td></tr>
 </table>
 </td></tr>
@@ -50,14 +55,15 @@ function infoBox(content: string): string {
 }
 
 function ctaButton(text: string, url: string): string {
+  const escaped = safeUrl(url)
   return `<div style="text-align:center;margin:24px 0">
-<a href="${url}" style="display:inline-block;background:#2563EB;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:600;font-size:15px">${text}</a>
+<a href="${escaped}" style="display:inline-block;background:#2563EB;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:600;font-size:15px">${escapeHtml(text)}</a>
 </div>`
 }
 
 function earningsBox(label: string, amount: number): string {
   return `<div style="background:#f0fdf4;border-radius:12px;padding:20px;margin:16px 0;text-align:center">
-<div style="color:#166534;font-size:13px;margin-bottom:4px">${label}</div>
+<div style="color:#166534;font-size:13px;margin-bottom:4px">${escapeHtml(label)}</div>
 <div style="color:#166534;font-size:24px;font-weight:700">${formatPrice(amount)}</div>
 </div>`
 }
@@ -69,7 +75,15 @@ export function orderCompleteMessage(data: {
   orderNumber: string
   productName: string
   totalAmount: number
+  recipientEmail?: string
+  orderLinkUrl?: string
 }) {
+  const v = {
+    buyerName: escapeHtml(data.buyerName),
+    orderNumber: escapeHtml(data.orderNumber),
+    productName: escapeHtml(data.productName),
+  }
+  const linkUrl = data.orderLinkUrl ?? '/buyer/orders'
   const kakaoMsg = `[크넥샵] 주문 완료\n\n${data.buyerName}님, 주문이 완료되었습니다.\n\n주문번호: ${data.orderNumber}\n상품: ${data.productName}\n결제금액: ${formatPrice(data.totalAmount)}\n\n배송이 시작되면 알려드리겠습니다.`
 
   return {
@@ -77,21 +91,21 @@ export function orderCompleteMessage(data: {
     email: {
       subject: `[크넥샵] 주문이 완료되었습니다 (${data.orderNumber})`,
       html: emailLayout(`
-        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${data.buyerName}님, 주문이 완료되었습니다</h2>
+        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${v.buyerName}님, 주문이 완료되었습니다</h2>
         ${infoBox(`
-          <div style="margin-bottom:8px"><strong>주문번호</strong>: ${data.orderNumber}</div>
-          <div style="margin-bottom:8px"><strong>상품</strong>: ${data.productName}</div>
+          <div style="margin-bottom:8px"><strong>주문번호</strong>: ${v.orderNumber}</div>
+          <div style="margin-bottom:8px"><strong>상품</strong>: ${v.productName}</div>
           <div><strong>결제금액</strong>: ${formatPrice(data.totalAmount)}</div>
         `)}
         <p style="color:#6b7280;font-size:14px">배송이 시작되면 알림을 보내드리겠습니다.</p>
-        ${ctaButton('주문 상세보기', `${SITE_URL}/buyer/orders`)}
-      `),
+        ${ctaButton('주문 상세보기', `${SITE_URL}${linkUrl}`)}
+      `, data.recipientEmail),
     },
     inApp: {
       type: 'ORDER',
       title: '주문이 완료되었습니다',
       message: `${data.productName} - ${formatPrice(data.totalAmount)}`,
-      linkUrl: '/buyer/orders',
+      linkUrl,
     },
   }
 }
@@ -104,7 +118,17 @@ export function shippingStartMessage(data: {
   productName: string
   trackingNumber?: string
   courierName?: string
+  recipientEmail?: string
+  orderLinkUrl?: string
 }) {
+  const v = {
+    buyerName: escapeHtml(data.buyerName),
+    orderNumber: escapeHtml(data.orderNumber),
+    productName: escapeHtml(data.productName),
+    courierName: escapeHtml(data.courierName ?? ''),
+    trackingNumber: escapeHtml(data.trackingNumber ?? ''),
+  }
+  const linkUrl = data.orderLinkUrl ?? '/buyer/orders'
   const trackingInfo = data.trackingNumber ? `\n운송장번호: ${data.trackingNumber}` : ''
   const courierInfo = data.courierName ? `\n택배사: ${data.courierName}` : ''
   const kakaoMsg = `[크넥샵] 배송 시작\n\n${data.buyerName}님, 상품이 발송되었습니다.\n\n주문번호: ${data.orderNumber}\n상품: ${data.productName}${courierInfo}${trackingInfo}`
@@ -114,21 +138,21 @@ export function shippingStartMessage(data: {
     email: {
       subject: `[크넥샵] 상품이 발송되었습니다 (${data.orderNumber})`,
       html: emailLayout(`
-        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${data.buyerName}님, 상품이 발송되었습니다</h2>
+        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${v.buyerName}님, 상품이 발송되었습니다</h2>
         ${infoBox(`
-          <div style="margin-bottom:8px"><strong>주문번호</strong>: ${data.orderNumber}</div>
-          <div style="margin-bottom:8px"><strong>상품</strong>: ${data.productName}</div>
-          ${data.courierName ? `<div style="margin-bottom:8px"><strong>택배사</strong>: ${data.courierName}</div>` : ''}
-          ${data.trackingNumber ? `<div><strong>운송장번호</strong>: ${data.trackingNumber}</div>` : ''}
+          <div style="margin-bottom:8px"><strong>주문번호</strong>: ${v.orderNumber}</div>
+          <div style="margin-bottom:8px"><strong>상품</strong>: ${v.productName}</div>
+          ${data.courierName ? `<div style="margin-bottom:8px"><strong>택배사</strong>: ${v.courierName}</div>` : ''}
+          ${data.trackingNumber ? `<div><strong>운송장번호</strong>: ${v.trackingNumber}</div>` : ''}
         `)}
-        ${ctaButton('배송 추적하기', `${SITE_URL}/buyer/orders`)}
-      `),
+        ${ctaButton('배송 추적하기', `${SITE_URL}${linkUrl}`)}
+      `, data.recipientEmail),
     },
     inApp: {
       type: 'SHIPPING',
       title: '상품이 발송되었습니다',
       message: `${data.productName}${data.trackingNumber ? ` (운송장: ${data.trackingNumber})` : ''}`,
-      linkUrl: '/buyer/orders',
+      linkUrl,
     },
   }
 }
@@ -139,7 +163,15 @@ export function deliveryCompleteMessage(data: {
   buyerName: string
   orderNumber: string
   productName: string
+  recipientEmail?: string
+  orderLinkUrl?: string
 }) {
+  const v = {
+    buyerName: escapeHtml(data.buyerName),
+    orderNumber: escapeHtml(data.orderNumber),
+    productName: escapeHtml(data.productName),
+  }
+  const linkUrl = data.orderLinkUrl ?? '/buyer/reviews'
   const kakaoMsg = `[크넥샵] 배송 완료\n\n${data.buyerName}님, 상품이 배달 완료되었습니다.\n\n주문번호: ${data.orderNumber}\n상품: ${data.productName}\n\n상품이 마음에 드셨다면 리뷰를 남겨주세요!`
 
   return {
@@ -147,20 +179,20 @@ export function deliveryCompleteMessage(data: {
     email: {
       subject: `[크넥샵] 배송이 완료되었습니다 (${data.orderNumber})`,
       html: emailLayout(`
-        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${data.buyerName}님, 배송이 완료되었습니다</h2>
+        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${v.buyerName}님, 배송이 완료되었습니다</h2>
         ${infoBox(`
-          <div style="margin-bottom:8px"><strong>주문번호</strong>: ${data.orderNumber}</div>
-          <div><strong>상품</strong>: ${data.productName}</div>
+          <div style="margin-bottom:8px"><strong>주문번호</strong>: ${v.orderNumber}</div>
+          <div><strong>상품</strong>: ${v.productName}</div>
         `)}
         <p style="color:#6b7280;font-size:14px">상품이 마음에 드셨다면 리뷰를 남겨주세요!</p>
-        ${ctaButton('리뷰 작성하기', `${SITE_URL}/buyer/reviews`)}
-      `),
+        ${ctaButton('리뷰 작성하기', `${SITE_URL}${linkUrl}`)}
+      `, data.recipientEmail),
     },
     inApp: {
       type: 'DELIVERY',
       title: '배송이 완료되었습니다',
       message: `${data.productName} - 리뷰를 남겨주세요!`,
-      linkUrl: '/buyer/reviews',
+      linkUrl,
     },
   }
 }
@@ -174,7 +206,14 @@ export function newOrderBrandMessage(data: {
   quantity: number
   totalAmount: number
   buyerName: string
+  recipientEmail?: string
 }) {
+  const v = {
+    brandName: escapeHtml(data.brandName),
+    orderNumber: escapeHtml(data.orderNumber),
+    productName: escapeHtml(data.productName),
+    buyerName: escapeHtml(data.buyerName),
+  }
   const kakaoMsg = `[크넥샵] 새 주문 발생\n\n${data.brandName}님, 새로운 주문이 들어왔습니다.\n\n주문번호: ${data.orderNumber}\n상품: ${data.productName} x ${data.quantity}\n결제금액: ${formatPrice(data.totalAmount)}\n구매자: ${data.buyerName}`
 
   return {
@@ -184,14 +223,14 @@ export function newOrderBrandMessage(data: {
       html: emailLayout(`
         <h2 style="margin:0 0 16px;font-size:18px;color:#111827">새 주문이 접수되었습니다</h2>
         ${infoBox(`
-          <div style="margin-bottom:8px"><strong>주문번호</strong>: ${data.orderNumber}</div>
-          <div style="margin-bottom:8px"><strong>상품</strong>: ${data.productName} x ${data.quantity}</div>
+          <div style="margin-bottom:8px"><strong>주문번호</strong>: ${v.orderNumber}</div>
+          <div style="margin-bottom:8px"><strong>상품</strong>: ${v.productName} x ${data.quantity}</div>
           <div style="margin-bottom:8px"><strong>결제금액</strong>: ${formatPrice(data.totalAmount)}</div>
-          <div><strong>구매자</strong>: ${data.buyerName}</div>
+          <div><strong>구매자</strong>: ${v.buyerName}</div>
         `)}
         <p style="color:#6b7280;font-size:14px">빠른 배송 준비를 부탁드립니다.</p>
         ${ctaButton('주문 관리하기', `${SITE_URL}/brand/orders`)}
-      `),
+      `, data.recipientEmail),
     },
     inApp: {
       type: 'ORDER',
@@ -209,7 +248,14 @@ export function invoiceReminderMessage(data: {
   orderNumber: string
   productName: string
   orderDate: string
+  recipientEmail?: string
 }) {
+  const v = {
+    brandName: escapeHtml(data.brandName),
+    orderNumber: escapeHtml(data.orderNumber),
+    productName: escapeHtml(data.productName),
+    orderDate: escapeHtml(data.orderDate),
+  }
   const kakaoMsg = `[크넥샵] 송장 입력 요청\n\n${data.brandName}님, 아직 송장이 입력되지 않은 주문이 있습니다.\n\n주문번호: ${data.orderNumber}\n상품: ${data.productName}\n주문일: ${data.orderDate}\n\n빠른 배송 처리를 부탁드립니다.`
 
   return {
@@ -220,12 +266,12 @@ export function invoiceReminderMessage(data: {
         <h2 style="margin:0 0 16px;font-size:18px;color:#111827">송장 입력이 필요합니다</h2>
         <p style="color:#6b7280;font-size:14px">아래 주문의 송장이 아직 입력되지 않았습니다.</p>
         ${infoBox(`
-          <div style="margin-bottom:8px"><strong>주문번호</strong>: ${data.orderNumber}</div>
-          <div style="margin-bottom:8px"><strong>상품</strong>: ${data.productName}</div>
-          <div><strong>주문일</strong>: ${data.orderDate}</div>
+          <div style="margin-bottom:8px"><strong>주문번호</strong>: ${v.orderNumber}</div>
+          <div style="margin-bottom:8px"><strong>상품</strong>: ${v.productName}</div>
+          <div><strong>주문일</strong>: ${v.orderDate}</div>
         `)}
         ${ctaButton('송장 입력하기', `${SITE_URL}/brand/orders`)}
-      `),
+      `, data.recipientEmail),
     },
     inApp: {
       type: 'ORDER',
@@ -243,7 +289,12 @@ export function saleOccurredMessage(data: {
   productName: string
   orderAmount: number
   commissionAmount: number
+  recipientEmail?: string
 }) {
+  const v = {
+    creatorName: escapeHtml(data.creatorName),
+    productName: escapeHtml(data.productName),
+  }
   const kakaoMsg = `[크넥샵] 판매 발생\n\n${data.creatorName}님, 내 샵에서 판매가 발생했습니다!\n\n상품: ${data.productName}\n판매금액: ${formatPrice(data.orderAmount)}\n내 수익: ${formatPrice(data.commissionAmount)}`
 
   return {
@@ -251,14 +302,14 @@ export function saleOccurredMessage(data: {
     email: {
       subject: `[크넥샵] 판매가 발생했습니다! (+${formatPrice(data.commissionAmount)})`,
       html: emailLayout(`
-        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${data.creatorName}님, 판매가 발생했습니다!</h2>
+        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${v.creatorName}님, 판매가 발생했습니다!</h2>
         ${infoBox(`
-          <div style="margin-bottom:8px"><strong>상품</strong>: ${data.productName}</div>
+          <div style="margin-bottom:8px"><strong>상품</strong>: ${v.productName}</div>
           <div><strong>판매금액</strong>: ${formatPrice(data.orderAmount)}</div>
         `)}
         ${earningsBox('내 수익', data.commissionAmount)}
         ${ctaButton('판매 현황 보기', `${SITE_URL}/creator/sales`)}
-      `),
+      `, data.recipientEmail),
     },
     inApp: {
       type: 'SALE',
@@ -275,7 +326,13 @@ export function campaignApprovedMessage(data: {
   creatorName: string
   brandName: string
   campaignTitle: string
+  recipientEmail?: string
 }) {
+  const v = {
+    creatorName: escapeHtml(data.creatorName),
+    brandName: escapeHtml(data.brandName),
+    campaignTitle: escapeHtml(data.campaignTitle),
+  }
   const kakaoMsg = `[크넥샵] 캠페인 참여 승인\n\n${data.creatorName}님, 캠페인 참여가 승인되었습니다.\n\n브랜드: ${data.brandName}\n캠페인: ${data.campaignTitle}\n\n이제 해당 상품을 내 샵에서 판매할 수 있습니다.`
 
   return {
@@ -283,14 +340,14 @@ export function campaignApprovedMessage(data: {
     email: {
       subject: `[크넥샵] 캠페인 참여가 승인되었습니다`,
       html: emailLayout(`
-        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${data.creatorName}님, 캠페인 참여가 승인되었습니다</h2>
+        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${v.creatorName}님, 캠페인 참여가 승인되었습니다</h2>
         ${infoBox(`
-          <div style="margin-bottom:8px"><strong>브랜드</strong>: ${data.brandName}</div>
-          <div><strong>캠페인</strong>: ${data.campaignTitle}</div>
+          <div style="margin-bottom:8px"><strong>브랜드</strong>: ${v.brandName}</div>
+          <div><strong>캠페인</strong>: ${v.campaignTitle}</div>
         `)}
         <p style="color:#6b7280;font-size:14px">이제 해당 상품을 내 샵에서 판매할 수 있습니다.</p>
         ${ctaButton('내 샵 확인하기', `${SITE_URL}/creator/shop`)}
-      `),
+      `, data.recipientEmail),
     },
     inApp: {
       type: 'CAMPAIGN',
@@ -308,7 +365,14 @@ export function campaignStartedMessage(data: {
   brandName: string
   campaignTitle: string
   endDate?: string
+  recipientEmail?: string
 }) {
+  const v = {
+    creatorName: escapeHtml(data.creatorName),
+    brandName: escapeHtml(data.brandName),
+    campaignTitle: escapeHtml(data.campaignTitle),
+    endDate: escapeHtml(data.endDate ?? ''),
+  }
   const endInfo = data.endDate ? `\n종료일: ${data.endDate}` : ''
   const kakaoMsg = `[크넥샵] 캠페인 시작\n\n${data.creatorName}님, 참여 중인 캠페인이 시작되었습니다.\n\n브랜드: ${data.brandName}\n캠페인: ${data.campaignTitle}${endInfo}\n\n지금부터 판매가 가능합니다!`
 
@@ -319,13 +383,13 @@ export function campaignStartedMessage(data: {
       html: emailLayout(`
         <h2 style="margin:0 0 16px;font-size:18px;color:#111827">캠페인이 시작되었습니다!</h2>
         ${infoBox(`
-          <div style="margin-bottom:8px"><strong>브랜드</strong>: ${data.brandName}</div>
-          <div style="margin-bottom:8px"><strong>캠페인</strong>: ${data.campaignTitle}</div>
-          ${data.endDate ? `<div><strong>종료일</strong>: ${data.endDate}</div>` : ''}
+          <div style="margin-bottom:8px"><strong>브랜드</strong>: ${v.brandName}</div>
+          <div style="margin-bottom:8px"><strong>캠페인</strong>: ${v.campaignTitle}</div>
+          ${data.endDate ? `<div><strong>종료일</strong>: ${v.endDate}</div>` : ''}
         `)}
         <p style="color:#6b7280;font-size:14px">지금부터 판매가 가능합니다. 내 팔로워들에게 공유해보세요!</p>
         ${ctaButton('내 샵 확인하기', `${SITE_URL}/creator/shop`)}
-      `),
+      `, data.recipientEmail),
     },
     inApp: {
       type: 'CAMPAIGN',
@@ -342,7 +406,13 @@ export function trialApprovedMessage(data: {
   creatorName: string
   brandName: string
   productName: string
+  recipientEmail?: string
 }) {
+  const v = {
+    creatorName: escapeHtml(data.creatorName),
+    brandName: escapeHtml(data.brandName),
+    productName: escapeHtml(data.productName),
+  }
   const kakaoMsg = `[크넥샵] 체험 신청 승인\n\n${data.creatorName}님, 체험 신청이 승인되었습니다.\n\n브랜드: ${data.brandName}\n상품: ${data.productName}\n\n곧 체험 상품이 발송될 예정입니다.`
 
   return {
@@ -350,17 +420,17 @@ export function trialApprovedMessage(data: {
     email: {
       subject: `[크넥샵] 체험 신청이 승인되었습니다`,
       html: emailLayout(`
-        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${data.creatorName}님, 체험 신청이 승인되었습니다</h2>
+        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${v.creatorName}님, 체험 신청이 승인되었습니다</h2>
         ${infoBox(`
-          <div style="margin-bottom:8px"><strong>브랜드</strong>: ${data.brandName}</div>
-          <div><strong>상품</strong>: ${data.productName}</div>
+          <div style="margin-bottom:8px"><strong>브랜드</strong>: ${v.brandName}</div>
+          <div><strong>상품</strong>: ${v.productName}</div>
         `)}
         <p style="color:#6b7280;font-size:14px">곧 체험 상품이 발송될 예정입니다.</p>
         ${ctaButton('체험 현황 보기', `${SITE_URL}/creator/trial/my`)}
-      `),
+      `, data.recipientEmail),
     },
     inApp: {
-      type: 'TRIAL',
+      type: 'CAMPAIGN',
       title: '체험 신청이 승인되었습니다',
       message: `${data.brandName} - ${data.productName}`,
       linkUrl: '/creator/trial/my',
@@ -375,7 +445,14 @@ export function trialShippedMessage(data: {
   brandName: string
   productName: string
   trackingNumber?: string
+  recipientEmail?: string
 }) {
+  const v = {
+    creatorName: escapeHtml(data.creatorName),
+    brandName: escapeHtml(data.brandName),
+    productName: escapeHtml(data.productName),
+    trackingNumber: escapeHtml(data.trackingNumber ?? ''),
+  }
   const trackingInfo = data.trackingNumber ? `\n운송장번호: ${data.trackingNumber}` : ''
   const kakaoMsg = `[크넥샵] 체험 상품 발송\n\n${data.creatorName}님, 체험 상품이 발송되었습니다.\n\n브랜드: ${data.brandName}\n상품: ${data.productName}${trackingInfo}`
 
@@ -386,15 +463,15 @@ export function trialShippedMessage(data: {
       html: emailLayout(`
         <h2 style="margin:0 0 16px;font-size:18px;color:#111827">체험 상품이 발송되었습니다</h2>
         ${infoBox(`
-          <div style="margin-bottom:8px"><strong>브랜드</strong>: ${data.brandName}</div>
-          <div style="margin-bottom:8px"><strong>상품</strong>: ${data.productName}</div>
-          ${data.trackingNumber ? `<div><strong>운송장번호</strong>: ${data.trackingNumber}</div>` : ''}
+          <div style="margin-bottom:8px"><strong>브랜드</strong>: ${v.brandName}</div>
+          <div style="margin-bottom:8px"><strong>상품</strong>: ${v.productName}</div>
+          ${data.trackingNumber ? `<div><strong>운송장번호</strong>: ${v.trackingNumber}</div>` : ''}
         `)}
         ${ctaButton('체험 현황 보기', `${SITE_URL}/creator/trial/my`)}
-      `),
+      `, data.recipientEmail),
     },
     inApp: {
-      type: 'TRIAL',
+      type: 'CAMPAIGN',
       title: '체험 상품이 발송되었습니다',
       message: `${data.brandName} - ${data.productName}`,
       linkUrl: '/creator/trial/my',
@@ -408,7 +485,13 @@ export function trialRequestedMessage(data: {
   brandName: string
   creatorName: string
   productName: string
+  recipientEmail?: string
 }) {
+  const v = {
+    brandName: escapeHtml(data.brandName),
+    creatorName: escapeHtml(data.creatorName),
+    productName: escapeHtml(data.productName),
+  }
   const kakaoMsg = `[크넥샵] 체험 신청 접수\n\n${data.brandName}님, 새로운 체험 신청이 접수되었습니다.\n\n크리에이터: ${data.creatorName}\n상품: ${data.productName}\n\n승인 여부를 결정해주세요.`
 
   return {
@@ -418,15 +501,15 @@ export function trialRequestedMessage(data: {
       html: emailLayout(`
         <h2 style="margin:0 0 16px;font-size:18px;color:#111827">새 체험 신청이 접수되었습니다</h2>
         ${infoBox(`
-          <div style="margin-bottom:8px"><strong>크리에이터</strong>: ${data.creatorName}</div>
-          <div><strong>상품</strong>: ${data.productName}</div>
+          <div style="margin-bottom:8px"><strong>크리에이터</strong>: ${v.creatorName}</div>
+          <div><strong>상품</strong>: ${v.productName}</div>
         `)}
         <p style="color:#6b7280;font-size:14px">승인 여부를 결정해주세요.</p>
         ${ctaButton('체험 신청 관리', `${SITE_URL}/brand/trial`)}
-      `),
+      `, data.recipientEmail),
     },
     inApp: {
-      type: 'TRIAL',
+      type: 'CAMPAIGN',
       title: '새 체험 신청이 접수되었습니다',
       message: `${data.creatorName} - ${data.productName}`,
       linkUrl: '/brand/trial',
@@ -441,7 +524,13 @@ export function settlementConfirmedMessage(data: {
   period: string
   netAmount: number
   paymentDate: string
+  recipientEmail?: string
 }) {
+  const v = {
+    creatorName: escapeHtml(data.creatorName),
+    period: escapeHtml(data.period),
+    paymentDate: escapeHtml(data.paymentDate),
+  }
   const kakaoMsg = `[크넥샵] 정산 확정\n\n${data.creatorName}님, ${data.period} 정산이 확정되었습니다.\n\n정산금액: ${formatPrice(data.netAmount)}\n입금예정일: ${data.paymentDate}`
 
   return {
@@ -449,14 +538,14 @@ export function settlementConfirmedMessage(data: {
     email: {
       subject: `[크넥샵] ${data.period} 정산이 확정되었습니다`,
       html: emailLayout(`
-        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${data.creatorName}님, 정산이 확정되었습니다</h2>
+        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${v.creatorName}님, 정산이 확정되었습니다</h2>
         ${infoBox(`
-          <div style="margin-bottom:8px"><strong>정산 기간</strong>: ${data.period}</div>
-          <div><strong>입금예정일</strong>: ${data.paymentDate}</div>
+          <div style="margin-bottom:8px"><strong>정산 기간</strong>: ${v.period}</div>
+          <div><strong>입금예정일</strong>: ${v.paymentDate}</div>
         `)}
         ${earningsBox('정산 금액', data.netAmount)}
         ${ctaButton('정산 내역 보기', `${SITE_URL}/creator/settlements`)}
-      `),
+      `, data.recipientEmail),
     },
     inApp: {
       type: 'SETTLEMENT',
@@ -476,7 +565,14 @@ export function proposalGongguInviteMessage(data: {
   commissionRate?: number
   messageBody?: string
   acceptUrl: string
+  recipientEmail?: string
 }) {
+  const v = {
+    creatorName: escapeHtml(data.creatorName),
+    brandName: escapeHtml(data.brandName),
+    campaignName: escapeHtml(data.campaignName),
+    messageBody: escapeHtml(data.messageBody ?? ''),
+  }
   const commissionInfo = data.commissionRate ? `\n커미션: ${data.commissionRate}%` : ''
   const kakaoMsg = `[크넥샵] 공구 초대\n\n${data.creatorName}님, 새로운 공구 초대가 도착했어요.\n\n브랜드: ${data.brandName}\n캠페인: ${data.campaignName}${commissionInfo}\n\n아래 링크에서 상세 내용을 확인해주세요.`
 
@@ -485,16 +581,16 @@ export function proposalGongguInviteMessage(data: {
     email: {
       subject: `[${data.brandName}] 공구 초대가 도착했어요`,
       html: emailLayout(`
-        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${data.creatorName}님, 새로운 공구 초대가 도착했어요</h2>
+        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${v.creatorName}님, 새로운 공구 초대가 도착했어요</h2>
         ${infoBox(`
-          <div style="margin-bottom:8px"><strong>브랜드</strong>: ${data.brandName}</div>
-          <div style="margin-bottom:8px"><strong>캠페인</strong>: ${data.campaignName}</div>
+          <div style="margin-bottom:8px"><strong>브랜드</strong>: ${v.brandName}</div>
+          <div style="margin-bottom:8px"><strong>캠페인</strong>: ${v.campaignName}</div>
           ${data.commissionRate ? `<div><strong>커미션</strong>: ${data.commissionRate}%</div>` : ''}
         `)}
-        ${data.messageBody ? `<div style="padding:12px 0;font-size:14px;color:#333;white-space:pre-wrap;line-height:1.6">${data.messageBody}</div>` : ''}
+        ${data.messageBody ? `<div style="padding:12px 0;font-size:14px;color:#333;white-space:pre-wrap;line-height:1.6">${v.messageBody}</div>` : ''}
         <p style="color:#6b7280;font-size:14px">답장이나 수락은 크넥샵에 로그인 후 처리해주세요.</p>
         ${ctaButton('자세히 보기', data.acceptUrl)}
-      `),
+      `, data.recipientEmail),
     },
     inApp: {
       type: 'CAMPAIGN',
@@ -514,7 +610,14 @@ export function proposalProductPickMessage(data: {
   commissionRate?: number
   messageBody?: string
   acceptUrl: string
+  recipientEmail?: string
 }) {
+  const v = {
+    creatorName: escapeHtml(data.creatorName),
+    brandName: escapeHtml(data.brandName),
+    productName: escapeHtml(data.productName),
+    messageBody: escapeHtml(data.messageBody ?? ''),
+  }
   const commissionInfo = data.commissionRate ? `\n커미션: ${data.commissionRate}%` : ''
   const kakaoMsg = `[크넥샵] 상품 추천 요청\n\n${data.creatorName}님, 새로운 상품 추천 요청이 도착했어요.\n\n브랜드: ${data.brandName}\n상품: ${data.productName}${commissionInfo}\n\n내 샵에 상시 추천 상품으로 등록하실지 확인해주세요.`
 
@@ -523,16 +626,16 @@ export function proposalProductPickMessage(data: {
     email: {
       subject: `[${data.brandName}] 상품 추천 요청이 도착했어요`,
       html: emailLayout(`
-        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${data.creatorName}님, 새로운 상품 추천 요청이 도착했어요</h2>
+        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${v.creatorName}님, 새로운 상품 추천 요청이 도착했어요</h2>
         ${infoBox(`
-          <div style="margin-bottom:8px"><strong>브랜드</strong>: ${data.brandName}</div>
-          <div style="margin-bottom:8px"><strong>상품</strong>: ${data.productName}</div>
+          <div style="margin-bottom:8px"><strong>브랜드</strong>: ${v.brandName}</div>
+          <div style="margin-bottom:8px"><strong>상품</strong>: ${v.productName}</div>
           ${data.commissionRate ? `<div><strong>커미션</strong>: ${data.commissionRate}%</div>` : ''}
         `)}
-        ${data.messageBody ? `<div style="padding:12px 0;font-size:14px;color:#333;white-space:pre-wrap;line-height:1.6">${data.messageBody}</div>` : ''}
+        ${data.messageBody ? `<div style="padding:12px 0;font-size:14px;color:#333;white-space:pre-wrap;line-height:1.6">${v.messageBody}</div>` : ''}
         <p style="color:#6b7280;font-size:14px">내 샵에 상시 추천 상품으로 등록하실지 확인해주세요.</p>
         ${ctaButton('상품 확인하기', data.acceptUrl)}
-      `),
+      `, data.recipientEmail),
     },
     inApp: {
       type: 'CAMPAIGN',
@@ -553,9 +656,10 @@ export function bulkSendReportMessage(data: {
   paidCount: number
   paidAmount: number
   reportLink: string
+  recipientEmail?: string
 }) {
   const channels = Object.entries(data.channelBreakdown)
-    .map(([ch, count]) => `<div style="margin-bottom:4px">${ch}: ${count}건</div>`)
+    .map(([ch, count]) => `<div style="margin-bottom:4px">${escapeHtml(ch)}: ${count}건</div>`)
     .join('')
 
   return {
@@ -572,7 +676,7 @@ export function bulkSendReportMessage(data: {
         <div style="font-size:13px;color:#6b7280;padding:0 8px">${channels}</div>
         ${data.paidCount > 0 ? `<p style="font-size:13px;margin-top:12px">유료 발송: ${data.paidCount}건 x 500원 = <strong>${data.paidAmount.toLocaleString()}원</strong></p>` : ''}
         ${ctaButton('발송 내역 보기', data.reportLink)}
-      `),
+      `, data.recipientEmail),
     },
     inApp: null,
   }

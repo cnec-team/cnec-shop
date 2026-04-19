@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { auth } from '@/lib/auth';
-import { sendNotification, orderCompleteMessage, newOrderBrandMessage, saleOccurredMessage } from '@/lib/notifications';
+import { sendNotification, orderCompleteMessage, newOrderBrandMessage, saleOccurredMessage, normalizePhone, isValidEmail } from '@/lib/notifications';
 
 // Inline types
 type ConversionType = 'DIRECT' | 'INDIRECT';
@@ -204,26 +204,33 @@ export async function POST(request: NextRequest) {
         const totalAmount = Number(orderWithDetails.totalAmount)
         const totalQuantity = orderWithDetails.items.reduce((sum, i) => sum + i.quantity, 0)
 
-        // 1. 구매자 알림
+        // 1. 구매자 알림 (회원 + 비회원 모두 지원)
         const buyerUserId = orderWithDetails.buyer?.userId
-        const buyerEmail = orderWithDetails.buyerEmail ?? orderWithDetails.buyer?.user.email
-        const buyerPhone = orderWithDetails.buyerPhone ?? orderWithDetails.buyer?.user.phone
+        const rawBuyerEmail = orderWithDetails.buyerEmail ?? orderWithDetails.buyer?.user.email
+        const rawBuyerPhone = orderWithDetails.buyerPhone ?? orderWithDetails.buyer?.user.phone
         const buyerName = orderWithDetails.buyerName ?? orderWithDetails.buyer?.user.name ?? '고객'
+        const buyerEmail = isValidEmail(rawBuyerEmail) ? rawBuyerEmail! : undefined
+        const buyerPhone = normalizePhone(rawBuyerPhone)
+        const guestOrderLink = buyerUserId
+          ? '/buyer/orders'
+          : `/order-lookup?orderNumber=${orderWithDetails.orderNumber ?? ''}`
 
-        if (buyerUserId) {
+        {
           const tmpl = orderCompleteMessage({
             buyerName,
             orderNumber: orderWithDetails.orderNumber ?? '',
             productName,
             totalAmount,
+            recipientEmail: buyerEmail,
+            orderLinkUrl: guestOrderLink,
           })
           try {
             await sendNotification({
-              userId: buyerUserId,
+              userId: buyerUserId ?? undefined,
               ...tmpl.inApp,
-              phone: buyerPhone ?? undefined,
+              phone: buyerPhone,
               kakaoTemplate: buyerPhone ? tmpl.kakao : undefined,
-              email: buyerEmail ?? undefined,
+              email: buyerEmail,
               emailTemplate: buyerEmail ? tmpl.email : undefined,
             })
           } catch (e) { console.error('[payment] buyer notification failed:', e) }
@@ -238,6 +245,8 @@ export async function POST(request: NextRequest) {
         }
         for (const [, brand] of brandMap) {
           if (!brand) continue
+          const brandEmail = isValidEmail(brand.user.email) ? brand.user.email! : undefined
+          const brandPhone = normalizePhone(brand.user.phone)
           const tmpl = newOrderBrandMessage({
             brandName: brand.brandName ?? '',
             orderNumber: orderWithDetails.orderNumber ?? '',
@@ -245,15 +254,16 @@ export async function POST(request: NextRequest) {
             quantity: totalQuantity,
             totalAmount,
             buyerName,
+            recipientEmail: brandEmail,
           })
           try {
             await sendNotification({
               userId: brand.userId,
               ...tmpl.inApp,
-              phone: brand.user.phone ?? undefined,
-              kakaoTemplate: brand.user.phone ? tmpl.kakao : undefined,
-              email: brand.user.email ?? undefined,
-              emailTemplate: brand.user.email ? tmpl.email : undefined,
+              phone: brandPhone,
+              kakaoTemplate: brandPhone ? tmpl.kakao : undefined,
+              email: brandEmail,
+              emailTemplate: brandEmail ? tmpl.email : undefined,
             })
           } catch (e) { console.error('[payment] brand notification failed:', e) }
         }
@@ -263,20 +273,23 @@ export async function POST(request: NextRequest) {
           const creator = orderWithDetails.creator
           const commissionRate = 0.10
           const commissionAmount = Math.round(totalAmount * commissionRate)
+          const creatorEmail = isValidEmail(creator.user.email) ? creator.user.email! : undefined
+          const creatorPhone = normalizePhone(creator.user.phone)
           const tmpl = saleOccurredMessage({
             creatorName: creator.user.name ?? '',
             productName,
             orderAmount: totalAmount,
             commissionAmount,
+            recipientEmail: creatorEmail,
           })
           try {
             await sendNotification({
               userId: creator.userId,
               ...tmpl.inApp,
-              phone: creator.user.phone ?? undefined,
-              kakaoTemplate: creator.user.phone ? tmpl.kakao : undefined,
-              email: creator.user.email ?? undefined,
-              emailTemplate: creator.user.email ? tmpl.email : undefined,
+              phone: creatorPhone,
+              kakaoTemplate: creatorPhone ? tmpl.kakao : undefined,
+              email: creatorEmail,
+              emailTemplate: creatorEmail ? tmpl.email : undefined,
             })
           } catch (e) { console.error('[payment] creator notification failed:', e) }
         }

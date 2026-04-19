@@ -3,7 +3,7 @@
 import { prisma } from '@/lib/db'
 import { ShippingFeeType } from '@/generated/prisma/client'
 import { auth } from '@/lib/auth'
-import { sendNotification } from '@/lib/notifications'
+import { sendNotification, normalizePhone, isValidEmail } from '@/lib/notifications'
 import {
   shippingStartMessage,
   deliveryCompleteMessage,
@@ -688,19 +688,25 @@ export async function updateOrderStatus(
     },
   })
 
-  // 구매자에게 주문 상태 변경 알림 (3채널)
+  // 구매자에게 주문 상태 변경 알림 (3채널, 비회원도 지원)
   try {
+    let buyerUserId: string | undefined = undefined
     if (order.buyerId) {
-      // buyerId references Buyer table, resolve to User ID for notifications
       const buyer = await prisma.buyer.findUnique({
         where: { id: order.buyerId },
         select: { userId: true, user: { select: { phone: true, email: true } } },
       })
-      const buyerUserId = buyer?.userId
-      const buyerUser = buyer?.user
+      buyerUserId = buyer?.userId
+    }
+    const rawEmail = order.buyerEmail ?? (order.buyerId ? (await prisma.buyer.findUnique({ where: { id: order.buyerId }, select: { user: { select: { email: true } } } }))?.user?.email : undefined)
+    const rawPhone = order.buyerPhone ?? (order.buyerId ? (await prisma.buyer.findUnique({ where: { id: order.buyerId }, select: { user: { select: { phone: true } } } }))?.user?.phone : undefined)
+    const email = isValidEmail(rawEmail) ? rawEmail! : undefined
+    const phone = normalizePhone(rawPhone)
+    const guestOrderLink = buyerUserId
+      ? '/buyer/orders'
+      : `/order-lookup?orderNumber=${order.orderNumber ?? ''}`
 
-      if (!buyerUserId) return order
-
+    if (buyerUserId || email || phone) {
       if (newStatus === 'SHIPPING') {
         const productName = order.items[0]?.productName ?? '상품'
         const template = shippingStartMessage({
@@ -709,6 +715,8 @@ export async function updateOrderStatus(
           productName,
           trackingNumber: trackingNumber?.trim(),
           courierName: courierCode,
+          recipientEmail: email,
+          orderLinkUrl: guestOrderLink,
         })
         await sendNotification({
           userId: buyerUserId,
@@ -716,11 +724,11 @@ export async function updateOrderStatus(
           title: template.inApp.title,
           message: template.inApp.message,
           linkUrl: template.inApp.linkUrl,
-          phone: order.buyerPhone ?? buyerUser?.phone ?? undefined,
-          email: order.buyerEmail ?? buyerUser?.email ?? undefined,
+          phone,
+          email,
           receiverName: order.buyerName ?? undefined,
-          kakaoTemplate: template.kakao,
-          emailTemplate: template.email,
+          kakaoTemplate: phone ? template.kakao : undefined,
+          emailTemplate: email ? template.email : undefined,
         })
       } else if (newStatus === 'DELIVERED') {
         const productName = order.items[0]?.productName ?? '상품'
@@ -728,6 +736,8 @@ export async function updateOrderStatus(
           buyerName: order.buyerName ?? '',
           orderNumber: order.orderNumber ?? '',
           productName,
+          recipientEmail: email,
+          orderLinkUrl: guestOrderLink,
         })
         await sendNotification({
           userId: buyerUserId,
@@ -735,13 +745,13 @@ export async function updateOrderStatus(
           title: template.inApp.title,
           message: template.inApp.message,
           linkUrl: template.inApp.linkUrl,
-          phone: order.buyerPhone ?? buyerUser?.phone ?? undefined,
-          email: order.buyerEmail ?? buyerUser?.email ?? undefined,
+          phone,
+          email,
           receiverName: order.buyerName ?? undefined,
-          kakaoTemplate: template.kakao,
-          emailTemplate: template.email,
+          kakaoTemplate: phone ? template.kakao : undefined,
+          emailTemplate: email ? template.email : undefined,
         })
-      } else {
+      } else if (buyerUserId) {
         const statusLabel: Record<string, string> = {
           CONFIRMED: '구매가 확정되었어요',
         }
@@ -775,21 +785,37 @@ export async function cancelOrder(orderId: string, cancelReason: string) {
     select: { id: true, orderNumber: true, buyerId: true, creatorId: true },
   })
 
-  // 구매자에게 주문 취소 알림
-  if (order.buyerId) {
-    const buyer = await prisma.buyer.findUnique({
-      where: { id: order.buyerId },
-      select: { userId: true },
+  // 구매자에게 주문 취소 알림 (비회원 포함)
+  try {
+    let cancelBuyerUserId: string | undefined = undefined
+    if (order.buyerId) {
+      const buyer = await prisma.buyer.findUnique({
+        where: { id: order.buyerId },
+        select: { userId: true },
+      })
+      cancelBuyerUserId = buyer?.userId
+    }
+    // 비회원: buyerEmail/buyerPhone으로 알림
+    const cancelOrder = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: { buyerEmail: true, buyerPhone: true, buyerName: true },
     })
-    if (buyer?.userId) {
+    const cancelEmail = isValidEmail(cancelOrder?.buyerEmail) ? cancelOrder!.buyerEmail! : undefined
+    const cancelPhone = normalizePhone(cancelOrder?.buyerPhone)
+
+    if (cancelBuyerUserId || cancelEmail || cancelPhone) {
       sendNotification({
-        userId: buyer.userId,
+        userId: cancelBuyerUserId,
         type: 'ORDER',
         title: '주문이 취소되었어요',
         message: `주문번호 ${order.orderNumber} (사유: ${cancelReason})`,
-        linkUrl: `/buyer/orders/${order.id}`,
+        linkUrl: cancelBuyerUserId ? `/buyer/orders/${order.id}` : `/order-lookup?orderNumber=${order.orderNumber}`,
+        email: cancelEmail,
+        phone: cancelPhone,
       })
     }
+  } catch {
+    // 알림 실패 무시
   }
 
   // 크리에이터에게 주문 취소 알림
@@ -836,35 +862,45 @@ export async function handleShippingStart(
     },
   })
 
-  // 구매자에게 배송 시작 알림 (3채널)
+  // 구매자에게 배송 시작 알림 (3채널, 비회원 포함)
   try {
+    let shipBuyerUserId: string | undefined = undefined
     if (order.buyerId) {
       const buyer = await prisma.buyer.findUnique({
         where: { id: order.buyerId },
         select: { userId: true, user: { select: { phone: true, email: true } } },
       })
-      if (buyer?.userId) {
-        const productName = order.items[0]?.productName ?? '상품'
-        const template = shippingStartMessage({
-          buyerName: order.buyerName ?? '',
-          orderNumber: order.orderNumber ?? '',
-          productName,
-          trackingNumber: trackingNumber.trim(),
-          courierName: courierCode,
-        })
-        await sendNotification({
-          userId: buyer.userId,
-          type: template.inApp.type,
-          title: template.inApp.title,
-          message: template.inApp.message,
-          linkUrl: template.inApp.linkUrl,
-          phone: order.buyerPhone ?? buyer.user?.phone ?? undefined,
-          email: order.buyerEmail ?? buyer.user?.email ?? undefined,
-          receiverName: order.buyerName ?? undefined,
-          kakaoTemplate: template.kakao,
-          emailTemplate: template.email,
-        })
-      }
+      shipBuyerUserId = buyer?.userId
+    }
+    const shipEmail = isValidEmail(order.buyerEmail) ? order.buyerEmail! : undefined
+    const shipPhone = normalizePhone(order.buyerPhone)
+    const shipOrderLink = shipBuyerUserId
+      ? '/buyer/orders'
+      : `/order-lookup?orderNumber=${order.orderNumber ?? ''}`
+
+    if (shipBuyerUserId || shipEmail || shipPhone) {
+      const productName = order.items[0]?.productName ?? '상품'
+      const template = shippingStartMessage({
+        buyerName: order.buyerName ?? '',
+        orderNumber: order.orderNumber ?? '',
+        productName,
+        trackingNumber: trackingNumber.trim(),
+        courierName: courierCode,
+        recipientEmail: shipEmail,
+        orderLinkUrl: shipOrderLink,
+      })
+      await sendNotification({
+        userId: shipBuyerUserId,
+        type: template.inApp.type,
+        title: template.inApp.title,
+        message: template.inApp.message,
+        linkUrl: template.inApp.linkUrl,
+        phone: shipPhone,
+        email: shipEmail,
+        receiverName: order.buyerName ?? undefined,
+        kakaoTemplate: shipPhone ? template.kakao : undefined,
+        emailTemplate: shipEmail ? template.email : undefined,
+      })
     }
   } catch {
     // Don't fail the action if notification fails

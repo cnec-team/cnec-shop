@@ -2,7 +2,8 @@
 
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
-import { sendNotification } from '@/lib/notifications'
+import { sendNotification, normalizePhone, isValidEmail } from '@/lib/notifications'
+import { settlementConfirmedMessage } from '@/lib/notifications/templates'
 
 async function requireAdmin() {
   const session = await auth()
@@ -707,6 +708,67 @@ export async function getAdminSettlements() {
       user: { select: { name: true, role: true } },
     },
   })
+}
+
+export async function confirmSettlement(settlementId: string) {
+  await requireAdmin()
+
+  const settlement = await prisma.settlement.update({
+    where: { id: settlementId },
+    data: {
+      status: 'CONFIRMED',
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          creator: { select: { displayName: true, username: true } },
+        },
+      },
+    },
+  })
+
+  // 크리에이터에게 정산 확정 알림 (3채널 - CNECSHOP_012)
+  try {
+    const user = settlement.user
+    if (user) {
+      const creatorEmail = isValidEmail(user.email) ? user.email! : undefined
+      const creatorPhone = normalizePhone(user.phone)
+      const creatorName = user.creator?.displayName
+        ?? user.creator?.username
+        ?? user.name
+        ?? '크리에이터'
+      const period = settlement.periodStart && settlement.periodEnd
+        ? `${(settlement.periodStart as Date).toISOString().slice(0, 10)} ~ ${(settlement.periodEnd as Date).toISOString().slice(0, 10)}`
+        : '이번 기간'
+
+      const tmpl = settlementConfirmedMessage({
+        creatorName,
+        period,
+        netAmount: Number(settlement.netAmount ?? 0),
+        paymentDate: settlement.paidAt
+          ? (settlement.paidAt as Date).toISOString().slice(0, 10)
+          : '확인 후 안내',
+        recipientEmail: creatorEmail,
+      })
+
+      sendNotification({
+        userId: user.id,
+        ...tmpl.inApp,
+        phone: creatorPhone,
+        email: creatorEmail,
+        kakaoTemplate: creatorPhone ? tmpl.kakao : undefined,
+        emailTemplate: creatorEmail ? tmpl.email : undefined,
+      })
+    }
+  } catch {
+    // 알림 실패가 정산 확정에 영향 주지 않음
+  }
+
+  return settlement
 }
 
 // ==================== Orders ====================
