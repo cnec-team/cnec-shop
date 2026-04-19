@@ -754,9 +754,9 @@ export function ProductDetailPage({
             <div className="flex gap-3 overflow-x-auto px-4 pb-2 scrollbar-hide">
               {otherProducts.map((op) => (
                 <Link key={op.id} href={`/${locale}/${username}/product/${op.id}`} className="flex-shrink-0 w-32">
-                  <div className="w-32 h-32 rounded-xl overflow-hidden bg-gray-100">
+                  <div className="w-32 h-32 rounded-xl overflow-hidden bg-gray-100 relative">
                     {op.images?.[0] ? (
-                      <img src={op.images[0]} alt={op.name} className="w-full h-full object-cover" />
+                      <Image src={op.images[0]} alt={op.name} fill className="object-cover" sizes="128px" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">이미지 없음</div>
                     )}
@@ -845,8 +845,8 @@ export function ProductDetailPage({
               {/* Product summary */}
               <div className="flex items-center gap-3 mb-5 pb-4 border-b border-gray-100">
                 {images[0] && (
-                  <div className="w-14 h-14 rounded-lg bg-gray-100 overflow-hidden shrink-0">
-                    <img src={images[0]} alt={product.name || ''} className="w-full h-full object-cover" />
+                  <div className="w-14 h-14 rounded-lg bg-gray-100 overflow-hidden shrink-0 relative">
+                    <Image src={images[0]} alt={product.name || ''} fill className="object-cover" sizes="56px" />
                   </div>
                 )}
                 <div className="flex-1 min-w-0">

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { rateLimit } from '@/lib/rate-limit';
 import { COOKIE_WINDOW_HOURS } from '@/types/database';
 
 function generateVisitorId(): string {
@@ -10,6 +11,12 @@ function generateVisitorId(): string {
 
 export async function POST(request: NextRequest) {
   try {
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
+    const limited = await rateLimit(`track:${ip}`, 30, 60);
+    if (limited) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+    }
+
     const { creator_id, utm_source, utm_medium, utm_campaign, referrer } = await request.json();
 
     if (!creator_id) {
