@@ -496,140 +496,162 @@ model Brand {
 // ============================================================
 
 model Creator {
-  id                     String                @id @default(uuid())
-  userId                 String                @unique @map("user_id")
-  user                   User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                         String                @id @default(uuid())
+  userId                     String                @unique @map("user_id")
+  user                       User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   // Identity (from both migration 001 and 002)
-  username               String?               @unique
-  shopId                 String?               @unique @map("shop_id") @db.VarChar(50)
-  displayName            String?               @map("display_name") @db.VarChar(50)
-  bio                    String?
-  bioEn                  String?               @map("bio_en")
-  bioJp                  String?               @map("bio_jp")
+  username                   String?               @unique
+  shopId                     String?               @unique @map("shop_id") @db.VarChar(50)
+  displayName                String?               @map("display_name") @db.VarChar(50)
+  bio                        String?
+  bioEn                      String?               @map("bio_en")
+  bioJp                      String?               @map("bio_jp")
   // Images
-  profileImage           String?               @map("profile_image")
-  profileImageUrl        String?               @map("profile_image_url")
-  coverImageUrl          String?               @map("cover_image_url")
-  bannerImageUrl         String?               @map("banner_image_url")
-  bannerLink             String?               @map("banner_link")
+  profileImage               String?               @map("profile_image")
+  profileImageUrl            String?               @map("profile_image_url")
+  coverImageUrl              String?               @map("cover_image_url")
+  bannerImageUrl             String?               @map("banner_image_url")
+  bannerLink                 String?               @map("banner_link")
   // Social handles
-  instagramHandle        String?               @map("instagram_handle") @db.VarChar(100)
-  youtubeHandle          String?               @map("youtube_handle") @db.VarChar(100)
-  tiktokHandle           String?               @map("tiktok_handle") @db.VarChar(100)
-  instagram              String?
-  youtube                String?
-  tiktok                 String?
-  socialLinks            Json                  @default("{}") @map("social_links") @db.JsonB
+  instagramHandle            String?               @map("instagram_handle") @db.VarChar(100)
+  youtubeHandle              String?               @map("youtube_handle") @db.VarChar(100)
+  tiktokHandle               String?               @map("tiktok_handle") @db.VarChar(100)
+  instagram                  String?
+  youtube                    String?
+  tiktok                     String?
+  socialLinks                Json                  @default("{}") @map("social_links") @db.JsonB
   // Beauty persona
-  skinType               String?               @map("skin_type") @db.VarChar(20)
-  personalColor          String?               @map("personal_color") @db.VarChar(20)
-  skinConcerns           String[]              @default([]) @map("skin_concerns")
-  scalpConcerns          String[]              @default([]) @map("scalp_concerns")
-  ageRange               String?               @map("age_range") @db.VarChar(20)
-  interests              String[]              @default([])
+  skinType                   String?               @map("skin_type") @db.VarChar(20)
+  personalColor              String?               @map("personal_color") @db.VarChar(20)
+  skinConcerns               String[]              @default([]) @map("skin_concerns")
+  scalpConcerns              String[]              @default([]) @map("scalp_concerns")
+  ageRange                   String?               @map("age_range") @db.VarChar(20)
+  interests                  String[]              @default([])
   // Onboarding
-  onboardingCompleted    Boolean               @default(false) @map("onboarding_completed")
-  onboardingStatus       String                @default("PENDING") @map("onboarding_status") @db.VarChar(20)
-  categories             String[]              @default([])
-  snsChannels            Json?                 @map("sns_channels") @db.JsonB
-  sellingExperience      Boolean?              @map("selling_experience")
-  avgRevenue             String?               @map("avg_revenue") @db.VarChar(30)
+  onboardingCompleted        Boolean               @default(false) @map("onboarding_completed")
+  onboardingStatus           String                @default("PENDING") @map("onboarding_status") @db.VarChar(20)
+  categories                 String[]              @default([])
+  snsChannels                Json?                 @map("sns_channels") @db.JsonB
+  sellingExperience          Boolean?              @map("selling_experience")
+  avgRevenue                 String?               @map("avg_revenue") @db.VarChar(30)
   // Stats
-  totalSales             Decimal               @default(0) @map("total_sales") @db.Decimal(12, 0)
-  totalEarnings          Decimal               @default(0) @map("total_earnings") @db.Decimal(12, 0)
-  totalRevenue           Decimal               @default(0) @map("total_revenue")
-  totalOrders            Int                   @default(0) @map("total_orders")
+  totalSales                 Decimal               @default(0) @map("total_sales") @db.Decimal(12, 0)
+  totalEarnings              Decimal               @default(0) @map("total_earnings") @db.Decimal(12, 0)
+  totalRevenue               Decimal               @default(0) @map("total_revenue")
+  totalOrders                Int                   @default(0) @map("total_orders")
   // Business
-  isBusiness             Boolean               @default(false) @map("is_business")
-  businessNumber         String?               @map("business_number") @db.VarChar(50)
+  isBusiness                 Boolean               @default(false) @map("is_business")
+  businessNumber             String?               @map("business_number") @db.VarChar(50)
   // Bank/Payment
-  bankName               String?               @map("bank_name")
-  bankAccount            String?               @map("bank_account")
-  paymentMethod          String?               @default("paypal") @map("payment_method")
-  paypalEmail            String?               @map("paypal_email")
-  accountNumber          String?               @map("account_number")
-  swiftCode              String?               @map("swift_code")
+  bankName                   String?               @map("bank_name")
+  bankAccount                String?               @map("bank_account")
+  paymentMethod              String?               @default("paypal") @map("payment_method")
+  paypalEmail                String?               @map("paypal_email")
+  accountNumber              String?               @map("account_number")
+  swiftCode                  String?               @map("swift_code")
   // Contact
-  email                  String?
-  phone                  String?
-  defaultShippingAddress Json?                 @map("default_shipping_address") @db.JsonB
+  email                      String?
+  phone                      String?
+  defaultShippingAddress     Json?                 @map("default_shipping_address") @db.JsonB
   // Shop design
-  themeColor             String                @default("#1a1a1a") @map("theme_color")
-  backgroundColor        String                @default("#1a1a1a") @map("background_color")
-  backgroundImage        String?               @map("background_image")
-  textColor              String                @default("#ffffff") @map("text_color")
-  shopSettings           Json                  @default("{}") @map("shop_settings") @db.JsonB
+  themeColor                 String                @default("#1a1a1a") @map("theme_color")
+  backgroundColor            String                @default("#1a1a1a") @map("background_color")
+  backgroundImage            String?               @map("background_image")
+  textColor                  String                @default("#ffffff") @map("text_color")
+  shopSettings               Json                  @default("{}") @map("shop_settings") @db.JsonB
   // Level system
-  level                  String?               @default("bronze")
-  levelPoints            Int                   @default(0) @map("level_points")
-  levelUpdatedAt         DateTime?             @map("level_updated_at") @db.Timestamptz
+  level                      String?               @default("bronze")
+  levelPoints                Int                   @default(0) @map("level_points")
+  levelUpdatedAt             DateTime?             @map("level_updated_at") @db.Timestamptz
   // Community
-  communityEnabled       Boolean               @default(false) @map("community_enabled")
-  communityType          String                @default("board") @map("community_type")
+  communityEnabled           Boolean               @default(false) @map("community_enabled")
+  communityType              String                @default("board") @map("community_type")
   // Status
-  status                 String                @default("ACTIVE") @map("status") @db.VarChar(10)
-  country                String?
+  status                     String                @default("ACTIVE") @map("status") @db.VarChar(10)
+  country                    String?
   // Picked products
-  pickedProducts         String[]              @default([]) @map("picked_products")
+  pickedProducts             String[]              @default([]) @map("picked_products")
   // Notification settings
-  notificationSettings   Json?                 @map("notification_settings") @db.JsonB
+  notificationSettings       Json?                 @map("notification_settings") @db.JsonB
   // Instagram data (imported)
-  igFollowers            Int?                  @map("ig_followers")
-  igFollowing            Int?                  @map("ig_following")
-  igPostsCount           Int?                  @map("ig_posts_count")
-  igBio                  String?               @map("ig_bio")
-  igCategory             String?               @map("ig_category")
-  igVerified             Boolean               @default(false) @map("ig_verified")
-  igExternalUrl          String?               @map("ig_external_url")
-  igIsBusinessAccount    Boolean               @default(false) @map("ig_is_business_account")
-  igEngagementRate       Decimal?              @map("ig_engagement_rate") @db.Decimal(5, 2)
-  igDataImportedAt       DateTime?             @map("ig_data_imported_at") @db.Timestamptz
-  igProfileImageR2Url    String?               @map("ig_profile_image_r2_url")
-  igTier                 String?               @map("ig_tier") @db.VarChar(20)
-  igRecentPostThumbnails Json?                 @map("ig_recent_post_thumbnails") @db.JsonB
+  igFollowers                Int?                  @map("ig_followers")
+  igFollowing                Int?                  @map("ig_following")
+  igPostsCount               Int?                  @map("ig_posts_count")
+  igBio                      String?               @map("ig_bio")
+  igCategory                 String?               @map("ig_category")
+  igVerified                 Boolean               @default(false) @map("ig_verified")
+  igExternalUrl              String?               @map("ig_external_url")
+  igIsBusinessAccount        Boolean               @default(false) @map("ig_is_business_account")
+  igEngagementRate           Decimal?              @map("ig_engagement_rate") @db.Decimal(5, 2)
+  igDataImportedAt           DateTime?             @map("ig_data_imported_at") @db.Timestamptz
+  igProfileImageR2Url        String?               @map("ig_profile_image_r2_url")
+  igTier                     String?               @map("ig_tier") @db.VarChar(20)
+  igRecentPostThumbnails     Json?                 @map("ig_recent_post_thumbnails") @db.JsonB
   // Instagram data (Featuring + Apify 2026-04-16)
-  igUsername             String?               @unique @map("ig_username")
-  igFullName             String?               @map("ig_full_name")
-  igFollowersEffective   Int?                  @map("ig_followers_effective")
-  igLanguage             String?               @map("ig_language")
-  igAvgReach             Int?                  @map("ig_avg_reach")
-  igAvgLikes             Int?                  @map("ig_avg_likes")
-  igAvgVideoViews        Int?                  @map("ig_avg_video_views")
-  igAvgVideoLikes        Int?                  @map("ig_avg_video_likes")
-  igAvgComments          Int?                  @map("ig_avg_comments")
-  igAudienceGender       String?               @map("ig_audience_gender")
-  igAudienceAge          String?               @map("ig_audience_age")
-  igEstimatedCPR         Int?                  @map("ig_estimated_cpr")
-  igEstimatedAdCost      Int?                  @map("ig_estimated_ad_cost")
-  igProfilePicUrl        String?               @map("ig_profile_pic_url")
-  igEmail                String?               @map("ig_email")
-  igLastUploadDate       String?               @map("ig_last_upload_date")
-  igDataSource           String?               @map("ig_data_source")
+  igUsername                 String?               @unique @map("ig_username")
+  igFullName                 String?               @map("ig_full_name")
+  igFollowersEffective       Int?                  @map("ig_followers_effective")
+  igLanguage                 String?               @map("ig_language")
+  igAvgReach                 Int?                  @map("ig_avg_reach")
+  igAvgLikes                 Int?                  @map("ig_avg_likes")
+  igAvgVideoViews            Int?                  @map("ig_avg_video_views")
+  igAvgVideoLikes            Int?                  @map("ig_avg_video_likes")
+  igAvgComments              Int?                  @map("ig_avg_comments")
+  igAudienceGender           String?               @map("ig_audience_gender")
+  igAudienceAge              String?               @map("ig_audience_age")
+  igEstimatedCPR             Int?                  @map("ig_estimated_cpr")
+  igEstimatedAdCost          Int?                  @map("ig_estimated_ad_cost")
+  igProfilePicUrl            String?               @map("ig_profile_pic_url")
+  igEmail                    String?               @map("ig_email")
+  igLastUploadDate           String?               @map("ig_last_upload_date")
+  igDataSource               String?               @map("ig_data_source")
   // Instagram 상세 지표 (Phase 2)
-  igAvgFeedLikes         Int?                  @map("ig_avg_feed_likes")
-  igAvgFeedComments      Int?                  @map("ig_avg_feed_comments")
-  igAvgReelViews         Int?                  @map("ig_avg_reel_views")
-  igAvgReelLikes         Int?                  @map("ig_avg_reel_likes")
-  igEstimatedReach       Int?                  @map("ig_estimated_reach")
-  igValidFollowers       Int?                  @map("ig_valid_followers")
-  igPrimaryLanguage      String?               @map("ig_primary_language")
-  igLastPostAt           DateTime?             @map("ig_last_post_at") @db.Timestamptz
-  igEstimatedCPRDecimal  Decimal?              @map("ig_estimated_cpr_decimal") @db.Decimal(10, 2)
-  igEstimatedAdFee       Decimal?              @map("ig_estimated_ad_fee") @db.Decimal(12, 0)
-  audienceGenderRatio    Json?                 @map("audience_gender_ratio") @db.JsonB
-  audienceAgeRatio       Json?                 @map("audience_age_ratio") @db.JsonB
-  igLastSyncedAt         DateTime?             @map("ig_last_synced_at") @db.Timestamptz
-  igSyncStatus           IgSyncStatus          @default(PENDING) @map("ig_sync_status")
-  igHistoricalStats      Json?                 @map("ig_historical_stats") @db.JsonB
+  igAvgFeedLikes             Int?                  @map("ig_avg_feed_likes")
+  igAvgFeedComments          Int?                  @map("ig_avg_feed_comments")
+  igAvgReelViews             Int?                  @map("ig_avg_reel_views")
+  igAvgReelLikes             Int?                  @map("ig_avg_reel_likes")
+  igEstimatedReach           Int?                  @map("ig_estimated_reach")
+  igValidFollowers           Int?                  @map("ig_valid_followers")
+  igPrimaryLanguage          String?               @map("ig_primary_language")
+  igLastPostAt               DateTime?             @map("ig_last_post_at") @db.Timestamptz
+  igEstimatedCPRDecimal      Decimal?              @map("ig_estimated_cpr_decimal") @db.Decimal(10, 2)
+  igEstimatedAdFee           Decimal?              @map("ig_estimated_ad_fee") @db.Decimal(12, 0)
+  audienceGenderRatio        Json?                 @map("audience_gender_ratio") @db.JsonB
+  audienceAgeRatio           Json?                 @map("audience_age_ratio") @db.JsonB
+  igLastSyncedAt             DateTime?             @map("ig_last_synced_at") @db.Timestamptz
+  igSyncStatus               IgSyncStatus          @default(PENDING) @map("ig_sync_status")
+  igHistoricalStats          Json?                 @map("ig_historical_stats") @db.JsonB
   // 연락처 & 발송 가능 채널
-  hasBrandEmail          Boolean               @default(false) @map("has_brand_email")
-  brandContactEmail      String?               @map("brand_contact_email")
-  hasPhone               Boolean               @default(false) @map("has_phone")
-  phoneForAlimtalk       String?               @map("phone_for_alimtalk")
-  cnecJoinStatus         CreatorCnecJoinStatus @default(NOT_JOINED) @map("cnec_join_status")
+  hasBrandEmail              Boolean               @default(false) @map("has_brand_email")
+  brandContactEmail          String?               @map("brand_contact_email")
+  hasPhone                   Boolean               @default(false) @map("has_phone")
+  phoneForAlimtalk           String?               @map("phone_for_alimtalk")
+  cnecJoinStatus             CreatorCnecJoinStatus @default(NOT_JOINED) @map("cnec_join_status")
+  // CNEC 회원통합 데이터 (엑셀 임포트)
+  cnecIsPartner              Boolean               @default(false) @map("cnec_is_partner")
+  cnecRealName               String?               @map("cnec_real_name") @db.VarChar(50)
+  cnecEmail1                 String?               @map("cnec_email1")
+  cnecEmail2                 String?               @map("cnec_email2")
+  cnecEmail3                 String?               @map("cnec_email3")
+  cnecPhone                  String?               @map("cnec_phone") @db.VarChar(30)
+  cnecPhoneSource            String?               @map("cnec_phone_source") @db.VarChar(30)
+  cnecVerificationStatus     String?               @map("cnec_verification_status") @db.VarChar(20)
+  cnecSourceOldDb            Boolean               @default(false) @map("cnec_source_old_db")
+  cnecSourceSupabase         Boolean               @default(false) @map("cnec_source_supabase")
+  cnecSourceLegacy           Boolean               @default(false) @map("cnec_source_legacy")
+  cnecOldDbMemberNo          Int?                  @map("cnec_old_db_member_no")
+  cnecOldDbJoinedAt          DateTime?             @map("cnec_old_db_joined_at") @db.Timestamptz
+  cnecSupabaseCreatedAt      DateTime?             @map("cnec_supabase_created_at") @db.Timestamptz
+  cnecTotalTrials            Int                   @default(0) @map("cnec_total_trials")
+  cnecCompletedRegistrations Int                   @default(0) @map("cnec_completed_registrations")
+  cnecCompletedPayments      Int                   @default(0) @map("cnec_completed_payments")
+  cnecApplicationsSb         Int                   @default(0) @map("cnec_applications_sb")
+  cnecSelectionsSb           Int                   @default(0) @map("cnec_selections_sb")
+  cnecCurrentSelection       Int                   @default(0) @map("cnec_current_selection")
+  cnecReliabilityScore       Decimal?              @map("cnec_reliability_score") @db.Decimal(5, 4)
   // Timestamps
-  createdAt              DateTime              @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt              DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  createdAt                  DateTime              @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                  DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   shopItems              CreatorShopItem[]
   collections            Collection[]
