@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import { Heart, Share2, Play, Package } from 'lucide-react';
 import { BottomNav } from '@/components/buyer/BottomNav';
@@ -184,9 +185,9 @@ export default function ContentFeedPage() {
                   {/* Bottom overlay: creator info */}
                   <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4 pt-12">
                     <Link href={`/${locale}/shop/${creatorSlug}`} className="flex items-center gap-2">
-                      <div className="w-9 h-9 rounded-full overflow-hidden bg-white/20 shrink-0">
+                      <div className="w-9 h-9 rounded-full overflow-hidden bg-white/20 shrink-0 relative">
                         {creator.profileImageUrl ? (
-                          <img src={creator.profileImageUrl} alt="" className="w-full h-full object-cover" />
+                          <Image src={creator.profileImageUrl} alt="" fill className="object-cover" sizes="36px" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-white text-xs font-bold">
                             {(creator.displayName || '?').charAt(0)}
@@ -221,9 +222,9 @@ export default function ContentFeedPage() {
                     href={`/${locale}/shop/${creatorSlug}/product/${product.id}`}
                     className="mt-3 flex gap-3 rounded-xl border border-[#E5E5EA] p-2.5"
                   >
-                    <div className="w-[60px] h-[60px] rounded-lg overflow-hidden bg-[#F5F5F5] shrink-0">
+                    <div className="w-[60px] h-[60px] rounded-lg overflow-hidden bg-[#F5F5F5] shrink-0 relative">
                       {productImage ? (
-                        <img src={productImage} alt="" className="w-full h-full object-cover" />
+                        <Image src={productImage} alt="" fill className="object-cover" sizes="60px" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
                           <Package className="h-5 w-5 text-[#8E8E93]" />

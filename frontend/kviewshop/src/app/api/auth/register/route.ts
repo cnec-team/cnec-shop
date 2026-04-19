@@ -1,9 +1,16 @@
 import { prisma } from '@/lib/db'
+import { rateLimit } from '@/lib/rate-limit'
 import bcrypt from 'bcryptjs'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
+    const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown'
+    const limited = await rateLimit(`register:${ip}`, 3, 60)
+    if (limited) {
+      return NextResponse.json({ error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' }, { status: 429 })
+    }
+
     const body = await req.json()
     const { email, password, name, role, companyName, businessNumber, shopId, shopName, instagram, tiktok, youtube, profileImageUrl, refCode, phone } = body
 

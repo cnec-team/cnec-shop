@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Search, Users, ChevronRight } from 'lucide-react';
 import { CountdownTimer } from './CountdownTimer';
 import { CategoryChips } from './CategoryChips';
@@ -322,7 +323,7 @@ export function BuyerHomePage({ locale, creators, gongguCampaigns, topProducts }
                       >
                         <div className="relative aspect-square rounded-xl overflow-hidden bg-[#F5F5F5]">
                           {image ? (
-                            <img src={image} alt={cp.product.name || ''} className="w-full h-full object-cover" />
+                            <Image src={image} alt={cp.product.name || ''} fill className="object-cover" sizes="144px" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-[#C7C7CC] text-sm">
                               이미지 없음
