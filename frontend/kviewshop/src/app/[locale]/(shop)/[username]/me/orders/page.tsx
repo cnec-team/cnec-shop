@@ -6,8 +6,10 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useUser } from '@/lib/hooks/use-user';
 import { getBuyerOrdersWithFilters } from '@/lib/actions/buyer';
+import { PageHeader } from '@/components/shop/PageHeader';
+import { EmptyState } from '@/components/shop/EmptyState';
 import { Button } from '@/components/ui/button';
-import { Package, Truck, ChevronRight, Loader2, User, Search } from 'lucide-react';
+import { Package, Truck, ChevronRight, Loader2, User, Search, MessageCircle, Star, ShoppingBag, RotateCcw } from 'lucide-react';
 import { getCourierLabel, getTrackingUrl } from '@/lib/utils/courier';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -59,9 +61,10 @@ interface FilterTab {
 const FILTER_TABS: FilterTab[] = [
   { key: 'all', label: '전체' },
   { key: 'PAID', label: '결제완료' },
+  { key: 'PREPARING', label: '준비중' },
   { key: 'SHIPPING', label: '배송중' },
   { key: 'DELIVERED', label: '배송완료' },
-  { key: 'CANCELLED', label: '교환/반품' },
+  { key: 'CANCELLED', label: '취소/교환' },
 ];
 
 function groupByDate(orders: Order[]): { date: string; orders: Order[] }[] {
@@ -105,8 +108,12 @@ export default function ShopOrdersListPage() {
         setOrders(result.orders);
         setStatusCounts(result.statusCounts);
         setTotalCount(result.totalCount);
-      } catch (error) {
-        console.error('주문 데이터 로드 실패:', error);
+      } catch (error: any) {
+        console.error('주문 데이터 로드 실패:', {
+          message: error?.message,
+          stack: error?.stack,
+          cause: error?.cause,
+        });
       } finally {
         setIsLoading(false);
       }
@@ -133,28 +140,26 @@ export default function ShopOrdersListPage() {
   // Not logged in
   if (!isUserLoading && !user) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-lg mx-auto px-4 py-16 text-center">
-          <User className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-          <h1 className="text-lg font-bold text-gray-900 mb-2">로그인이 필요해요</h1>
-          <p className="text-sm text-gray-400 mb-6">
-            주문내역을 확인하려면 로그인하세요
-          </p>
-          <div className="space-y-3">
-            <Link
-              href={`/${locale}/buyer/login?returnUrl=${encodeURIComponent(`/${locale}/${username}/me/orders`)}`}
-              className="inline-flex items-center justify-center h-12 px-8 bg-gray-900 text-white rounded-xl font-semibold text-sm w-full max-w-xs"
-            >
-              로그인
-            </Link>
-            <Link
-              href={`/${locale}/${username}/orders/lookup`}
-              className="inline-flex items-center justify-center gap-1.5 text-sm text-gray-500 hover:text-gray-700"
-            >
-              <Search className="w-4 h-4" />
-              비회원 주문 조회
-            </Link>
-          </div>
+      <div className="max-w-lg mx-auto px-4 py-16 text-center">
+        <User className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+        <h1 className="text-lg font-bold text-gray-900 mb-2">로그인이 필요해요</h1>
+        <p className="text-sm text-gray-400 mb-6">
+          주문내역을 확인하려면 로그인하세요
+        </p>
+        <div className="space-y-3">
+          <Link
+            href={`/${locale}/buyer/login?returnUrl=${encodeURIComponent(`/${locale}/${username}/me/orders`)}`}
+            className="inline-flex items-center justify-center h-12 px-8 bg-gray-900 text-white rounded-xl font-semibold text-sm w-full max-w-xs"
+          >
+            로그인
+          </Link>
+          <Link
+            href={`/${locale}/${username}/orders/lookup`}
+            className="inline-flex items-center justify-center gap-1.5 text-sm text-gray-500 hover:text-gray-700"
+          >
+            <Search className="w-4 h-4" />
+            비회원 주문 조회
+          </Link>
         </div>
       </div>
     );
@@ -164,23 +169,21 @@ export default function ShopOrdersListPage() {
 
   if (isUserLoading || (isLoading && orders.length === 0)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
-      <div className="max-w-lg mx-auto px-4 pt-6 space-y-5">
-        {/* Page Header */}
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">주문내역</h1>
-          <p className="text-sm text-gray-400 mt-0.5">
-            주문하신 상품의 배송 현황을 확인하세요
-          </p>
-        </div>
+    <div className="pb-4">
+      <PageHeader
+        title="주문내역"
+        subtitle="주문하신 상품의 배송 현황을 확인하세요"
+        backLink={`/${locale}/${username}/me`}
+      />
 
+      <div className="max-w-lg mx-auto px-4 pt-4 space-y-4">
         {/* Status Filter Tabs */}
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
           {FILTER_TABS.map((tab) => {
@@ -220,20 +223,13 @@ export default function ShopOrdersListPage() {
 
         {/* Orders List */}
         {!isLoading && orders.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-gray-100 p-10 text-center">
-            <Package className="h-12 w-12 mx-auto mb-4 text-gray-200" />
-            <p className="font-semibold text-gray-700 mb-1">
-              {activeTab === 'all' ? '아직 주문내역이 없어요' : '해당하는 주문이 없어요'}
-            </p>
-            <p className="text-sm text-gray-400 mb-5">
-              크리에이터가 추천하는 상품을 구경해보세요
-            </p>
-            <Link href={`/${locale}/${username}`}>
-              <Button size="sm" variant="outline" className="rounded-full">
-                샵 둘러보기
-              </Button>
-            </Link>
-          </div>
+          <EmptyState
+            icon={Package}
+            title={activeTab === 'all' ? '아직 주문내역이 없어요' : '해당하는 주문이 없어요'}
+            description="크리에이터가 추천하는 상품을 구경해보세요"
+            actionLabel="샵 둘러보기"
+            actionHref={`/${locale}/${username}`}
+          />
         ) : (
           <div className="space-y-6">
             {dateGroups.map((group) => (
@@ -283,7 +279,7 @@ export default function ShopOrdersListPage() {
 
                         {/* Status + Actions */}
                         <div className="mt-3 pt-3 border-t border-gray-50">
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2">
                               <span
                                 className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -298,31 +294,60 @@ export default function ShopOrdersListPage() {
                                 </span>
                               )}
                             </div>
+                          </div>
 
-                            <div className="flex items-center gap-2">
-                              {order.status === 'SHIPPING' && trackingUrl && (
-                                <a href={trackingUrl} target="_blank" rel="noopener noreferrer">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-xs h-7 gap-1 rounded-full"
-                                  >
-                                    <Truck className="h-3 w-3" />
-                                    배송조회
-                                  </Button>
-                                </a>
-                              )}
-                              <Link href={`/${locale}/${username}/me/orders/${order.id}`}>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="text-xs h-7 gap-0.5 text-gray-400"
-                                >
-                                  주문상세
-                                  <ChevronRight className="h-3 w-3" />
+                          {/* Action buttons by status */}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Link href={`/${locale}/${username}/me/orders/${order.id}`}>
+                              <Button variant="outline" size="sm" className="text-xs h-8 rounded-full gap-1">
+                                주문상세
+                                <ChevronRight className="h-3 w-3" />
+                              </Button>
+                            </Link>
+
+                            {order.status === 'SHIPPING' && trackingUrl && (
+                              <a href={trackingUrl} target="_blank" rel="noopener noreferrer">
+                                <Button variant="outline" size="sm" className="text-xs h-8 gap-1 rounded-full">
+                                  <Truck className="h-3 w-3" />
+                                  배송조회
+                                </Button>
+                              </a>
+                            )}
+
+                            {['PAID', 'PREPARING', 'SHIPPING'].includes(order.status) && (
+                              <Link href={`/${locale}/${username}/me/orders/${order.id}/inquiry`}>
+                                <Button variant="outline" size="sm" className="text-xs h-8 gap-1 rounded-full">
+                                  <MessageCircle className="h-3 w-3" />
+                                  1:1 문의
                                 </Button>
                               </Link>
-                            </div>
+                            )}
+
+                            {['DELIVERED', 'CONFIRMED'].includes(order.status) && (
+                              <>
+                                <Link href={`/${locale}/${username}/me/orders/${order.id}/review/write`}>
+                                  <Button variant="outline" size="sm" className="text-xs h-8 gap-1 rounded-full">
+                                    <Star className="h-3 w-3" />
+                                    후기 작성
+                                  </Button>
+                                </Link>
+                                <Link href={`/${locale}/${username}/me/orders/${order.id}/inquiry`}>
+                                  <Button variant="outline" size="sm" className="text-xs h-8 gap-1 rounded-full">
+                                    <MessageCircle className="h-3 w-3" />
+                                    1:1 문의
+                                  </Button>
+                                </Link>
+                              </>
+                            )}
+
+                            {['CANCELLED', 'REFUNDED'].includes(order.status) && (
+                              <Link href={`/${locale}/${username}`}>
+                                <Button variant="outline" size="sm" className="text-xs h-8 gap-1 rounded-full">
+                                  <ShoppingBag className="h-3 w-3" />
+                                  재구매
+                                </Button>
+                              </Link>
+                            )}
                           </div>
                         </div>
                       </div>

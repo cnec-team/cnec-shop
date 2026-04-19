@@ -27,6 +27,7 @@ import {
   AlertTriangle,
   X as XIcon,
   MessageCircle,
+  Megaphone,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getTrackingUrl, getCourierLabel } from '@/lib/utils/courier';
@@ -178,7 +179,7 @@ export default function ShopOrderDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
       </div>
     );
@@ -186,7 +187,7 @@ export default function ShopOrderDetailPage() {
 
   if (!order) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="min-h-screen flex items-center justify-center px-4">
         <div className="text-center">
           <ShoppingBag className="h-12 w-12 mx-auto mb-4 text-gray-300" />
           <h2 className="text-lg font-bold text-gray-900 mb-2">주문을 찾을 수 없습니다</h2>
@@ -208,7 +209,7 @@ export default function ShopOrderDetailPage() {
   const trackingUrl = getTrackingUrl(order.courierCode, order.trackingNumber);
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-28">
+    <div className="pb-28">
       <div className="max-w-lg mx-auto px-4 pt-4">
         {/* Back link */}
         <Link
@@ -512,6 +513,19 @@ export default function ShopOrderDetailPage() {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Section 6: Campaign/Gonggu notice (if order has campaign items) */}
+        {order.items?.some((item: any) => item.campaignId) && (
+          <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4 mb-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-orange-800">
+              <Megaphone className="h-4 w-4" />
+              공구 주문
+            </div>
+            <p className="text-xs text-orange-600 mt-1.5">
+              이 주문은 공구 캠페인을 통해 구매한 상품입니다. 공구 종료 후 일괄 배송될 수 있습니다.
+            </p>
           </div>
         )}
 

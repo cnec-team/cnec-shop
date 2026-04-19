@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getBrandDashboardData, getBrandSession } from '@/lib/actions/brand';
+import { getBrandInquiryCount } from '@/lib/actions/brand-inquiry';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -13,6 +14,7 @@ import {
   Users,
   ArrowRight,
   CheckCircle,
+  MessageSquare,
 } from 'lucide-react';
 
 interface DashboardData {
@@ -102,6 +104,7 @@ function OnboardingChecklist({ stats }: { stats: DashboardData['stats'] }) {
 export default function BrandDashboardPage() {
   const [brand, setBrand] = useState<{ id: string; brandName?: string | null } | null>(null);
   const [data, setData] = useState<DashboardData | null>(null);
+  const [openInquiryCount, setOpenInquiryCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -110,8 +113,12 @@ export default function BrandDashboardPage() {
         const brandData = await getBrandSession();
         if (!brandData) { setIsLoading(false); return; }
         setBrand(brandData as any);
-        const dashboardData = await getBrandDashboardData(brandData.id);
+        const [dashboardData, inquiryCount] = await Promise.all([
+          getBrandDashboardData(brandData.id),
+          getBrandInquiryCount().catch(() => 0),
+        ]);
         setData(dashboardData as any);
+        setOpenInquiryCount(inquiryCount);
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
       } finally {
@@ -163,6 +170,22 @@ export default function BrandDashboardPage() {
 
       {/* Onboarding */}
       {stats && stats.productCount === 0 && <OnboardingChecklist stats={stats} />}
+
+      {/* Unanswered inquiries banner */}
+      {openInquiryCount > 0 && (
+        <Link href="inquiries?status=OPEN" className="block">
+          <div className="bg-red-50 border border-red-100 rounded-2xl p-4 flex items-center justify-between hover:bg-red-100/50 transition-colors">
+            <div className="flex items-center gap-3">
+              <MessageSquare className="h-5 w-5 text-red-500" />
+              <div>
+                <p className="text-sm font-semibold text-red-700">미답변 문의 {openInquiryCount}건</p>
+                <p className="text-xs text-red-500">빠른 답변이 고객 만족도를 높여요</p>
+              </div>
+            </div>
+            <ArrowRight className="h-4 w-4 text-red-400" />
+          </div>
+        </Link>
+      )}
 
       {/* 4 Key Metrics */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
