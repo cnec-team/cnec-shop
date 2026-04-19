@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { sendNotification, orderCompleteMessage, newOrderBrandMessage, saleOccurredMessage, normalizePhone, isValidEmail } from '@/lib/notifications';
+import { logger } from '@/lib/notifications/logger';
 
 // Inline types
 type ConversionType = 'DIRECT' | 'INDIRECT';
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest) {
     // Verify payment with PortOne API
     const portoneApiSecret = process.env.PORTONE_API_SECRET;
     if (!portoneApiSecret) {
-      console.error('PORTONE_API_SECRET is not configured');
+      logger.error('PORTONE_API_SECRET is not configured');
       return NextResponse.json(
         { error: 'Payment verification service not configured' },
         { status: 500 }
@@ -86,7 +87,7 @@ export async function POST(request: NextRequest) {
     );
 
     if (!verifyResponse.ok) {
-      console.error('PortOne payment verification failed:', verifyResponse.status);
+      logger.error('PortOne 결제 검증 실패', undefined, { status: verifyResponse.status });
       return NextResponse.json(
         { error: 'Payment verification failed' },
         { status: 400 }
@@ -97,9 +98,10 @@ export async function POST(request: NextRequest) {
 
     // Verify the payment amount matches the order
     if (paymentData.amount?.total !== Number(order.totalAmount)) {
-      console.error(
-        `Payment amount mismatch: PortOne=${paymentData.amount?.total}, Order=${order.totalAmount}`
-      );
+      logger.error('결제 금액 불일치', undefined, {
+        portone: paymentData.amount?.total,
+        order: Number(order.totalAmount),
+      });
       return NextResponse.json(
         { error: 'Payment amount does not match order total' },
         { status: 400 }
@@ -134,7 +136,7 @@ export async function POST(request: NextRequest) {
         where: { orderId },
       }) as unknown as typeof orderItems;
     } catch (itemsError) {
-      console.error('Failed to fetch order items:', itemsError);
+      logger.error('주문 아이템 조회 실패', itemsError);
       // Order is already paid, so we don't fail - just log the error
     }
 
@@ -181,7 +183,7 @@ export async function POST(request: NextRequest) {
             data: conversionRecords as any,
           });
         } catch (conversionError) {
-          console.error('Failed to create conversion records:', conversionError);
+          logger.error('전환 기록 생성 실패', conversionError);
           // Non-fatal: order is already paid
         }
       }
@@ -233,7 +235,7 @@ export async function POST(request: NextRequest) {
               email: buyerEmail,
               emailTemplate: buyerEmail ? tmpl.email : undefined,
             })
-          } catch (e) { console.error('[payment] buyer notification failed:', e) }
+          } catch (e) { logger.error('구매자 알림 발송 실패', e) }
         }
 
         // 2. 브랜드 알림 (주문에 포함된 브랜드별)
@@ -265,7 +267,7 @@ export async function POST(request: NextRequest) {
               email: brandEmail,
               emailTemplate: brandEmail ? tmpl.email : undefined,
             })
-          } catch (e) { console.error('[payment] brand notification failed:', e) }
+          } catch (e) { logger.error('브랜드 알림 발송 실패', e) }
         }
 
         // 3. 크리에이터 알림 (판매 발생)
@@ -291,11 +293,11 @@ export async function POST(request: NextRequest) {
               email: creatorEmail,
               emailTemplate: creatorEmail ? tmpl.email : undefined,
             })
-          } catch (e) { console.error('[payment] creator notification failed:', e) }
+          } catch (e) { logger.error('크리에이터 알림 발송 실패', e) }
         }
       }
     } catch (notifErr) {
-      console.error('[payment] notification error (non-fatal):', notifErr)
+      logger.error('결제 알림 발송 에러 (non-fatal)', notifErr)
     }
 
     return NextResponse.json({
@@ -303,7 +305,7 @@ export async function POST(request: NextRequest) {
       orderNumber: order.orderNumber,
     });
   } catch (error: unknown) {
-    console.error('Payment complete error:', error);
+    logger.error('결제 완료 처리 에러', error);
     const message = error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json(
       { error: message },

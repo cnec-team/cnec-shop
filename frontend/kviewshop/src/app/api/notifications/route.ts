@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth-helpers';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/notifications/logger';
 
 // GET /api/notifications?userId=xxx&unread=true
 export async function GET(request: NextRequest) {
@@ -51,7 +52,7 @@ export async function GET(request: NextRequest) {
       unreadCount,
     });
   } catch (error) {
-    console.error('Notifications GET error:', error);
+    logger.error('알림 조회 실패', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -96,7 +97,7 @@ export async function PATCH(request: NextRequest) {
       { status: 400 }
     );
   } catch (error) {
-    console.error('Notifications PATCH error:', error);
+    logger.error('알림 읽음 처리 실패', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

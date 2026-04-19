@@ -691,15 +691,19 @@ export async function updateOrderStatus(
   // 구매자에게 주문 상태 변경 알림 (3채널, 비회원도 지원)
   try {
     let buyerUserId: string | undefined = undefined
+    let buyerUserEmail: string | undefined = undefined
+    let buyerUserPhone: string | undefined = undefined
     if (order.buyerId) {
       const buyer = await prisma.buyer.findUnique({
         where: { id: order.buyerId },
         select: { userId: true, user: { select: { phone: true, email: true } } },
       })
       buyerUserId = buyer?.userId
+      buyerUserEmail = buyer?.user?.email ?? undefined
+      buyerUserPhone = buyer?.user?.phone ?? undefined
     }
-    const rawEmail = order.buyerEmail ?? (order.buyerId ? (await prisma.buyer.findUnique({ where: { id: order.buyerId }, select: { user: { select: { email: true } } } }))?.user?.email : undefined)
-    const rawPhone = order.buyerPhone ?? (order.buyerId ? (await prisma.buyer.findUnique({ where: { id: order.buyerId }, select: { user: { select: { phone: true } } } }))?.user?.phone : undefined)
+    const rawEmail = order.buyerEmail ?? buyerUserEmail
+    const rawPhone = order.buyerPhone ?? buyerUserPhone
     const email = isValidEmail(rawEmail) ? rawEmail! : undefined
     const phone = normalizePhone(rawPhone)
     const guestOrderLink = buyerUserId

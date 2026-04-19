@@ -1,4 +1,5 @@
 import pRetry from 'p-retry'
+import { logger } from '@/lib/notifications/logger'
 
 export async function withRetry<T>(
   fn: () => Promise<T>,
@@ -10,6 +11,6 @@ export async function withRetry<T>(
     minTimeout,
     factor: 2,
     onFailedAttempt: (err) =>
-      console.warn(`[retry] attempt ${err.attemptNumber} failed:`, err),
+      logger.warn(`재시도 ${err.attemptNumber}회 실패`, { attempt: err.attemptNumber, retriesLeft: err.retriesLeft }),
   })
 }

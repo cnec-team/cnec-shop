@@ -1,5 +1,6 @@
 import { verifyUnsubscribeToken } from '@/lib/notifications/unsubscribe'
 import { prisma } from '@/lib/db'
+import { logger } from '@/lib/notifications/logger'
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}))
@@ -66,7 +67,7 @@ export async function POST(req: Request) {
 
     // Brand: contactEmail 등에는 notification 설정이 별도 없으므로 skip
   } catch (e) {
-    console.error('[unsubscribe] failed:', e)
+    logger.error('수신거부 처리 실패', e, { email: logger.mask(decoded.email) })
   }
 
   return Response.json({ ok: true })

@@ -1,3 +1,5 @@
+import { logger } from '@/lib/notifications/logger'
+
 const popbill = require('popbill')
 const KakaoService = require('popbill/lib/KakaoService')
 
@@ -28,7 +30,7 @@ export async function sendKakaoAlimtalk(params: {
   altText?: string
 }): Promise<{ success: boolean; error?: string }> {
   if (!POPBILL_LINK_ID || !POPBILL_SECRET_KEY || !POPBILL_CORP_NUM) {
-    console.error('[kakao] 팝빌 환경변수가 설정되지 않았습니다.')
+    logger.warn('팝빌 환경변수가 설정되지 않았습니다')
     return { success: false, error: '팝빌 환경변수 누락' }
   }
 
@@ -58,16 +60,17 @@ export async function sendKakaoAlimtalk(params: {
         receiverNum,
         params.receiverName,
         (receiptNum: string) => {
+          logger.info('알림톡 발송 성공', { receiverNum: logger.mask(receiverNum) })
           resolve({ success: true })
         },
         (err: { code: number; message: string }) => {
-          console.error('[kakao] 알림톡 발송 실패:', err)
+          logger.error('알림톡 발송 실패', err, { receiverNum: logger.mask(receiverNum) })
           resolve({ success: false, error: `${err.code}: ${err.message}` })
         },
       )
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
-      console.error('[kakao] 알림톡 발송 중 에러:', message)
+      logger.error('알림톡 발송 중 에러', err, { receiverNum: logger.mask(receiverNum) })
       resolve({ success: false, error: message })
     }
   })

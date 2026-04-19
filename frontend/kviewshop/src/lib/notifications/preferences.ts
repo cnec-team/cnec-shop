@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db'
+import { logger } from '@/lib/notifications/logger'
 
 export interface ChannelPreferences {
   inApp: boolean
@@ -76,7 +77,7 @@ export async function getNotificationPreferences(
 
     return DEFAULT_ALLOW
   } catch (e) {
-    console.error('[preferences] query failed', e)
+    logger.error('수신 설정 조회 실패', e, { userId })
     return DEFAULT_ALLOW
   }
 }

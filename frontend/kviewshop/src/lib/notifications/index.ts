@@ -24,6 +24,7 @@ import { prisma } from '@/lib/db'
 import { sendKakaoAlimtalk } from './kakao'
 import { sendEmail } from './email'
 import { getNotificationPreferences } from './preferences'
+import { logger } from '@/lib/notifications/logger'
 
 export interface SendNotificationParams {
   userId?: string
@@ -41,6 +42,7 @@ export interface SendNotificationParams {
 }
 
 export async function sendNotification(params: SendNotificationParams): Promise<void> {
+  logger.debug('알림 발송 시작', { type: params.type, userId: params.userId })
   // 수신 설정 조회 (거래성은 무조건 발송, 마케팅성은 설정 반영)
   const prefs = await getNotificationPreferences(params.userId, params.type)
 
@@ -57,8 +59,9 @@ export async function sendNotification(params: SendNotificationParams): Promise<
           isRead: false,
         },
       })
+      logger.info('앱 내 알림 저장 완료', { type: params.type, userId: params.userId })
     } catch (err) {
-      console.error('[notification] 앱 내 알림 저장 실패:', err)
+      logger.error('앱 내 알림 저장 실패', err)
     }
   }
 
@@ -73,7 +76,7 @@ export async function sendNotification(params: SendNotificationParams): Promise<
         altText: params.kakaoTemplate.message,
       })
     } catch (err) {
-      console.error('[notification] 알림톡 발송 실패:', err)
+      logger.error('알림톡 발송 실패', err, { phone: logger.mask(params.phone) })
     }
   }
 
@@ -86,7 +89,7 @@ export async function sendNotification(params: SendNotificationParams): Promise<
         html: params.emailTemplate.html,
       })
     } catch (err) {
-      console.error('[notification] 이메일 발송 실패:', err)
+      logger.error('이메일 발송 실패', err, { email: logger.mask(params.email) })
     }
   }
 }

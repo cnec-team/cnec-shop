@@ -1,3 +1,4 @@
+import { logger } from '@/lib/notifications/logger'
 import nodemailer from 'nodemailer'
 
 const SMTP_HOST = process.env.SMTP_HOST ?? 'smtp.worksmobile.com'
@@ -24,7 +25,7 @@ export async function sendEmail(params: {
   html: string
 }): Promise<{ success: boolean; error?: string }> {
   if (!SMTP_USER || !SMTP_PASSWORD || !EMAIL_FROM) {
-    console.error('[email] SMTP 환경변수가 설정되지 않았습니다.')
+    logger.warn('SMTP 환경변수가 설정되지 않았습니다')
     return { success: false, error: 'SMTP 환경변수 누락' }
   }
 
@@ -40,10 +41,11 @@ export async function sendEmail(params: {
       subject: params.subject,
       html: params.html,
     })
+    logger.info('이메일 발송 성공', { to: logger.mask(params.to) })
     return { success: true }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
-    console.error('[email] 이메일 발송 실패:', message)
+    logger.error('이메일 발송 실패', err, { to: logger.mask(params.to) })
     return { success: false, error: message }
   }
 }
