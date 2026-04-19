@@ -64,18 +64,18 @@ export function ShopBottomNav({ locale, username }: ShopBottomNavProps) {
       isActive: pathname.includes(`/${username}/cart`),
     },
     {
-      href: `/${locale}/${username}/me/wishlist`,
+      href: `/${locale}/my/wishlist`,
       icon: Heart,
       label: '찜',
       badge: wishlistCount,
-      isActive: pathname.includes(`/${username}/me/wishlist`),
+      isActive: pathname.includes('/my/wishlist'),
     },
     {
-      href: `/${locale}/${username}/me`,
+      href: `/${locale}/my`,
       icon: User,
       label: '마이',
       badge: 0,
-      isActive: pathname.endsWith(`/${username}/me`) || (pathname.includes(`/${username}/me`) && !pathname.includes('/wishlist') && !pathname.includes('/recent')),
+      isActive: pathname.endsWith('/my') || (pathname.includes('/my/') && !pathname.includes('/wishlist') && !pathname.includes('/recent')),
     },
   ];
 

@@ -78,7 +78,7 @@ const PLATFORM_PREFIXES = [
   'terms', 'privacy', 'policies', 'help', 'about', 'faq', 'contact',
   'no-shop-context', 'auth-error', 'error', '404', '500', 'not-found',
   'order-complete', 'payment',
-  'me', 'cart', 'checkout', 'orders', 'order',
+  'me', 'my', 'cart', 'checkout', 'orders', 'order',
   'products', 'creators', 'content',
   'sitemap', 'manifest.json', 'og',
 ];
@@ -105,6 +105,20 @@ export default auth(async function middleware(request) {
     return NextResponse.redirect(
       new URL(`/${defaultLocale}/${rest}`, request.url)
     );
+  }
+
+  // ─── 301 redirect: /ko/{username}/me/* → /ko/my/* ───
+  const oldMePathRegex = new RegExp(`^/(${LP})/([a-zA-Z0-9_][a-zA-Z0-9_-]*)/me(/.*)?$`);
+  const oldMeMatch = pathname.match(oldMePathRegex);
+  if (oldMeMatch) {
+    const [, matchLocale, possibleUsername, restPath = ''] = oldMeMatch;
+    const reservedForMe = ['brand', 'creator', 'admin', 'auth', 'my', 'api', 'orders', 'products', 'cart', 'checkout', 'search', 'buyer', 'login', 'signup'];
+    if (!reservedForMe.includes(possibleUsername)) {
+      const newPath = `/${matchLocale}/my${restPath}`;
+      const newUrl = new URL(newPath, request.url);
+      newUrl.search = request.nextUrl.search;
+      return NextResponse.redirect(newUrl, 301);
+    }
   }
 
   // ─── Sanitize: if cookie already holds a reserved value, delete it ───

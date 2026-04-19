@@ -75,6 +75,37 @@ export async function getWishlist(shopId: string) {
   }));
 }
 
+export async function getAllWishlist() {
+  const buyerId = await requireBuyer();
+  const items = await prisma.buyerWishlist.findMany({
+    where: { buyerId },
+    include: {
+      product: {
+        include: {
+          brand: {
+            select: { id: true, brandName: true, logoUrl: true },
+          },
+        },
+      },
+      creator: {
+        select: { id: true, username: true, displayName: true, profileImage: true },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  return items.map((item) => ({
+    ...item,
+    product: {
+      ...item.product,
+      price: item.product.price ? Number(item.product.price) : null,
+      originalPrice: item.product.originalPrice ? Number(item.product.originalPrice) : null,
+      salePrice: item.product.salePrice ? Number(item.product.salePrice) : null,
+      shippingFee: Number(item.product.shippingFee),
+    },
+  }));
+}
+
 export async function getWishlistCount(shopId: string): Promise<number> {
   const session = await auth();
   if (!session?.user?.id || session.user.role !== 'buyer') return 0;

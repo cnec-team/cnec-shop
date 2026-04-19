@@ -296,6 +296,7 @@ export async function getBuyerOrderDetail(orderId: string, buyerId: string) {
           displayName: true,
           themeColor: true,
           backgroundColor: true,
+          profileImage: true,
           profileImageUrl: true,
         },
       },

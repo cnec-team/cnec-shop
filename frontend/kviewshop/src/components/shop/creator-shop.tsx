@@ -229,7 +229,7 @@ export function CreatorShopPage({
 
           <div className="flex items-center gap-0.5">
             <Link
-              href={`/${locale}/${username}/me/orders`}
+              href={`/${locale}/my/orders`}
               className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-[#F5F5F5] transition-colors"
               aria-label="주문조회"
             >
@@ -237,7 +237,7 @@ export function CreatorShopPage({
             </Link>
             {buyer ? (
               <Link
-                href={`/${locale}/${username}/me`}
+                href={`/${locale}/my`}
                 className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-[#F5F5F5] transition-colors"
                 aria-label="마이페이지"
               >

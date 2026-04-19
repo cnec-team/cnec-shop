@@ -98,6 +98,55 @@ export async function getRecentViews(shopId: string, limit = 20) {
   }));
 }
 
+export async function getAllRecentViews(limit = 50) {
+  const { buyerId, cookieKey } = await getViewerIdentity();
+
+  const views = await prisma.recentView.findMany({
+    where: buyerId ? { buyerId } : { cookieKey },
+    include: {
+      product: {
+        include: {
+          brand: {
+            select: { id: true, brandName: true, logoUrl: true },
+          },
+        },
+      },
+    },
+    orderBy: { viewedAt: 'desc' },
+    take: limit,
+  });
+
+  // Fetch creator info for each shopId
+  const shopIds = [...new Set(views.map(v => v.shopId))];
+  const creators = await prisma.creator.findMany({
+    where: { id: { in: shopIds } },
+    select: { id: true, username: true, displayName: true, profileImage: true },
+  });
+  const creatorMap = new Map(creators.map(c => [c.id, c]));
+
+  return views.map((view) => ({
+    ...view,
+    creator: creatorMap.get(view.shopId) || { id: view.shopId, username: view.shopId, displayName: null, profileImage: null },
+    product: {
+      ...view.product,
+      price: view.product.price ? Number(view.product.price) : null,
+      originalPrice: view.product.originalPrice ? Number(view.product.originalPrice) : null,
+      salePrice: view.product.salePrice ? Number(view.product.salePrice) : null,
+      shippingFee: Number(view.product.shippingFee),
+    },
+  }));
+}
+
+export async function clearAllRecentViews() {
+  const { buyerId, cookieKey } = await getViewerIdentity();
+
+  await prisma.recentView.deleteMany({
+    where: buyerId ? { buyerId } : { cookieKey },
+  });
+
+  return { success: true };
+}
+
 export async function getRecentViewCount(shopId: string): Promise<number> {
   const { buyerId, cookieKey } = await getViewerIdentity();
 

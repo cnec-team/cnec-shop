@@ -7,7 +7,7 @@ import { Loader2 } from 'lucide-react';
 
 /**
  * Shop-scoped orders page — redirects to appropriate sub-page.
- * - Logged-in buyers: /{username}/me/orders
+ * - Logged-in buyers: /my/orders
  * - Guests: /{username}/orders/lookup
  */
 export default function ShopOrdersPage() {
@@ -21,7 +21,7 @@ export default function ShopOrdersPage() {
     if (isLoading) return;
 
     if (user && buyer) {
-      router.replace(`/${locale}/${username}/me/orders`);
+      router.replace(`/${locale}/my/orders`);
     } else {
       router.replace(`/${locale}/${username}/orders/lookup`);
     }

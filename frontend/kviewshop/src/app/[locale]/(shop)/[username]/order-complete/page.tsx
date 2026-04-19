@@ -394,7 +394,7 @@ export default function ShopOrderCompletePage() {
           <Link
             href={
               isLoggedIn
-                ? `/${locale}/${username}/me/orders`
+                ? `/${locale}/my/orders`
                 : `/${locale}/${username}/orders/lookup?orderNumber=${data.orderNumber}`
             }
             className="flex-1 flex items-center justify-center gap-2 h-12 bg-gray-900 text-white rounded-xl font-semibold text-sm"

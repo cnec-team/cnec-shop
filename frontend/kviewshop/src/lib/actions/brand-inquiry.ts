@@ -204,7 +204,7 @@ export async function answerBrandInquiry(
         type: 'ORDER',
         title: '문의에 답변이 도착했어요',
         message: `${brand.brandName || brand.companyName}에서 답변했어요`,
-        linkUrl: `/me/inquiries/${inquiryId}`,
+        linkUrl: `/my/inquiries/${inquiryId}`,
       })
     } catch {}
   }
