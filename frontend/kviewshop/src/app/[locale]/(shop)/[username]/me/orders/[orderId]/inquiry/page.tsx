@@ -1,16 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useUser } from '@/lib/hooks/use-user';
 import { createInquiry } from '@/lib/actions/inquiry';
+import { getBuyerOrderDetail } from '@/lib/actions/buyer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import {
-  ChevronLeft, MessageCircle, Loader2, AlertCircle, Send,
+  ChevronLeft, MessageCircle, Loader2, AlertCircle, Send, Phone,
 } from 'lucide-react';
 
 const CATEGORIES = [
@@ -21,6 +22,11 @@ const CATEGORIES = [
   { value: 'PAYMENT', label: '결제 문의' },
   { value: 'OTHER', label: '기타' },
 ];
+
+const MIN_TITLE = 2;
+const MAX_TITLE = 200;
+const MIN_CONTENT = 5;
+const MAX_CONTENT = 2000;
 
 export default function InquiryPage() {
   const params = useParams();
@@ -34,10 +40,36 @@ export default function InquiryPage() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [touched, setTouched] = useState({ category: false, title: false, content: false });
+  const [brand, setBrand] = useState<{ brandName?: string | null; companyName?: string | null; csPhone?: string | null } | null>(null);
 
-  const isValid = category && title.length >= 2 && content.length >= 10;
+  // Load order to get brand CS info
+  useEffect(() => {
+    if (!buyer?.id || !orderId) return;
+    getBuyerOrderDetail(orderId, buyer.id).then((order: any) => {
+      if (order?.brand) setBrand(order.brand);
+    }).catch(() => {});
+  }, [buyer?.id, orderId]);
+
+  const errors = {
+    category: touched.category && !category ? '문의 유형을 선택해주세요' : '',
+    title: touched.title && title.length > 0 && title.length < MIN_TITLE
+      ? `제목은 최소 ${MIN_TITLE}자 이상이어야 해요`
+      : touched.title && title.length === 0
+        ? '제목을 입력해주세요'
+        : '',
+    content: touched.content && content.length > 0 && content.length < MIN_CONTENT
+      ? `내용은 최소 ${MIN_CONTENT}자 이상 작성해주세요`
+      : touched.content && content.length === 0
+        ? '내용을 입력해주세요'
+        : '',
+  };
+
+  const isValid = category && title.length >= MIN_TITLE && content.length >= MIN_CONTENT;
 
   const handleSubmit = async () => {
+    // Touch all fields to show errors
+    setTouched({ category: true, title: true, content: true });
     if (!isValid || isSubmitting) return;
     setIsSubmitting(true);
     try {
@@ -47,7 +79,7 @@ export default function InquiryPage() {
         title,
         content,
       });
-      toast.success('문의가 접수되었습니다');
+      toast.success('문의가 접수됐어요');
       router.push(`/${locale}/${username}/me/inquiries`);
     } catch (error: any) {
       toast.error(error.message || '문의 접수에 실패했습니다');
@@ -67,6 +99,22 @@ export default function InquiryPage() {
           주문 상세
         </Link>
 
+        {/* 브랜드 먼저 연락 안내 */}
+        {brand?.csPhone && (
+          <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 mb-3">
+            <p className="text-sm font-medium text-blue-800 mb-1">
+              먼저 {brand.brandName || brand.companyName} 고객센터로 문의하시면 더 빠르게 해결됩니다
+            </p>
+            <a
+              href={`tel:${brand.csPhone}`}
+              className="inline-flex items-center gap-1.5 text-sm text-blue-600 font-medium hover:text-blue-800 mt-1"
+            >
+              <Phone className="h-4 w-4" />
+              {brand.csPhone}
+            </a>
+          </div>
+        )}
+
         <div className="bg-white rounded-2xl p-5 mb-3">
           <h1 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-6">
             <MessageCircle className="h-5 w-5" />
@@ -82,7 +130,10 @@ export default function InquiryPage() {
                   <button
                     key={cat.value}
                     type="button"
-                    onClick={() => setCategory(cat.value)}
+                    onClick={() => {
+                      setCategory(cat.value);
+                      setTouched((t) => ({ ...t, category: true }));
+                    }}
                     className={`h-10 rounded-xl text-sm border transition-colors ${
                       category === cat.value
                         ? 'border-gray-900 bg-gray-900 text-white'
@@ -93,6 +144,12 @@ export default function InquiryPage() {
                   </button>
                 ))}
               </div>
+              {errors.category && (
+                <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {errors.category}
+                </p>
+              )}
             </div>
 
             {/* 제목 */}
@@ -101,10 +158,22 @@ export default function InquiryPage() {
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="문의 제목을 입력하세요 (2-200자)"
-                maxLength={200}
-                className="h-12 rounded-xl"
+                onBlur={() => setTouched((t) => ({ ...t, title: true }))}
+                placeholder="문의 제목을 입력하세요"
+                maxLength={MAX_TITLE}
+                className={`h-12 rounded-xl ${errors.title ? 'border-red-300 focus:ring-red-200' : ''}`}
               />
+              <div className="flex items-center justify-between mt-1.5">
+                {errors.title ? (
+                  <p className="text-xs text-red-500 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {errors.title}
+                  </p>
+                ) : (
+                  <span />
+                )}
+                <span className="text-xs text-gray-400">{title.length}/{MAX_TITLE}</span>
+              </div>
             </div>
 
             {/* 내용 */}
@@ -113,12 +182,25 @@ export default function InquiryPage() {
               <Textarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                placeholder="문의 내용을 상세히 작성해주세요 (10자 이상)"
+                onBlur={() => setTouched((t) => ({ ...t, content: true }))}
+                placeholder="문의 내용을 상세히 작성해주세요"
                 rows={6}
-                maxLength={2000}
-                className="rounded-xl resize-none"
+                maxLength={MAX_CONTENT}
+                className={`rounded-xl resize-none ${errors.content ? 'border-red-300 focus:ring-red-200' : ''}`}
               />
-              <p className="text-xs text-gray-400 mt-1 text-right">{content.length}/2000</p>
+              <div className="flex items-center justify-between mt-1.5">
+                {errors.content ? (
+                  <p className="text-xs text-red-500 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {errors.content}
+                  </p>
+                ) : (
+                  <span />
+                )}
+                <span className={`text-xs ${content.length < MIN_CONTENT && touched.content ? 'text-red-400' : 'text-gray-400'}`}>
+                  {content.length}/{MAX_CONTENT}
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -131,13 +213,25 @@ export default function InquiryPage() {
           </p>
         </div>
 
+        {/* 미충족 요건 표시 */}
+        {!isValid && (touched.category || touched.title || touched.content) && (
+          <div className="mb-3 px-1">
+            <p className="text-xs text-gray-400">
+              {!category && '문의 유형 선택 '}
+              {title.length < MIN_TITLE && `제목 ${MIN_TITLE}자 이상 `}
+              {content.length < MIN_CONTENT && `내용 ${MIN_CONTENT}자 이상 `}
+              입력이 필요해요
+            </p>
+          </div>
+        )}
+
         <Button
           onClick={handleSubmit}
           disabled={!isValid || isSubmitting}
           className="w-full h-12 rounded-xl bg-gray-900 text-white font-semibold gap-2"
         >
           {isSubmitting ? (
-            <><Loader2 className="h-4 w-4 animate-spin" />제출 중...</>
+            <><Loader2 className="h-4 w-4 animate-spin" />전송 중...</>
           ) : (
             <><Send className="h-4 w-4" />문의 접수</>
           )}

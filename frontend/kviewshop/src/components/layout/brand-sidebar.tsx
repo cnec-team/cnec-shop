@@ -23,6 +23,7 @@ import {
   Repeat,
   Zap,
   Gift,
+  MessageSquare,
   Search,
   FolderHeart,
   FileText,
@@ -92,6 +93,7 @@ export function BrandSidebar({ locale, brandName, brandStatus }: BrandSidebarPro
       label: '주문·배송',
       items: [
         { title: '주문 관리', href: `${base}/brand/orders`, icon: ShoppingCart },
+        { title: '고객 문의', href: `${base}/brand/inquiries`, icon: MessageSquare },
       ],
     },
     {
