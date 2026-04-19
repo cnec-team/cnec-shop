@@ -3,7 +3,12 @@
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { SampleRequestStatus, SampleRequestDecision, Prisma } from '@/generated/prisma/client'
-import { sendNotification } from '@/lib/notifications'
+import { sendNotification, normalizePhone, isValidEmail } from '@/lib/notifications'
+import {
+  trialRequestedMessage,
+  trialApprovedMessage,
+  trialShippedMessage,
+} from '@/lib/notifications/templates'
 
 // ==================== Auth Helpers ====================
 
@@ -108,19 +113,28 @@ export async function requestProductTrial(data: {
     }
   }
 
-  // 브랜드에게 알림
+  // 브랜드에게 알림 (3채널 - CNECSHOP_011)
   try {
     const brand = await prisma.brand.findUnique({
       where: { id: product.brandId },
-      select: { userId: true },
+      select: { userId: true, brandName: true, user: { select: { email: true, phone: true } } },
     })
     if (brand?.userId) {
+      const brandEmail = isValidEmail(brand.user.email) ? brand.user.email! : undefined
+      const brandPhone = normalizePhone(brand.user.phone)
+      const tmpl = trialRequestedMessage({
+        brandName: brand.brandName ?? '',
+        creatorName: creator.displayName ?? creator.username ?? '크리에이터',
+        productName: product.name ?? '상품',
+        recipientEmail: brandEmail,
+      })
       sendNotification({
         userId: brand.userId,
-        type: 'CAMPAIGN',
-        title: '제품 체험 신청',
-        message: `${creator.displayName ?? creator.username ?? '크리에이터'}님이 "${product.name ?? '상품'}" 체험을 신청했습니다.`,
-        linkUrl: '/brand/trial',
+        ...tmpl.inApp,
+        phone: brandPhone,
+        email: brandEmail,
+        kakaoTemplate: brandPhone ? tmpl.kakao : undefined,
+        emailTemplate: brandEmail ? tmpl.email : undefined,
       })
     }
   } catch {
@@ -440,7 +454,10 @@ export async function approveTrialRequest(trialId: string) {
 
   const trial = await prisma.sampleRequest.findUnique({
     where: { id: trialId },
-    include: { creator: { select: { userId: true } } },
+    include: {
+      creator: { select: { userId: true, displayName: true, username: true, user: { select: { email: true, phone: true } } } },
+      product: { select: { name: true } },
+    },
   })
   if (!trial) return { success: false, error: '신청을 찾을 수 없습니다.' }
   if (trial.brandId !== brand.id) return { success: false, error: '권한이 없습니다.' }
@@ -454,15 +471,24 @@ export async function approveTrialRequest(trialId: string) {
     },
   })
 
-  // 크리에이터에게 알림
+  // 크리에이터에게 알림 (3채널 - CNECSHOP_009)
   try {
     if (trial.creator?.userId) {
+      const creatorEmail = isValidEmail(trial.creator.user?.email) ? trial.creator.user!.email! : undefined
+      const creatorPhone = normalizePhone(trial.creator.user?.phone)
+      const tmpl = trialApprovedMessage({
+        creatorName: trial.creator.displayName ?? trial.creator.username ?? '크리에이터',
+        brandName: brand.brandName ?? '',
+        productName: trial.product?.name ?? '상품',
+        recipientEmail: creatorEmail,
+      })
       sendNotification({
         userId: trial.creator.userId,
-        type: 'CAMPAIGN',
-        title: '체험 신청 승인',
-        message: '체험 신청이 승인되었습니다! 브랜드에서 샘플을 보내드립니다.',
-        linkUrl: '/creator/trial/my',
+        ...tmpl.inApp,
+        phone: creatorPhone,
+        email: creatorEmail,
+        kakaoTemplate: creatorPhone ? tmpl.kakao : undefined,
+        emailTemplate: creatorEmail ? tmpl.email : undefined,
       })
     }
   } catch {
@@ -523,7 +549,10 @@ export async function shipTrialSample(data: {
 
   const trial = await prisma.sampleRequest.findUnique({
     where: { id: data.trialId },
-    include: { creator: { select: { userId: true } } },
+    include: {
+      creator: { select: { userId: true, displayName: true, username: true, user: { select: { email: true, phone: true } } } },
+      product: { select: { name: true } },
+    },
   })
   if (!trial) return { success: false, error: '신청을 찾을 수 없습니다.' }
   if (trial.brandId !== brand.id) return { success: false, error: '권한이 없습니다.' }
@@ -538,15 +567,25 @@ export async function shipTrialSample(data: {
     },
   })
 
-  // 크리에이터에게 알림
+  // 크리에이터에게 알림 (3채널 - CNECSHOP_010)
   try {
     if (trial.creator?.userId) {
+      const creatorEmail = isValidEmail(trial.creator.user?.email) ? trial.creator.user!.email! : undefined
+      const creatorPhone = normalizePhone(trial.creator.user?.phone)
+      const tmpl = trialShippedMessage({
+        creatorName: trial.creator.displayName ?? trial.creator.username ?? '크리에이터',
+        brandName: brand.brandName ?? '',
+        productName: trial.product?.name ?? '상품',
+        trackingNumber: data.trackingNumber,
+        recipientEmail: creatorEmail,
+      })
       sendNotification({
         userId: trial.creator.userId,
-        type: 'CAMPAIGN',
-        title: '샘플 발송 완료',
-        message: `샘플이 발송되었습니다. 송장번호: ${data.trackingNumber}`,
-        linkUrl: '/creator/trial/my',
+        ...tmpl.inApp,
+        phone: creatorPhone,
+        email: creatorEmail,
+        kakaoTemplate: creatorPhone ? tmpl.kakao : undefined,
+        emailTemplate: creatorEmail ? tmpl.email : undefined,
       })
     }
   } catch {
