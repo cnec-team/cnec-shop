@@ -63,7 +63,6 @@ export default function ProductDetailPage() {
   const [volume, setVolume] = useState('');
   const [ingredients, setIngredients] = useState('');
   const [howToUse, setHowToUse] = useState('');
-  const [thumbnailUrl, setThumbnailUrl] = useState('');
 
   // Shipping
   const [shippingFeeType, setShippingFeeType] = useState('FREE');
@@ -110,7 +109,6 @@ export default function ProductDetailPage() {
         setVolume(product.volume ?? '');
         setIngredients(product.ingredients ?? '');
         setHowToUse(product.howToUse ?? '');
-        setThumbnailUrl(product.thumbnailUrl ?? '');
         setShippingFeeType(product.shippingFeeType ?? 'FREE');
         setShippingFee(product.shippingFee ? String(Number(product.shippingFee)) : '');
         setFreeShippingThreshold(product.freeShippingThreshold ? String(Number(product.freeShippingThreshold)) : '');
@@ -198,7 +196,6 @@ export default function ProductDetailPage() {
         salePrice: Number(salePrice),
         stock: Number(stock),
         images,
-        thumbnailUrl: thumbnailUrl.trim() || null,
         volume: volume.trim() || null,
         ingredients: ingredients.trim() || null,
         howToUse: howToUse.trim() || null,
@@ -426,27 +423,6 @@ export default function ProductDetailPage() {
               placeholder="사용 방법을 입력하세요"
               rows={3}
             />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Thumbnail */}
-      <Card>
-        <CardHeader>
-          <CardTitle>대표 이미지</CardTitle>
-          <CardDescription>상품 목록에 표시될 대표 썸네일 이미지를 설정하세요.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>대표 썸네일 이미지</Label>
-            <div className="max-w-xs">
-              <ImageUpload
-                value={thumbnailUrl}
-                onChange={setThumbnailUrl}
-                placeholder="썸네일 이미지를 업로드하세요"
-                folder="products"
-              />
-            </div>
           </div>
         </CardContent>
       </Card>

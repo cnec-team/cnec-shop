@@ -33,6 +33,10 @@ import {
   CircleDollarSign,
   ChevronDown,
   ChevronUp,
+  Store,
+  Sparkles,
+  Gift,
+  TrendingUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -60,16 +64,23 @@ const labelCls = 'text-[13px] font-semibold text-gray-900';
 /* ── Section Card ─────────────────────────── */
 function SectionCard({
   title,
+  subtitle,
   children,
 }: {
   title: string;
+  subtitle?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-7 mb-4">
-      <div className="flex items-center gap-2 mb-6">
-        <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0" />
-        <h2 className="text-[15px] font-bold text-gray-900">{title}</h2>
+    <div className="bg-white rounded-2xl border border-gray-100 p-7 mb-4 transition-shadow hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+      <div className="mb-6">
+        <div className="flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0" />
+          <h2 className="text-[15px] font-bold text-gray-900">{title}</h2>
+        </div>
+        {subtitle && (
+          <p className="text-[12px] text-gray-400 mt-1.5 ml-3.5">{subtitle}</p>
+        )}
       </div>
       <div className="space-y-5">{children}</div>
     </div>
@@ -136,9 +147,6 @@ export default function NewProductPage() {
 
   // Collapsible for direct input fields
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-
-  // Thumbnail
-  const [thumbnailUrl, setThumbnailUrl] = useState('');
 
   // Shipping info
   const [shippingFeeType, setShippingFeeType] = useState<ShippingFeeType>('FREE');
@@ -218,7 +226,6 @@ export default function NewProductPage() {
         salePrice: Number(salePrice),
         stock: Number(stock),
         images,
-        thumbnailUrl: thumbnailUrl.trim() || undefined,
         volume: volume.trim() || undefined,
         ingredients: ingredients.trim() || undefined,
         howToUse: howToUse.trim() || undefined,
@@ -431,14 +438,6 @@ export default function NewProductPage() {
               )}
             </div>
           </div>
-
-          <div className="border-t border-gray-100 pt-5 space-y-2">
-            <Label className={labelCls}>대표 썸네일 이미지</Label>
-            <div className="max-w-xs">
-              <ImageUpload value={thumbnailUrl} onChange={setThumbnailUrl} placeholder="썸네일 이미지" folder="products" />
-            </div>
-            <p className="text-[12px] text-gray-400">비워두면 대표 이미지가 사용됩니다.</p>
-          </div>
         </SectionCard>
 
         {/* ── 3. 상세 정보 ───────────────────────── */}
@@ -559,39 +558,58 @@ export default function NewProductPage() {
           </div>
         </SectionCard>
 
-        {/* ── 5. 크리에이터 수익 설정 ───────────── */}
-        <SectionCard title="크리에이터 수익 설정">
-          <div className="flex items-center justify-between rounded-[14px] border-[1.5px] border-gray-100 p-4">
-            <div>
-              <Label className={labelCls}>판매 상태</Label>
-              <p className="text-[12px] text-gray-400 mt-0.5">활성화하면 캠페인에 상품을 사용할 수 있습니다</p>
+        {/* ── 5. 크리에이터 협업 조건 ───────────── */}
+        <SectionCard
+          title="크리에이터 협업 조건"
+          subtitle="이 상품을 크리에이터와 어떻게 운영할지 골라주세요"
+        >
+          <div className="flex items-center gap-3 rounded-[14px] border-[1.5px] border-gray-100 p-4 hover:border-gray-200 transition-colors">
+            <div className="w-9 h-9 rounded-[10px] bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+              <Store className="w-[18px] h-[18px]" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <Label className={labelCls}>지금 판매 시작</Label>
+              <p className="text-[12px] text-gray-400 mt-0.5">켜두면 크리에이터가 이 상품으로 캠페인을 열 수 있어요</p>
             </div>
             <Switch checked={isActive} onCheckedChange={setIsActive} />
           </div>
 
-          <div className="flex items-center justify-between rounded-[14px] border-[1.5px] border-gray-100 p-4">
-            <div>
-              <Label className={labelCls}>상품 추천 허용</Label>
-              <p className="text-[12px] text-gray-400 mt-0.5">크리에이터가 자유롭게 이 상품을 픽할 수 있습니다</p>
+          <div className="flex items-center gap-3 rounded-[14px] border-[1.5px] border-gray-100 p-4 hover:border-gray-200 transition-colors">
+            <div className="w-9 h-9 rounded-[10px] bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+              <Sparkles className="w-[18px] h-[18px]" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <Label className={labelCls}>크리에이터 픽 허용</Label>
+              <p className="text-[12px] text-gray-400 mt-0.5">크리에이터가 자신의 피드에 자유롭게 추천할 수 있어요</p>
             </div>
             <Switch checked={allowCreatorPick} onCheckedChange={setAllowCreatorPick} />
           </div>
 
-          <div className="flex items-center justify-between rounded-[14px] border-[1.5px] border-gray-100 p-4">
-            <div>
-              <Label className={labelCls}>체험 신청 허용</Label>
-              <p className="text-[12px] text-gray-400 mt-0.5">크리에이터가 이 상품의 체험을 신청할 수 있습니다</p>
+          <div className="flex items-center gap-3 rounded-[14px] border-[1.5px] border-gray-100 p-4 hover:border-gray-200 transition-colors">
+            <div className="w-9 h-9 rounded-[10px] bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+              <Gift className="w-[18px] h-[18px]" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <Label className={labelCls}>무료 체험 신청 받기</Label>
+              <p className="text-[12px] text-gray-400 mt-0.5">크리에이터가 먼저 써본 뒤 공구 여부를 결정해요</p>
             </div>
             <Switch checked={allowTrial} onCheckedChange={setAllowTrial} />
           </div>
 
-          <div className="rounded-[14px] border-[1.5px] border-gray-100 p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <Label className={labelCls}>크리에이터 수익률</Label>
-              <span className="text-lg font-bold text-blue-600" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                {commissionRate}%
-              </span>
+          <div className="rounded-[14px] border-[1.5px] border-gray-100 bg-gradient-to-br from-blue-50/40 via-white to-white p-5 space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <Label className={labelCls}>크리에이터에게 드릴 수익 비율</Label>
+                <p className="text-[12px] text-gray-400 mt-0.5">판매가 1개당 아래 비율만큼 크리에이터에게 정산돼요</p>
+              </div>
+              <div className="flex items-baseline gap-1 shrink-0">
+                <span className="text-2xl font-extrabold text-blue-600 tracking-tight" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                  {commissionRate}
+                </span>
+                <span className="text-sm font-bold text-blue-600">%</span>
+              </div>
             </div>
+
             <Slider
               value={[commissionRate]}
               onValueChange={([v]) => setCommissionRate(v)}
@@ -605,16 +623,42 @@ export default function NewProductPage() {
               <span>50%</span>
             </div>
 
-            {salePrice && (
-              <div className="bg-[#ECFDF5] rounded-xl px-4 py-3 mt-1">
-                <p className="text-[12px] text-[#059669] mb-1">크리에이터가 1개 팔면</p>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-lg font-bold text-[#059669]" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                    ₩{Math.round(Number(salePrice) * commissionRate / 100).toLocaleString('ko-KR')} 수익
-                  </span>
-                  <span className="text-[11px] text-[#059669]/70">
-                    (판매가 {Number(salePrice).toLocaleString('ko-KR')}원의 {commissionRate}%)
-                  </span>
+            <div className="flex flex-wrap gap-2">
+              {[5, 10, 15, 20].map((preset) => {
+                const active = commissionRate === preset;
+                return (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setCommissionRate(preset)}
+                    className={`px-3.5 py-1.5 rounded-full border-[1.5px] text-[12px] font-semibold transition-colors ${
+                      active
+                        ? 'border-blue-600 bg-blue-50 text-blue-700'
+                        : 'border-gray-100 text-gray-500 hover:border-gray-200 hover:text-gray-700'
+                    }`}
+                    style={{ fontVariantNumeric: 'tabular-nums' }}
+                  >
+                    {preset}%
+                  </button>
+                );
+              })}
+            </div>
+
+            {salePrice && Number(salePrice) > 0 && (
+              <div className="flex items-center gap-3 bg-gradient-to-r from-emerald-50 to-emerald-50/60 rounded-xl px-4 py-3.5 mt-1">
+                <div className="w-9 h-9 rounded-[10px] bg-white/70 text-emerald-600 flex items-center justify-center shrink-0">
+                  <TrendingUp className="w-[18px] h-[18px]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] font-medium text-emerald-700/70">1개 판매 시 크리에이터 수익</p>
+                  <div className="flex items-baseline gap-2 mt-0.5 flex-wrap">
+                    <span className="text-xl font-extrabold text-emerald-700 tracking-tight" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                      ₩{Math.round(Number(salePrice) * commissionRate / 100).toLocaleString('ko-KR')}
+                    </span>
+                    <span className="text-[11px] text-emerald-700/70" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                      판매가 {Number(salePrice).toLocaleString('ko-KR')}원 × {commissionRate}%
+                    </span>
+                  </div>
                 </div>
               </div>
             )}
