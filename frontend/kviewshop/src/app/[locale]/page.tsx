@@ -3,11 +3,13 @@
 import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { Footer } from '@/components/layout/footer';
 import {
   ShoppingBag,
   Megaphone,
   Wallet,
   Headphones,
+  Package as PackageIcon,
   Package,
   BarChart3,
   Shield,
@@ -874,58 +876,88 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ──── Featured Products (DB) ──── */}
+      <FeaturedProducts />
+
       {/* ──── Footer ──── */}
-      <footer className="py-16 border-t border-gray-100">
-        <div className="max-w-[1200px] mx-auto px-5">
-          <div className="grid md:grid-cols-4 gap-10">
-            {/* Logo + tagline */}
-            <div>
-              <span className="text-xl font-bold" style={gradientText}>CNEC</span>
-              <p className="text-sm text-gray-400 mt-2">K-뷰티 크리에이터 셀렉트샵 플랫폼</p>
-            </div>
-
-            {/* 서비스 */}
-            <div>
-              <h4 className="text-sm font-semibold text-gray-900 mb-4">서비스</h4>
-              <div className="space-y-3">
-                <Link href="/ko/signup?role=creator" className="block text-sm text-gray-400 hover:text-gray-600 transition-colors">
-                  크리에이터 시작하기
-                </Link>
-                <Link href="/ko/signup?role=brand_admin" className="block text-sm text-gray-400 hover:text-gray-600 transition-colors">
-                  브랜드 입점하기
-                </Link>
-              </div>
-            </div>
-
-            {/* 고객지원 */}
-            <div>
-              <h4 className="text-sm font-semibold text-gray-900 mb-4">고객지원</h4>
-              <div className="space-y-3">
-                <span className="block text-sm text-gray-400">자주 묻는 질문</span>
-                <span className="block text-sm text-gray-400">문의하기</span>
-              </div>
-            </div>
-
-            {/* 법적 고지 */}
-            <div>
-              <h4 className="text-sm font-semibold text-gray-900 mb-4">법적 고지</h4>
-              <div className="space-y-3">
-                <span className="block text-sm text-gray-400">이용약관</span>
-                <span className="block text-sm text-gray-400">개인정보처리방침</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-12 pt-8 border-t border-gray-100">
-            <p className="text-sm text-gray-300">
-              &copy; 2026 CNEC. All rights reserved.
-            </p>
-            <p className="text-sm text-gray-300 mt-1">
-              (주)하우파파 | 대표: 박현용 | 사업자등록번호: 575-81-02253
-            </p>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
+  );
+}
+
+/* ─── Featured Products from DB ─── */
+interface FeaturedProduct {
+  id: string;
+  name: string;
+  brandName: string;
+  image: string | null;
+  price: number;
+  originalPrice: number | null;
+}
+
+function FeaturedProducts() {
+  const [products, setProducts] = useState<FeaturedProduct[]>([]);
+  const { ref, isInView } = useInView();
+
+  useEffect(() => {
+    fetch('/api/public/featured-products')
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) setProducts(data);
+      })
+      .catch(() => {});
+  }, []);
+
+  if (products.length === 0) return null;
+
+  return (
+    <section ref={ref} id="featured-products" className="py-24 md:py-32">
+      <div className="max-w-[1200px] mx-auto px-5">
+        <div className="mb-14 text-center">
+          <h2 className={`text-3xl md:text-5xl font-black tracking-tight text-gray-900 ${isInView ? 'animate-fade-in-up' : 'opacity-0'}`}>
+            지금 만나보세요
+          </h2>
+          <p className={`text-base md:text-lg text-gray-400 mt-4 ${isInView ? 'animate-fade-in-up delay-100' : 'opacity-0'}`}>
+            크리에이터가 직접 고른 K-뷰티 제품
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 max-w-5xl mx-auto">
+          {products.map((p) => (
+            <div
+              key={p.id}
+              className="group bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-500"
+            >
+              <div className="relative aspect-square overflow-hidden bg-gray-100">
+                {p.image ? (
+                  <Image
+                    src={p.image}
+                    alt={p.name}
+                    width={512}
+                    height={512}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    unoptimized
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-300">
+                    <PackageIcon className="w-12 h-12" />
+                  </div>
+                )}
+              </div>
+              <div className="p-4">
+                <p className="text-[11px] text-gray-400 font-medium">{p.brandName}</p>
+                <p className="text-sm font-semibold text-gray-900 mt-1 leading-snug line-clamp-2">{p.name}</p>
+                <div className="mt-2 flex items-center gap-2">
+                  {p.originalPrice && p.originalPrice > p.price && (
+                    <span className="text-xs text-gray-300 line-through">{p.originalPrice.toLocaleString()}원</span>
+                  )}
+                  <span className="text-sm font-bold text-blue-600">{p.price.toLocaleString()}원</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }

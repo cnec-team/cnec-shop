@@ -1,7 +1,16 @@
-import { BackToShopButton } from '@/components/BackToShopButton';
+import Link from 'next/link';
+import { ChevronLeft } from 'lucide-react';
+import { Footer } from '@/components/layout/footer';
 
 interface TermsPageProps {
   params: Promise<{ locale: string }>;
+}
+
+export async function generateMetadata() {
+  return {
+    title: '이용약관 | CNEC Shop',
+    description: '크넥샵 이용약관을 확인해주세요.',
+  };
 }
 
 export default async function TermsPage({ params }: TermsPageProps) {
@@ -9,157 +18,157 @@ export default async function TermsPage({ params }: TermsPageProps) {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="max-w-3xl mx-auto px-4 py-12">
-        {/* 상단 네비게이션 */}
-        <BackToShopButton locale={locale} />
+      <div className="max-w-3xl mx-auto px-6 py-16">
+        <Link
+          href={`/${locale}`}
+          className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 mb-8 transition"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          홈으로
+        </Link>
 
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">이용약관</h1>
-        <p className="text-sm text-gray-500 mb-10">
-          본 약관은 주식회사 하우파파 (이하 &quot;회사&quot;)가 운영하는 크넥샵(CNEC Shop) 서비스의 이용에 관한 사항을 규정합니다.
-        </p>
+        <header className="mb-12">
+          <h1 className="text-3xl font-bold text-gray-900">이용약관</h1>
+          <p className="text-sm text-gray-500 mt-3">시행일: 2026년 4월 21일</p>
+        </header>
 
-        {/* 제1조 */}
-        <section className="mb-10">
-          <h2 className="text-lg font-bold text-gray-900 mb-3">제1조 (목적)</h2>
-          <p className="text-sm text-gray-600 leading-relaxed">
-            본 약관은 주식회사 하우파파 (이하 &quot;회사&quot;)가 제공하는 크넥샵(CNEC Shop) 플랫폼 서비스 (이하 &quot;서비스&quot;)의 이용과 관련하여 회사와 이용자 간의 권리, 의무 및 책임사항, 기타 필요한 사항을 규정함을 목적으로 합니다.
-          </p>
-        </section>
+        <div className="space-y-10 text-gray-700">
+          <Section title="제1조 (목적)">
+            <p>
+              이 약관은 주식회사 하우파파(이하 &quot;회사&quot;)가 운영하는 CNEC Shop(크넥샵, 이하 &quot;서비스&quot;)의 이용과 관련하여
+              회사와 이용자의 권리, 의무 및 책임사항을 규정하는 것을 목적으로 합니다.
+            </p>
+          </Section>
 
-        {/* 제2조 */}
-        <section className="mb-10">
-          <h2 className="text-lg font-bold text-gray-900 mb-3">제2조 (정의)</h2>
-          <p className="text-sm text-gray-600 leading-relaxed mb-3">
-            본 약관에서 사용하는 주요 용어의 정의는 다음과 같습니다.
-          </p>
-          <ul className="list-disc list-inside text-sm text-gray-600 leading-relaxed space-y-2">
-            <li>
-              <span className="font-semibold text-gray-700">크넥샵(CNEC Shop)</span>: 회사가 운영하는 K-뷰티 크리에이터 커머스 플랫폼으로, 크리에이터가 자신만의 셀렉트샵을 운영하고 브랜드 상품을 큐레이션하여 판매할 수 있는 서비스를 말합니다.
-            </li>
-            <li>
-              <span className="font-semibold text-gray-700">크리에이터</span>: 회사의 서비스를 통해 자신만의 셀렉트샵을 개설하고, 상품을 큐레이션하여 판매하는 개인 또는 법인을 말합니다.
-            </li>
-            <li>
-              <span className="font-semibold text-gray-700">브랜드</span>: 회사의 서비스에 상품을 등록하고, 크리에이터를 통한 판매 및 캠페인(공구, 상시)을 운영하는 사업자를 말합니다.
-            </li>
-            <li>
-              <span className="font-semibold text-gray-700">구매자</span>: 크넥샵 내 크리에이터 셀렉트샵 또는 캠페인을 통해 상품을 구매하는 이용자를 말합니다.
-            </li>
-            <li>
-              <span className="font-semibold text-gray-700">공구(GONGGU)</span>: 크리에이터가 일정 기간 동안 특정 상품을 할인된 가격으로 팔로워에게 판매하는 한정 캠페인을 말합니다.
-            </li>
-            <li>
-              <span className="font-semibold text-gray-700">제품 체험(시딩)</span>: 크리에이터가 브랜드 상품을 직접 사용해 본 후 공구 진행 여부를 결정하는 과정을 말합니다.
-            </li>
-          </ul>
-        </section>
+          <Section title="제2조 (정의)">
+            <ol className="list-decimal list-inside space-y-2">
+              <li>&quot;서비스&quot;란 회사가 크리에이터, 브랜드, 구매자를 연결하여 상품 판매 및 구매를 중개하는 온라인 플랫폼을 말합니다.</li>
+              <li>&quot;크리에이터&quot;란 서비스에 가입하여 브랜드 상품을 큐레이션하고 판매 링크를 공유하는 이용자를 말합니다.</li>
+              <li>&quot;브랜드&quot;란 서비스에 입점하여 상품을 판매하는 사업자를 말합니다.</li>
+              <li>&quot;구매자&quot;란 서비스를 통해 상품을 구매하는 이용자를 말합니다.</li>
+              <li>&quot;공구(GONGGU)&quot;란 크리에이터가 일정 기간 동안 특정 상품을 할인된 가격으로 판매하는 한정 캠페인을 말합니다.</li>
+              <li>&quot;제품 체험(시딩)&quot;이란 크리에이터가 브랜드 상품을 직접 사용해 본 후 공구 진행 여부를 결정하는 과정을 말합니다.</li>
+            </ol>
+          </Section>
 
-        {/* 제3조 */}
-        <section className="mb-10">
-          <h2 className="text-lg font-bold text-gray-900 mb-3">제3조 (서비스 이용)</h2>
-          <ul className="list-disc list-inside text-sm text-gray-600 leading-relaxed space-y-2">
-            <li>서비스는 연중무휴, 1일 24시간 제공함을 원칙으로 합니다. 단, 시스템 점검 등 회사가 필요한 경우 사전 공지 후 서비스를 일시 중단할 수 있습니다.</li>
-            <li>회사는 서비스를 일정 범위로 분할하여 각 범위 별로 이용 가능 시간을 별도로 지정할 수 있습니다.</li>
-            <li>이용자는 본 약관 및 회사가 정한 규정을 준수하여야 하며, 기타 회사의 업무에 방해되는 행위를 하여서는 안 됩니다.</li>
-            <li>회사는 서비스의 내용, 이용 방법, 이용 시간 등에 대하여 변경이 있는 경우에는 변경 사유, 변경될 서비스의 내용 및 제공 일자 등을 그 적용일 이전 7일부터 서비스 내 공지사항을 통해 게시합니다.</li>
-          </ul>
-        </section>
+          <Section title="제3조 (약관의 효력 및 변경)">
+            <ol className="list-decimal list-inside space-y-2">
+              <li>이 약관은 서비스 화면에 게시하거나 기타 방법으로 이용자에게 공지함으로써 효력이 발생합니다.</li>
+              <li>회사는 필요한 경우 약관을 변경할 수 있으며, 변경된 약관은 공지 후 7일이 경과한 시점부터 효력이 발생합니다.</li>
+              <li>이용자가 변경된 약관에 동의하지 않는 경우 서비스 이용을 중단하고 회원 탈퇴를 할 수 있습니다.</li>
+            </ol>
+          </Section>
 
-        {/* 제4조 */}
-        <section className="mb-10">
-          <h2 className="text-lg font-bold text-gray-900 mb-3">제4조 (회원가입 및 탈퇴)</h2>
-          <ul className="list-disc list-inside text-sm text-gray-600 leading-relaxed space-y-2">
-            <li>이용자는 회사가 정한 가입 양식에 따라 회원 정보를 기입한 후 본 약관에 동의함으로써 회원가입을 신청합니다.</li>
-            <li>회사는 가입 신청자가 다음 각 호에 해당하지 않는 한 회원으로 등록합니다.
-              <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
-                <li>실명이 아니거나 타인의 정보를 이용한 경우</li>
-                <li>등록 내용에 허위, 누락, 오기가 있는 경우</li>
-                <li>만 14세 미만인 경우</li>
-                <li>기타 회원으로 등록하는 것이 회사의 기술상 현저히 지장이 있다고 판단되는 경우</li>
-              </ul>
-            </li>
-            <li>회원은 언제든지 회원 탈퇴를 요청할 수 있으며, 회사는 즉시 회원 탈퇴를 처리합니다.</li>
-            <li>회원 탈퇴 시 관련 법령 및 개인정보처리방침에 따라 회사가 보유하는 정보는 별도로 처리됩니다.</li>
-          </ul>
-        </section>
+          <Section title="제4조 (회원가입)">
+            <ol className="list-decimal list-inside space-y-2">
+              <li>이용자는 회사가 정한 양식에 따라 회원정보를 기입하고 휴대폰 본인인증 절차를 거쳐 회원가입을 신청합니다.</li>
+              <li>만 14세 미만은 회원가입이 제한됩니다.</li>
+              <li>회사는 다음의 경우 가입을 거절하거나 사후 해지할 수 있습니다.
+                <ul className="list-disc list-inside ml-4 mt-2 space-y-1">
+                  <li>타인의 명의를 도용한 경우</li>
+                  <li>허위 정보를 기재한 경우</li>
+                  <li>본 약관을 위반한 이력이 있는 경우</li>
+                </ul>
+              </li>
+            </ol>
+          </Section>
 
-        {/* 제5조 */}
-        <section className="mb-10">
-          <h2 className="text-lg font-bold text-gray-900 mb-3">제5조 (크리에이터 서비스)</h2>
-          <ul className="list-disc list-inside text-sm text-gray-600 leading-relaxed space-y-2">
-            <li>크리에이터는 회사의 승인을 받아 셀렉트샵을 개설할 수 있습니다.</li>
-            <li>크리에이터는 브랜드가 등록한 상품 중 자신의 셀렉트샵에 진열할 상품을 선택(큐레이션)할 수 있습니다.</li>
-            <li>크리에이터는 자신의 셀렉트샵을 통해 판매된 상품에 대해 회사가 정한 커미션 비율에 따라 수익을 지급받습니다.</li>
-            <li>커미션 정산은 회사가 별도로 정하는 정산 주기 및 방법에 따릅니다.</li>
-            <li>크리에이터는 브랜드에 제품 체험(시딩)을 신청할 수 있으며, 브랜드의 승인에 따라 샘플을 제공받을 수 있습니다. 제품 체험 후 공구 진행 여부는 크리에이터가 자율적으로 결정합니다.</li>
-            <li>크리에이터는 허위 또는 과장된 정보로 상품을 홍보하여서는 안 됩니다.</li>
-          </ul>
-        </section>
+          <Section title="제5조 (서비스 이용)">
+            <ol className="list-decimal list-inside space-y-2">
+              <li>서비스는 연중무휴 24시간 제공을 원칙으로 합니다.</li>
+              <li>단, 시스템 점검, 교체, 고장, 통신두절 등 부득이한 경우 서비스 제공이 일시 중단될 수 있습니다.</li>
+              <li>회사는 서비스 일부 또는 전부를 사전 공지 후 변경하거나 중단할 수 있습니다.</li>
+            </ol>
+          </Section>
 
-        {/* 제6조 */}
-        <section className="mb-10">
-          <h2 className="text-lg font-bold text-gray-900 mb-3">제6조 (결제 및 환불)</h2>
-          <ul className="list-disc list-inside text-sm text-gray-600 leading-relaxed space-y-2">
-            <li>구매자는 회사가 제공하는 결제 수단(신용카드, 계좌이체, 간편결제 등)을 이용하여 상품 대금을 결제할 수 있습니다.</li>
-            <li>결제는 포트원(PortOne) 결제 대행 서비스를 통해 처리됩니다.</li>
-            <li>구매자는 전자상거래 등에서의 소비자보호에 관한 법률에 따라 상품 수령일로부터 7일 이내에 청약 철회를 할 수 있습니다.</li>
-            <li>다음 각 호에 해당하는 경우 청약 철회가 제한될 수 있습니다.
-              <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
-                <li>구매자에게 책임 있는 사유로 재화 등이 멸실 또는 훼손된 경우</li>
-                <li>포장을 개봉하였거나 포장이 훼손되어 상품 가치가 현저히 감소한 경우</li>
-                <li>시간이 지나 재판매가 곤란할 정도로 상품 가치가 현저히 감소한 경우</li>
-                <li>복제가 가능한 재화의 포장을 훼손한 경우</li>
-              </ul>
-            </li>
-            <li>환불은 결제 수단에 따라 영업일 기준 3~7일 이내에 처리됩니다.</li>
-          </ul>
-        </section>
+          <Section title="제6조 (결제 및 환불)">
+            <ol className="list-decimal list-inside space-y-2">
+              <li>구매자는 서비스가 지정한 결제수단(신용카드, 계좌이체, 간편결제 등)으로 상품 대금을 결제합니다.</li>
+              <li>결제는 포트원(PortOne) 결제 대행 서비스를 통해 처리됩니다.</li>
+              <li>환불, 교환, 반품에 관한 세부사항은 별도의 <Link href={`/${locale}/refund-policy`} className="text-blue-600 hover:underline">환불·교환 정책</Link>을 따릅니다.</li>
+              <li>상품의 배송, 교환, 환불은 해당 상품을 판매하는 브랜드가 담당하며, 회사는 이를 중개하고 관리합니다.</li>
+            </ol>
+          </Section>
 
-        {/* 제7조 */}
-        <section className="mb-10">
-          <h2 className="text-lg font-bold text-gray-900 mb-3">제7조 (지적재산권)</h2>
-          <ul className="list-disc list-inside text-sm text-gray-600 leading-relaxed space-y-2">
-            <li>서비스에 관한 저작권 및 지적재산권은 회사에 귀속됩니다.</li>
-            <li>이용자는 서비스를 이용함으로써 얻은 정보를 회사의 사전 승낙 없이 복제, 송신, 출판, 배포, 방송 등 기타 방법에 의하여 영리 목적으로 이용하거나 제3자에게 이용하게 하여서는 안 됩니다.</li>
-            <li>크리에이터 및 브랜드가 서비스에 업로드한 콘텐츠(상품 이미지, 설명, 리뷰 등)의 저작권은 해당 콘텐츠를 작성한 자에게 귀속됩니다. 단, 회사는 서비스 운영 목적 범위 내에서 해당 콘텐츠를 이용할 수 있습니다.</li>
-          </ul>
-        </section>
+          <Section title="제7조 (크리에이터의 권리와 의무)">
+            <ol className="list-decimal list-inside space-y-2">
+              <li>크리에이터는 본인이 선택한 상품만 자신의 샵에 추가할 수 있습니다.</li>
+              <li>크리에이터는 허위·과장 광고를 해서는 안 됩니다.</li>
+              <li>크리에이터는 판매 성과에 따라 브랜드가 설정한 커미션을 지급받습니다.</li>
+              <li>정산은 매월 1회(익월 20일) 진행되며, 세부 내역은 크리에이터 센터에서 확인할 수 있습니다.</li>
+              <li>크리에이터는 브랜드에 제품 체험(시딩)을 신청할 수 있으며, 체험 후 공구 진행 여부는 자율적으로 결정합니다.</li>
+            </ol>
+          </Section>
 
-        {/* 제8조 */}
-        <section className="mb-10">
-          <h2 className="text-lg font-bold text-gray-900 mb-3">제8조 (면책조항)</h2>
-          <ul className="list-disc list-inside text-sm text-gray-600 leading-relaxed space-y-2">
-            <li>회사는 천재지변 또는 이에 준하는 불가항력으로 인하여 서비스를 제공할 수 없는 경우에는 서비스 제공에 관한 책임이 면제됩니다.</li>
-            <li>회사는 이용자의 귀책사유로 인한 서비스 이용의 장애에 대하여 책임을 지지 않습니다.</li>
-            <li>회사는 크리에이터와 구매자 간, 또는 크리에이터와 브랜드 간에 발생한 분쟁에 대하여 개입할 의무가 없으며, 이로 인한 손해에 대하여 회사는 책임을 지지 않습니다. 단, 회사는 분쟁의 원활한 해결을 위하여 중재를 지원할 수 있습니다.</li>
-            <li>회사는 이용자가 서비스와 관련하여 게재한 정보, 자료의 신뢰도, 정확성 등의 내용에 관하여는 책임을 지지 않습니다.</li>
-          </ul>
-        </section>
+          <Section title="제8조 (브랜드의 권리와 의무)">
+            <ol className="list-decimal list-inside space-y-2">
+              <li>브랜드는 정확한 상품 정보(가격, 이미지, 설명, 배송 정보)를 등록해야 합니다.</li>
+              <li>브랜드는 주문 접수 후 정해진 기간 내 배송을 완료해야 합니다.</li>
+              <li>브랜드는 구매자의 교환·환불 요청을 성실히 처리해야 합니다.</li>
+              <li>브랜드는 크리에이터 커미션을 정해진 요율에 따라 회사에 지급합니다.</li>
+            </ol>
+          </Section>
 
-        {/* 제9조 */}
-        <section className="mb-10">
-          <h2 className="text-lg font-bold text-gray-900 mb-3">제9조 (분쟁해결)</h2>
-          <ul className="list-disc list-inside text-sm text-gray-600 leading-relaxed space-y-2">
-            <li>회사는 이용자가 제기하는 정당한 의견이나 불만을 반영하고 그 피해를 보상 처리하기 위하여 고객센터를 운영합니다.</li>
-            <li>회사와 이용자 간에 발생한 전자상거래 분쟁에 관하여 이용자의 피해구제 신청이 있는 경우에는 공정거래위원회 또는 시/도지사가 의뢰하는 분쟁조정기관의 조정에 따를 수 있습니다.</li>
-            <li>본 약관에 관한 분쟁은 대한민국 법을 준거법으로 하며, 회사의 본점 소재지를 관할하는 법원을 전속 관할 법원으로 합니다.</li>
-          </ul>
-        </section>
+          <Section title="제9조 (이용자의 의무)">
+            <p className="mb-3">이용자는 다음 행위를 해서는 안 됩니다.</p>
+            <ul className="list-disc list-inside space-y-2">
+              <li>타인의 정보를 도용하는 행위</li>
+              <li>서비스를 이용한 영리 활동 (회사가 허용한 경우 제외)</li>
+              <li>서비스의 안정적 운영을 방해하는 행위</li>
+              <li>음란, 폭력, 기타 공서양속에 반하는 정보를 게시하는 행위</li>
+            </ul>
+          </Section>
 
-        {/* 부칙 */}
-        <div className="border-t border-gray-200 pt-6 mt-10">
-          <h2 className="text-lg font-bold text-gray-900 mb-3">부칙</h2>
-          <p className="text-sm text-gray-600 leading-relaxed">
-            본 약관은 2026년 4월 10일부터 시행됩니다.
-          </p>
-          <p className="text-sm text-gray-500 mt-4">
-            주식회사 하우파파
-          </p>
-          <p className="text-sm text-gray-500">
-            고객센터: contact@cnec.kr | 평일 10:00-18:00 (주말/공휴일 휴무)
-          </p>
+          <Section title="제10조 (지적재산권)">
+            <ol className="list-decimal list-inside space-y-2">
+              <li>서비스에 관한 저작권 및 지적재산권은 회사에 귀속됩니다.</li>
+              <li>이용자는 서비스를 통해 얻은 정보를 회사의 승낙 없이 복제, 배포, 영리 목적으로 이용할 수 없습니다.</li>
+              <li>크리에이터 및 브랜드가 업로드한 콘텐츠의 저작권은 작성자에게 귀속됩니다. 단, 회사는 서비스 운영 범위 내에서 이용할 수 있습니다.</li>
+            </ol>
+          </Section>
+
+          <Section title="제11조 (개인정보 보호)">
+            <p>
+              회사는 이용자의 개인정보를 보호하기 위해 노력하며, 개인정보의 처리 및 보호에 관한 세부사항은{' '}
+              <Link href={`/${locale}/privacy`} className="text-blue-600 hover:underline">개인정보처리방침</Link>에서
+              확인할 수 있습니다.
+            </p>
+          </Section>
+
+          <Section title="제12조 (면책조항)">
+            <ol className="list-decimal list-inside space-y-2">
+              <li>회사는 천재지변, 전쟁, 테러 등 불가항력으로 서비스를 제공할 수 없는 경우 책임이 면제됩니다.</li>
+              <li>회사는 브랜드와 구매자 간 직접 거래에서 발생한 분쟁에 대해 중개자로서의 책임만 집니다.</li>
+              <li>회사는 크리에이터가 게시한 콘텐츠의 신뢰성에 대해 보장하지 않습니다.</li>
+            </ol>
+          </Section>
+
+          <Section title="제13조 (분쟁 해결)">
+            <ol className="list-decimal list-inside space-y-2">
+              <li>서비스 이용과 관련한 분쟁은 회사와 이용자 간 성실한 협의로 해결합니다.</li>
+              <li>협의가 되지 않을 경우 서울중앙지방법원을 관할 법원으로 합니다.</li>
+            </ol>
+          </Section>
+
+          <div className="border-t border-gray-200 pt-8 mt-12">
+            <p className="text-sm text-gray-500">
+              <strong>부칙</strong><br />
+              이 약관은 2026년 4월 21일부터 시행합니다.
+            </p>
+            <p className="text-sm text-gray-500 mt-2">주식회사 하우파파</p>
+          </div>
         </div>
       </div>
+      <Footer />
     </div>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="space-y-3">
+      <h2 className="text-xl font-bold text-gray-900">{title}</h2>
+      <div className="text-base leading-relaxed">{children}</div>
+    </section>
   );
 }

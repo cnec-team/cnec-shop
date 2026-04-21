@@ -4,16 +4,18 @@ import { prisma } from '@/lib/db';
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.cnecshop.com';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const now = new Date();
+
   const entries: MetadataRoute.Sitemap = [
-    {
-      url: BASE_URL,
-      lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 1,
-    },
+    { url: BASE_URL, lastModified: now, changeFrequency: 'daily', priority: 1 },
+    { url: `${BASE_URL}/ko`, lastModified: now, changeFrequency: 'daily', priority: 1 },
+    { url: `${BASE_URL}/ko/terms`, lastModified: now, changeFrequency: 'yearly', priority: 0.5 },
+    { url: `${BASE_URL}/ko/privacy`, lastModified: now, changeFrequency: 'yearly', priority: 0.5 },
+    { url: `${BASE_URL}/ko/refund-policy`, lastModified: now, changeFrequency: 'yearly', priority: 0.5 },
+    { url: `${BASE_URL}/ko/faq`, lastModified: now, changeFrequency: 'monthly', priority: 0.5 },
+    { url: `${BASE_URL}/ko/support`, lastModified: now, changeFrequency: 'yearly', priority: 0.5 },
   ];
 
-  // Fetch active creators for dynamic shop pages
   try {
     const creators = await prisma.creator.findMany({
       where: {
@@ -26,25 +28,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     for (const creator of creators) {
       entries.push({
         url: `${BASE_URL}/ko/${creator.shopId}`,
-        lastModified: creator.updatedAt ? new Date(creator.updatedAt) : new Date(),
+        lastModified: creator.updatedAt ? new Date(creator.updatedAt) : now,
         changeFrequency: 'weekly',
         priority: 0.8,
       });
     }
 
-    // Fetch active products with their creator shop IDs
     const shopItems = await prisma.creatorShopItem.findMany({
       where: { isVisible: true },
-      select: {
-        productId: true,
-        creatorId: true,
-        campaignId: true,
-      },
+      select: { productId: true, creatorId: true },
       take: 1000,
     });
 
     if (shopItems.length > 0) {
-      // Get unique creator IDs and product IDs
       const creatorIds = [...new Set(shopItems.map(item => item.creatorId))];
       const productIds = [...new Set(shopItems.map(item => item.productId))];
 
@@ -74,7 +70,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
         entries.push({
           url: `${BASE_URL}/ko/${shopId}/product/${item.productId}`,
-          lastModified: productUpdated ? new Date(productUpdated) : new Date(),
+          lastModified: productUpdated ? new Date(productUpdated) : now,
           changeFrequency: 'daily',
           priority: 0.7,
         });
