@@ -2,6 +2,8 @@
 
 import { prisma } from '@/lib/db'
 import { ShippingFeeType, Prisma } from '@/generated/prisma/client'
+import { calculateAndSaveProductVector } from '@/lib/product/target-vector'
+import { batchCalculateForProduct } from '@/lib/match/engine'
 import { auth } from '@/lib/auth'
 import { sendNotification, normalizePhone, isValidEmail } from '@/lib/notifications'
 import {
@@ -1086,6 +1088,11 @@ export async function updateProduct(
     } catch {
       // 성분 매핑 실패가 상품 수정을 막지 않도록
     }
+
+    // 벡터 재계산 + 매칭 점수 배치 (비동기)
+    calculateAndSaveProductVector(productId)
+      .then(() => batchCalculateForProduct(productId))
+      .catch(() => {})
   }
 
   return updated
@@ -1217,6 +1224,11 @@ export async function createProduct(data: {
     } catch {
       // 성분 매핑 실패가 상품 생성을 막지 않도록
     }
+
+    // 벡터 계산 + 매칭 점수 배치 (비동기)
+    calculateAndSaveProductVector(product.id)
+      .then(() => batchCalculateForProduct(product.id))
+      .catch(() => {})
   }
 
   return product
