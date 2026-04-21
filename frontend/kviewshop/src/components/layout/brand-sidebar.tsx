@@ -39,6 +39,7 @@ interface BrandSidebarProps {
   locale: Locale;
   brandName?: string | null;
   brandStatus?: string | null;
+  pricingVersion?: 'v2' | 'v3';
 }
 
 interface NavItem {
@@ -54,7 +55,7 @@ interface NavSection {
   items: NavItem[];
 }
 
-export function BrandSidebar({ locale, brandName, brandStatus }: BrandSidebarProps) {
+export function BrandSidebar({ locale, brandName, brandStatus, pricingVersion }: BrandSidebarProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -109,7 +110,7 @@ export function BrandSidebar({ locale, brandName, brandStatus }: BrandSidebarPro
     {
       label: '구독',
       items: [
-        { title: '구독 관리', href: `${base}/brand/subscription`, icon: CreditCard },
+        { title: '가격 / 결제', href: pricingVersion === 'v3' ? `${base}/brand/pricing` : `${base}/brand/subscription`, icon: CreditCard },
       ],
     },
     {

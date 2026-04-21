@@ -47,14 +47,3 @@ export async function checkMassGroupAdd(brandId: string, addCount: number): Prom
     throw new PricingLimitError(LIMIT_MESSAGES.MASS_GROUP_ADD_BLOCKED, 'MASS_GROUP_ADD')
   }
 }
-
-export async function logExcelExportAttempt(brandId: string, path: string): Promise<void> {
-  await prisma.suspiciousActivityLog.create({
-    data: {
-      brandId,
-      activityType: 'EXCEL_EXPORT_ATTEMPT',
-      detail: { path },
-      severity: 3,
-    },
-  })
-}

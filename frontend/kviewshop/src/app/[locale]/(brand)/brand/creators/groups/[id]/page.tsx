@@ -56,7 +56,6 @@ import {
   User,
   BadgeCheck,
   Users,
-  FileSpreadsheet,
   Send,
   ShoppingBag,
   Pencil,
@@ -288,10 +287,6 @@ export default function GroupDetailPage() {
     }
   };
 
-  const handleExport = () => {
-    window.open(`/api/brand/creator-groups/${groupId}/export`, '_blank');
-  };
-
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -334,10 +329,6 @@ export default function GroupDetailPage() {
       .filter((m) => selectedIds.has(m.id))
       .map((m) => m.creator.id) ?? [];
     setInviteModal({ open: true, type: 'GONGGU', creatorIds: ids });
-  };
-
-  const handleBulkExport = () => {
-    handleExport();
   };
 
   const totalPages = group?.pagination ? Math.ceil(group.pagination.total / 50) : 1;
@@ -422,9 +413,6 @@ export default function GroupDetailPage() {
             }}>
               <ShoppingBag className="h-4 w-4 mr-1" /> 전체에게 상품 추천
             </Button>
-            <Button variant="outline" onClick={handleExport}>
-              <FileSpreadsheet className="h-4 w-4 mr-1" /> 엑셀 다운로드
-            </Button>
             <Button variant="outline" onClick={() => setAddMembersOpen(true)}>
               <UserPlus className="h-4 w-4 mr-1" /> 멤버 추가
             </Button>
@@ -471,9 +459,6 @@ export default function GroupDetailPage() {
           <span className="text-sm">{selectedIds.size}명 선택</span>
           <Button size="sm" onClick={handleBulkPropose}>
             일괄 초대 보내기
-          </Button>
-          <Button size="sm" variant="outline" onClick={handleBulkExport}>
-            엑셀 다운로드
           </Button>
           <Button size="sm" variant="destructive" onClick={handleBulkRemove}>
             그룹에서 삭제
