@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { calculateAndSaveCreatorVector } from "@/lib/creator/pain-point-vector";
+import { batchCalculateForCreator } from "@/lib/match/engine";
 
 async function getCreatorId(): Promise<string | null> {
   const session = await auth();
@@ -116,6 +117,9 @@ export async function PUT(req: Request) {
 
   // Calculate and save vector
   const vector = await calculateAndSaveCreatorVector(creatorId);
+
+  // 백그라운드로 매칭 점수 재계산 (await 하지 않음)
+  batchCalculateForCreator(creatorId).catch(() => {});
 
   return NextResponse.json({
     success: true,
