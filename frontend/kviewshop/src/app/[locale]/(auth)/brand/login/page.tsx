@@ -150,7 +150,7 @@ export default function BrandLoginPage() {
             <div>
               <span className="text-muted-foreground">{t('noAccount')} </span>
               <Link
-                href={`/${locale}/signup`}
+                href={`/${locale}/signup?role=brand_admin`}
                 className="text-primary hover:underline"
               >
                 {t('brandSignup')}

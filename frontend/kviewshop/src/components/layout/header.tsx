@@ -123,8 +123,11 @@ export function Header({ locale }: HeaderProps) {
                   <Button variant="ghost" size="sm" asChild>
                     <Link href={`/${locale}/login`}>{t('auth.login')}</Link>
                   </Button>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`/${locale}/signup?role=brand_admin`}>브랜드 입점</Link>
+                  </Button>
                   <Button size="sm" asChild className="btn-gold">
-                    <Link href={`/${locale}/signup`}>{t('auth.signup')}</Link>
+                    <Link href={`/${locale}/signup?role=creator`}>크리에이터</Link>
                   </Button>
                 </div>
               )}

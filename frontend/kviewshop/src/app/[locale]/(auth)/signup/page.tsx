@@ -3,15 +3,39 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { signIn } from 'next-auth/react';
 import { toast } from 'sonner';
-import { Loader2, Building2, Sparkles, Instagram, Check, X, Camera } from 'lucide-react';
+import {
+  Loader2,
+  Building2,
+  Sparkles,
+  ChevronLeft,
+  User,
+  Phone,
+  Mail,
+  Lock,
+  FileText,
+  Check,
+  X,
+  AtSign,
+} from 'lucide-react';
+import { IdentityVerificationButton } from '@/components/auth/IdentityVerificationButton';
 
 type Role = 'creator' | 'brand_admin';
+
+function formatPhone(value: string): string {
+  const nums = value.replace(/\D/g, '').slice(0, 11);
+  if (nums.length <= 3) return nums;
+  if (nums.length <= 7) return `${nums.slice(0, 3)}-${nums.slice(3)}`;
+  return `${nums.slice(0, 3)}-${nums.slice(3, 7)}-${nums.slice(7)}`;
+}
+
+function formatBusinessNumber(value: string): string {
+  const nums = value.replace(/\D/g, '').slice(0, 10);
+  if (nums.length <= 3) return nums;
+  if (nums.length <= 5) return `${nums.slice(0, 3)}-${nums.slice(3)}`;
+  return `${nums.slice(0, 3)}-${nums.slice(3, 5)}-${nums.slice(5)}`;
+}
 
 export default function SignupPage() {
   const router = useRouter();
@@ -19,33 +43,69 @@ export default function SignupPage() {
   const searchParams = useSearchParams();
   const locale = params.locale as string;
   const refCode = searchParams.get('ref');
+  const roleParam = searchParams.get('role') as Role | null;
 
-  const [step, setStep] = useState(0); // 0=role, 1=basic, 2=social, 3=shop, 4=photo (creator only)
+  // Step 0 = role selection (skipped if roleParam present)
+  const [step, setStep] = useState(0);
+  const [role, setRole] = useState<Role>(
+    roleParam === 'brand_admin' || roleParam === 'creator' ? roleParam : 'creator',
+  );
   const [isLoading, setIsLoading] = useState(false);
-  const [role, setRole] = useState<Role>('creator');
 
-  // Basic fields
+  // Skip step 0 if role from query
+  useEffect(() => {
+    if (roleParam === 'brand_admin' || roleParam === 'creator') {
+      setRole(roleParam);
+      setStep(1);
+    }
+  }, [roleParam]);
+
+  // Step 1: 담당자 정보
   const [name, setName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [verificationToken, setVerificationToken] = useState('');
+
+  // Step 2: 로그인 정보
   const [email, setEmail] = useState('');
+  const [emailAvailable, setEmailAvailable] = useState<boolean | null>(null);
+  const [emailChecking, setEmailChecking] = useState(false);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  // Brand fields
+  // Step 3 Brand: 브랜드 정보
   const [companyName, setCompanyName] = useState('');
   const [businessNumber, setBusinessNumber] = useState('');
 
-  // Creator fields
-  const [instagram, setInstagram] = useState('');
-  const [tiktok, setTiktok] = useState('');
-  const [youtube, setYoutube] = useState('');
-  const [shopName, setShopName] = useState('');
+  // Step 3 Creator: 크리에이터 프로필
+  const [displayName, setDisplayName] = useState('');
   const [shopId, setShopId] = useState('');
   const [shopIdAvailable, setShopIdAvailable] = useState<boolean | null>(null);
   const [shopIdChecking, setShopIdChecking] = useState(false);
-  const [profileImage, setProfileImage] = useState<File | null>(null);
-  const [profilePreview, setProfilePreview] = useState('');
+  const [instagramHandle, setInstagramHandle] = useState('');
 
-  // shop_id validation with debounce
+  // Email debounce check
+  useEffect(() => {
+    if (!email || !email.includes('@') || !email.includes('.')) {
+      setEmailAvailable(null);
+      return;
+    }
+    setEmailChecking(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/auth/check-email?email=${encodeURIComponent(email)}`);
+        const data = await res.json();
+        setEmailAvailable(data.available);
+      } catch {
+        setEmailAvailable(null);
+      } finally {
+        setEmailChecking(false);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [email]);
+
+  // Shop ID debounce check
   const checkShopId = useCallback(async (id: string) => {
     if (id.length < 2) { setShopIdAvailable(null); return; }
     setShopIdChecking(true);
@@ -67,31 +127,20 @@ export default function SignupPage() {
   }, [shopId, checkShopId]);
 
   const handleShopIdChange = (value: string) => {
-    const cleaned = value.toLowerCase().replace(/[^a-z0-9_]/g, '');
-    setShopId(cleaned.slice(0, 20));
+    const cleaned = value.toLowerCase().replace(/[^a-z0-9_-]/g, '');
+    setShopId(cleaned.slice(0, 30));
   };
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setProfileImage(file);
-      setProfilePreview(URL.createObjectURL(file));
-    }
-  };
-
-  const totalSteps = role === 'creator' ? 5 : 2;
 
   const canProceed = () => {
     switch (step) {
       case 0: return true;
-      case 1:
-        if (role === 'brand_admin') {
-          return name.length >= 2 && email.includes('@') && password.length >= 8 && password === confirmPassword && companyName.length >= 2;
-        }
-        return name.length >= 2 && email.includes('@') && password.length >= 8 && password === confirmPassword;
-      case 2: return instagram.length >= 2 || tiktok.length >= 2;
-      case 3: return shopName.length >= 2 && shopId.length >= 2 && shopIdAvailable === true;
-      case 4: return true; // photo is optional
+      case 1: return name.length >= 2 && phoneVerified;
+      case 2:
+        const pwValid = password.length >= 8 && /^(?=.*[A-Za-z])(?=.*\d)/.test(password);
+        return email.includes('@') && emailAvailable === true && pwValid && password === confirmPassword;
+      case 3:
+        if (role === 'brand_admin') return companyName.length >= 1;
+        return displayName.length >= 1 && shopId.length >= 2 && shopIdAvailable === true;
       default: return false;
     }
   };
@@ -99,24 +148,29 @@ export default function SignupPage() {
   const handleSubmit = async () => {
     setIsLoading(true);
     try {
-      // TODO: Profile image upload will be handled separately (storage migration in M-3)
+      const payload: Record<string, string | undefined> = {
+        email,
+        password,
+        name,
+        role,
+        phone: phoneNumber.replace(/-/g, ''),
+        verificationToken: verificationToken || undefined,
+        refCode: refCode || undefined,
+      };
+
+      if (role === 'brand_admin') {
+        payload.companyName = companyName;
+        payload.businessNumber = businessNumber.replace(/-/g, '');
+      } else {
+        payload.displayName = displayName;
+        payload.shopId = shopId;
+        payload.instagramHandle = instagramHandle || undefined;
+      }
+
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email,
-          password,
-          name,
-          role,
-          companyName: role === 'brand_admin' ? companyName : undefined,
-          businessNumber: role === 'brand_admin' ? businessNumber : undefined,
-          shopId: role === 'creator' ? shopId : undefined,
-          shopName: role === 'creator' ? shopName : undefined,
-          instagram: role === 'creator' ? instagram : undefined,
-          tiktok: role === 'creator' ? tiktok : undefined,
-          youtube: role === 'creator' ? youtube : undefined,
-          refCode: refCode || undefined,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -126,14 +180,26 @@ export default function SignupPage() {
         return;
       }
 
-      if (role === 'brand_admin') {
-        toast.success('브랜드 등록이 완료되었습니다');
+      // 자동 로그인
+      const signInResult = await signIn('credentials', {
+        email: email.trim().toLowerCase(),
+        password,
+        redirect: false,
+      });
+
+      if (signInResult?.error) {
+        toast.success('계정이 생성되었습니다. 로그인해주세요.');
         router.push(`/${locale}/login`);
         return;
       }
 
-      // Creator: redirect to persona quiz
-      router.push(`/${locale}/signup/persona`);
+      if (role === 'brand_admin') {
+        toast.success('브랜드 등록이 완료되었습니다');
+        router.push(`/${locale}/brand/dashboard`);
+      } else {
+        router.push(`/${locale}/signup/persona`);
+      }
+      router.refresh();
     } catch {
       toast.error('오류가 발생했습니다');
     } finally {
@@ -142,202 +208,346 @@ export default function SignupPage() {
   };
 
   const nextStep = () => {
-    if (step === totalSteps - 1) {
+    if (step === 3) {
       handleSubmit();
     } else {
       setStep(s => s + 1);
     }
   };
 
+  const subtitle = role === 'brand_admin' ? '브랜드 파트너스 가입' : '크리에이터 가입';
+  const currentDot = step === 0 ? 0 : step - 1; // 0-indexed for 3 dots
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-lg border-border/50">
-        <CardHeader className="text-center">
-          <Link href={`/${locale}`} className="mb-2 inline-block">
-            <span className="font-headline text-3xl font-bold text-gold-gradient">크넥샵</span>
-          </Link>
-          <CardTitle className="text-xl">
-            {step === 0 ? '시작하기' : role === 'brand_admin' ? '브랜드 가입' : `크리에이터 가입 (${step}/${totalSteps - 1})`}
-          </CardTitle>
-          {/* Progress bar for creator */}
-          {role === 'creator' && step > 0 && (
-            <div className="w-full bg-muted rounded-full h-2 mt-3">
-              <div
-                className="bg-primary rounded-full h-2 transition-all duration-300"
-                style={{ width: `${(step / (totalSteps - 1)) * 100}%` }}
-              />
-            </div>
-          )}
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Step 0: Role Selection */}
-          {step === 0 && (
-            <RadioGroup
-              defaultValue="creator"
-              onValueChange={(v) => setRole(v as Role)}
-              className="grid grid-cols-2 gap-4"
-            >
-              <div>
-                <RadioGroupItem value="creator" id="creator" className="peer sr-only" />
-                <Label htmlFor="creator" className="flex flex-col items-center justify-between rounded-lg border-2 border-muted bg-card p-6 hover:bg-accent peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer">
-                  <Sparkles className="mb-3 h-8 w-8 text-primary" />
-                  <span className="font-medium">크리에이터</span>
-                  <span className="text-xs text-muted-foreground mt-1">내 셀렉트샵 시작</span>
-                </Label>
-              </div>
-              <div>
-                <RadioGroupItem value="brand_admin" id="brand_admin" className="peer sr-only" />
-                <Label htmlFor="brand_admin" className="flex flex-col items-center justify-between rounded-lg border-2 border-muted bg-card p-6 hover:bg-accent peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer">
-                  <Building2 className="mb-3 h-8 w-8 text-primary" />
-                  <span className="font-medium">브랜드</span>
-                  <span className="text-xs text-muted-foreground mt-1">상품 등록 & 판매</span>
-                </Label>
-              </div>
-            </RadioGroup>
-          )}
+    <div className="min-h-screen bg-gray-50">
+      <div className="flex flex-col items-center pt-8 sm:pt-12 pb-8 px-4">
+        {/* Logo */}
+        <Link href={`/${locale}`} className="mb-2">
+          <span className="text-2xl font-bold text-gray-900">CNEC Shop</span>
+        </Link>
+        {step > 0 && (
+          <p className="text-sm text-gray-500 mb-6">{subtitle}</p>
+        )}
 
-          {/* Step 1: Basic Info */}
-          {step === 1 && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>이름</Label>
-                <Input value={name} onChange={e => setName(e.target.value)} placeholder="홍길동" className="bg-muted" />
+        {/* Card */}
+        <div className="w-full max-w-md">
+          {step === 0 ? (
+            /* ─── Step 0: Role Selection ─── */
+            <div className="bg-white rounded-3xl shadow-sm p-8">
+              <h2 className="text-2xl font-bold text-gray-900 text-center mb-2">시작하기</h2>
+              <p className="text-sm text-gray-500 text-center mb-8">어떤 역할로 가입하시겠어요?</p>
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  type="button"
+                  onClick={() => setRole('brand_admin')}
+                  className={`flex flex-col items-center rounded-2xl border-2 p-6 transition-all ${
+                    role === 'brand_admin'
+                      ? 'border-gray-900 bg-gray-900 text-white'
+                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <Building2 className="h-8 w-8 mb-3" />
+                  <span className="font-semibold">브랜드</span>
+                  <span className={`text-xs mt-1 ${role === 'brand_admin' ? 'text-gray-300' : 'text-gray-400'}`}>상품 등록 & 판매</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRole('creator')}
+                  className={`flex flex-col items-center rounded-2xl border-2 p-6 transition-all ${
+                    role === 'creator'
+                      ? 'border-blue-600 bg-gradient-to-br from-blue-500 to-blue-700 text-white'
+                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <Sparkles className="h-8 w-8 mb-3" />
+                  <span className="font-semibold">크리에이터</span>
+                  <span className={`text-xs mt-1 ${role === 'creator' ? 'text-blue-200' : 'text-gray-400'}`}>내 셀렉트샵 시작</span>
+                </button>
               </div>
-              <div className="space-y-2">
-                <Label>이메일</Label>
-                <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@example.com" className="bg-muted" />
+
+              <button
+                type="button"
+                onClick={nextStep}
+                className="w-full h-14 rounded-2xl bg-blue-600 text-white font-semibold text-base mt-8 hover:bg-blue-700 transition-colors"
+              >
+                다음
+              </button>
+
+              <div className="text-center text-sm mt-6">
+                <span className="text-gray-500">이미 계정이 있으신가요? </span>
+                <Link href={`/${locale}/login`} className="text-blue-600 font-medium hover:underline">로그인</Link>
               </div>
-              {role === 'brand_admin' && (
-                <>
-                  <div className="space-y-2">
-                    <Label>회사명</Label>
-                    <Input value={companyName} onChange={e => setCompanyName(e.target.value)} className="bg-muted" />
+            </div>
+          ) : (
+            /* ─── Step 1-3: Wizard Card ─── */
+            <div className="bg-white rounded-3xl shadow-sm p-8">
+              {/* Top bar: Back + Progress dots */}
+              <div className="flex items-center justify-between mb-8">
+                <button
+                  type="button"
+                  onClick={() => setStep(s => s - 1)}
+                  className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-100 transition-colors -ml-2"
+                >
+                  <ChevronLeft className="h-5 w-5 text-gray-600" />
+                </button>
+                <div className="flex items-center gap-2">
+                  {[0, 1, 2].map((i) => (
+                    <div
+                      key={i}
+                      className={`rounded-full transition-all duration-300 ${
+                        i === currentDot
+                          ? 'w-8 h-2 bg-blue-600'
+                          : i < currentDot
+                          ? 'w-2 h-2 bg-blue-300'
+                          : 'w-2 h-2 bg-gray-200'
+                      }`}
+                    />
+                  ))}
+                </div>
+                <div className="w-10" />
+              </div>
+
+              {/* Step 1: 담당자 정보 + 인증 */}
+              {step === 1 && (
+                <div className="space-y-5">
+                  <h2 className="text-2xl font-bold text-gray-900 leading-tight">
+                    {role === 'brand_admin' ? '담당자 정보를\n확인할게요' : '본인 정보를\n확인할게요'}
+                  </h2>
+
+                  {/* 이름 */}
+                  <div className="relative">
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={e => setName(e.target.value)}
+                      placeholder="이름"
+                      className="w-full h-14 rounded-2xl bg-gray-50 border-0 text-base pl-12 pr-5 placeholder:text-gray-400 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all"
+                    />
                   </div>
-                  <div className="space-y-2">
-                    <Label>사업자번호 (선택)</Label>
-                    <Input value={businessNumber} onChange={e => setBusinessNumber(e.target.value)} className="bg-muted" />
+
+                  {/* 휴대폰 + 인증 */}
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <input
+                        type="tel"
+                        value={phoneNumber}
+                        onChange={e => setPhoneNumber(formatPhone(e.target.value))}
+                        placeholder="010-0000-0000"
+                        disabled={phoneVerified}
+                        className="w-full h-14 rounded-2xl bg-gray-50 border-0 text-base pl-12 pr-5 placeholder:text-gray-400 focus:bg-white focus:ring-2 focus:ring-blue-500 disabled:opacity-60 transition-all"
+                      />
+                    </div>
+                    <IdentityVerificationButton
+                      name={name}
+                      disabled={phoneVerified}
+                      onSuccess={(data) => {
+                        setPhoneNumber(formatPhone(data.phoneNumber));
+                        setPhoneVerified(true);
+                        setVerificationToken(data.verificationToken);
+                        toast.success('본인인증이 완료되었습니다');
+                      }}
+                      onError={(msg) => toast.error(msg)}
+                    />
                   </div>
-                </>
+
+                  {phoneVerified && (
+                    <div className="flex items-center gap-2 bg-green-50 text-green-700 rounded-2xl p-4 text-sm">
+                      <Check className="h-4 w-4 shrink-0" />
+                      휴대폰 인증이 완료되었습니다
+                    </div>
+                  )}
+                </div>
               )}
-              <div className="space-y-2">
-                <Label>비밀번호</Label>
-                <Input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="8자 이상" className="bg-muted" />
-              </div>
-              <div className="space-y-2">
-                <Label>비밀번호 확인</Label>
-                <Input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className="bg-muted" />
-                {confirmPassword && password !== confirmPassword && (
-                  <p className="text-xs text-destructive">비밀번호가 일치하지 않습니다</p>
-                )}
-              </div>
-            </div>
-          )}
 
-          {/* Step 2: Social Channels (Creator) */}
-          {step === 2 && role === 'creator' && (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">대표 채널을 1개 이상 입력해주세요</p>
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2"><Instagram className="h-4 w-4" /> 인스타그램</Label>
-                <Input value={instagram} onChange={e => setInstagram(e.target.value)} placeholder="@username" className="bg-muted" />
-              </div>
-              <div className="space-y-2">
-                <Label>틱톡</Label>
-                <Input value={tiktok} onChange={e => setTiktok(e.target.value)} placeholder="@username" className="bg-muted" />
-              </div>
-              <div className="space-y-2">
-                <Label>유튜브 (선택)</Label>
-                <Input value={youtube} onChange={e => setYoutube(e.target.value)} placeholder="채널 URL" className="bg-muted" />
-              </div>
-            </div>
-          )}
+              {/* Step 2: 로그인 정보 */}
+              {step === 2 && (
+                <div className="space-y-5">
+                  <h2 className="text-2xl font-bold text-gray-900 leading-tight whitespace-pre-line">
+                    {'로그인에 사용할\n정보를 입력해주세요'}
+                  </h2>
 
-          {/* Step 3: Shop Setup (Creator) */}
-          {step === 3 && role === 'creator' && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>샵 이름</Label>
-                <Input value={shopName} onChange={e => setShopName(e.target.value)} placeholder="뷰티진의 셀렉트샵" className="bg-muted" />
-              </div>
-              <div className="space-y-2">
-                <Label>샵 ID</Label>
-                <div className="flex items-center">
-                  <span className="flex h-10 items-center rounded-l-md border border-r-0 border-input bg-muted px-3 text-xs text-muted-foreground">
-                    www.cnecshop.com/
-                  </span>
-                  <Input
-                    value={shopId}
-                    onChange={e => handleShopIdChange(e.target.value)}
-                    placeholder="myshop"
-                    className="rounded-l-none bg-muted"
-                    maxLength={20}
-                  />
-                </div>
-                <div className="flex items-center gap-1 text-xs min-h-[20px]">
-                  {shopIdChecking && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
-                  {shopIdAvailable === true && !shopIdChecking && (
-                    <span className="text-green-600 flex items-center gap-1"><Check className="h-3 w-3" /> 사용 가능</span>
-                  )}
-                  {shopIdAvailable === false && !shopIdChecking && (
-                    <span className="text-destructive flex items-center gap-1"><X className="h-3 w-3" /> 이미 사용 중</span>
-                  )}
-                  {shopId.length > 0 && shopId.length < 2 && (
-                    <span className="text-muted-foreground">2자 이상 입력해주세요</span>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground">영문 소문자, 숫자, 밑줄(_)만 사용 가능</p>
-              </div>
-            </div>
-          )}
-
-          {/* Step 4: Profile Photo (Creator) */}
-          {step === 4 && role === 'creator' && (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground text-center">프로필 사진을 설정하세요 (나중에 변경 가능)</p>
-              <div className="flex flex-col items-center gap-4">
-                <label className="cursor-pointer">
-                  <div className="w-32 h-32 rounded-full bg-muted border-2 border-dashed border-muted-foreground/30 flex items-center justify-center overflow-hidden hover:border-primary transition-colors">
-                    {profilePreview ? (
-                      <img src={profilePreview} alt="Profile" className="w-full h-full object-cover" />
-                    ) : (
-                      <Camera className="h-10 w-10 text-muted-foreground/50" />
+                  {/* 이메일 */}
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={e => setEmail(e.target.value.trim().toLowerCase())}
+                      placeholder="이메일"
+                      className="w-full h-14 rounded-2xl bg-gray-50 border-0 text-base pl-12 pr-12 placeholder:text-gray-400 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all"
+                    />
+                    {!emailChecking && emailAvailable === true && (
+                      <Check className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-green-500" />
+                    )}
+                    {!emailChecking && emailAvailable === false && (
+                      <X className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-red-500" />
+                    )}
+                    {emailChecking && (
+                      <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 animate-spin" />
                     )}
                   </div>
-                  <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
-                </label>
-                <p className="text-xs text-muted-foreground">클릭하여 업로드</p>
+                  {emailAvailable === false && (
+                    <p className="text-red-500 text-sm -mt-3 ml-1">이미 사용 중인 이메일이에요</p>
+                  )}
+
+                  {/* 비밀번호 */}
+                  <div className="relative">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      placeholder="8자 이상 영문, 숫자 조합"
+                      className="w-full h-14 rounded-2xl bg-gray-50 border-0 text-base pl-12 pr-5 placeholder:text-gray-400 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all"
+                    />
+                  </div>
+
+                  {/* 비밀번호 확인 */}
+                  <div className="relative">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={e => setConfirmPassword(e.target.value)}
+                      placeholder="비밀번호를 한번 더 입력해주세요"
+                      className="w-full h-14 rounded-2xl bg-gray-50 border-0 text-base pl-12 pr-5 placeholder:text-gray-400 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all"
+                    />
+                  </div>
+                  {confirmPassword && password !== confirmPassword && (
+                    <p className="text-red-500 text-sm -mt-3 ml-1">비밀번호가 일치하지 않아요</p>
+                  )}
+                </div>
+              )}
+
+              {/* Step 3 Brand: 브랜드 정보 */}
+              {step === 3 && role === 'brand_admin' && (
+                <div className="space-y-5">
+                  <h2 className="text-2xl font-bold text-gray-900 leading-tight whitespace-pre-line">
+                    {'마지막으로\n브랜드 정보를 알려주세요'}
+                  </h2>
+
+                  <div className="relative">
+                    <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <input
+                      type="text"
+                      value={companyName}
+                      onChange={e => setCompanyName(e.target.value)}
+                      placeholder="주식회사 크넥"
+                      className="w-full h-14 rounded-2xl bg-gray-50 border-0 text-base pl-12 pr-5 placeholder:text-gray-400 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="relative">
+                      <FileText className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <input
+                        type="text"
+                        value={businessNumber}
+                        onChange={e => setBusinessNumber(formatBusinessNumber(e.target.value))}
+                        placeholder="000-00-00000"
+                        className="w-full h-14 rounded-2xl bg-gray-50 border-0 text-base pl-12 pr-5 placeholder:text-gray-400 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2 ml-1">사업자 번호 10자리를 입력해주세요</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3 Creator: 크리에이터 프로필 */}
+              {step === 3 && role === 'creator' && (
+                <div className="space-y-5">
+                  <h2 className="text-2xl font-bold text-gray-900 leading-tight whitespace-pre-line">
+                    {'크리에이터 정보를\n알려주세요'}
+                  </h2>
+
+                  <div className="relative">
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <input
+                      type="text"
+                      value={displayName}
+                      onChange={e => setDisplayName(e.target.value)}
+                      placeholder="닉네임 / 활동명"
+                      className="w-full h-14 rounded-2xl bg-gray-50 border-0 text-base pl-12 pr-5 placeholder:text-gray-400 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="relative">
+                      <AtSign className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <input
+                        type="text"
+                        value={shopId}
+                        onChange={e => handleShopIdChange(e.target.value)}
+                        placeholder="shop-id"
+                        maxLength={30}
+                        className="w-full h-14 rounded-2xl bg-gray-50 border-0 text-base pl-12 pr-12 placeholder:text-gray-400 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all"
+                      />
+                      {!shopIdChecking && shopIdAvailable === true && (
+                        <Check className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-green-500" />
+                      )}
+                      {!shopIdChecking && shopIdAvailable === false && (
+                        <X className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-red-500" />
+                      )}
+                      {shopIdChecking && (
+                        <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 animate-spin" />
+                      )}
+                    </div>
+                    {shopIdAvailable === false && (
+                      <p className="text-red-500 text-sm mt-1 ml-1">이미 사용 중인 ID예요</p>
+                    )}
+                    <p className="text-xs text-gray-500 mt-1 ml-1">영문 소문자, 숫자, 밑줄(_)만 사용 가능</p>
+                  </div>
+
+                  <div className="relative">
+                    <svg className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+                      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+                      <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+                    </svg>
+                    <input
+                      type="text"
+                      value={instagramHandle}
+                      onChange={e => setInstagramHandle(e.target.value.replace(/^@/, ''))}
+                      placeholder="인스타그램 ID (선택)"
+                      className="w-full h-14 rounded-2xl bg-gray-50 border-0 text-base pl-12 pr-5 placeholder:text-gray-400 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* CTA Button */}
+              <button
+                type="button"
+                onClick={nextStep}
+                disabled={!canProceed() || isLoading}
+                className={`w-full h-14 rounded-2xl font-semibold text-base mt-8 transition-colors ${
+                  canProceed() && !isLoading
+                    ? 'bg-blue-600 text-white hover:bg-blue-700'
+                    : 'bg-blue-200 text-white cursor-not-allowed'
+                }`}
+              >
+                {isLoading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    처리 중...
+                  </span>
+                ) : step === 3 ? (
+                  role === 'brand_admin' ? '크넥샵 시작하기' : '크리에이터 시작하기'
+                ) : (
+                  '다음'
+                )}
+              </button>
+
+              <div className="text-center text-sm mt-6">
+                <span className="text-gray-500">이미 계정이 있으신가요? </span>
+                <Link href={`/${locale}/login`} className="text-blue-600 font-medium hover:underline">로그인</Link>
               </div>
             </div>
           )}
-
-          {/* Navigation */}
-          <div className="flex gap-2 pt-2">
-            {step > 0 && (
-              <Button variant="outline" onClick={() => setStep(s => s - 1)} className="flex-1">
-                이전
-              </Button>
-            )}
-            <Button
-              onClick={nextStep}
-              disabled={!canProceed() || isLoading}
-              className="flex-1 btn-gold"
-            >
-              {isLoading ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> 처리 중...</>
-              ) : step === totalSteps - 1 ? (
-                role === 'creator' ? '가입하고 시작하기' : '가입하기'
-              ) : (
-                '다음'
-              )}
-            </Button>
-          </div>
-
-          <div className="text-center text-sm pt-2">
-            <span className="text-muted-foreground">이미 계정이 있으신가요? </span>
-            <Link href={`/${locale}/login`} className="text-primary hover:underline">로그인</Link>
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
