@@ -24,10 +24,9 @@ export default function ErrorPage({
           다시 시도
         </Button>
         <Button variant="outline" className="rounded-xl" asChild>
-          <a href="/">홈으로 돌아가기</a>
+          <a href="/creator/dashboard">크리에이터 센터로</a>
         </Button>
       </div>
     </div>
   );
 }
-

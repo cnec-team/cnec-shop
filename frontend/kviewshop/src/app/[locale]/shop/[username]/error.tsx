@@ -3,6 +3,14 @@
 import { Button } from "@/components/ui/button";
 import { AlertCircle } from "lucide-react";
 
+function getShopHref(): string {
+  if (typeof document !== "undefined") {
+    const match = document.cookie.match(/(?:^|;\s*)last_shop_id=([^;]*)/);
+    if (match?.[1]) return `/shop/${match[1]}`;
+  }
+  return "/no-shop-context";
+}
+
 export default function ErrorPage({
   error,
   reset,
@@ -24,10 +32,9 @@ export default function ErrorPage({
           다시 시도
         </Button>
         <Button variant="outline" className="rounded-xl" asChild>
-          <a href="/">홈으로 돌아가기</a>
+          <a href={getShopHref()}>샵으로 돌아가기</a>
         </Button>
       </div>
     </div>
   );
 }
-

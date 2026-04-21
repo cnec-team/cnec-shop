@@ -17,7 +17,7 @@ export function Footer() {
           <div>
             <h4 className="text-sm font-semibold text-gray-900 mb-4">서비스</h4>
             <ul className="space-y-3 text-sm text-gray-500">
-              <li><Link href="/ko" className="hover:text-gray-900 transition">크리에이터 샵</Link></li>
+              <li><Link href="/ko/no-shop-context" className="hover:text-gray-900 transition">크리에이터 샵</Link></li>
               <li><Link href="/ko/signup?role=creator" className="hover:text-gray-900 transition">크리에이터 가입</Link></li>
               <li><Link href="/ko/signup?role=brand_admin" className="hover:text-gray-900 transition">브랜드 입점</Link></li>
             </ul>

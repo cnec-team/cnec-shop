@@ -4,6 +4,9 @@ import { Package } from 'lucide-react';
 import { prisma } from '@/lib/db';
 import { Footer } from '@/components/layout/footer';
 import { LandingContent } from '@/components/home/LandingContent';
+import { auth } from '@/lib/auth';
+import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 
 /* ─── SSR: DB에서 상품 직접 조회 (크롤러가 초기 HTML에서 읽을 수 있음) ─── */
 async function getFeaturedProducts() {
@@ -41,6 +44,14 @@ async function getFeaturedProducts() {
 }
 
 export default async function LandingPage() {
+  /* ─── 서버사이드 buyer 차단 (defense-in-depth) ─── */
+  const session = await auth();
+  if (session?.user?.role === 'buyer') {
+    const cookieStore = await cookies();
+    const lastShopId = cookieStore.get('last_shop_id')?.value;
+    redirect(lastShopId ? `/shop/${lastShopId}` : '/no-shop-context');
+  }
+
   const products = await getFeaturedProducts();
 
   return (

@@ -17,7 +17,7 @@ export default function MyLayout({ children }: { children: React.ReactNode }) {
   }, []);
 
   const myPath = `/${locale}/my`;
-  const homeHref = lastShop ? `/${locale}/${lastShop}` : `/${locale}`;
+  const homeHref = lastShop ? `/${locale}/${lastShop}` : `/${locale}/no-shop-context`;
 
   const navItems = [
     { key: 'home', label: '홈', icon: Home, href: homeHref },

@@ -8,15 +8,14 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: '*',
         allow: [
-          '/',
-          '/ko',
+          '/ko/no-shop-context',
           '/ko/terms',
           '/ko/privacy',
           '/ko/refund-policy',
           '/ko/faq',
           '/ko/support',
         ],
-        disallow: ['/api/', '/admin/', '/brand/', '/creator/', '/buyer/', '/ko/signup'],
+        disallow: ['/', '/ko', '/api/', '/admin/', '/brand/', '/creator/', '/buyer/', '/ko/signup'],
       },
     ],
     sitemap: `${BASE_URL}/sitemap.xml`,

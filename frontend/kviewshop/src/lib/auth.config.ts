@@ -32,6 +32,11 @@ export const authConfig: NextAuthConfig = {
       }
       return session
     },
+    async redirect({ url, baseUrl }) {
+      if (url.startsWith('/')) return `${baseUrl}${url}`
+      if (new URL(url).origin === baseUrl) return url
+      return `${baseUrl}/no-shop-context`
+    },
   },
   pages: {
     signIn: '/login',

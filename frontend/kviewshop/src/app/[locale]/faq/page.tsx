@@ -36,13 +36,6 @@ const faqs = [
       { q: '수익은 언제 정산되나요?', a: '매월 1일 전월 판매 내역을 집계해서 매월 20일에 입금돼요. 자세한 내역은 크리에이터 센터에서 확인하실 수 있어요.' },
     ],
   },
-  {
-    category: '브랜드 입점',
-    items: [
-      { q: '브랜드 입점 비용이 있나요?', a: '크��샵 이용은 무료예요. 판매가 발생했을 때만 플랫폼 수수���가 부과돼요.' },
-      { q: '입점 심사는 얼마나 걸리나요?', a: '사업자등록증 제출 후 평균 1~2영업일 내에 완료돼요.' },
-    ],
-  },
 ];
 
 export default function FaqPage() {
@@ -54,7 +47,7 @@ export default function FaqPage() {
     <div className="min-h-screen bg-white">
       <div className="max-w-3xl mx-auto px-6 py-16">
         <Link
-          href={`/${locale}`}
+          href={`/${locale}/no-shop-context`}
           className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 mb-8 transition"
         >
           <ChevronLeft className="h-4 w-4" />
