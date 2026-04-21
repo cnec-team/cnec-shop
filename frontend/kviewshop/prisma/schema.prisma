@@ -299,10 +299,33 @@ enum ProposalStatus {
 }
 
 enum SubscriptionPlan {
+  // v2 legacy (기존 데이터 호환용)
   FREE
   STARTER
-  PRO
+  PRO // v2와 v3 공용
   ENTERPRISE
+  // v3 신규
+  TRIAL
+  STANDARD
+}
+
+enum BrandPlanV3 {
+  TRIAL
+  STANDARD
+  PRO
+}
+
+enum ProBillingCycle {
+  QUARTERLY
+  ANNUAL
+}
+
+enum SuspiciousActivityType {
+  RAPID_DETAIL_VIEW
+  MASS_GROUP_ADD
+  REPETITIVE_SEARCH
+  API_RATE_LIMIT_HIT
+  EXCEL_EXPORT_ATTEMPT
 }
 
 enum SubscriptionStatus {
@@ -370,18 +393,18 @@ enum IgSyncStatus {
 // ============================================================
 
 model User {
-  id           String     @id @default(uuid())
-  email        String     @unique @db.VarChar(255)
-  name         String     @db.VarChar(100)
-  passwordHash String?    @map("password_hash") @db.VarChar(255)
-  role         UserRole
-  status       UserStatus @default(active)
-  phone        String?    @db.VarChar(20)
-  ci           String?    @unique @db.VarChar(255) // 본인인증 고유식별값 (CI)
-  phoneVerifiedAt DateTime? @map("phone_verified_at") @db.Timestamptz
-  avatarUrl    String?    @map("avatar_url")
-  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt    DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  id              String     @id @default(uuid())
+  email           String     @unique @db.VarChar(255)
+  name            String     @db.VarChar(100)
+  passwordHash    String?    @map("password_hash") @db.VarChar(255)
+  role            UserRole
+  status          UserStatus @default(active)
+  phone           String?    @db.VarChar(20)
+  ci              String?    @unique @db.VarChar(255) // 본인인증 고유식별값 (CI)
+  phoneVerifiedAt DateTime?  @map("phone_verified_at") @db.Timestamptz
+  avatarUrl       String?    @map("avatar_url")
+  createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   brand             Brand?
   creator           Creator?
@@ -473,20 +496,23 @@ model Brand {
   brandInstagramLastUsedAt       DateTime?           @map("brand_instagram_last_used_at") @db.Timestamptz
   brandInstagramDailySentCount   Int                 @default(0) @map("brand_instagram_daily_sent_count")
 
-  products             Product[]
-  campaigns            Campaign[]
-  orders               Order[]
-  supportTickets       SupportTicket[]
-  sampleRequests       SampleRequest[]
-  creatorProposals     CreatorProposal[]
-  creatorGroups        CreatorGroup[]
-  proposalTemplates    ProposalTemplate[]
-  subscription         BrandSubscription?
-  messageCredits       MessageCredit[]
-  subscriptionPayments SubscriptionPayment[]
-  dmQueues             DmSendQueue[]
-  filterPresets        CreatorFilterPreset[]
-  orderInquiries       OrderInquiry[]
+  products               Product[]
+  campaigns              Campaign[]
+  orders                 Order[]
+  supportTickets         SupportTicket[]
+  sampleRequests         SampleRequest[]
+  creatorProposals       CreatorProposal[]
+  creatorGroups          CreatorGroup[]
+  proposalTemplates      ProposalTemplate[]
+  subscription           BrandSubscription?
+  messageCredits         MessageCredit[]
+  subscriptionPayments   SubscriptionPayment[]
+  dmQueues               DmSendQueue[]
+  filterPresets          CreatorFilterPreset[]
+  orderInquiries         OrderInquiry[]
+  campaignChargeLogs     CampaignChargeLog[]
+  detailViewLogs         DetailViewLog[]
+  suspiciousActivityLogs SuspiciousActivityLog[]
 
   @@index([approved])
   @@index([mocraStatus])
@@ -651,6 +677,11 @@ model Creator {
   cnecSelectionsSb           Int                   @default(0) @map("cnec_selections_sb")
   cnecCurrentSelection       Int                   @default(0) @map("cnec_current_selection")
   cnecReliabilityScore       Decimal?              @map("cnec_reliability_score") @db.Decimal(5, 4)
+  // v3 크리에이터 보호 필드
+  acceptingProposals         Boolean               @default(true) @map("accepting_proposals")
+  monthlyProposalLimit       Int                   @default(30) @map("monthly_proposal_limit")
+  currentMonthProposals      Int                   @default(0) @map("current_month_proposals")
+  proposalResetAt            DateTime?             @map("proposal_reset_at") @db.Timestamptz
   // Timestamps
   createdAt                  DateTime              @default(now()) @map("created_at") @db.Timestamptz
   updatedAt                  DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
@@ -684,6 +715,7 @@ model Creator {
   campaignParticipations CampaignParticipation[]
   messageCredits         MessageCredit[]
   dmQueues               DmSendQueue[]
+  detailViewLogs         DetailViewLog[]
   // Server cart + shop visits
   cartsAtShop            Cart[]
   creatorShopVisits      CreatorShopVisit[]      @relation("CreatorShopVisits")
@@ -843,12 +875,13 @@ model Campaign {
   createdAt          DateTime       @default(now()) @map("created_at") @db.Timestamptz
   updatedAt          DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  products       CampaignProduct[]
-  participations CampaignParticipation[]
-  shopItems      CreatorShopItem[]
-  promotionKit   PromotionKit?
-  proposals      CreatorProposal[]
-  cartItems      CartItem[]
+  products           CampaignProduct[]
+  participations     CampaignParticipation[]
+  shopItems          CreatorShopItem[]
+  promotionKit       PromotionKit?
+  proposals          CreatorProposal[]
+  cartItems          CartItem[]
+  campaignChargeLogs CampaignChargeLog[]
 
   @@index([status])
   @@index([type])
@@ -2073,10 +2106,14 @@ model CreatorProposal {
   createdAt       DateTime              @default(now()) @map("created_at") @db.Timestamptz
   updatedAt       DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
+  // v3 매칭 점수
+  matchScore Decimal? @map("match_score") @db.Decimal(5, 2)
+
   dmQueues DmSendQueue[]
 
   @@index([brandId, status])
   @@index([creatorId, status])
+  @@index([brandId, creatorId, createdAt])
   @@map("creator_proposals")
 }
 
@@ -2158,7 +2195,27 @@ model BrandSubscription {
   createdAt            DateTime           @default(now()) @map("created_at") @db.Timestamptz
   updatedAt            DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  payments SubscriptionPayment[]
+  // === v3 신규 필드 ===
+  planV3                BrandPlanV3?     @map("plan_v3")
+  trialStartedAt        DateTime?        @map("trial_started_at") @db.Timestamptz
+  trialEndsAt           DateTime?        @map("trial_ends_at") @db.Timestamptz
+  trialUsedCampaigns    Int              @default(0) @map("trial_used_campaigns")
+  trialUsedMessages     Int              @default(0) @map("trial_used_messages")
+  trialUsedDetailViews  Int              @default(0) @map("trial_used_detail_views")
+  prepaidBalance        Decimal          @default(0) @map("prepaid_balance") @db.Decimal(12, 0)
+  monthlyDetailViewUsed Int              @default(0) @map("monthly_detail_view_used")
+  proBillingCycle       ProBillingCycle? @map("pro_billing_cycle")
+  proStartedAt          DateTime?        @map("pro_started_at") @db.Timestamptz
+  proExpiresAt          DateTime?        @map("pro_expires_at") @db.Timestamptz
+  proAutoRenew          Boolean          @default(true) @map("pro_auto_renew")
+  billingKey            String?          @map("billing_key")
+  dailyDbViewedAt       DateTime?        @map("daily_db_viewed_at") @db.Timestamptz
+  dailyDbViewedCount    Int              @default(0) @map("daily_db_viewed_count")
+  shopCommissionRate    Decimal          @default(10.0) @map("shop_commission_rate") @db.Decimal(4, 2)
+
+  payments           SubscriptionPayment[]
+  campaignChargeLogs CampaignChargeLog[]
+  detailViewLogs     DetailViewLog[]
 
   @@index([brandId])
   @@index([expiresAt])
@@ -2430,4 +2487,64 @@ model Coupon {
   @@index([buyerId, usedAt])
   @@index([buyerId, expiresAt])
   @@map("coupons")
+}
+
+// ============================================================
+// CAMPAIGN CHARGE LOG (v3 캠페인 개설 과금 기록)
+// ============================================================
+
+model CampaignChargeLog {
+  id             String             @id @default(uuid())
+  brandId        String             @map("brand_id")
+  brand          Brand              @relation(fields: [brandId], references: [id])
+  subscriptionId String?            @map("subscription_id")
+  subscription   BrandSubscription? @relation(fields: [subscriptionId], references: [id])
+  campaignId     String             @map("campaign_id")
+  campaign       Campaign           @relation(fields: [campaignId], references: [id])
+  planV3         BrandPlanV3        @map("plan_v3")
+  chargeAmount   Decimal            @default(0) @map("charge_amount") @db.Decimal(10, 0)
+  chargedAt      DateTime           @default(now()) @map("charged_at") @db.Timestamptz
+
+  @@index([brandId, chargedAt])
+  @@map("campaign_charge_logs")
+}
+
+// ============================================================
+// DETAIL VIEW LOG (v3 크리에이터 상세 열람 크레딧 기록)
+// ============================================================
+
+model DetailViewLog {
+  id             String             @id @default(uuid())
+  brandId        String             @map("brand_id")
+  brand          Brand              @relation(fields: [brandId], references: [id])
+  subscriptionId String?            @map("subscription_id")
+  subscription   BrandSubscription? @relation(fields: [subscriptionId], references: [id])
+  creatorId      String             @map("creator_id")
+  creator        Creator            @relation(fields: [creatorId], references: [id])
+  planV3         BrandPlanV3        @map("plan_v3")
+  isFreeQuota    Boolean            @default(true) @map("is_free_quota")
+  chargeAmount   Decimal            @default(0) @map("charge_amount") @db.Decimal(10, 0)
+  viewedAt       DateTime           @default(now()) @map("viewed_at") @db.Timestamptz
+
+  @@index([brandId, viewedAt])
+  @@map("detail_view_logs")
+}
+
+// ============================================================
+// SUSPICIOUS ACTIVITY LOG (v3 우회 시도 탐지)
+// ============================================================
+
+model SuspiciousActivityLog {
+  id           String                 @id @default(uuid())
+  brandId      String                 @map("brand_id")
+  brand        Brand                  @relation(fields: [brandId], references: [id])
+  activityType SuspiciousActivityType
+  detail       Json?
+  severity     Int                    @default(1)
+  detectedAt   DateTime               @default(now()) @map("detected_at") @db.Timestamptz
+  resolvedAt   DateTime?              @map("resolved_at") @db.Timestamptz
+
+  @@index([brandId, detectedAt])
+  @@index([severity, resolvedAt])
+  @@map("suspicious_activity_logs")
 }
