@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter, useParams } from 'next/navigation'
 import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -13,6 +14,9 @@ interface Props {
 }
 
 export function PricingCards({ currentPlan }: Props) {
+  const router = useRouter()
+  const params = useParams()
+  const locale = params.locale as string ?? 'ko'
   const [billingCycle, setBillingCycle] = useState<'QUARTERLY' | 'ANNUAL'>('QUARTERLY')
 
   const isCurrentTrial = currentPlan.version === 'v3' && currentPlan.planV3 === 'TRIAL'
@@ -59,7 +63,10 @@ export function PricingCards({ currentPlan }: Props) {
             <FeatureItem>크넥샵 수수료 10%</FeatureItem>
           </ul>
           <p className="text-xs text-muted-foreground mb-4">약정 없음, 언제든 그만두기</p>
-          <Button disabled={isCurrentStandard}>
+          <Button
+            disabled={isCurrentStandard}
+            onClick={() => !isCurrentStandard && router.push(`/${locale}/brand/billing/charge`)}
+          >
             {isCurrentStandard ? '사용 중' : '스탠다드로 시작하기'}
           </Button>
         </Card>
@@ -94,7 +101,11 @@ export function PricingCards({ currentPlan }: Props) {
             <FeatureItem>캠페인 참여자 엑셀</FeatureItem>
             <FeatureItem><strong>크넥샵 수수료 8%</strong> (2%p 할인)</FeatureItem>
           </ul>
-          <Button variant="outline" disabled={isCurrentPro}>
+          <Button
+            variant="outline"
+            disabled={isCurrentPro}
+            onClick={() => !isCurrentPro && router.push(`/${locale}/brand/billing/checkout?purpose=PRO_SUBSCRIPTION&cycle=${billingCycle}`)}
+          >
             {isCurrentPro ? '사용 중' : '프로로 시작하기'}
           </Button>
         </Card>
