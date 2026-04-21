@@ -44,6 +44,7 @@
     "nodemailer": "^8.0.5",
     "p-retry": "^8.0.0",
     "pg": "^8.20.0",
+    "pgvector": "^0.2.1",
     "popbill": "^1.64.0",
     "prisma": "^7.4.2",
     "radix-ui": "^1.4.3",

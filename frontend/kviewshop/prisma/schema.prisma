@@ -1,10 +1,12 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
+  provider   = "postgresql"
+  extensions = [vector]
 }
 
 // ============================================================
@@ -2624,4 +2626,53 @@ model BillingPayment {
   @@index([status, requestedAt])
   @@index([brandId, purpose, status, requestedAt])
   @@map("billing_payments")
+}
+
+// ============================================================
+// PAIN-POINT MATCH (PPM) SYSTEM
+// ============================================================
+
+model IngredientMaster {
+  id            String  @id @default(cuid())
+  koName        String  @unique @map("ko_name")
+  enName        String  @map("en_name")
+  inciName      String? @map("inci_name")
+  category      String // 재생/미백/보습/진정/안티에이징/장벽/모공/각질/항산화/발효/기타
+  tier          String // S/A/B
+  trendScore    Int     @default(50) @map("trend_score")
+  evidenceLevel String  @default("medium") @map("evidence_level")
+  description   String  @db.Text
+  sideEffects   String? @map("side_effects") @db.Text
+  pregnancySafe Boolean @default(false) @map("pregnancy_safe")
+
+  // 효능 벡터 8차원 (P01~P08)
+  efficacyP01 Decimal @default(0) @map("efficacy_p01") @db.Decimal(3, 2)
+  efficacyP02 Decimal @default(0) @map("efficacy_p02") @db.Decimal(3, 2)
+  efficacyP03 Decimal @default(0) @map("efficacy_p03") @db.Decimal(3, 2)
+  efficacyP04 Decimal @default(0) @map("efficacy_p04") @db.Decimal(3, 2)
+  efficacyP05 Decimal @default(0) @map("efficacy_p05") @db.Decimal(3, 2)
+  efficacyP06 Decimal @default(0) @map("efficacy_p06") @db.Decimal(3, 2)
+  efficacyP07 Decimal @default(0) @map("efficacy_p07") @db.Decimal(3, 2)
+  efficacyP08 Decimal @default(0) @map("efficacy_p08") @db.Decimal(3, 2)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("ingredient_masters")
+}
+
+model PainPointMaster {
+  code        String @id // P01~P08
+  koName      String @map("ko_name")
+  enName      String @map("en_name")
+  shortName   String @map("short_name")
+  description String @db.Text
+  iconName    String @map("icon_name") // lucide-react 아이콘 이름
+  sortOrder   Int    @map("sort_order")
+
+  severityLevels Json @default("{}") @map("severity_levels")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("pain_point_masters")
 }
