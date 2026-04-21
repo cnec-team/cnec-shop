@@ -144,7 +144,7 @@ function CreatorExplorerContent() {
       ) : creators.length === 0 ? (
         <div className="text-center py-16">
           <Users className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-          <p className="text-muted-foreground">조건에 맞는 크리에이터가 없습니다</p>
+          <p className="text-muted-foreground">조건에 맞는 크리에이터가 없어요</p>
           <Button
             variant="link"
             onClick={() => {
@@ -152,7 +152,7 @@ function CreatorExplorerContent() {
               router.push(view ? `?view=${view}` : '?')
             }}
           >
-            필터 초기화
+            필터를 조금 풀어볼까요?
           </Button>
         </div>
       ) : viewMode === 'card' ? (
@@ -184,6 +184,7 @@ function CreatorExplorerContent() {
                 <TableHead>카테고리</TableHead>
                 <TableHead>CNEC</TableHead>
                 <TableHead className="text-right">협업</TableHead>
+                <TableHead>발송</TableHead>
                 <TableHead className="text-right">팔로워</TableHead>
                 <TableHead className="text-right">ER</TableHead>
                 <TableHead className="text-right">게시물</TableHead>

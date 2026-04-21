@@ -23,6 +23,15 @@ export interface CreatorWithIg {
   cnecReliabilityScore: number | null
   cnecTotalTrials: number
   cnecCompletedPayments: number
+  cnecPhone: string | null
+  cnecVerificationStatus: string | null
+  cnecEmail1: string | null
+  cnecEmail2: string | null
+  cnecEmail3: string | null
   hasPhone: boolean
   phoneForAlimtalk: string | null
+  canSendAlimtalk: boolean
+  canSendEmail: boolean
+  starRating: number | null
+  showStarRating: boolean
 }

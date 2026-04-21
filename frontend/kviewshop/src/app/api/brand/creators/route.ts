@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getAuthUser } from '@/lib/auth-helpers'
+import {
+  canSendAlimtalk,
+  canSendEmail,
+  scoreToStarValue,
+  shouldShowStarRating,
+} from '@/lib/creator/reliability'
 import type { Prisma } from '@/generated/prisma/client'
 
 export async function GET(request: NextRequest) {
@@ -118,14 +124,22 @@ export async function GET(request: NextRequest) {
     prisma.creator.count({ where }),
   ])
 
-  const serialized = creators.map(c => ({
-    ...c,
-    igEngagementRate: c.igEngagementRate ? Number(c.igEngagementRate) : null,
-    cnecReliabilityScore: c.cnecReliabilityScore ? Number(c.cnecReliabilityScore) : null,
-    totalSales: Number(c.totalSales),
-    totalEarnings: Number(c.totalEarnings),
-    totalRevenue: Number(c.totalRevenue),
-  }))
+  const serialized = creators.map(c => {
+    const reliabilityScore = c.cnecReliabilityScore ? Number(c.cnecReliabilityScore) : null
+
+    return {
+      ...c,
+      igEngagementRate: c.igEngagementRate ? Number(c.igEngagementRate) : null,
+      cnecReliabilityScore: reliabilityScore,
+      totalSales: Number(c.totalSales),
+      totalEarnings: Number(c.totalEarnings),
+      totalRevenue: Number(c.totalRevenue),
+      canSendAlimtalk: canSendAlimtalk(c.cnecPhone, c.cnecVerificationStatus),
+      canSendEmail: canSendEmail(c.cnecEmail1, c.cnecEmail2, c.cnecEmail3),
+      starRating: scoreToStarValue(reliabilityScore),
+      showStarRating: shouldShowStarRating(c.cnecIsPartner, c.cnecTotalTrials, c.cnecCompletedPayments),
+    }
+  })
 
   return NextResponse.json({
     creators: serialized,
