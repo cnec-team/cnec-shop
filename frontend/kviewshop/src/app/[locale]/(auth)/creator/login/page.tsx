@@ -150,7 +150,7 @@ export default function CreatorLoginPage() {
             <div>
               <span className="text-muted-foreground">{t('noAccount')} </span>
               <Link
-                href={`/${locale}/signup`}
+                href={`/${locale}/signup?role=creator`}
                 className="text-primary hover:underline"
               >
                 {t('creatorSignup')}

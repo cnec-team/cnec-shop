@@ -32,3 +32,28 @@ export async function POST(req: NextRequest) {
     socialProvider: user?.buyer?.socialProvider ?? null,
   })
 }
+
+export async function GET(req: NextRequest) {
+  const ip = req.headers.get('x-forwarded-for') ?? 'unknown'
+  const limited = await rateLimit(`check-email:${ip}`, 10, 60)
+  if (limited) {
+    return NextResponse.json({ error: 'too_many_requests' }, { status: 429 })
+  }
+
+  const email = req.nextUrl.searchParams.get('email')?.trim().toLowerCase()
+
+  if (!email || !email.includes('@')) {
+    return NextResponse.json({ error: 'invalid_email' }, { status: 400 })
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true },
+  })
+
+  return NextResponse.json({
+    available: !user,
+  }, {
+    headers: { 'Cache-Control': 'no-store' },
+  })
+}

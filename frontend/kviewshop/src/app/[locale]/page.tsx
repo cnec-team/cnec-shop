@@ -143,12 +143,12 @@ export default function LandingPage() {
             CNEC
           </Link>
           <div className="flex items-center gap-3">
-            <Link href="/ko/creator/login" className="hidden sm:inline-flex">
+            <Link href="/ko/signup?role=creator" className="hidden sm:inline-flex">
               <Button variant="ghost" className="rounded-full px-5 text-sm font-semibold text-gray-600 hover:text-gray-900">
                 크리에이터 시작하기
               </Button>
             </Link>
-            <Link href="/ko/brand/login">
+            <Link href="/ko/signup?role=brand_admin">
               <Button
                 className="rounded-full px-5 text-sm font-bold text-white border-0"
                 style={blueGradientBg}
@@ -209,18 +209,18 @@ export default function LandingPage() {
             </div>
 
             <div className={`mt-10 flex flex-col sm:flex-row gap-4 ${anim(hero.isInView, 'animate-fade-in-up delay-400')}`}>
-              <Link href="/ko/creator/login">
+              <Link href="/ko/signup?role=creator">
                 <Button
                   className="group rounded-full px-8 py-6 text-base font-bold text-white border-0 hover:shadow-lg hover:shadow-blue-200/40 transition-all duration-300"
                   style={blueGradientBg}
                 >
-                  크리에이터 시작하기
+                  크리에이터로 시작하기
                   <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
-              <Link href="/ko/brand/login">
+              <Link href="/ko/signup?role=brand_admin">
                 <Button variant="outline" className="rounded-full px-8 py-6 text-base font-semibold border-gray-200 hover:border-gray-300 hover:bg-gray-50/80">
-                  브랜드 입점하기
+                  브랜드로 입점하기
                 </Button>
               </Link>
             </div>
@@ -367,7 +367,7 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
             {/* BRAND Card */}
             <div className={`${anim(steps.isInView, 'animate-fade-in-up delay-300')}`}>
-              <Link href="/ko/brand/login">
+              <Link href="/ko/signup?role=brand_admin">
                 <div className="bg-gray-50/80 rounded-3xl p-10 md:p-12 h-full cursor-pointer hover:scale-[1.02] hover:shadow-xl transition-all duration-500">
                   <div className="flex items-center justify-between mb-10">
                     <div>
@@ -402,7 +402,7 @@ export default function LandingPage() {
 
             {/* CREATOR Card — highlighted */}
             <div className={`${anim(steps.isInView, 'animate-fade-in-up delay-400')}`}>
-              <Link href="/ko/creator/login">
+              <Link href="/ko/signup?role=creator">
                 <div className="rounded-3xl p-10 md:p-12 h-full text-white cursor-pointer hover:scale-[1.02] hover:shadow-2xl transition-all duration-500" style={blueGradientBg}>
                   <div className="flex items-center justify-between mb-10">
                     <div>
@@ -643,7 +643,7 @@ export default function LandingPage() {
               ))}
             </div>
 
-            <Link href="/ko/creator/login" className="inline-block mt-10">
+            <Link href="/ko/signup?role=creator" className="inline-block mt-10">
               <Button
                 className="group rounded-full px-8 py-6 text-base font-bold text-white border-0 hover:shadow-lg hover:shadow-blue-200/40 transition-all duration-300"
                 style={blueGradientBg}
@@ -745,7 +745,7 @@ export default function LandingPage() {
               ))}
             </div>
 
-            <Link href="/ko/brand/login" className="inline-block mt-10">
+            <Link href="/ko/signup?role=brand_admin" className="inline-block mt-10">
               <Button variant="outline" className="group rounded-full px-8 py-6 text-base font-semibold border-gray-300 hover:border-gray-400 hover:bg-gray-50/80">
                 브랜드 입점하기
                 <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
@@ -859,13 +859,13 @@ export default function LandingPage() {
           </p>
 
           <div className={`mt-10 flex flex-col sm:flex-row gap-4 justify-center ${anim(cta.isInView, 'animate-fade-in-up delay-300')}`}>
-            <Link href="/ko/creator/login">
+            <Link href="/ko/signup?role=creator">
               <Button className="group bg-white text-blue-600 hover:bg-blue-50 rounded-full px-8 py-5 text-base font-bold shadow-lg shadow-blue-900/20 border-0">
                 크리에이터 시작하기
                 <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
-            <Link href="/ko/brand/login">
+            <Link href="/ko/signup?role=brand_admin">
               <Button className="border border-white/30 text-white hover:bg-white/10 rounded-full px-8 py-5 text-base font-semibold bg-transparent">
                 브랜드 입점하기
               </Button>
@@ -888,10 +888,10 @@ export default function LandingPage() {
             <div>
               <h4 className="text-sm font-semibold text-gray-900 mb-4">서비스</h4>
               <div className="space-y-3">
-                <Link href="/ko/creator/login" className="block text-sm text-gray-400 hover:text-gray-600 transition-colors">
+                <Link href="/ko/signup?role=creator" className="block text-sm text-gray-400 hover:text-gray-600 transition-colors">
                   크리에이터 시작하기
                 </Link>
-                <Link href="/ko/brand/login" className="block text-sm text-gray-400 hover:text-gray-600 transition-colors">
+                <Link href="/ko/signup?role=brand_admin" className="block text-sm text-gray-400 hover:text-gray-600 transition-colors">
                   브랜드 입점하기
                 </Link>
               </div>
