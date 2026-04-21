@@ -17,6 +17,14 @@
     {
       "path": "/api/cron/sync-creators",
       "schedule": "0 3 1 * *"
+    },
+    {
+      "path": "/api/cron/pricing-daily",
+      "schedule": "0 15 * * *"
+    },
+    {
+      "path": "/api/cron/pricing-monthly-reset",
+      "schedule": "0 15 1 * *"
     }
   ]
 }

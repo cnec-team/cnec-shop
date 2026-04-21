@@ -328,6 +328,23 @@ enum SuspiciousActivityType {
   EXCEL_EXPORT_ATTEMPT
 }
 
+enum BillingPurpose {
+  PRO_SUBSCRIPTION
+  STANDARD_CHARGE
+}
+
+enum BillingPaymentStatus {
+  PENDING
+  CONFIRMED
+  WEBHOOK_CONFIRMED
+  FAILED
+  CANCELLED
+  REFUND_REQUESTED
+  REFUND_REJECTED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
 enum SubscriptionStatus {
   ACTIVE
   PAUSED
@@ -513,6 +530,7 @@ model Brand {
   campaignChargeLogs     CampaignChargeLog[]
   detailViewLogs         DetailViewLog[]
   suspiciousActivityLogs SuspiciousActivityLog[]
+  billingPayments        BillingPayment[]
 
   @@index([approved])
   @@index([mocraStatus])
@@ -2216,6 +2234,7 @@ model BrandSubscription {
   payments           SubscriptionPayment[]
   campaignChargeLogs CampaignChargeLog[]
   detailViewLogs     DetailViewLog[]
+  billingPayments    BillingPayment[]
 
   @@index([brandId])
   @@index([expiresAt])
@@ -2547,4 +2566,62 @@ model SuspiciousActivityLog {
   @@index([brandId, detectedAt])
   @@index([severity, resolvedAt])
   @@map("suspicious_activity_logs")
+}
+
+// ============================================================
+// BILLING PAYMENT (브랜드 구독/충전 결제 — 토스페이먼츠 개별 API)
+// ============================================================
+
+model BillingPayment {
+  id             String             @id @default(uuid())
+  brandId        String             @map("brand_id")
+  brand          Brand              @relation(fields: [brandId], references: [id])
+  subscriptionId String?            @map("subscription_id")
+  subscription   BrandSubscription? @relation(fields: [subscriptionId], references: [id])
+
+  // 결제 대상
+  purpose      BillingPurpose
+  targetPlan   BrandPlanV3?     @map("target_plan")
+  billingCycle ProBillingCycle? @map("billing_cycle")
+
+  // 금액
+  amount   Decimal @db.Decimal(12, 0)
+  currency String  @default("KRW")
+
+  // 토스 필드
+  orderId    String  @unique @map("order_id")
+  orderName  String  @map("order_name")
+  paymentKey String? @unique @map("payment_key")
+  method     String?
+
+  // 상태
+  status BillingPaymentStatus @default(PENDING)
+
+  // 환불
+  refundedAt        DateTime? @map("refunded_at") @db.Timestamptz
+  refundedAmount    Decimal?  @map("refunded_amount") @db.Decimal(12, 0)
+  refundReason      String?   @map("refund_reason")
+  refundApprovedBy  String?   @map("refund_approved_by")
+  refundRequestedAt DateTime? @map("refund_requested_at") @db.Timestamptz
+
+  // 플랜 롤백 스냅샷
+  priorPlanSnapshot Json? @map("prior_plan_snapshot")
+
+  // 웹훅
+  webhookReceivedAt DateTime? @map("webhook_received_at") @db.Timestamptz
+
+  // 타임스탬프
+  requestedAt DateTime  @default(now()) @map("requested_at") @db.Timestamptz
+  approvedAt  DateTime? @map("approved_at") @db.Timestamptz
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // 원본 로그
+  rawResponse Json? @map("raw_response")
+  rawWebhook  Json? @map("raw_webhook")
+
+  @@index([brandId, status])
+  @@index([status, requestedAt])
+  @@index([brandId, purpose, status, requestedAt])
+  @@map("billing_payments")
 }

@@ -8365,6 +8365,7 @@ snapshots:
       cmdk: 1.1.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       date-fns: 4.1.0
       framer-motion: 12.38.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      jose: 6.2.2
       lucide-react: 0.563.0(react@19.2.3)
       next: 16.1.6(@babel/core@7.29.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       next-auth: 5.0.0-beta.30(next@16.1.6(@babel/core@7.29.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(nodemailer@8.0.5)(react@19.2.3)
