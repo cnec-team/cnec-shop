@@ -3,7 +3,7 @@
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { sendNotification, normalizePhone, isValidEmail } from '@/lib/notifications'
-import { settlementConfirmedMessage } from '@/lib/notifications/templates'
+import { settlementConfirmedMessage, creatorApprovedMessage, creatorRejectedMessage } from '@/lib/notifications/templates'
 
 async function requireAdmin() {
   const session = await auth()
@@ -363,6 +363,339 @@ export async function updateCreatorGrade(creatorId: string, grade: string) {
   }
 
   return { success: true }
+}
+
+// ==================== Creator Approval ====================
+
+export async function getCreatorApprovalStats() {
+  await requireAdmin()
+
+  const now = new Date()
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+
+  const [
+    creatorPending,
+    creatorTodayNew,
+    brandPending,
+    brandTodayNew,
+    avgReviewTime,
+  ] = await Promise.all([
+    prisma.creator.count({ where: { status: 'PENDING' } }),
+    prisma.creator.count({ where: { status: 'PENDING', submittedAt: { gte: todayStart } } }),
+    prisma.brand.count({ where: { approved: false, approvedAt: null } }),
+    prisma.brand.count({ where: { approved: false, approvedAt: null, createdAt: { gte: todayStart } } }),
+    prisma.creator.findMany({
+      where: { reviewedAt: { not: null }, submittedAt: { not: null } },
+      select: { submittedAt: true, reviewedAt: true },
+      take: 100,
+      orderBy: { reviewedAt: 'desc' },
+    }),
+  ])
+
+  let avgHours: number | null = null
+  if (avgReviewTime.length > 0) {
+    const totalMs = avgReviewTime.reduce((sum, c) => {
+      if (!c.submittedAt || !c.reviewedAt) return sum
+      return sum + (new Date(c.reviewedAt).getTime() - new Date(c.submittedAt).getTime())
+    }, 0)
+    avgHours = Math.round(totalMs / avgReviewTime.length / (1000 * 60 * 60) * 10) / 10
+  }
+
+  return { creatorPending, creatorTodayNew, brandPending, brandTodayNew, avgReviewHours: avgHours }
+}
+
+export async function getAdminCreatorApprovals(filters: {
+  status?: string
+  category?: string
+  followerRange?: string
+  search?: string
+  page?: number
+} = {}) {
+  await requireAdmin()
+
+  const where: Record<string, unknown> = {}
+
+  if (filters.status && filters.status !== 'all') {
+    where.status = filters.status
+  }
+  if (filters.category && filters.category !== 'all') {
+    where.primaryCategory = filters.category
+  }
+  if (filters.followerRange && filters.followerRange !== 'all') {
+    const ranges: Record<string, { gte?: number; lt?: number }> = {
+      '0-1000': { lt: 1000 },
+      '1000-10000': { gte: 1000, lt: 10000 },
+      '10000-100000': { gte: 10000, lt: 100000 },
+      '100000+': { gte: 100000 },
+    }
+    const range = ranges[filters.followerRange]
+    if (range) {
+      where.igFollowers = range
+    }
+  }
+  if (filters.search) {
+    const s = filters.search
+    where.OR = [
+      { displayName: { contains: s, mode: 'insensitive' } },
+      { instagramHandle: { contains: s, mode: 'insensitive' } },
+      { user: { email: { contains: s, mode: 'insensitive' } } },
+      { user: { name: { contains: s, mode: 'insensitive' } } },
+    ]
+  }
+
+  const pageSize = 20
+  const page = filters.page || 1
+
+  const [creators, total] = await Promise.all([
+    prisma.creator.findMany({
+      where,
+      orderBy: [{ submittedAt: 'desc' }, { createdAt: 'desc' }],
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+      include: {
+        user: { select: { email: true, phone: true, name: true } },
+      },
+    }),
+    prisma.creator.count({ where }),
+  ])
+
+  return {
+    creators: creators.map(c => ({
+      id: c.id,
+      userId: c.userId,
+      displayName: c.displayName,
+      shopId: c.shopId,
+      profileImageUrl: c.profileImageUrl,
+      instagramHandle: c.instagramHandle,
+      youtubeHandle: c.youtubeHandle,
+      tiktokHandle: c.tiktokHandle,
+      igFollowers: c.igFollowers,
+      primaryCategory: c.primaryCategory,
+      categories: c.categories,
+      bio: c.bio,
+      status: c.status,
+      submittedAt: c.submittedAt,
+      reviewedAt: c.reviewedAt,
+      rejectionReason: c.rejectionReason,
+      createdAt: c.createdAt,
+      user: c.user,
+    })),
+    total,
+    pageSize,
+  }
+}
+
+export async function getCreatorApprovalDetail(creatorId: string) {
+  await requireAdmin()
+
+  const creator = await prisma.creator.findUnique({
+    where: { id: creatorId },
+    include: {
+      user: { select: { email: true, phone: true, name: true, createdAt: true } },
+    },
+  })
+  if (!creator) throw new Error('크리에이터를 찾을 수 없습니다')
+
+  return {
+    id: creator.id,
+    userId: creator.userId,
+    displayName: creator.displayName,
+    shopId: creator.shopId,
+    profileImage: creator.profileImage,
+    profileImageUrl: creator.profileImageUrl,
+    instagramHandle: creator.instagramHandle,
+    youtubeHandle: creator.youtubeHandle,
+    tiktokHandle: creator.tiktokHandle,
+    igFollowers: creator.igFollowers,
+    igEngagementRate: creator.igEngagementRate ? Number(creator.igEngagementRate) : null,
+    igCategory: creator.igCategory,
+    igBio: creator.igBio,
+    igVerified: creator.igVerified,
+    primaryCategory: creator.primaryCategory,
+    categories: creator.categories,
+    bio: creator.bio,
+    skinType: creator.skinType,
+    personalColor: creator.personalColor,
+    skinConcerns: creator.skinConcerns,
+    ageRange: creator.ageRange,
+    status: creator.status,
+    submittedAt: creator.submittedAt,
+    reviewedAt: creator.reviewedAt,
+    reviewedBy: creator.reviewedBy,
+    rejectionReason: creator.rejectionReason,
+    approvalNote: creator.approvalNote,
+    onboardingCompleted: creator.onboardingCompleted,
+    createdAt: creator.createdAt,
+    user: creator.user,
+  }
+}
+
+export async function approveCreator(creatorId: string, note?: string) {
+  const admin = await requireAdmin()
+
+  const creator = await prisma.creator.findUnique({
+    where: { id: creatorId },
+    select: { id: true, userId: true, displayName: true, username: true },
+  })
+  if (!creator) throw new Error('크리에이터를 찾을 수 없습니다')
+
+  await prisma.creator.update({
+    where: { id: creatorId },
+    data: {
+      status: 'APPROVED',
+      reviewedAt: new Date(),
+      reviewedBy: admin.id,
+      approvalNote: note || null,
+      rejectionReason: null,
+    },
+  })
+
+  // 가입 축하 포인트 3,000원 지급
+  try {
+    await prisma.creatorPoint.create({
+      data: {
+        creatorId,
+        amount: 3000,
+        pointType: 'SIGNUP_BONUS',
+        balanceAfter: 3000,
+        description: '가입 축하 포인트',
+      },
+    })
+  } catch { /* 포인트 테이블이 없을 수 있음 */ }
+
+  // 알림 발송
+  if (creator.userId) {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: creator.userId },
+        select: { email: true, phone: true },
+      })
+      const creatorName = creator.displayName || creator.username || '크리에이터'
+      const tmpl = creatorApprovedMessage({
+        creatorName,
+        recipientEmail: user?.email && isValidEmail(user.email) ? user.email : undefined,
+      })
+
+      await sendNotification({
+        userId: creator.userId,
+        ...tmpl.inApp,
+        phone: normalizePhone(user?.phone),
+        email: user?.email && isValidEmail(user.email) ? user.email : undefined,
+        kakaoTemplate: normalizePhone(user?.phone) ? tmpl.kakao : undefined,
+        emailTemplate: user?.email && isValidEmail(user.email) ? tmpl.email : undefined,
+      })
+    } catch { /* 알림 실패 무시 */ }
+  }
+
+  return { success: true }
+}
+
+export async function rejectCreator(creatorId: string, reason: string) {
+  const admin = await requireAdmin()
+
+  if (!reason || reason.trim().length === 0) {
+    throw new Error('거절 사유를 입력해주세요')
+  }
+
+  const creator = await prisma.creator.findUnique({
+    where: { id: creatorId },
+    select: { id: true, userId: true, displayName: true, username: true },
+  })
+  if (!creator) throw new Error('크리에이터를 찾을 수 없습니다')
+
+  await prisma.creator.update({
+    where: { id: creatorId },
+    data: {
+      status: 'REJECTED',
+      reviewedAt: new Date(),
+      reviewedBy: admin.id,
+      rejectionReason: reason,
+    },
+  })
+
+  // 알림 발송
+  if (creator.userId) {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: creator.userId },
+        select: { email: true, phone: true },
+      })
+      const creatorName = creator.displayName || creator.username || '크리에이터'
+      const tmpl = creatorRejectedMessage({
+        creatorName,
+        reason,
+        recipientEmail: user?.email && isValidEmail(user.email) ? user.email : undefined,
+      })
+
+      await sendNotification({
+        userId: creator.userId,
+        ...tmpl.inApp,
+        phone: normalizePhone(user?.phone),
+        email: user?.email && isValidEmail(user.email) ? user.email : undefined,
+        kakaoTemplate: normalizePhone(user?.phone) ? tmpl.kakao : undefined,
+        emailTemplate: user?.email && isValidEmail(user.email) ? tmpl.email : undefined,
+      })
+    } catch { /* 알림 실패 무시 */ }
+  }
+
+  return { success: true }
+}
+
+export async function bulkApproveCreators(ids: string[]) {
+  const admin = await requireAdmin()
+
+  if (!ids || ids.length === 0) throw new Error('선택된 크리에이터가 없습니다')
+
+  const creators = await prisma.creator.findMany({
+    where: { id: { in: ids }, status: 'PENDING' },
+    select: { id: true, userId: true, displayName: true, username: true },
+  })
+
+  if (creators.length === 0) throw new Error('승인 대기 중인 크리에이터가 없습니다')
+
+  // 일괄 상태 업데이트
+  await prisma.creator.updateMany({
+    where: { id: { in: creators.map(c => c.id) } },
+    data: {
+      status: 'APPROVED',
+      reviewedAt: new Date(),
+      reviewedBy: admin.id,
+      rejectionReason: null,
+    },
+  })
+
+  // 각 크리에이터에게 알림 발송 (비동기, 실패 무시)
+  for (const creator of creators) {
+    try {
+      await prisma.creatorPoint.create({
+        data: { creatorId: creator.id, amount: 3000, pointType: 'SIGNUP_BONUS', balanceAfter: 3000, description: '가입 축하 포인트' },
+      })
+    } catch { /* ignore */ }
+
+    if (creator.userId) {
+      try {
+        const user = await prisma.user.findUnique({
+          where: { id: creator.userId },
+          select: { email: true, phone: true },
+        })
+        const creatorName = creator.displayName || creator.username || '크리에이터'
+        const tmpl = creatorApprovedMessage({
+          creatorName,
+          recipientEmail: user?.email && isValidEmail(user.email) ? user.email : undefined,
+        })
+        sendNotification({
+          userId: creator.userId,
+          ...tmpl.inApp,
+          phone: normalizePhone(user?.phone),
+          email: user?.email && isValidEmail(user.email) ? user.email : undefined,
+          kakaoTemplate: normalizePhone(user?.phone) ? tmpl.kakao : undefined,
+          emailTemplate: user?.email && isValidEmail(user.email) ? tmpl.email : undefined,
+        })
+      } catch { /* ignore */ }
+    }
+  }
+
+  return { success: true, count: creators.length }
 }
 
 // ==================== Dashboard Stats ====================

@@ -1,3 +1,5 @@
+import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 import { Header } from '@/components/layout/header';
 import { BrandSidebar } from '@/components/layout/brand-sidebar';
 import type { Locale } from '@/lib/i18n/config';
@@ -20,6 +22,14 @@ export default async function BrandLayout({
     if (authUser) {
       const brand = await prisma.brand.findUnique({ where: { userId: authUser.id } });
       if (brand) {
+        // Brand approval check
+        const headersList = await headers();
+        const pathname = headersList.get('x-pathname') || '';
+        const isExemptPath = /\/brand\/(pending|login)/.test(pathname);
+        if (!brand.approved && !isExemptPath) {
+          redirect(`/${locale}/brand/pending`);
+        }
+
         const subscription = await prisma.brandSubscription.findUnique({ where: { brandId: brand.id } });
         const plan = resolveBrandPlan(subscription);
         pricingVersion = plan.version === 'v2' ? 'v2' : 'v3';

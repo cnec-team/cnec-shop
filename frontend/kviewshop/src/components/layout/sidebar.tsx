@@ -70,6 +70,7 @@ export function Sidebar({ role, locale }: SidebarProps) {
         return [{
           items: [
             { title: '대시보드', href: `${base}/admin/dashboard`, icon: LayoutDashboard },
+            { title: '승인 관리', href: `${base}/admin/approvals`, icon: UserCheck },
             { title: '브랜드 관리', href: `${base}/admin/brands`, icon: Store },
             { title: '주문 관리', href: `${base}/admin/orders`, icon: ShoppingBag },
             { title: '크리에이터 관리', href: `${base}/admin/creators`, icon: Users },
