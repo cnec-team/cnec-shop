@@ -125,6 +125,7 @@ export default auth(async function middleware(request) {
   const currentCookie = request.cookies.get('last_shop_id')?.value;
   if (currentCookie && PLATFORM_PREFIXES.includes(currentCookie)) {
     const res = intlMiddleware(request);
+    res.headers.set('x-pathname', pathname);
     res.cookies.delete('last_shop_id');
     return res;
   }
@@ -141,6 +142,7 @@ export default auth(async function middleware(request) {
     if (!isKnownPrefix && USERNAME_PATTERN.test(possibleUsername)) {
       // This looks like a creator shop visit — set cookie
       const response = intlMiddleware(request);
+      response.headers.set('x-pathname', pathname);
       response.cookies.set('last_shop_id', possibleUsername, {
         maxAge: 60 * 60 * 24 * 30, // 30 days
         sameSite: 'lax',
@@ -270,7 +272,10 @@ export default auth(async function middleware(request) {
   }
 
   // Apply i18n middleware
-  return intlMiddleware(request);
+  const response = intlMiddleware(request);
+  // Pass pathname to server components for status-based redirects
+  response.headers.set('x-pathname', pathname);
+  return response;
 });
 
 export const config = {

@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { Header } from '@/components/layout/header';
@@ -17,15 +18,29 @@ export default async function CreatorLayout({
 }) {
   const { locale } = await params;
 
-  // Check onboarding status — redirect if not completed
+  // Check approval & onboarding status
   const session = await auth();
   if (session?.user?.id) {
+    const headersList = await headers();
+    const pathname = headersList.get('x-pathname') || '';
+    const isExemptPath = /\/creator\/(pending|suspended|onboarding)/.test(pathname);
+
     const creator = await prisma.creator.findFirst({
       where: { userId: session.user.id },
-      select: { onboardingStatus: true, onboardingCompleted: true, painPointVectorUpdatedAt: true },
+      select: { status: true, onboardingStatus: true, onboardingCompleted: true, painPointVectorUpdatedAt: true },
     });
-    if (creator && creator.onboardingStatus !== 'COMPLETE' && !creator.onboardingCompleted) {
-      redirect(`/${locale}/creator/onboarding`);
+    if (creator && !isExemptPath) {
+      // Approval status check
+      if (creator.status === 'PENDING' || creator.status === 'REJECTED') {
+        redirect(`/${locale}/creator/pending`);
+      }
+      if (creator.status === 'SUSPENDED') {
+        redirect(`/${locale}/creator/suspended`);
+      }
+      // Onboarding check
+      if (creator.onboardingStatus !== 'COMPLETE' && !creator.onboardingCompleted) {
+        redirect(`/${locale}/creator/onboarding`);
+      }
     }
   }
 

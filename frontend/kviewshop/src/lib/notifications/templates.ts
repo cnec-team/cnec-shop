@@ -16,6 +16,9 @@ export const KAKAO_TEMPLATES = {
   SETTLEMENT_CONFIRMED: 'CNECSHOP_012',
   PROPOSAL_GONGGU: 'CNECSHOP_013',
   PROPOSAL_PRODUCT_PICK: 'CNECSHOP_014',
+  CREATOR_APPLICATION_SUBMITTED: 'CNECSHOP_015',
+  CREATOR_APPROVED: 'CNECSHOP_016',
+  CREATOR_REJECTED: 'CNECSHOP_017',
 } as const
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.cnecshop.com'
@@ -679,5 +682,99 @@ export function bulkSendReportMessage(data: {
       `, data.recipientEmail),
     },
     inApp: null,
+  }
+}
+
+// ---------- 16. 크리에이터 가입 신청 완료 → 크리에이터 ----------
+
+export function creatorApplicationSubmittedMessage(data: {
+  creatorName: string
+  recipientEmail?: string
+}) {
+  const v = { creatorName: escapeHtml(data.creatorName) }
+  const kakaoMsg = `[크넥샵] 가입 신청 완료\n\n${data.creatorName}님, 크넥샵 크리에이터 가입 신청이 완료됐어요.\n\n1~2영업일 내 심사 결과를 알려드릴게요.\n승인되면 바로 내 샵을 열 수 있어요!`
+
+  return {
+    kakao: { templateCode: KAKAO_TEMPLATES.CREATOR_APPLICATION_SUBMITTED, message: kakaoMsg },
+    email: {
+      subject: `[크넥샵] 크리에이터 가입 신청이 완료됐어요`,
+      html: emailLayout(`
+        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${v.creatorName}님, 가입 신청이 완료됐어요</h2>
+        <p style="color:#6b7280;font-size:14px;line-height:1.6">1~2영업일 내 심사 결과를 알려드릴게요.<br/>승인되면 바로 내 샵을 열 수 있어요!</p>
+        ${infoBox(`
+          <div style="font-size:13px;color:#6b7280">
+            <div style="margin-bottom:6px">&#x2709;&#xFE0F; 이메일로 심사 결과를 보내드려요</div>
+            <div style="margin-bottom:6px">&#x1F381; 승인 시 가입 축하 3,000원 자동 지급</div>
+          </div>
+        `)}
+        ${ctaButton('크넥샵 둘러보기', SITE_URL)}
+      `, data.recipientEmail),
+    },
+    inApp: {
+      type: 'SYSTEM',
+      title: '크리에이터 가입 신청이 완료됐어요',
+      message: '1~2영업일 내 심사 결과를 알려드릴게요.',
+      linkUrl: '/creator/pending',
+    },
+  }
+}
+
+// ---------- 17. 크리에이터 승인 완료 → 크리에이터 ----------
+
+export function creatorApprovedMessage(data: {
+  creatorName: string
+  recipientEmail?: string
+}) {
+  const v = { creatorName: escapeHtml(data.creatorName) }
+  const kakaoMsg = `[크넥샵] 가입 승인 완료\n\n축하드려요! ${data.creatorName}님의 크넥샵 크리에이터 가입이 승인됐어요.\n\n지금 바로 내 샵을 열어보세요.\n가입 축하 3,000원이 지급됐어요!`
+
+  return {
+    kakao: { templateCode: KAKAO_TEMPLATES.CREATOR_APPROVED, message: kakaoMsg },
+    email: {
+      subject: `[크넥샵] 축하해요! 크리에이터 가입이 승인됐어요`,
+      html: emailLayout(`
+        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">축하드려요! ${v.creatorName}님</h2>
+        <p style="color:#6b7280;font-size:14px;line-height:1.6">크넥샵 크리에이터 가입이 승인됐어요.<br/>지금 바로 내 샵을 열어보세요!</p>
+        ${earningsBox('가입 축하 포인트', 3000)}
+        ${ctaButton('내 샵 시작하기', `${SITE_URL}/creator/dashboard`)}
+      `, data.recipientEmail),
+    },
+    inApp: {
+      type: 'SYSTEM',
+      title: '크리에이터 가입이 승인됐어요!',
+      message: '지금 바로 내 샵을 열어보세요. 가입 축하 3,000원이 지급됐어요!',
+      linkUrl: '/creator/dashboard',
+    },
+  }
+}
+
+// ---------- 18. 크리에이터 승인 거절 → 크리에이터 ----------
+
+export function creatorRejectedMessage(data: {
+  creatorName: string
+  reason: string
+  recipientEmail?: string
+}) {
+  const v = { creatorName: escapeHtml(data.creatorName), reason: escapeHtml(data.reason) }
+  const kakaoMsg = `[크넥샵] 가입 심사 결과\n\n${data.creatorName}님, 아쉽게도 이번 심사에서는 승인이 어려웠어요.\n\n사유: ${data.reason}\n\n보완 후 재신청이 가능합니다.`
+
+  return {
+    kakao: { templateCode: KAKAO_TEMPLATES.CREATOR_REJECTED, message: kakaoMsg },
+    email: {
+      subject: `[크넥샵] 크리에이터 가입 심사 결과 안내`,
+      html: emailLayout(`
+        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${v.creatorName}님, 심사 결과를 안내드려요</h2>
+        <p style="color:#6b7280;font-size:14px;line-height:1.6">아쉽게도 이번 심사에서는 승인이 어려웠어요.</p>
+        ${infoBox(`<div style="font-size:14px"><strong>사유</strong>: ${v.reason}</div>`)}
+        <p style="color:#6b7280;font-size:14px">정보를 보완해서 다시 신청하실 수 있어요.</p>
+        ${ctaButton('재신청하기', `${SITE_URL}/creator/pending`)}
+      `, data.recipientEmail),
+    },
+    inApp: {
+      type: 'SYSTEM',
+      title: '크리에이터 가입 심사 결과',
+      message: `아쉽게도 승인이 어려웠어요. 사유: ${data.reason}`,
+      linkUrl: '/creator/pending',
+    },
   }
 }

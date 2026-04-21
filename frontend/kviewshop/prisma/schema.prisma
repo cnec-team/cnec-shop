@@ -707,6 +707,13 @@ model Creator {
   lifestyleTriggers          String[]              @default([]) @map("lifestyle_triggers")
   ingredientPreferences      String[]              @default([]) @map("ingredient_preferences")
   painPointVectorUpdatedAt   DateTime?             @map("pain_point_vector_updated_at") @db.Timestamptz
+  // Approval (심사)
+  submittedAt                DateTime?             @map("submitted_at") @db.Timestamptz
+  reviewedAt                 DateTime?             @map("reviewed_at") @db.Timestamptz
+  reviewedBy                 String?               @map("reviewed_by")
+  rejectionReason            String?               @map("rejection_reason") @db.Text
+  approvalNote               String?               @map("approval_note") @db.Text
+  primaryCategory            String?               @map("primary_category") @db.VarChar(50)
   // Timestamps
   createdAt                  DateTime              @default(now()) @map("created_at") @db.Timestamptz
   updatedAt                  DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
@@ -748,6 +755,8 @@ model Creator {
   creatorPainPoints      CreatorPainPoint[]
   matchScores            MatchScore[]
 
+  @@index([status])
+  @@index([submittedAt])
   @@index([country])
   @@index([igFollowers])
   @@index([igCategory])

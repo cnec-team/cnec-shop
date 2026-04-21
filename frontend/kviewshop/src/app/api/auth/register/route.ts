@@ -1,5 +1,7 @@
 import { prisma } from '@/lib/db'
 import { rateLimit } from '@/lib/rate-limit'
+import { sendNotification, normalizePhone, isValidEmail } from '@/lib/notifications'
+import { creatorApplicationSubmittedMessage } from '@/lib/notifications/templates'
 import bcrypt from 'bcryptjs'
 import { jwtVerify } from 'jose'
 import { NextRequest, NextResponse } from 'next/server'
@@ -191,8 +193,27 @@ export async function POST(req: NextRequest) {
           youtubeHandle: validatedData.youtube || null,
           profileImageUrl: validatedData.profileImageUrl || null,
           themeColor: '#1a1a1a',
+          status: 'PENDING',
+          submittedAt: new Date(),
         }
       })
+
+      // Send application submitted notification
+      try {
+        const creatorName = displayName || validatedData.name
+        const tmpl = creatorApplicationSubmittedMessage({
+          creatorName,
+          recipientEmail: isValidEmail(validatedData.email) ? validatedData.email : undefined,
+        })
+        sendNotification({
+          userId: user.id,
+          ...tmpl.inApp,
+          phone: normalizePhone(phone),
+          email: isValidEmail(validatedData.email) ? validatedData.email : undefined,
+          kakaoTemplate: normalizePhone(phone) ? tmpl.kakao : undefined,
+          emailTemplate: isValidEmail(validatedData.email) ? tmpl.email : undefined,
+        })
+      } catch { /* ignore */ }
 
       // Handle referral
       if (validatedData.refCode && creator.id) {
@@ -217,7 +238,7 @@ export async function POST(req: NextRequest) {
         success: true,
         userId: user.id,
         creatorId: creator.id,
-        redirectTo: '/signup/persona',
+        redirectTo: '/creator/pending',
       })
     } else if (validatedData.role === 'buyer') {
       await prisma.buyer.create({
