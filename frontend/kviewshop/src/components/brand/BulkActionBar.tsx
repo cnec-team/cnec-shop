@@ -1,14 +1,13 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { Send, FolderPlus, Download, ShoppingBag } from 'lucide-react'
+import { Send, FolderPlus, ShoppingBag } from 'lucide-react'
 
 interface BulkActionBarProps {
   selectedCount: number
   onProposeBulk: () => void
   onProductPickBulk?: () => void
   onAddToGroup: () => void
-  onExport: () => void
   onClearSelection: () => void
   /** @deprecated Use onAddToGroup instead */
   onSaveToGroup?: () => void
@@ -19,7 +18,6 @@ export function BulkActionBar({
   onProposeBulk,
   onProductPickBulk,
   onAddToGroup,
-  onExport,
   onClearSelection,
   onSaveToGroup,
 }: BulkActionBarProps) {
@@ -44,9 +42,6 @@ export function BulkActionBar({
             <FolderPlus className="h-4 w-4 mr-1" /> 그룹에 추가
           </Button>
         )}
-        <Button size="sm" variant="outline" onClick={onExport}>
-          <Download className="h-4 w-4 mr-1" /> 엑셀 다운로드
-        </Button>
       </div>
       <Button size="sm" variant="ghost" onClick={onClearSelection} className="ml-auto">
         선택 해제

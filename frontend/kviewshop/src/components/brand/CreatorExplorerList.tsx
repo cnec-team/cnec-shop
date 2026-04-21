@@ -19,7 +19,6 @@ import { CreatorTableRow } from './CreatorTableRow'
 import { BulkActionBar } from './BulkActionBar'
 import { InviteModal } from './InviteModal'
 import { GroupSaveDialog } from './GroupSaveDialog'
-import { ExportColumnsDialog } from './ExportColumnsDialog'
 import type { CreatorWithIg } from './types'
 
 function CreatorExplorerContent() {
@@ -44,11 +43,6 @@ function CreatorExplorerContent() {
     open: boolean
     creatorIds: string[]
   }>({ open: false, creatorIds: [] })
-  const [exportDialog, setExportDialog] = useState<{
-    open: boolean
-    creatorIds: string[]
-  }>({ open: false, creatorIds: [] })
-
   const fetchCreators = useCallback(async () => {
     setLoading(true)
     try {
@@ -124,9 +118,6 @@ function CreatorExplorerContent() {
         }
         onAddToGroup={() =>
           setGroupDialog({ open: true, creatorIds: [...selectedIds] })
-        }
-        onExport={() =>
-          setExportDialog({ open: true, creatorIds: [...selectedIds] })
         }
         onClearSelection={() => setSelectedIds(new Set())}
       />
@@ -274,11 +265,6 @@ function CreatorExplorerContent() {
         onSuccess={() => setSelectedIds(new Set())}
       />
 
-      <ExportColumnsDialog
-        open={exportDialog.open}
-        onOpenChange={open => setExportDialog(prev => ({ ...prev, open }))}
-        creatorIds={exportDialog.creatorIds}
-      />
     </div>
   )
 }

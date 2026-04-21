@@ -31,7 +31,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus, Users, MoreHorizontal, FolderHeart, FileSpreadsheet } from 'lucide-react';
+import { Plus, Users, MoreHorizontal, FolderHeart } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface CreatorGroup {
@@ -180,15 +180,6 @@ export default function CreatorGroupsPage() {
                         }}
                       >
                         수정
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          window.open(`/api/brand/creator-groups/${g.id}/export`, '_blank');
-                        }}
-                      >
-                        <FileSpreadsheet className="h-4 w-4 mr-1" />
-                        엑셀
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={(e) => {

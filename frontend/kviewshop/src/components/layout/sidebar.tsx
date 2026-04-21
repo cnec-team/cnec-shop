@@ -162,6 +162,7 @@ export function Sidebar({ role, locale }: SidebarProps) {
             items: [
               { title: '알림', href: `${base}/creator/notifications`, icon: Bell },
               { title: '설정', href: `${base}/creator/settings`, icon: Settings },
+              { title: '제안 받기', href: `${base}/creator/settings/proposals`, icon: Mail },
             ],
           },
         ];
