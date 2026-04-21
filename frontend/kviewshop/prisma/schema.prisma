@@ -702,6 +702,11 @@ model Creator {
   monthlyProposalLimit       Int                   @default(30) @map("monthly_proposal_limit")
   currentMonthProposals      Int                   @default(0) @map("current_month_proposals")
   proposalResetAt            DateTime?             @map("proposal_reset_at") @db.Timestamptz
+  // PPM: 피부 추가 정보
+  ageGroup                   String?               @map("age_group") @db.VarChar(20)
+  lifestyleTriggers          String[]              @default([]) @map("lifestyle_triggers")
+  ingredientPreferences      String[]              @default([]) @map("ingredient_preferences")
+  painPointVectorUpdatedAt   DateTime?             @map("pain_point_vector_updated_at") @db.Timestamptz
   // Timestamps
   createdAt                  DateTime              @default(now()) @map("created_at") @db.Timestamptz
   updatedAt                  DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
@@ -739,6 +744,9 @@ model Creator {
   // Server cart + shop visits
   cartsAtShop            Cart[]
   creatorShopVisits      CreatorShopVisit[]      @relation("CreatorShopVisits")
+  // PPM relations
+  creatorPainPoints      CreatorPainPoint[]
+  matchScores            MatchScore[]
 
   @@index([country])
   @@index([igFollowers])
@@ -802,6 +810,10 @@ model Product {
   returnPolicy          String?         @map("return_policy")
   // External detail page
   detailUrl             String?         @map("detail_url")
+  // PPM: 성분 + 페인포인트
+  heroIngredients       Json?           @map("hero_ingredients") // 핵심 성분 ID 배열
+  targetPainPoints      String[]        @default([]) @map("target_pain_points")
+  painPointDescription  String?         @map("pain_point_description") @db.Text
   // Timestamps
   createdAt             DateTime        @default(now()) @map("created_at") @db.Timestamptz
   updatedAt             DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
@@ -824,6 +836,9 @@ model Product {
   // Server cart + recent view
   cartItems        CartItem[]
   recentViews      RecentView[]
+  // PPM relations
+  productIngredients ProductIngredient[]
+  matchScores        MatchScore[]
 
   @@index([isActive])
   @@index([status])
@@ -2658,6 +2673,8 @@ model IngredientMaster {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
+  productIngredients ProductIngredient[]
+
   @@map("ingredient_masters")
 }
 
@@ -2674,5 +2691,58 @@ model PainPointMaster {
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
+  creatorPainPoints CreatorPainPoint[]
+
   @@map("pain_point_masters")
+}
+
+model ProductIngredient {
+  id           String           @id @default(cuid())
+  productId    String           @map("product_id")
+  ingredientId String           @map("ingredient_id")
+  concentration Decimal?        @db.Decimal(5, 2)
+  isHero       Boolean          @default(false) @map("is_hero")
+  displayOrder Int              @default(0) @map("display_order")
+
+  product    Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  ingredient IngredientMaster @relation(fields: [ingredientId], references: [id])
+
+  @@unique([productId, ingredientId])
+  @@index([productId])
+  @@map("product_ingredients")
+}
+
+model CreatorPainPoint {
+  id            String          @id @default(cuid())
+  creatorId     String          @map("creator_id")
+  painPointCode String          @map("pain_point_code")
+  severity      Int // 1~5
+  priority      String // "primary" | "secondary"
+  note          String?         @db.Text
+  createdAt     DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  creator   Creator         @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  painPoint PainPointMaster @relation(fields: [painPointCode], references: [code])
+
+  @@unique([creatorId, painPointCode])
+  @@index([creatorId])
+  @@map("creator_pain_points")
+}
+
+model MatchScore {
+  id           String   @id @default(cuid())
+  creatorId    String   @map("creator_id")
+  productId    String   @map("product_id")
+  score        Decimal  @db.Decimal(4, 3) // 0.000~1.000
+  matchReasons Json     @default("[]") @map("match_reasons")
+  computedAt   DateTime @default(now()) @map("computed_at") @db.Timestamptz
+
+  creator Creator @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([creatorId, productId])
+  @@index([productId, score(sort: Desc)])
+  @@index([creatorId, score(sort: Desc)])
+  @@map("match_scores")
 }
