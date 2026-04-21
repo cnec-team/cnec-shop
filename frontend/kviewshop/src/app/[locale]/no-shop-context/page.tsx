@@ -4,7 +4,6 @@ import Image from 'next/image';
 import { prisma } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { Users, ArrowRight, Package } from 'lucide-react';
-import { ClearLastShopCookie } from '@/components/shop/ClearLastShopCookie';
 import { Footer } from '@/components/layout/footer';
 
 interface PageProps {
@@ -81,7 +80,7 @@ export default async function NoShopContextPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <ClearLastShopCookie />
+      {/* last_shop_id 쿠키는 유지 — 유효하지 않은 경우에만 미들웨어가 이 페이지로 보냄 */}
       <div className="max-w-lg mx-auto px-4 py-16">
         <div className="text-center mb-10">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">

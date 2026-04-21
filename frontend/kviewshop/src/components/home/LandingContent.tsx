@@ -129,7 +129,7 @@ export function LandingContent() {
         }`}
       >
         <div className="max-w-[1200px] mx-auto px-5 h-16 md:h-[72px] flex items-center justify-between">
-          <Link href="/" className="text-xl md:text-2xl font-bold" style={gradientText}>
+          <Link href="/ko" className="text-xl md:text-2xl font-bold" style={gradientText}>
             CNEC
           </Link>
           <div className="flex items-center gap-3">
