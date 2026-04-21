@@ -1,107 +1,82 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import crypto from 'crypto';
 
 // Inline types
 type OrderStatus = 'PENDING' | 'PAID' | 'PREPARING' | 'SHIPPING' | 'DELIVERED' | 'CONFIRMED' | 'CANCELLED' | 'REFUNDED';
 
-interface WebhookPayload {
-  type: string;
-  timestamp: string;
-  data: {
-    paymentId: string;
-    transactionId?: string;
-    orderNumber?: string;
-    orderId?: string;
-    status?: string;
-    amount?: number;
-    cancelledAt?: string;
-    cancelReason?: string;
-  };
-}
-
-// Map PortOne webhook event types to our order statuses
-function mapWebhookEventToStatus(eventType: string): OrderStatus | null {
-  switch (eventType) {
-    case 'payment.paid':
-    case 'payment.confirmed':
-      return 'PAID';
-    case 'payment.cancelled':
-    case 'payment.failed':
-      return 'CANCELLED';
-    case 'payment.refunded':
-      return 'REFUNDED';
-    default:
-      return null;
-  }
-}
-
+/**
+ * PortOne V2 결제 웹훅.
+ *
+ * 기존: HMAC-SHA256 서명 검증 → 본문 파싱 → 상태 매핑
+ * 변경: 서명 검증 제거, paymentId만 꺼낸 뒤 PortOne API를 직접 재조회하여
+ *       실제 결제 상태·금액을 단일 진실 공급원(SSOT)으로 사용.
+ *
+ * 왜 변경했는가:
+ *  - PortOne V2 웹훅 서명 스펙이 SDK 버전마다 달라 운영 중 서명 불일치 발생 가능
+ *  - 재조회 방식은 서명 키 관리 부담이 없고, 금액·상태 검증이 한 곳에서 완결됨
+ */
 export async function POST(request: NextRequest) {
   try {
-    // Read raw body for signature verification
-    const rawBody = await request.text();
+    const body = await request.json();
 
-    // Verify webhook signature using HMAC-SHA256
-    const webhookSecret = process.env.PORTONE_WEBHOOK_SECRET;
-    if (!webhookSecret) {
-      console.error('PORTONE_WEBHOOK_SECRET is not configured');
-      return NextResponse.json({ error: 'Webhook configuration error' }, { status: 500 });
-    }
-
-    const signature = request.headers.get('x-portone-signature');
-    if (!signature) {
-      return NextResponse.json({ error: 'Missing webhook signature' }, { status: 401 });
-    }
-
-    const expectedSignature = crypto
-      .createHmac('sha256', webhookSecret)
-      .update(rawBody)
-      .digest('hex');
-
-    const signatureBuffer = Buffer.from(signature, 'hex');
-    const expectedBuffer = Buffer.from(expectedSignature, 'hex');
-
-    if (signatureBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(signatureBuffer, expectedBuffer)) {
-      console.error('Webhook signature verification failed');
-      return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 401 });
-    }
-
-    const payload: WebhookPayload = JSON.parse(rawBody);
-
-    if (!payload.type || !payload.data) {
-      return NextResponse.json(
-        { error: 'Invalid webhook payload' },
-        { status: 400 }
-      );
-    }
-
-    const { type: eventType, data } = payload;
-    const { paymentId, orderId: webhookOrderId } = data;
+    // 웹훅 본문에서 paymentId만 추출 (나머지는 PortOne API 응답을 신뢰)
+    const paymentId: string | undefined =
+      body?.data?.paymentId ?? body?.paymentId;
 
     if (!paymentId) {
       return NextResponse.json(
         { error: 'Missing paymentId in webhook data' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    // Map event type to order status
-    const newStatus = mapWebhookEventToStatus(eventType);
-
-    if (!newStatus) {
-      // Unrecognized event type - acknowledge but don't process
-      console.log(`Unrecognized webhook event type: ${eventType}`);
-      return NextResponse.json({ received: true, processed: false });
+    // ── PortOne API로 결제 상태 재조회 ──
+    const portoneApiSecret = process.env.PORTONE_API_SECRET;
+    if (!portoneApiSecret) {
+      console.error('[Webhook] PORTONE_API_SECRET 미설정');
+      return NextResponse.json(
+        { error: 'Payment verification not configured' },
+        { status: 500 },
+      );
     }
 
-    // Find the order by id or pgTransactionId (paymentId)
+    const verifyRes = await fetch(
+      `https://api.portone.io/payments/${encodeURIComponent(paymentId)}`,
+      { headers: { Authorization: `PortOne ${portoneApiSecret}` } },
+    );
+
+    if (!verifyRes.ok) {
+      console.error('[Webhook] PortOne 결제 조회 실패:', verifyRes.status);
+      // 200 반환해서 PortOne 재시도 방지
+      return NextResponse.json({
+        received: true,
+        processed: false,
+        reason: 'PortOne API lookup failed',
+      });
+    }
+
+    const payment = await verifyRes.json();
+
+    // ── PortOne 상태 → 주문 상태 매핑 ──
+    const newStatus = mapPortOneStatus(payment.status);
+    if (!newStatus) {
+      return NextResponse.json({
+        received: true,
+        processed: false,
+        reason: `Unhandled PortOne status: ${payment.status}`,
+      });
+    }
+
+    // ── 주문 조회 ──
+    const webhookOrderId: string | undefined = body?.data?.orderId;
     let order;
     if (webhookOrderId) {
       order = await prisma.order.findUnique({
         where: { id: webhookOrderId },
         select: { id: true, status: true, orderNumber: true, totalAmount: true },
       });
-    } else {
+    }
+    if (!order) {
       order = await prisma.order.findFirst({
         where: { pgTransactionId: paymentId },
         select: { id: true, status: true, orderNumber: true, totalAmount: true },
@@ -109,80 +84,60 @@ export async function POST(request: NextRequest) {
     }
 
     if (!order) {
-      console.error('Webhook: Order not found for paymentId:', paymentId);
-      // Return 200 to prevent PortOne from retrying
-      return NextResponse.json({ received: true, processed: false, reason: 'Order not found' });
+      console.error('[Webhook] 주문 없음, paymentId:', paymentId);
+      return NextResponse.json({
+        received: true,
+        processed: false,
+        reason: 'Order not found',
+      });
     }
 
-    // Idempotency: Skip if already processed
+    // 멱등성: 이미 같은 상태면 스킵
     if (order.status === newStatus) {
-      return NextResponse.json({ received: true, processed: true, reason: 'Already processed' });
+      return NextResponse.json({
+        received: true,
+        processed: true,
+        reason: 'Already processed',
+      });
     }
 
-    // Double verification: For payment events, verify with PortOne API directly
+    // ── PAID: 금액 검증 ──
     if (newStatus === 'PAID') {
-      const portoneApiSecret = process.env.PORTONE_API_SECRET;
-      if (!portoneApiSecret) {
-        console.error('Webhook: PORTONE_API_SECRET is not configured for double verification');
-        return NextResponse.json({ error: 'Payment verification not configured' }, { status: 500 });
-      }
-
-      const verifyResponse = await fetch(
-        `https://api.portone.io/payments/${encodeURIComponent(paymentId)}`,
-        { headers: { 'Authorization': `PortOne ${portoneApiSecret}` } }
-      );
-
-      if (!verifyResponse.ok) {
-        console.error('Webhook: PortOne payment verification failed:', verifyResponse.status);
-        return NextResponse.json({ received: true, processed: false, reason: 'Payment verification failed' });
-      }
-
-      const paymentData = await verifyResponse.json();
-
-      // Verify payment status is actually PAID
-      if (paymentData.status !== 'PAID') {
-        console.error('Webhook: PortOne reports payment not PAID:', paymentData.status);
-        return NextResponse.json({ received: true, processed: false, reason: 'Payment not confirmed by PortOne' });
-      }
-
-      // Verify amount matches order total
-      const paidAmount = paymentData.amount?.total;
+      const paidAmount = payment.amount?.total;
       const orderAmount = Number(order.totalAmount);
 
       if (paidAmount !== orderAmount) {
-        console.error('Webhook: Amount mismatch detected', {
+        console.error('[Webhook] 금액 불일치', {
           paymentId,
           orderNumber: order.orderNumber,
           paidAmount,
           orderAmount,
         });
 
-        // Auto-cancel the payment due to amount mismatch
+        // 자동 취소
         try {
-          const cancelResponse = await fetch(
+          await fetch(
             `https://api.portone.io/payments/${encodeURIComponent(paymentId)}/cancel`,
             {
               method: 'POST',
               headers: {
-                'Authorization': `PortOne ${portoneApiSecret}`,
+                Authorization: `PortOne ${portoneApiSecret}`,
                 'Content-Type': 'application/json',
               },
-              body: JSON.stringify({ reason: 'Amount mismatch detected during webhook verification' }),
-            }
+              body: JSON.stringify({
+                reason: '금액 불일치: 웹훅 검증 자동 취소',
+              }),
+            },
           );
-          if (!cancelResponse.ok) {
-            console.error('Webhook: Auto-cancel API call failed:', cancelResponse.status);
-          }
-        } catch (cancelError) {
-          console.error('Webhook: Auto-cancel request error:', cancelError);
+        } catch (cancelErr) {
+          console.error('[Webhook] 자동 취소 실패:', cancelErr);
         }
 
-        // Update order to CANCELLED
         await prisma.order.update({
           where: { id: order.id },
           data: {
             status: 'CANCELLED',
-            cancelReason: 'Amount mismatch: auto-cancelled by webhook verification',
+            cancelReason: '금액 불일치: 웹훅 검증 자동 취소',
           },
         });
 
@@ -194,11 +149,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Build update payload based on event type
+    // ── 주문 상태 업데이트 ──
     const now = new Date();
-    const updateData: Record<string, unknown> = {
-      status: newStatus,
-    };
+    const updateData: Record<string, unknown> = { status: newStatus };
 
     switch (newStatus) {
       case 'PAID':
@@ -206,12 +159,12 @@ export async function POST(request: NextRequest) {
         updateData.pgTransactionId = paymentId;
         break;
       case 'CANCELLED':
-        updateData.cancelledAt = data.cancelledAt ? new Date(data.cancelledAt) : now;
-        updateData.cancelReason = data.cancelReason || 'Cancelled via payment gateway';
+        updateData.cancelledAt = payment.cancelledAt ? new Date(payment.cancelledAt) : now;
+        updateData.cancelReason = payment.cancellation?.reason ?? 'PG사 취소';
         break;
       case 'REFUNDED':
         updateData.cancelledAt = now;
-        updateData.cancelReason = data.cancelReason || 'Refunded via payment gateway';
+        updateData.cancelReason = payment.cancellation?.reason ?? 'PG사 환불';
         break;
     }
 
@@ -220,9 +173,8 @@ export async function POST(request: NextRequest) {
         where: { id: order.id },
         data: updateData,
       });
-    } catch (updateError) {
-      console.error('Webhook: Failed to update order:', updateError);
-      // Still return 200 so PortOne doesn't retry indefinitely
+    } catch (updateErr) {
+      console.error('[Webhook] 주문 업데이트 실패:', updateErr);
       return NextResponse.json({
         received: true,
         processed: false,
@@ -230,20 +182,20 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // If cancelled or refunded, also update conversion records
+    // 취소/환불 시 전환 기록도 취소
     if (newStatus === 'CANCELLED' || newStatus === 'REFUNDED') {
       try {
         await prisma.conversion.updateMany({
           where: { orderId: order.id },
           data: { status: 'CANCELLED' },
         });
-      } catch (conversionError) {
-        console.error('Webhook: Failed to cancel conversions:', conversionError);
+      } catch (convErr) {
+        console.error('[Webhook] 전환 기록 취소 실패:', convErr);
       }
     }
 
     console.log(
-      `Webhook processed: order=${order.orderNumber}, event=${eventType}, newStatus=${newStatus}`
+      `[Webhook] 처리 완료: order=${order.orderNumber}, portoneStatus=${payment.status}, newStatus=${newStatus}`,
     );
 
     return NextResponse.json({
@@ -253,12 +205,26 @@ export async function POST(request: NextRequest) {
       newStatus,
     });
   } catch (error: unknown) {
-    console.error('Webhook processing error:', error);
-    // Always return 200 for webhooks to prevent unnecessary retries
+    console.error('[Webhook] 처리 에러:', error);
     return NextResponse.json({
       received: true,
       processed: false,
       reason: 'Internal processing error',
     });
+  }
+}
+
+/** PortOne V2 결제 상태 → 주문 상태 매핑 */
+function mapPortOneStatus(portoneStatus: string): OrderStatus | null {
+  switch (portoneStatus) {
+    case 'PAID':
+      return 'PAID';
+    case 'CANCELLED':
+    case 'FAILED':
+      return 'CANCELLED';
+    case 'PARTIAL_CANCELLED':
+      return 'REFUNDED';
+    default:
+      return null;
   }
 }
