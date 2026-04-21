@@ -7,8 +7,16 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: '*',
-        allow: '/',
-        disallow: ['/api/', '/admin/', '/brand/', '/creator/', '/buyer/'],
+        allow: [
+          '/',
+          '/ko',
+          '/ko/terms',
+          '/ko/privacy',
+          '/ko/refund-policy',
+          '/ko/faq',
+          '/ko/support',
+        ],
+        disallow: ['/api/', '/admin/', '/brand/', '/creator/', '/buyer/', '/ko/signup'],
       },
     ],
     sitemap: `${BASE_URL}/sitemap.xml`,
