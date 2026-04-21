@@ -15,9 +15,12 @@ import {
   type ShippingChoice,
 } from '@/components/brand/ProductForm/DetailsSection';
 import { CreatorSettingsSection } from '@/components/brand/ProductForm/CreatorSettingsSection';
+import { IngredientPainPointSection } from '@/components/brand/ProductForm/IngredientPainPointSection';
+import type { IngredientItem } from '@/components/brand/ProductForm/IngredientPicker';
 
 const STEPS = [
   { label: '기본 정보' },
+  { label: '성분 & 매칭' },
   { label: '사진' },
   { label: '상세' },
   { label: '크리에이터 설정' },
@@ -49,6 +52,10 @@ export default function NewProductPage() {
   const [salePrice, setSalePrice] = useState('');
   const [stock, setStock] = useState('');
 
+  // Section 1.5: Ingredients & Pain Points
+  const [selectedIngredients, setSelectedIngredients] = useState<IngredientItem[]>([]);
+  const [selectedPainPoints, setSelectedPainPoints] = useState<Record<string, number>>({});
+
   // Section 2: Images
   const [images, setImages] = useState<string[]>([]);
 
@@ -70,16 +77,18 @@ export default function NewProductPage() {
     if (name.trim() && Number(originalPrice) > 0 && Number(salePrice) > 0 && Number(stock) >= 0) {
       completed.push(0);
     }
-    if (images.length > 0) completed.push(1);
-    if (detailUrl.trim() || shippingChoice) completed.push(2);
-    completed.push(3);
+    if (selectedIngredients.length > 0) completed.push(1);
+    if (images.length > 0) completed.push(2);
+    if (detailUrl.trim() || shippingChoice) completed.push(3);
+    completed.push(4);
     let current = 0;
     if (!completed.includes(0)) current = 0;
     else if (!completed.includes(1)) current = 1;
     else if (!completed.includes(2)) current = 2;
-    else current = 3;
+    else if (!completed.includes(3)) current = 3;
+    else current = 4;
     return { completed, current };
-  }, [name, originalPrice, salePrice, stock, images, detailUrl, shippingChoice]);
+  }, [name, originalPrice, salePrice, stock, selectedIngredients, images, detailUrl, shippingChoice]);
 
   useEffect(() => {
     async function load() {
@@ -174,6 +183,8 @@ export default function NewProductPage() {
         allowCreatorPick,
         allowTrial,
         defaultCommissionRate: commissionRate,
+        heroIngredients: selectedIngredients.map(i => i.id),
+        targetPainPoints: Object.keys(selectedPainPoints),
       });
 
       try {
@@ -259,6 +270,13 @@ export default function NewProductPage() {
             setSalePrice={setSalePrice}
             stock={stock}
             setStock={setStock}
+          />
+
+          <IngredientPainPointSection
+            selectedIngredients={selectedIngredients}
+            onIngredientsChange={setSelectedIngredients}
+            selectedPainPoints={selectedPainPoints}
+            onPainPointsChange={setSelectedPainPoints}
           />
 
           <ImagesSection images={images} onChange={setImages} />

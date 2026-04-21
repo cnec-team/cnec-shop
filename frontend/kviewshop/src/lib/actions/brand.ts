@@ -1,7 +1,7 @@
 'use server'
 
 import { prisma } from '@/lib/db'
-import { ShippingFeeType } from '@/generated/prisma/client'
+import { ShippingFeeType, Prisma } from '@/generated/prisma/client'
 import { auth } from '@/lib/auth'
 import { sendNotification, normalizePhone, isValidEmail } from '@/lib/notifications'
 import {
@@ -1021,6 +1021,8 @@ export async function updateProduct(
     allowCreatorPick?: boolean
     allowTrial?: boolean
     defaultCommissionRate?: number
+    heroIngredients?: string[]
+    targetPainPoints?: string[]
   }
 ) {
   const { brand } = await requireBrand()
@@ -1059,11 +1061,34 @@ export async function updateProduct(
       : data.defaultCommissionRate
     updateData.defaultCommissionRate = Math.min(Math.max(rate, 0), 0.9999)
   }
+  if (data.heroIngredients !== undefined) updateData.heroIngredients = data.heroIngredients
+  if (data.targetPainPoints !== undefined) updateData.targetPainPoints = data.targetPainPoints
 
-  return prisma.product.update({
+  const updated = await prisma.product.update({
     where: { id: productId },
     data: updateData as any,
   })
+
+  // ProductIngredient 재설정
+  if (data.heroIngredients !== undefined) {
+    try {
+      await prisma.productIngredient.deleteMany({ where: { productId } })
+      if (data.heroIngredients.length > 0) {
+        await prisma.productIngredient.createMany({
+          data: data.heroIngredients.map((ingredientId, idx) => ({
+            productId,
+            ingredientId,
+            isHero: true,
+            displayOrder: idx,
+          })),
+        })
+      }
+    } catch {
+      // 성분 매핑 실패가 상품 수정을 막지 않도록
+    }
+  }
+
+  return updated
 }
 
 export async function deleteProducts(productIds: string[]) {
@@ -1136,6 +1161,8 @@ export async function createProduct(data: {
   allowCreatorPick: boolean
   allowTrial?: boolean
   defaultCommissionRate: number
+  heroIngredients?: string[]
+  targetPainPoints?: string[]
 }) {
   const { brand } = await requireBrand()
   if (brand.id !== data.brandId) throw new Error('Forbidden')
@@ -1146,7 +1173,7 @@ export async function createProduct(data: {
     : data.defaultCommissionRate
   const clampedRate = Math.min(Math.max(rate, 0), 0.9999)
 
-  return prisma.product.create({
+  const product = await prisma.product.create({
     data: {
       brandId: brand.id,
       name: data.name,
@@ -1171,8 +1198,28 @@ export async function createProduct(data: {
       allowCreatorPick: data.allowCreatorPick,
       allowTrial: data.allowTrial ?? true,
       defaultCommissionRate: clampedRate,
+      heroIngredients: data.heroIngredients ?? Prisma.JsonNull,
+      targetPainPoints: data.targetPainPoints ?? [],
     },
   })
+
+  // ProductIngredient 레코드 생성
+  if (data.heroIngredients?.length) {
+    try {
+      await prisma.productIngredient.createMany({
+        data: data.heroIngredients.map((ingredientId, idx) => ({
+          productId: product.id,
+          ingredientId,
+          isHero: true,
+          displayOrder: idx,
+        })),
+      })
+    } catch {
+      // 성분 매핑 실패가 상품 생성을 막지 않도록
+    }
+  }
+
+  return product
 }
 
 export async function bulkCreateProducts(
