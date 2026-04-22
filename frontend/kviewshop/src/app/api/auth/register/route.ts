@@ -30,7 +30,15 @@ const creatorSignupSchema = z.object({
   displayName: z.string().min(1, '활동명을 입력해주세요'),
   shopId: z.string().regex(/^[a-z0-9_-]{2,30}$/, '샵 ID는 영문 소문자, 숫자, 밑줄 2~30자'),
   instagramHandle: z.string().optional().or(z.literal('')),
+  tiktok: z.string().optional().or(z.literal('')),
+  youtube: z.string().optional().or(z.literal('')),
+  bio: z.string().max(50).optional().or(z.literal('')),
+  primaryCategory: z.string().optional().or(z.literal('')),
+  categories: z.array(z.string()).optional(),
   refCode: z.string().optional(),
+  termsAgreedAt: z.string().optional(),
+  privacyAgreedAt: z.string().optional(),
+  marketingAgreedAt: z.string().optional(),
 })
 
 const buyerSignupSchema = z.object({
@@ -58,6 +66,12 @@ const legacySchema = z.object({
   verificationToken: z.string().optional(),
   displayName: z.string().optional(),
   instagramHandle: z.string().optional(),
+  bio: z.string().optional(),
+  primaryCategory: z.string().optional(),
+  categories: z.array(z.string()).optional(),
+  termsAgreedAt: z.string().optional(),
+  privacyAgreedAt: z.string().optional(),
+  marketingAgreedAt: z.string().optional(),
 })
 
 async function verifyIdentityToken(token: string): Promise<{ ci: string | null; phone: string; name: string } | null> {
@@ -157,6 +171,7 @@ export async function POST(req: NextRequest) {
     const phone = verifiedIdentity?.phone || validatedData.phone || null
 
     // Create user
+    const now = new Date()
     const user = await prisma.user.create({
       data: {
         email: validatedData.email,
@@ -165,7 +180,10 @@ export async function POST(req: NextRequest) {
         role: validatedData.role as 'buyer' | 'creator' | 'brand_admin',
         phone,
         ci: verifiedIdentity?.ci || null,
-        phoneVerifiedAt: verifiedIdentity ? new Date() : null,
+        phoneVerifiedAt: verifiedIdentity ? now : null,
+        termsAgreedAt: validatedData.termsAgreedAt ? new Date(validatedData.termsAgreedAt as string) : now,
+        privacyAgreedAt: validatedData.privacyAgreedAt ? new Date(validatedData.privacyAgreedAt as string) : now,
+        marketingAgreedAt: validatedData.marketingAgreedAt ? new Date(validatedData.marketingAgreedAt as string) : null,
       }
     })
 
@@ -191,10 +209,13 @@ export async function POST(req: NextRequest) {
           instagramHandle: validatedData.instagramHandle || validatedData.instagram || null,
           tiktokHandle: validatedData.tiktok || null,
           youtubeHandle: validatedData.youtube || null,
+          bio: validatedData.bio || null,
+          primaryCategory: validatedData.primaryCategory || null,
+          categories: validatedData.categories || [],
           profileImageUrl: validatedData.profileImageUrl || null,
           themeColor: '#1a1a1a',
           status: 'PENDING',
-          submittedAt: new Date(),
+          submittedAt: now,
         }
       })
 
