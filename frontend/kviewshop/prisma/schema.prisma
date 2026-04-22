@@ -420,9 +420,12 @@ model User {
   status          UserStatus @default(active)
   phone           String?    @db.VarChar(20)
   ci              String?    @unique @db.VarChar(255) // 본인인증 고유식별값 (CI)
-  phoneVerifiedAt DateTime?  @map("phone_verified_at") @db.Timestamptz
-  avatarUrl       String?    @map("avatar_url")
-  createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  phoneVerifiedAt    DateTime?  @map("phone_verified_at") @db.Timestamptz
+  avatarUrl          String?    @map("avatar_url")
+  termsAgreedAt      DateTime?  @map("terms_agreed_at") @db.Timestamptz
+  privacyAgreedAt    DateTime?  @map("privacy_agreed_at") @db.Timestamptz
+  marketingAgreedAt  DateTime?  @map("marketing_agreed_at") @db.Timestamptz
+  createdAt          DateTime   @default(now()) @map("created_at") @db.Timestamptz
   updatedAt       DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   brand             Brand?
