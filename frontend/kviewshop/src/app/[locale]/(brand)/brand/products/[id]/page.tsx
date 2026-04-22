@@ -138,7 +138,7 @@ export default function ProductDetailPage() {
               const p = String(ch.price);
               const u = ch.url ?? '';
               if (ch.name === '쿠팡') { setChannelCoupang(p); setChannelCoupangUrl(u); }
-              else if (ch.name === '네이버') { setChannelNaver(p); setChannelNaverUrl(u); }
+              else if (ch.name === '자사몰' || ch.name === '네이버') { setChannelNaver(p); setChannelNaverUrl(u); }
               else if (ch.name === '올리브영') { setChannelOlive(p); setChannelOliveUrl(u); }
               else if (ch.name === '스마트스토어') { setChannelSmart(p); setChannelSmartUrl(u); }
             }
@@ -217,7 +217,7 @@ export default function ProductDetailPage() {
       // Save channel prices
       const channels = [
         { name: '쿠팡', price: Number(channelCoupang) || 0, url: channelCoupangUrl },
-        { name: '네이버', price: Number(channelNaver) || 0, url: channelNaverUrl },
+        { name: '자사몰', price: Number(channelNaver) || 0, url: channelNaverUrl },
         { name: '올리브영', price: Number(channelOlive) || 0, url: channelOliveUrl },
         { name: '스마트스토어', price: Number(channelSmart) || 0, url: channelSmartUrl },
       ].filter((c) => c.price > 0);
@@ -544,9 +544,9 @@ export default function ProductDetailPage() {
               <Input value={channelCoupangUrl} onChange={(e) => setChannelCoupangUrl(e.target.value)} placeholder="쿠팡 상품 URL (선택)" className="text-xs" />
             </div>
             <div className="space-y-2">
-              <Label>네이버 가격 (원)</Label>
+              <Label>자사몰 가격 (원)</Label>
               <Input type="number" min="0" value={channelNaver} onChange={(e) => setChannelNaver(e.target.value)} placeholder="0" />
-              <Input value={channelNaverUrl} onChange={(e) => setChannelNaverUrl(e.target.value)} placeholder="네이버 상품 URL (선택)" className="text-xs" />
+              <Input value={channelNaverUrl} onChange={(e) => setChannelNaverUrl(e.target.value)} placeholder="자사몰 상품 URL (선택)" className="text-xs" />
             </div>
             <div className="space-y-2">
               <Label>올리브영 가격 (원)</Label>

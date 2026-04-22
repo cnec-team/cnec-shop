@@ -34,13 +34,21 @@ export function IdentityVerificationButton({
 
     setIsVerifying(true);
     try {
+      const storeId = process.env.NEXT_PUBLIC_PORTONE_STORE_ID;
+      const channelKey = process.env.NEXT_PUBLIC_PORTONE_IDENTITY_VERIFICATION_CHANNEL_KEY;
+
+      if (!storeId || !channelKey) {
+        onError?.('본인인증 설정이 완료되지 않았어요. 관리자에게 문의해주세요.');
+        return;
+      }
+
       const PortOne = await import('@portone/browser-sdk/v2');
       const identityVerificationId = `identity-${crypto.randomUUID()}`;
 
-      const response = await PortOne.default.requestIdentityVerification({
-        storeId: process.env.NEXT_PUBLIC_PORTONE_STORE_ID!,
+      const response = await PortOne.requestIdentityVerification({
+        storeId,
         identityVerificationId,
-        channelKey: process.env.NEXT_PUBLIC_PORTONE_IDENTITY_VERIFICATION_CHANNEL_KEY!,
+        channelKey,
         customer: { fullName: name },
       });
 
@@ -63,7 +71,8 @@ export function IdentityVerificationButton({
 
       setIsVerified(true);
       onSuccess(result);
-    } catch {
+    } catch (error) {
+      console.error('Identity verification error:', error);
       onError?.('본인인증 중 오류가 발생했어요');
     } finally {
       setIsVerifying(false);

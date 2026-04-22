@@ -8,6 +8,7 @@ import {
   shouldShowStarRating,
 } from '@/lib/creator/reliability'
 import type { Prisma } from '@/generated/prisma/client'
+import { getCategorySearchTerms } from '@/lib/utils/beauty-labels'
 
 export async function GET(request: NextRequest) {
   const authUser = await getAuthUser()
@@ -24,7 +25,8 @@ export async function GET(request: NextRequest) {
   }
 
   const sp = request.nextUrl.searchParams
-  const tier = sp.get('tier') || undefined
+  const tierParam = sp.get('tier') || ''
+  const tierList = tierParam ? tierParam.split(',').map(t => t.trim()).filter(Boolean) : []
   const categoryParam = sp.get('category') || ''
   const categories = categoryParam ? categoryParam.split(',').map(c => c.trim()).filter(Boolean) : []
   const minEngagement = sp.get('minEngagement') ? parseFloat(sp.get('minEngagement')!) : undefined
@@ -45,18 +47,21 @@ export async function GET(request: NextRequest) {
     igFollowers: { not: null },
   }
 
-  if (tier) {
-    where.igTier = tier
+  if (tierList.length === 1) {
+    where.igTier = tierList[0]
+  } else if (tierList.length > 1) {
+    where.igTier = { in: tierList }
   }
 
   const andConditions: Prisma.CreatorWhereInput[] = []
 
   if (categories.length > 0) {
-    andConditions.push({
-      OR: categories.map(cat => ({
-        igCategory: { contains: cat, mode: 'insensitive' as const },
-      })),
-    })
+    const categoryConditions = categories.flatMap(cat =>
+      getCategorySearchTerms(cat).map(term => ({
+        igCategory: { contains: term, mode: 'insensitive' as const },
+      }))
+    )
+    andConditions.push({ OR: categoryConditions })
   }
 
   if (minEngagement !== undefined || maxEngagement !== undefined) {

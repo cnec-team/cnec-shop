@@ -21,7 +21,7 @@ export async function GET() {
       brandId: brand.id,
       status: { in: ['RECRUITING', 'ACTIVE'] },
     },
-    select: { id: true, title: true, type: true, status: true, startAt: true, endAt: true },
+    select: { id: true, title: true, type: true, status: true, startAt: true, endAt: true, commissionRate: true },
     orderBy: { createdAt: 'desc' },
   })
 

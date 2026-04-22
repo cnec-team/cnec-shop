@@ -28,7 +28,7 @@ import {
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ExternalLink, Info } from 'lucide-react';
+import { ExternalLink, Info, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { CNEC_COMMISSION_RATE } from '@/lib/constants';
 
@@ -54,6 +54,8 @@ function getStatusVariant(
       return 'default';
     case 'RECRUITING':
       return 'secondary';
+    case 'PAUSED':
+      return 'outline';
     case 'ENDED':
       return 'destructive';
     default:
@@ -218,9 +220,21 @@ export default function CampaignDetailPage() {
             <p className="text-muted-foreground">{campaign.description}</p>
           )}
         </div>
-        <Button variant="outline" onClick={() => router.back()}>
-          뒤로
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              const params = new URLSearchParams({ duplicate: campaign.id });
+              router.push(`../campaigns/new?${params.toString()}`);
+            }}
+          >
+            <Copy className="h-4 w-4 mr-1" />
+            복제
+          </Button>
+          <Button variant="outline" onClick={() => router.back()}>
+            뒤로
+          </Button>
+        </div>
       </div>
 
       {error && (
@@ -257,7 +271,7 @@ export default function CampaignDetailPage() {
                   disabled={updatingStatus}
                   onClick={() => handleStatusChange('ENDED')}
                 >
-                  취소
+                  삭제
                 </Button>
               </>
             )}
@@ -274,21 +288,77 @@ export default function CampaignDetailPage() {
                   size="sm"
                   variant="outline"
                   disabled={updatingStatus}
-                  onClick={() => handleStatusChange('ENDED')}
+                  onClick={() => handleStatusChange('PAUSED')}
                 >
-                  취소
+                  일시중단
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  disabled={updatingStatus}
+                  onClick={() => {
+                    if (confirm('캠페인을 종료하시겠습니까? 종료 후에는 되돌릴 수 없습니다.')) {
+                      handleStatusChange('ENDED');
+                    }
+                  }}
+                >
+                  종료
                 </Button>
               </>
             )}
             {campaign.status === 'ACTIVE' && (
-              <Button
-                size="sm"
-                variant="destructive"
-                disabled={updatingStatus}
-                onClick={() => handleStatusChange('ENDED')}
-              >
-                {updatingStatus ? '처리 중...' : '캠페인 종료'}
-              </Button>
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={updatingStatus}
+                  onClick={() => handleStatusChange('PAUSED')}
+                >
+                  {updatingStatus ? '처리 중...' : '일시중단'}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  disabled={updatingStatus}
+                  onClick={() => {
+                    if (confirm('캠페인을 종료하시겠습니까? 종료 후에는 되돌릴 수 없습니다.')) {
+                      handleStatusChange('ENDED');
+                    }
+                  }}
+                >
+                  종료
+                </Button>
+              </>
+            )}
+            {campaign.status === 'PAUSED' && (
+              <>
+                <Button
+                  size="sm"
+                  disabled={updatingStatus}
+                  onClick={() => handleStatusChange('RECRUITING')}
+                >
+                  {updatingStatus ? '처리 중...' : '모집 재개'}
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={updatingStatus}
+                  onClick={() => handleStatusChange('ACTIVE')}
+                >
+                  캠페인 재개
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  disabled={updatingStatus}
+                  onClick={() => {
+                    if (confirm('캠페인을 종료하시겠습니까? 종료 후에는 되돌릴 수 없습니다.')) {
+                      handleStatusChange('ENDED');
+                    }
+                  }}
+                >
+                  종료
+                </Button>
+              </>
             )}
             {campaign.status === 'ENDED' && (
               <span className="text-sm text-muted-foreground">종료된 캠페인입니다.</span>

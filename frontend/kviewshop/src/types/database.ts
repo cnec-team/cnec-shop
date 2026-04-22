@@ -9,7 +9,7 @@
 export type UserRole = 'super_admin' | 'brand_admin' | 'creator' | 'buyer';
 export type UserStatus = 'pending' | 'active' | 'suspended';
 export type CampaignType = 'GONGGU' | 'ALWAYS';
-export type CampaignStatus = 'DRAFT' | 'RECRUITING' | 'ACTIVE' | 'ENDED';
+export type CampaignStatus = 'DRAFT' | 'RECRUITING' | 'ACTIVE' | 'PAUSED' | 'ENDED';
 export type RecruitmentType = 'OPEN' | 'APPROVAL';
 export type ParticipationStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 export type ShopItemType = 'GONGGU' | 'PICK';
@@ -623,6 +623,7 @@ export const CAMPAIGN_STATUS_LABELS: Record<CampaignStatus, string> = {
   DRAFT: '작성중',
   RECRUITING: '모집중',
   ACTIVE: '진행중',
+  PAUSED: '일시중단',
   ENDED: '종료',
 };
 

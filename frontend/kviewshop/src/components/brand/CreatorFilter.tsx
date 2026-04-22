@@ -48,7 +48,9 @@ export function CreatorFilter() {
   const searchParams = useSearchParams()
   const [expanded, setExpanded] = useState(true)
 
-  const [tier, setTier] = useState(searchParams.get('tier') || '')
+  const [tiers, setTiers] = useState<string[]>(
+    searchParams.get('tier')?.split(',').filter(Boolean) || []
+  )
   const [categories, setCategories] = useState<string[]>(
     searchParams.get('category')?.split(',').filter(Boolean) || []
   )
@@ -74,7 +76,7 @@ export function CreatorFilter() {
 
   const buildParams = useCallback(() => {
     const params = new URLSearchParams()
-    if (tier) params.set('tier', tier)
+    if (tiers.length > 0) params.set('tier', tiers.join(','))
     if (categories.length > 0) params.set('category', categories.join(','))
     if (minEngagement) params.set('minEngagement', minEngagement)
     if (maxEngagement) params.set('maxEngagement', maxEngagement)
@@ -90,7 +92,7 @@ export function CreatorFilter() {
     const view = searchParams.get('view')
     if (view) params.set('view', view)
     return params
-  }, [tier, categories, minEngagement, maxEngagement, verified, cnecPartnerOnly, includeKeywords, keywordOperator, excludeKeywords, searchScope, sort, searchParams])
+  }, [tiers, categories, minEngagement, maxEngagement, verified, cnecPartnerOnly, includeKeywords, keywordOperator, excludeKeywords, searchScope, sort, searchParams])
 
   const applyFilters = useCallback(() => {
     const params = buildParams()
@@ -105,7 +107,7 @@ export function CreatorFilter() {
   useEffect(() => {
     applyFilters()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tier, categories, verified, cnecPartnerOnly, sort, searchScope, keywordOperator])
+  }, [tiers, categories, verified, cnecPartnerOnly, sort, searchScope, keywordOperator])
 
   useEffect(() => {
     applyFiltersDebounced()
@@ -114,7 +116,7 @@ export function CreatorFilter() {
   }, [minEngagement, maxEngagement, includeKeywords, excludeKeywords])
 
   const resetFilters = () => {
-    setTier('')
+    setTiers([])
     setCategories([])
     setMinEngagement('')
     setMaxEngagement('')
@@ -137,7 +139,7 @@ export function CreatorFilter() {
 
   const removeFilter = (type: string, value?: string) => {
     switch (type) {
-      case 'tier': setTier(''); break
+      case 'tier': setTiers(prev => prev.filter(t => t !== value)); break
       case 'category': setCategories(prev => prev.filter(c => c !== value)); break
       case 'engagement': setMinEngagement(''); setMaxEngagement(''); break
       case 'verified': setVerified(''); break
@@ -152,7 +154,9 @@ export function CreatorFilter() {
   }
 
   const activeTags: { label: string; type: string; value?: string; color: string }[] = []
-  if (tier) activeTags.push({ label: `티어: ${TIER_OPTIONS.find(t => t.value === tier)?.label || tier}`, type: 'tier', color: 'bg-purple-100 text-purple-700' })
+  for (const t of tiers) {
+    activeTags.push({ label: `티어: ${TIER_OPTIONS.find(o => o.value === t)?.label || t}`, type: 'tier', value: t, color: 'bg-purple-100 text-purple-700' })
+  }
   for (const cat of categories) {
     activeTags.push({ label: cat, type: 'category', value: cat, color: 'bg-purple-100 text-purple-700' })
   }
@@ -209,9 +213,11 @@ export function CreatorFilter() {
               {TIER_OPTIONS.map(t => (
                 <Button
                   key={t.value}
-                  variant={tier === t.value ? 'default' : 'outline'}
+                  variant={tiers.includes(t.value) ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => setTier(tier === t.value ? '' : t.value)}
+                  onClick={() => setTiers(prev =>
+                    prev.includes(t.value) ? prev.filter(v => v !== t.value) : [...prev, t.value]
+                  )}
                 >
                   {t.label}
                 </Button>
