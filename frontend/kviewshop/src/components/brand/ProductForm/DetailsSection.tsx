@@ -16,7 +16,7 @@ const fieldCls =
   'h-12 rounded-2xl border border-gray-200 bg-white text-sm placeholder:text-gray-300 focus-visible:border-gray-900 focus-visible:ring-2 focus-visible:ring-gray-100';
 const labelCls = 'text-sm font-semibold text-gray-700';
 
-export type ShippingChoice = 'FREE' | 'PAID';
+export type ShippingChoice = 'FREE' | 'PAID' | 'CONDITIONAL_FREE';
 export type DeliveryEta = 'D1_2' | 'D2_3' | 'D3_5' | 'D5_7';
 
 const DELIVERY_OPTIONS: Array<{ value: DeliveryEta; label: string }> = [
@@ -33,6 +33,8 @@ interface DetailsSectionProps {
   setShippingChoice: (v: ShippingChoice) => void;
   shippingFee: string;
   setShippingFee: (v: string) => void;
+  freeShippingThreshold?: string;
+  setFreeShippingThreshold?: (v: string) => void;
   deliveryEta: DeliveryEta;
   setDeliveryEta: (v: DeliveryEta) => void;
 }
@@ -44,6 +46,8 @@ export function DetailsSection({
   setShippingChoice,
   shippingFee,
   setShippingFee,
+  freeShippingThreshold = '',
+  setFreeShippingThreshold,
   deliveryEta,
   setDeliveryEta,
 }: DetailsSectionProps) {
@@ -71,9 +75,10 @@ export function DetailsSection({
         <div className="flex flex-wrap gap-2">
           {(
             [
-              { value: 'FREE', label: '무료배송' },
-              { value: 'PAID', label: '유료배송' },
-            ] as const
+              { value: 'FREE' as const, label: '무료배송' },
+              { value: 'CONDITIONAL_FREE' as const, label: '조건부 무료배송' },
+              { value: 'PAID' as const, label: '유료배송' },
+            ]
           ).map((opt) => (
             <button
               key={opt.value}
@@ -89,7 +94,7 @@ export function DetailsSection({
               {opt.label}
             </button>
           ))}
-          {shippingChoice === 'PAID' ? (
+          {(shippingChoice === 'PAID' || shippingChoice === 'CONDITIONAL_FREE') && (
             <div className="relative">
               <Input
                 type="number"
@@ -104,7 +109,23 @@ export function DetailsSection({
                 원
               </span>
             </div>
-          ) : null}
+          )}
+          {shippingChoice === 'CONDITIONAL_FREE' && (
+            <div className="relative">
+              <Input
+                type="number"
+                min="0"
+                value={freeShippingThreshold}
+                onChange={(e) => setFreeShippingThreshold?.(e.target.value)}
+                placeholder="50000"
+                className={`${fieldCls} w-44 pr-14 text-right`}
+                style={{ fontVariantNumeric: 'tabular-nums' }}
+              />
+              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400">
+                원 이상
+              </span>
+            </div>
+          )}
         </div>
       </div>
 

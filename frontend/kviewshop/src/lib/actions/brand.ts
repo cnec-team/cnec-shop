@@ -273,6 +273,8 @@ export async function createCampaign(data: {
   conditions?: string
   startAt?: string
   endAt?: string
+  recruitStartAt?: string
+  recruitEndAt?: string
   products: Array<{
     productId: string
     campaignPrice: number
@@ -294,7 +296,7 @@ export async function createCampaign(data: {
       type: data.type as any,
       title: data.title,
       description: data.description ?? null,
-      status: 'DRAFT',
+      status: 'RECRUITING',
       recruitmentType: data.recruitmentType,
       commissionRate: clampedCommRate,
       soldCount: 0,
@@ -303,6 +305,8 @@ export async function createCampaign(data: {
       conditions: data.conditions ?? null,
       startAt: data.startAt ? new Date(data.startAt) : null,
       endAt: data.endAt ? new Date(data.endAt) : null,
+      recruitStartAt: data.recruitStartAt ? new Date(data.recruitStartAt) : null,
+      recruitEndAt: data.recruitEndAt ? new Date(data.recruitEndAt) : null,
     },
   })
 
@@ -1525,8 +1529,9 @@ export async function replySupportTicket(ticketId: string, response: string) {
 
 const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   DRAFT: ['RECRUITING', 'ENDED'],
-  RECRUITING: ['ACTIVE', 'ENDED'],
-  ACTIVE: ['ENDED'],
+  RECRUITING: ['ACTIVE', 'PAUSED', 'ENDED'],
+  ACTIVE: ['PAUSED', 'ENDED'],
+  PAUSED: ['RECRUITING', 'ACTIVE', 'ENDED'],
   ENDED: [],
 }
 

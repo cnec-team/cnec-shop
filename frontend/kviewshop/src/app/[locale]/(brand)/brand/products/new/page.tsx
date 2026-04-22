@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import confetti from 'canvas-confetti';
 import { toast } from 'sonner';
 import { ArrowLeft, AlertCircle, X } from 'lucide-react';
-import { getBrandSession, createProduct } from '@/lib/actions/brand';
+import { getBrandSession, createProduct, getActiveProducts } from '@/lib/actions/brand';
 import { Stepper } from '@/components/brand/ProductForm/Stepper';
 import { BasicInfoSection } from '@/components/brand/ProductForm/BasicInfoSection';
 import { ImagesSection } from '@/components/brand/ProductForm/ImagesSection';
@@ -70,6 +70,7 @@ export default function NewProductPage() {
   const [allowCreatorPick, setAllowCreatorPick] = useState(true);
   const [allowTrial, setAllowTrial] = useState(true);
   const [commissionRate, setCommissionRate] = useState(15);
+  const [commissionLoaded, setCommissionLoaded] = useState(false);
 
   // Stepper progress detection
   const stepStatus = useMemo(() => {
@@ -93,7 +94,14 @@ export default function NewProductPage() {
   useEffect(() => {
     async function load() {
       const b = await getBrandSession();
-      if (b) setBrand(b);
+      if (b) {
+        setBrand(b);
+        if (!commissionLoaded) {
+          const brandRate = b.creatorCommissionRate ?? 15;
+          if (brandRate > 0) setCommissionRate(brandRate);
+          setCommissionLoaded(true);
+        }
+      }
     }
     load();
 
@@ -198,7 +206,13 @@ export default function NewProductPage() {
         /* ignore confetti errors */
       }
       localStorage.removeItem(DRAFT_KEY);
-      toast.success('첫 상품이 등록됐어요! 🎉');
+      // 첫 상품인지 확인
+      const allProducts = brand ? await getActiveProducts(brand.id) : [];
+      if (allProducts.length <= 1) {
+        toast.success('첫 상품이 등록됐어요!');
+      } else {
+        toast.success('상품이 등록되었어요');
+      }
       router.push(productsPath);
     } catch (err) {
       console.error('Failed to create product:', err);

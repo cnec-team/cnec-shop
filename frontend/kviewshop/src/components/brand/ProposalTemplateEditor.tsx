@@ -51,7 +51,7 @@ function previewReplace(text: string, commissionRate: string): string {
     .replace(/\{\{creatorName\}\}/g, '김뷰티')
     .replace(/\{\{brandName\}\}/g, '브랜드명')
     .replace(/\{\{campaignName\}\}/g, '여름 공구')
-    .replace(/\{\{commissionRate\}\}/g, commissionRate || '15')
+    .replace(/\{\{commissionRate\}\}/g, `${commissionRate || '15'}%`)
     .replace(/\{\{campaignPeriod\}\}/g, '2026.05.01 ~ 2026.05.07');
 }
 

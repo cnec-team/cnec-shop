@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { getBrandSession, getActiveProducts, createCampaign } from '@/lib/actions/brand';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { getBrandSession, getActiveProducts, createCampaign, getBrandCampaignById } from '@/lib/actions/brand';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -112,6 +112,8 @@ function PriceInput({
 
 export default function NewCampaignPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const duplicateId = searchParams.get('duplicate');
   const [brand, setBrand] = useState<{ id: string } | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
@@ -130,7 +132,7 @@ export default function NewCampaignPage() {
   const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>([]);
 
   // Step 3: Commission
-  const [commissionRate, setCommissionRate] = useState('15');
+  const [commissionRate, setCommissionRate] = useState('');
   const [totalStock, setTotalStock] = useState('');
 
   // Price Scout warnings
@@ -140,6 +142,8 @@ export default function NewCampaignPage() {
   const [recruitmentType, setRecruitmentType] = useState<RecruitmentType>('OPEN');
   const [targetParticipants, setTargetParticipants] = useState('');
   const [conditions, setConditions] = useState('');
+  const [recruitStartDate, setRecruitStartDate] = useState<Date | undefined>(undefined);
+  const [recruitEndDate, setRecruitEndDate] = useState<Date | undefined>(undefined);
 
   useEffect(() => {
     async function load() {
@@ -147,6 +151,8 @@ export default function NewCampaignPage() {
         const brandData = await getBrandSession();
         if (!brandData) { setProductsLoading(false); return; }
         setBrand(brandData);
+        const brandRate = brandData.creatorCommissionRate ?? 15;
+        if (brandRate > 0 && !commissionRate) setCommissionRate(String(brandRate));
         const data = await getActiveProducts(brandData.id);
         setProducts(data as any);
 
@@ -168,6 +174,27 @@ export default function NewCampaignPage() {
           }
         }
         setProductsWithoutPrices(noPriceIds);
+
+        // 캠페인 복제 시 데이터 프리필
+        if (duplicateId) {
+          try {
+            const source = await getBrandCampaignById(duplicateId);
+            if (source) {
+              setTitle(`${source.title} (복제)`);
+              setDescription(source.description || '');
+              setCampaignType(source.type as CampaignType);
+              if (source.commissionRate) {
+                setCommissionRate(String(Math.round(Number(source.commissionRate) * 100)));
+              }
+              setRecruitmentType((source.recruitmentType || 'OPEN') as RecruitmentType);
+              if (source.targetParticipants) setTargetParticipants(String(source.targetParticipants));
+              if (source.conditions) setConditions(source.conditions);
+              if (source.totalStock) setTotalStock(String(source.totalStock));
+            }
+          } catch {
+            // 복제 실패 시 무시
+          }
+        }
       } catch (err) {
         console.error('Failed to fetch products:', err);
       } finally {
@@ -261,6 +288,8 @@ export default function NewCampaignPage() {
         conditions: conditions.trim() || undefined,
         startAt: campaignType === 'GONGGU' && startDate ? startDate.toISOString() : undefined,
         endAt: campaignType === 'GONGGU' && endDate ? endDate.toISOString() : undefined,
+        recruitStartAt: recruitStartDate ? recruitStartDate.toISOString() : undefined,
+        recruitEndAt: recruitEndDate ? recruitEndDate.toISOString() : undefined,
         products: selectedProducts.map((sp) => ({
           productId: sp.productId,
           campaignPrice: Number(sp.campaignPrice),
@@ -760,6 +789,18 @@ export default function NewCampaignPage() {
                   className={`w-40 ${inputCls}`}
                   placeholder="제한 없음"
                 />
+              </div>
+
+              <div className="border-t border-gray-100 pt-5 space-y-2">
+                <Label className={labelCls}>모집 기간</Label>
+                <p className="text-[12px] text-gray-400">
+                  크리에이터 모집 시작일과 종료일을 설정하세요. 비워두면 캠페인 기간과 동일하게 적용됩니다.
+                </p>
+                <div className="flex items-center gap-3">
+                  <DatePicker value={recruitStartDate} onChange={setRecruitStartDate} placeholder="모집 시작일" />
+                  <span className="text-gray-400">~</span>
+                  <DatePicker value={recruitEndDate} onChange={setRecruitEndDate} placeholder="모집 종료일" />
+                </div>
               </div>
 
               <div className="space-y-2">

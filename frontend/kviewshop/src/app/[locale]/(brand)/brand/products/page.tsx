@@ -260,6 +260,28 @@ export default function BrandProductsPage() {
         </Card>
       </div>
 
+      {/* Status Filter Tabs */}
+      <div className="flex items-center gap-1 border-b border-gray-200">
+        {[
+          { value: 'ALL', label: '전체' },
+          { value: 'ACTIVE', label: '판매중' },
+          { value: 'INACTIVE', label: '판매중지' },
+          { value: 'DRAFT', label: '임시저장' },
+        ].map((tab) => (
+          <button
+            key={tab.value}
+            onClick={() => setStatusFilter(tab.value)}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              statusFilter === tab.value
+                ? 'border-gray-900 text-gray-900'
+                : 'border-transparent text-gray-400 hover:text-gray-600'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       {/* Summary Row */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">

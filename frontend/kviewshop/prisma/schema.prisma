@@ -48,6 +48,7 @@ enum CampaignStatus {
   DRAFT
   RECRUITING
   ACTIVE
+  PAUSED
   ENDED
 }
 
@@ -913,6 +914,8 @@ model Campaign {
   status             CampaignStatus @default(DRAFT)
   startAt            DateTime?      @map("start_at") @db.Timestamptz
   endAt              DateTime?      @map("end_at") @db.Timestamptz
+  recruitStartAt     DateTime?      @map("recruit_start_at") @db.Timestamptz
+  recruitEndAt       DateTime?      @map("recruit_end_at") @db.Timestamptz
   recruitmentType    String         @default("OPEN") @map("recruitment_type") @db.VarChar(10)
   commissionRate     Decimal        @default(0.10) @map("commission_rate") @db.Decimal(5, 4)
   totalStock         Int?           @map("total_stock")

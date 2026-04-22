@@ -108,7 +108,7 @@ export function ImagesSection({ images, onChange }: ImagesSectionProps) {
   return (
     <SectionCard
       title="상품 사진"
-      subtitle={`첫 번째 사진이 대표 이미지가 돼요 (최대 ${MAX_IMAGES}장)`}
+      subtitle={`첫 번째 사진이 대표 이미지(목록 썸네일 + 상세 메인)가 돼요 (최대 ${MAX_IMAGES}장)`}
     >
       <div
         className={cn(

@@ -59,6 +59,9 @@ interface Campaign {
   title: string
   type: string
   status: string
+  startAt?: string | Date | null
+  endAt?: string | Date | null
+  commissionRate?: number | string | null
 }
 
 interface CreatorChannel {
@@ -150,11 +153,18 @@ export function InviteModal({
   // Variable replacement for preview
   const replaceVars = (text: string) => {
     const creatorName = creators.length === 1 ? (creators[0].displayName || creators[0].igUsername || '크리에이터') : `${creatorIds.length}명의 크리에이터`
-    const campaignName = campaigns.find(c => c.id === campaignId)?.title || '캠페인'
+    const selectedCampaign = campaigns.find(c => c.id === campaignId)
+    const campaignName = selectedCampaign?.title || '캠페인'
+    const campaignPeriod = selectedCampaign?.startAt && selectedCampaign?.endAt
+      ? `${new Date(selectedCampaign.startAt).toLocaleDateString('ko-KR')} ~ ${new Date(selectedCampaign.endAt).toLocaleDateString('ko-KR')}`
+      : '기간 미정'
+    const commRateDisplay = commissionRate ? `${commissionRate}%` : '미정'
     return text
       .replace(/\{\{creatorName\}\}/g, creatorName)
       .replace(/\{\{brandName\}\}/g, brandName || '브랜드')
       .replace(/\{\{campaignName\}\}/g, campaignName)
+      .replace(/\{\{commissionRate\}\}/g, commRateDisplay)
+      .replace(/\{\{campaignPeriod\}\}/g, campaignPeriod)
   }
 
   const renderedTitle = type === 'GONGGU' ? '공구 초대' : '상품 추천'
@@ -358,7 +368,7 @@ export function InviteModal({
                 placeholder="크리에이터에게 보낼 메시지..."
               />
               <p className="text-xs text-muted-foreground mt-1">
-                {'변수: {{creatorName}}, {{brandName}}, {{campaignName}}'}
+                {'변수: {{creatorName}}, {{brandName}}, {{campaignName}}, {{commissionRate}}, {{campaignPeriod}}'}
               </p>
             </div>
 

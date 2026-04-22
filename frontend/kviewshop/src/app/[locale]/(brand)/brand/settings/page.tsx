@@ -270,8 +270,8 @@ export default function BrandSettingsPage() {
             settlementCycle: data.settlementCycle || 'monthly',
             minimumPayout: Number(data.minimumPayout) ?? 10000,
             bankName: data.bankName || '',
-            accountNumber: (data as Record<string, unknown>).bankAccount as string || '',
-            accountHolder: (data as Record<string, unknown>).bankHolder as string || '',
+            accountNumber: data.accountNumber || '',
+            accountHolder: data.accountHolder || '',
             defaultShippingFee: Number(data.defaultShippingFee) ?? 3000,
             freeShippingThreshold: Number(data.freeShippingThreshold) ?? 50000,
             defaultCourier: data.defaultCourier || 'cj',
@@ -714,21 +714,6 @@ export default function BrandSettingsPage() {
                       <SelectItem value="logen">로젠택배</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700">기본 수수료율</Label>
-                  <div className="relative">
-                    <Input
-                      type="number"
-                      placeholder="15"
-                      min={0}
-                      max={100}
-                      value={settings.defaultCommissionRate}
-                      onChange={(e) => setSettings({ ...settings, defaultCommissionRate: Number(e.target.value) })}
-                      className="h-11 rounded-xl pr-8"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">%</span>
-                  </div>
                 </div>
               </div>
 

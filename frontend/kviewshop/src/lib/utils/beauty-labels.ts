@@ -40,6 +40,28 @@ export const PERSONAL_COLOR_LABELS: Record<string, string> = {
   winter_cool: '겨울쿨톤',
 }
 
+/**
+ * Instagram 카테고리 영문 ↔ 한글 매핑
+ * Instagram API가 언어에 따라 영문/한글로 반환하므로 양방향 검색 필요
+ */
+export const IG_CATEGORY_MAP: Record<string, string[]> = {
+  'Health/beauty': ['건강/뷰티', '건강/미용', 'Health/beauty'],
+  'Digital creator': ['디지털 크리에이터', 'Digital creator'],
+  'Beauty, cosmetic & personal care': ['뷰티·화장품', '뷰티, 화장품 및 퍼스널 케어', 'Beauty, cosmetic & personal care'],
+  'Blogger': ['블로거', 'Blogger'],
+  'Personal blog': ['개인 블로그', 'Personal blog'],
+  'Product/service': ['제품/서비스', 'Product/service'],
+  'Shopping & retail': ['쇼핑 및 리테일', '쇼핑·소매', 'Shopping & retail'],
+  'Art': ['아트', '예술', 'Art'],
+  'Fashion designer': ['패션 디자이너', 'Fashion designer'],
+  'Entrepreneur': ['기업가', '사업가', 'Entrepreneur'],
+}
+
+/** 영문 카테고리를 DB 검색용 키워드 배열로 변환 */
+export function getCategorySearchTerms(englishCategory: string): string[] {
+  return IG_CATEGORY_MAP[englishCategory] || [englishCategory]
+}
+
 export function getSkinTypeLabel(v: string): string {
   return SKIN_TYPE_LABELS[v] || v
 }

@@ -669,8 +669,17 @@ export async function getTrialStats(brandId?: string) {
   const session = await auth()
   if (!session?.user) throw new Error('Unauthorized')
 
+  // brandId가 명시되지 않으면 현재 로그인한 브랜드의 데이터만 조회
   const where: Record<string, unknown> = {}
-  if (brandId) where.brandId = brandId
+  if (brandId) {
+    where.brandId = brandId
+  } else {
+    const brand = await prisma.brand.findFirst({
+      where: { userId: session.user.id },
+      select: { id: true },
+    })
+    if (brand) where.brandId = brand.id
+  }
 
   const allTrials = await prisma.sampleRequest.groupBy({
     by: ['status'],

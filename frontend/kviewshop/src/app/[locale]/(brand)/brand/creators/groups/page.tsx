@@ -155,7 +155,7 @@ export default function CreatorGroupsPage() {
             <Card
               key={g.id}
               className="cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => router.push(`creators/groups/${g.id}`)}
+              onClick={() => router.push(`${g.id}`)}
             >
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
@@ -168,7 +168,7 @@ export default function CreatorGroupsPage() {
                       <DropdownMenuItem
                         onClick={(e) => {
                           e.stopPropagation();
-                          router.push(`creators/groups/${g.id}`);
+                          router.push(`${g.id}`);
                         }}
                       >
                         보기
