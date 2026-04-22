@@ -1151,62 +1151,64 @@ export async function bulkUpdateProducts(
 export async function createProduct(data: {
   brandId: string
   name: string
-  category: string
+  category?: string
   description?: string
-  originalPrice: number
-  salePrice: number
-  stock: number
-  images: string[]
+  originalPrice?: number
+  salePrice?: number
+  stock?: number
+  images?: string[]
   thumbnailUrl?: string
   volume?: string
   ingredients?: string
   howToUse?: string
   detailUrl?: string
-  shippingFeeType: string
-  shippingFee: number
+  shippingFeeType?: string
+  shippingFee?: number
   freeShippingThreshold?: number
   courier?: string
   shippingInfo?: string
   returnPolicy?: string
-  status: string
-  allowCreatorPick: boolean
+  status?: string
+  allowCreatorPick?: boolean
   allowTrial?: boolean
-  defaultCommissionRate: number
+  defaultCommissionRate?: number
   heroIngredients?: string[]
   targetPainPoints?: string[]
+  asDraft?: boolean
 }) {
   const { brand } = await requireBrand()
   if (brand.id !== data.brandId) throw new Error('Forbidden')
 
   // Convert commission rate: if > 1 treat as percentage (e.g. 10 → 0.10)
-  const rate = data.defaultCommissionRate > 1
-    ? data.defaultCommissionRate / 100
-    : data.defaultCommissionRate
+  const rawRate = data.defaultCommissionRate ?? 15
+  const rate = rawRate > 1 ? rawRate / 100 : rawRate
   const clampedRate = Math.min(Math.max(rate, 0), 0.9999)
+
+  const finalStatus = data.asDraft ? 'DRAFT' : (data.status || 'ACTIVE')
 
   const product = await prisma.product.create({
     data: {
       brandId: brand.id,
       name: data.name,
-      category: data.category,
+      category: data.category ?? 'skincare',
       description: data.description ?? null,
-      originalPrice: data.originalPrice,
-      salePrice: data.salePrice,
-      stock: data.stock,
-      images: data.images,
+      originalPrice: data.originalPrice ?? 0,
+      salePrice: data.salePrice ?? 0,
+      stock: data.stock ?? 0,
+      images: data.images ?? [],
       thumbnailUrl: data.thumbnailUrl ?? null,
       volume: data.volume ?? null,
       ingredients: data.ingredients ?? null,
       howToUse: data.howToUse ?? null,
       detailUrl: data.detailUrl ?? null,
-      shippingFeeType: data.shippingFeeType as ShippingFeeType | undefined,
-      shippingFee: data.shippingFee,
+      shippingFeeType: (data.shippingFeeType as ShippingFeeType | undefined) ?? 'FREE',
+      shippingFee: data.shippingFee ?? 0,
       freeShippingThreshold: data.freeShippingThreshold ?? null,
       courier: data.courier ?? null,
       shippingInfo: data.shippingInfo ?? null,
       returnPolicy: data.returnPolicy ?? null,
-      status: data.status,
-      allowCreatorPick: data.allowCreatorPick,
+      status: finalStatus,
+      allowCreatorPick: data.allowCreatorPick ?? true,
       allowTrial: data.allowTrial ?? true,
       defaultCommissionRate: clampedRate,
       heroIngredients: data.heroIngredients ?? Prisma.JsonNull,

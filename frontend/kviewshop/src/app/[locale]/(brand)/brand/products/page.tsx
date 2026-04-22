@@ -84,6 +84,7 @@ export default function BrandProductsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [searchType, setSearchType] = useState<string>('name');
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
@@ -101,8 +102,19 @@ export default function BrandProductsPage() {
     if (!id) return;
     setIsLoading(true);
     try {
-      const data = await getBrandProducts(id, statusFilter, categoryFilter);
-      setProducts(data as any);
+      // 상태 카운트를 위해 전체 조회 + 필터 조회 동시
+      const [allData, filteredData] = await Promise.all([
+        getBrandProducts(id, 'ALL', 'ALL'),
+        getBrandProducts(id, statusFilter, categoryFilter),
+      ]);
+      setProducts(filteredData as unknown as ProductData[]);
+      // 상태별 카운트
+      const counts: Record<string, number> = {};
+      for (const p of allData as unknown as ProductData[]) {
+        const s = (p as { status?: string }).status || 'ACTIVE';
+        counts[s] = (counts[s] || 0) + 1;
+      }
+      setStatusCounts(counts);
     } catch (error) {
       console.error('Failed to fetch products:', error);
     } finally {
@@ -267,19 +279,31 @@ export default function BrandProductsPage() {
           { value: 'ACTIVE', label: '판매중' },
           { value: 'INACTIVE', label: '판매중지' },
           { value: 'DRAFT', label: '임시저장' },
-        ].map((tab) => (
-          <button
-            key={tab.value}
-            onClick={() => setStatusFilter(tab.value)}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-              statusFilter === tab.value
-                ? 'border-gray-900 text-gray-900'
-                : 'border-transparent text-gray-400 hover:text-gray-600'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+        ].map((tab) => {
+          const count = tab.value === 'ALL'
+            ? Object.values(statusCounts).reduce((a, b) => a + b, 0)
+            : (statusCounts[tab.value] || 0);
+          return (
+            <button
+              key={tab.value}
+              onClick={() => setStatusFilter(tab.value)}
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                statusFilter === tab.value
+                  ? 'border-gray-900 text-gray-900'
+                  : 'border-transparent text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              {tab.label}
+              {count > 0 && (
+                <span className={`ml-1.5 inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                  statusFilter === tab.value ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500'
+                }`}>
+                  {count}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Summary Row */}
@@ -510,7 +534,7 @@ export default function BrandProductsPage() {
                                 : 'bg-gray-50 text-gray-500 border-gray-200 font-medium'
                             }
                           >
-                            {product.status === 'ACTIVE' ? '판매중' : '판매중지'}
+                            {product.status === 'ACTIVE' ? '판매중' : product.status === 'DRAFT' ? '임시저장' : '판매중지'}
                           </Badge>
                         </div>
                       </TableCell>
@@ -591,7 +615,7 @@ export default function BrandProductsPage() {
                         variant={product.status === 'ACTIVE' ? 'default' : 'secondary'}
                         className={product.status === 'ACTIVE' ? 'bg-green-500/90 text-white' : ''}
                       >
-                        {product.status === 'ACTIVE' ? '판매중' : '판매중지'}
+                        {product.status === 'ACTIVE' ? '판매중' : product.status === 'DRAFT' ? '임시저장' : '판매중지'}
                       </Badge>
                     </div>
                     {discount > 0 && (
