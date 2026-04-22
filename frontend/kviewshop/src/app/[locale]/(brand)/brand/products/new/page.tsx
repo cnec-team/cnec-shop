@@ -15,6 +15,8 @@ import {
   type ShippingChoice,
 } from '@/components/brand/ProductForm/DetailsSection';
 import { CreatorSettingsSection } from '@/components/brand/ProductForm/CreatorSettingsSection';
+import { ProductDescriptionSection } from '@/components/brand/ProductForm/ProductDescriptionSection';
+import { ChannelPricesSection, type ChannelPrice } from '@/components/brand/ProductForm/ChannelPricesSection';
 import { IngredientPainPointSection } from '@/components/brand/ProductForm/IngredientPainPointSection';
 import type { IngredientItem } from '@/components/brand/ProductForm/IngredientPicker';
 
@@ -64,6 +66,26 @@ export default function NewProductPage() {
   const [shippingChoice, setShippingChoice] = useState<ShippingChoice>('FREE');
   const [shippingFee, setShippingFee] = useState('3000');
   const [deliveryEta, setDeliveryEta] = useState<DeliveryEta>('D2_3');
+
+  // Section 3.5: Description (optional)
+  const [description, setDescription] = useState('');
+  const [volume, setVolume] = useState('');
+  const [ingredientsText, setIngredientsText] = useState('');
+  const [howToUse, setHowToUse] = useState('');
+
+  // Section 3.6: Shipping extras (optional)
+  const [courier, setCourier] = useState('');
+  const [returnPolicy, setReturnPolicy] = useState('');
+  const [shippingInfoText, setShippingInfoText] = useState('');
+  const [freeShippingThreshold, setFreeShippingThreshold] = useState('');
+
+  // Section 3.7: Channel Prices (optional)
+  const emptyChannel: ChannelPrice = { value: '', url: '' };
+  const [channelCoupang, setChannelCoupang] = useState<ChannelPrice>(emptyChannel);
+  const [channelJasa, setChannelJasa] = useState<ChannelPrice>(emptyChannel);
+  const [channelOlive, setChannelOlive] = useState<ChannelPrice>(emptyChannel);
+  const [channelSmart, setChannelSmart] = useState<ChannelPrice>(emptyChannel);
+  const [isExclusive, setIsExclusive] = useState(false);
 
   // Section 4: Creator
   const [isActive, setIsActive] = useState(true);
@@ -138,7 +160,47 @@ export default function NewProductPage() {
     Number(salePrice) > 0 &&
     Number(stock) >= 0;
 
-  function handleDraftSave() {
+  async function handleDraftSave() {
+    if (!brand?.id) return;
+    if (!name.trim()) {
+      setError('임시저장하려면 상품명을 입력해주세요');
+      return;
+    }
+    setIsSaving(true);
+    setError(null);
+    try {
+      await createProduct({
+        brandId: brand.id,
+        name: name.trim(),
+        category,
+        originalPrice: Number(originalPrice) || 0,
+        salePrice: Number(salePrice) || 0,
+        stock: Number(stock) || 0,
+        images,
+        detailUrl: detailUrl.trim() || undefined,
+        shippingFeeType: shippingChoice === 'FREE' ? 'FREE' : shippingChoice,
+        shippingFee: shippingChoice !== 'FREE' ? Number(shippingFee) || 0 : 0,
+        shippingInfo: DELIVERY_TO_TEXT[deliveryEta],
+        allowCreatorPick,
+        allowTrial,
+        defaultCommissionRate: commissionRate,
+        heroIngredients: selectedIngredients.map(i => i.id),
+        targetPainPoints: Object.keys(selectedPainPoints),
+        asDraft: true,
+      });
+      localStorage.removeItem(DRAFT_KEY);
+      toast.success('임시저장 했어요');
+      router.push(productsPath);
+    } catch (err) {
+      console.error('Failed to save draft:', err);
+      setError('임시저장에 실패했어요');
+      toast.error('임시저장에 실패했어요');
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  function handleLocalDraftSave() {
     const draft = {
       name,
       category,
@@ -178,15 +240,21 @@ export default function NewProductPage() {
         brandId: brand.id,
         name: name.trim(),
         category,
-        description: undefined,
+        description: description.trim() || undefined,
         originalPrice: Number(originalPrice),
         salePrice: Number(salePrice),
         stock: Number(stock),
         images,
+        volume: volume.trim() || undefined,
+        ingredients: ingredientsText.trim() || undefined,
+        howToUse: howToUse.trim() || undefined,
         detailUrl: detailUrl.trim() || undefined,
-        shippingFeeType: shippingChoice === 'FREE' ? 'FREE' : 'PAID',
-        shippingFee: shippingChoice === 'PAID' ? Number(shippingFee) || 0 : 0,
-        shippingInfo: DELIVERY_TO_TEXT[deliveryEta],
+        shippingFeeType: shippingChoice === 'FREE' ? 'FREE' : shippingChoice,
+        shippingFee: shippingChoice !== 'FREE' ? Number(shippingFee) || 0 : 0,
+        freeShippingThreshold: shippingChoice === 'CONDITIONAL_FREE' ? Number(freeShippingThreshold) || 0 : undefined,
+        courier: courier || undefined,
+        shippingInfo: shippingInfoText.trim() || DELIVERY_TO_TEXT[deliveryEta],
+        returnPolicy: returnPolicy.trim() || undefined,
         status: isActive ? 'ACTIVE' : 'INACTIVE',
         allowCreatorPick,
         allowTrial,
@@ -238,10 +306,10 @@ export default function NewProductPage() {
           </button>
           <button
             type="button"
-            onClick={handleDraftSave}
+            onClick={handleLocalDraftSave}
             className="rounded-full px-4 py-2 text-sm font-medium text-gray-500 transition-colors hover:bg-white hover:text-gray-900"
           >
-            임시저장
+            빠른저장
           </button>
         </div>
 
@@ -302,8 +370,40 @@ export default function NewProductPage() {
             setShippingChoice={setShippingChoice}
             shippingFee={shippingFee}
             setShippingFee={setShippingFee}
+            freeShippingThreshold={freeShippingThreshold}
+            setFreeShippingThreshold={setFreeShippingThreshold}
             deliveryEta={deliveryEta}
             setDeliveryEta={setDeliveryEta}
+            courier={courier}
+            setCourier={setCourier}
+            shippingInfo={shippingInfoText}
+            setShippingInfo={setShippingInfoText}
+            returnPolicy={returnPolicy}
+            setReturnPolicy={setReturnPolicy}
+          />
+
+          <ProductDescriptionSection
+            description={description}
+            setDescription={setDescription}
+            volume={volume}
+            setVolume={setVolume}
+            ingredients={ingredientsText}
+            setIngredients={setIngredientsText}
+            howToUse={howToUse}
+            setHowToUse={setHowToUse}
+          />
+
+          <ChannelPricesSection
+            coupang={channelCoupang}
+            setCoupang={setChannelCoupang}
+            jasa={channelJasa}
+            setJasa={setChannelJasa}
+            olive={channelOlive}
+            setOlive={setChannelOlive}
+            smart={channelSmart}
+            setSmart={setChannelSmart}
+            isExclusive={isExclusive}
+            setIsExclusive={setIsExclusive}
           />
 
           <CreatorSettingsSection
@@ -330,18 +430,32 @@ export default function NewProductPage() {
           >
             취소
           </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={!isValid || isSaving}
-            className={`inline-flex h-12 min-w-[160px] items-center justify-center rounded-full px-8 text-sm font-medium text-white transition-colors ${
-              !isValid || isSaving
-                ? 'cursor-not-allowed bg-gray-300'
-                : 'bg-gray-900 hover:bg-gray-800'
-            }`}
-          >
-            {isSaving ? '등록 중…' : '상품 등록하기'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleDraftSave}
+              disabled={isSaving || !name.trim()}
+              className={`inline-flex h-12 items-center justify-center rounded-full border border-gray-300 px-6 text-sm font-medium transition-colors ${
+                isSaving || !name.trim()
+                  ? 'cursor-not-allowed bg-gray-50 text-gray-300'
+                  : 'bg-white text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              임시저장
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={!isValid || isSaving}
+              className={`inline-flex h-12 min-w-[140px] items-center justify-center rounded-full px-8 text-sm font-medium text-white transition-colors ${
+                !isValid || isSaving
+                  ? 'cursor-not-allowed bg-gray-300'
+                  : 'bg-gray-900 hover:bg-gray-800'
+              }`}
+            >
+              {isSaving ? '등록 중…' : '등록 완료'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

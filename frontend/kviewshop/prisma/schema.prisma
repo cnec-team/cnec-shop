@@ -27,6 +27,7 @@ enum UserStatus {
 }
 
 enum ProductStatus {
+  DRAFT
   ACTIVE
   INACTIVE
 }

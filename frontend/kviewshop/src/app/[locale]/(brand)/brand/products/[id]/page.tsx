@@ -57,6 +57,7 @@ export default function ProductDetailPage() {
   const [stock, setStock] = useState('');
 
   // Detail
+  const [productStatus, setProductStatus] = useState('ACTIVE');
   const [mainImage, setMainImage] = useState('');
   const [additionalImages, setAdditionalImages] = useState<string[]>([]);
   const [description, setDescription] = useState('');
@@ -115,6 +116,7 @@ export default function ProductDetailPage() {
         setCourier(product.courier ?? '');
         setShippingInfo(product.shippingInfo ?? '');
         setReturnPolicy(product.returnPolicy ?? '');
+        setProductStatus(product.status ?? 'ACTIVE');
         setIsActive(product.status === 'ACTIVE');
         setAllowCreatorPick(product.allowCreatorPick);
         setAllowTrial(product.allowTrial ?? true);
@@ -251,7 +253,14 @@ export default function ProductDetailPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">상품 수정</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold">상품 수정</h1>
+          {productStatus === 'DRAFT' && (
+            <span className="inline-flex items-center rounded-full bg-yellow-100 px-3 py-1 text-xs font-medium text-yellow-800">
+              임시저장
+            </span>
+          )}
+        </div>
         <Button variant="outline" onClick={() => router.back()}>
           뒤로
         </Button>
@@ -633,8 +642,23 @@ export default function ProductDetailPage() {
         <Button variant="outline" onClick={() => router.back()}>
           취소
         </Button>
-        <Button onClick={handleSave} disabled={isSaving}>
-          {isSaving ? '저장 중...' : '상품 수정'}
+        {productStatus === 'DRAFT' && (
+          <Button
+            variant="outline"
+            onClick={handleSave}
+            disabled={isSaving}
+          >
+            {isSaving ? '저장 중...' : '임시저장 유지'}
+          </Button>
+        )}
+        <Button
+          onClick={() => {
+            if (productStatus === 'DRAFT') setIsActive(true);
+            handleSave();
+          }}
+          disabled={isSaving}
+        >
+          {isSaving ? '저장 중...' : productStatus === 'DRAFT' ? '등록 완료로 전환' : '상품 수정'}
         </Button>
       </div>
     </div>

@@ -2,6 +2,7 @@
 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -37,6 +38,12 @@ interface DetailsSectionProps {
   setFreeShippingThreshold?: (v: string) => void;
   deliveryEta: DeliveryEta;
   setDeliveryEta: (v: DeliveryEta) => void;
+  courier?: string;
+  setCourier?: (v: string) => void;
+  returnPolicy?: string;
+  setReturnPolicy?: (v: string) => void;
+  shippingInfo?: string;
+  setShippingInfo?: (v: string) => void;
 }
 
 export function DetailsSection({
@@ -50,6 +57,12 @@ export function DetailsSection({
   setFreeShippingThreshold,
   deliveryEta,
   setDeliveryEta,
+  courier,
+  setCourier,
+  returnPolicy,
+  setReturnPolicy,
+  shippingInfo,
+  setShippingInfo,
 }: DetailsSectionProps) {
   return (
     <SectionCard
@@ -146,6 +159,51 @@ export function DetailsSection({
           </SelectContent>
         </Select>
       </div>
+
+      {setCourier && (
+        <div className="space-y-2">
+          <Label className={labelCls}>택배사</Label>
+          <Select value={courier || ''} onValueChange={(v) => setCourier(v)}>
+            <SelectTrigger className={`w-full sm:w-72 ${fieldCls}`}>
+              <SelectValue placeholder="택배사 선택" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="cj">CJ대한통운</SelectItem>
+              <SelectItem value="hanjin">한진택배</SelectItem>
+              <SelectItem value="lotte">롯데택배</SelectItem>
+              <SelectItem value="logen">로젠택배</SelectItem>
+              <SelectItem value="post">우체국택배</SelectItem>
+              <SelectItem value="etc">기타</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {setShippingInfo && (
+        <div className="space-y-2">
+          <Label className={labelCls}>배송 안내</Label>
+          <Textarea
+            value={shippingInfo || ''}
+            onChange={(e) => setShippingInfo(e.target.value)}
+            placeholder="배송 관련 안내 사항을 입력하세요 (선택)"
+            rows={2}
+            className="rounded-2xl border border-gray-200 bg-white text-sm"
+          />
+        </div>
+      )}
+
+      {setReturnPolicy && (
+        <div className="space-y-2">
+          <Label className={labelCls}>교환/반품 안내</Label>
+          <Textarea
+            value={returnPolicy || ''}
+            onChange={(e) => setReturnPolicy(e.target.value)}
+            placeholder="교환/반품 정책을 입력하세요 (선택)"
+            rows={2}
+            className="rounded-2xl border border-gray-200 bg-white text-sm"
+          />
+        </div>
+      )}
     </SectionCard>
   );
 }
