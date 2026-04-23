@@ -550,6 +550,14 @@ model Brand {
   suspiciousActivityLogs SuspiciousActivityLog[]
   billingPayments        BillingPayment[]
 
+  // 크리에이터 매칭용 타겟 프로필
+  targetGender           String?               @map("target_gender") @db.VarChar(10)
+  targetAgeMin           Int?                  @map("target_age_min")
+  targetAgeMax           Int?                  @map("target_age_max")
+  targetCategories       String[]              @default([]) @map("target_categories")
+  brandToneKeywords      String[]              @default([]) @map("brand_tone_keywords")
+  creatorMatchScores     CreatorMatchScore[]
+
   @@index([approved])
   @@index([mocraStatus])
   @@map("brands")
@@ -773,6 +781,7 @@ model Creator {
   // PPM relations
   creatorPainPoints      CreatorPainPoint[]
   matchScores            MatchScore[]
+  creatorMatchScores     CreatorMatchScore[]
 
   @@index([status])
   @@index([submittedAt])
@@ -2800,6 +2809,40 @@ model MatchScore {
   @@index([productId, score(sort: Desc)])
   @@index([creatorId, score(sort: Desc)])
   @@map("match_scores")
+}
+
+// ============================================================
+// CREATOR MATCH SCORE (브랜드-크리에이터 AI 매칭)
+// ============================================================
+
+model CreatorMatchScore {
+  id              String   @id @default(cuid())
+  brandId         String   @map("brand_id")
+  creatorId       String   @map("creator_id")
+
+  // 4대 지표 (0~100)
+  audienceFit     Int      @map("audience_fit")
+  contentQuality  Int      @map("content_quality")
+  brandTone       Int      @map("brand_tone")
+  costEfficiency  Int      @map("cost_efficiency")
+
+  // 종합 점수
+  totalScore      Int      @map("total_score")
+
+  // 파생 수치
+  estimatedCpm    Int      @map("estimated_cpm")
+  estimatedAdCost BigInt   @map("estimated_ad_cost")
+  expectedReach   Int      @map("expected_reach")
+
+  calculatedAt    DateTime @default(now()) @map("calculated_at") @db.Timestamptz
+
+  brand   Brand   @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  creator Creator @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+
+  @@unique([brandId, creatorId])
+  @@index([brandId, totalScore(sort: Desc)])
+  @@index([calculatedAt])
+  @@map("creator_match_scores")
 }
 
 // ============================================================
