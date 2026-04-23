@@ -104,8 +104,9 @@ function PricingCard({
         isDark
           ? 'bg-slate-900 text-white border border-slate-800'
           : 'bg-card border shadow-sm',
-        highlighted && !isDark && 'border-2 border-primary md:scale-[1.04]',
-        !isCurrentTier && 'hover:-translate-y-0.5 hover:shadow-lg'
+        highlighted && !isDark && 'border-2 border-primary',
+        !highlighted && !isDark && 'border-border',
+        !isCurrentTier && 'hover:shadow-md'
       )}
     >
       {highlighted && !isDark && (
@@ -179,7 +180,7 @@ function PricingCard({
 export function PricingCards({ billingCycle, currentTier }: PricingCardsProps) {
   return (
     <section className="pb-16 md:pb-24">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 md:items-start">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 items-stretch">
         <PricingCard tier="trial" billingCycle={billingCycle} isCurrentTier={currentTier === 'trial'} />
         <PricingCard
           tier="standard"
