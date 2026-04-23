@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useMemo, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
 import { cn } from '@/lib/utils'
-import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { BillingCycle } from './types'
 
@@ -49,10 +49,15 @@ export function PlanCalculator({ billingCycle }: PlanCalculatorProps) {
     setMessageCount(values[0])
   }, [])
 
+  const router = useRouter()
+
   function handleCTA() {
-    console.log('[Calculator CTA]', { recommended: costs.recommended, billingCycle })
-    const name = costs.recommended === 'pro' ? '프로' : '스탠다드'
-    toast.info(`${name} 플랜 시작 준비 중입니다 (다음 PR에서 결제 연동 예정)`)
+    if (costs.recommended === 'pro') {
+      const cycle = billingCycle === 'annual' ? 'ANNUAL' : 'MONTHLY'
+      router.push(`/brand/billing/checkout?purpose=PRO_SUBSCRIPTION&cycle=${cycle}`)
+    } else {
+      router.push('/brand/billing/checkout?purpose=STANDARD_SUBSCRIPTION')
+    }
   }
 
   const recommendedName = costs.recommended === 'pro' ? '프로' : '스탠다드'

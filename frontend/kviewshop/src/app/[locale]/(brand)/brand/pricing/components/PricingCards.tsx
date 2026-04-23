@@ -1,6 +1,7 @@
 'use client'
 
 import { Check } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
@@ -88,13 +89,22 @@ function PricingCard({
   highlighted?: boolean
   isCurrentTier?: boolean
 }) {
+  const router = useRouter()
   const config = PLAN_CONFIGS[tier]
   const isDark = tier === 'pro'
   const isAnnual = billingCycle === 'annual'
 
   function handleClick() {
-    console.log('[Pricing CTA]', { tier, billingCycle })
-    toast.info(`${config.name} 플랜 시작 준비 중입니다 (다음 PR에서 결제 연동 예정)`)
+    if (tier === 'trial') {
+      toast.info('체험은 브랜드 승인 시 자동으로 시작돼요')
+      return
+    }
+    if (tier === 'standard') {
+      router.push('/brand/billing/checkout?purpose=STANDARD_SUBSCRIPTION')
+    } else if (tier === 'pro') {
+      const cycle = isAnnual ? 'ANNUAL' : 'MONTHLY'
+      router.push(`/brand/billing/checkout?purpose=PRO_SUBSCRIPTION&cycle=${cycle}`)
+    }
   }
 
   return (

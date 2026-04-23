@@ -86,11 +86,30 @@ export async function cancelPayment(params: {
   return data
 }
 
-export async function getPayment(paymentKey: string): Promise<unknown> {
+export interface TossPaymentDetail {
+  paymentKey: string
+  orderId: string
+  status: string
+  totalAmount: number
+  method?: string
+  approvedAt?: string
+  cancels?: Array<{ cancelAmount: number; cancelReason: string; canceledAt: string }>
+  [key: string]: unknown
+}
+
+export async function getPayment(paymentKey: string): Promise<TossPaymentDetail> {
   const { apiBase } = getTossBillingConfig()
   const res = await fetch(`${apiBase}/payments/${paymentKey}`, {
     headers: { Authorization: getAuthHeader() },
   })
-  if (!res.ok) throw new TossApiError('결제 조회에 실패했어요', 'NOT_FOUND', res.status, {})
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new TossApiError(
+      data.message ?? '결제 조회에 실패했어요',
+      data.code ?? 'NOT_FOUND',
+      res.status,
+      data
+    )
+  }
   return res.json()
 }

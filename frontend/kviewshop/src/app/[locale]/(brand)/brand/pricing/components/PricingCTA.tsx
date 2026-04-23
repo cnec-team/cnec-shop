@@ -1,12 +1,14 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 
 export function PricingCTA() {
+  const router = useRouter()
+
   function handleStart() {
-    console.log('[Pricing CTA] Bottom CTA clicked')
-    toast.info('체험 시작 준비 중입니다 (다음 PR에서 결제 연동 예정)')
+    router.push('/brand/billing/checkout?purpose=STANDARD_SUBSCRIPTION')
   }
 
   return (
@@ -28,8 +30,7 @@ export function PricingCTA() {
           </Button>
           <button
             onClick={() => {
-              console.log('[Pricing CTA] Contact sales')
-              toast.info('세일즈팀 문의 준비 중입니다 (다음 PR에서 연동 예정)')
+              toast.info('세일즈팀 문의는 support@cnecshop.com으로 연락해주세요')
             }}
             className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-lg px-4 py-2"
           >
