@@ -491,7 +491,7 @@ export async function getCreatorApprovalDetail(creatorId: string) {
   const creator = await prisma.creator.findUnique({
     where: { id: creatorId },
     include: {
-      user: { select: { email: true, phone: true, name: true, createdAt: true } },
+      user: { select: { email: true, phone: true, name: true, createdAt: true, ci: true, phoneReachable: true } },
     },
   })
   if (!creator) throw new Error('크리에이터를 찾을 수 없습니다')

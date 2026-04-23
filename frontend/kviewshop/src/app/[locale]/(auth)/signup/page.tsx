@@ -25,6 +25,11 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { PhoneVerificationInput } from '@/components/auth/PhoneVerificationInput';
+import { IdentityVerificationButton } from '@/components/auth/IdentityVerificationButton';
+
+const portoneIdentityEnabled = Boolean(
+  process.env.NEXT_PUBLIC_PORTONE_IDENTITY_VERIFICATION_CHANNEL_KEY
+);
 
 type Role = 'creator' | 'brand_admin';
 
@@ -505,24 +510,45 @@ export default function SignupPage() {
                       <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="이름" className={inputCls} />
                     </div>
 
-                    {/* 크리에이터 + 브랜드 공통: 팝빌 SMS 인증번호 방식 */}
-                    <div className="flex gap-2 items-start">
-                      <div className="relative flex-1">
-                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                        <input type="tel" value={phoneNumber} onChange={e => setPhoneNumber(formatPhone(e.target.value))} placeholder="010-0000-0000" disabled={phoneVerified} className={`${inputCls} disabled:opacity-60`} />
+                    {/* 크리에이터: PortOne 본인인증(채널키 있을 때) / 팝빌 SMS(fallback) */}
+                    {/* 브랜드: 항상 팝빌 SMS */}
+                    {role === 'creator' && portoneIdentityEnabled ? (
+                      <div className="flex gap-2 items-start">
+                        <div className="relative flex-1">
+                          <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                          <input type="tel" value={phoneNumber} disabled placeholder="본인인증 시 자동 입력" className={`${inputCls} disabled:opacity-60`} />
+                        </div>
+                        <IdentityVerificationButton
+                          name={name}
+                          disabled={phoneVerified}
+                          onSuccess={(data) => {
+                            setPhoneNumber(formatPhone(data.phoneNumber));
+                            setPhoneVerified(true);
+                            setVerificationToken(data.verificationToken);
+                            toast.success('본인인증이 완료되었습니다');
+                          }}
+                          onError={(msg) => toast.error(msg)}
+                        />
                       </div>
-                      <PhoneVerificationInput
-                        phoneNumber={phoneNumber}
-                        disabled={phoneVerified}
-                        onVerified={(data) => {
-                          setPhoneNumber(formatPhone(data.phoneNumber));
-                          setPhoneVerified(true);
-                          setVerificationToken(data.verificationToken);
-                          toast.success('휴대폰 인증이 완료되었습니다');
-                        }}
-                        onError={(msg) => toast.error(msg)}
-                      />
-                    </div>
+                    ) : (
+                      <div className="flex gap-2 items-start">
+                        <div className="relative flex-1">
+                          <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                          <input type="tel" value={phoneNumber} onChange={e => setPhoneNumber(formatPhone(e.target.value))} placeholder="010-0000-0000" disabled={phoneVerified} className={`${inputCls} disabled:opacity-60`} />
+                        </div>
+                        <PhoneVerificationInput
+                          phoneNumber={phoneNumber}
+                          disabled={phoneVerified}
+                          onVerified={(data) => {
+                            setPhoneNumber(formatPhone(data.phoneNumber));
+                            setPhoneVerified(true);
+                            setVerificationToken(data.verificationToken);
+                            toast.success('휴대폰 인증이 완료되었습니다');
+                          }}
+                          onError={(msg) => toast.error(msg)}
+                        />
+                      </div>
+                    )}
 
                     {phoneVerified && (
                       <div className="flex items-center gap-2 bg-green-50 text-green-700 rounded-2xl p-4 text-sm">
