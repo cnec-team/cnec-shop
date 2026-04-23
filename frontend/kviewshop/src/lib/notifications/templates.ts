@@ -778,3 +778,326 @@ export function creatorRejectedMessage(data: {
     },
   }
 }
+
+// ---------- 19. 브랜드 승인 → 브랜드 ----------
+
+export function brandApprovedTemplate(data: {
+  brandName: string
+  recipientEmail?: string
+}) {
+  const v = { brandName: escapeHtml(data.brandName) }
+
+  return {
+    email: {
+      subject: `[크넥샵] 브랜드 승인이 완료되었습니다`,
+      html: emailLayout(`
+        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${v.brandName} 브랜드가 승인되었습니다</h2>
+        <p style="color:#6b7280;font-size:14px;line-height:1.6">지금 바로 상품을 등록하고 크리에이터와 함께 판매를 시작해보세요!</p>
+        ${ctaButton('상품 등록하기', `${SITE_URL}/brand/products/new`)}
+      `, data.recipientEmail),
+    },
+    inApp: {
+      type: 'SYSTEM',
+      title: '브랜드 승인 완료',
+      message: `${data.brandName}가 승인되었어요. 지금 바로 상품을 등록해보세요!`,
+      linkUrl: '/brand/products/new',
+    },
+  }
+}
+
+// ---------- 20. 브랜드 거절 → 브랜드 ----------
+
+export function brandRejectedTemplate(data: {
+  brandName: string
+  recipientEmail?: string
+}) {
+  const v = { brandName: escapeHtml(data.brandName) }
+
+  return {
+    email: {
+      subject: `[크넥샵] 브랜드 등록 심사 결과 안내`,
+      html: emailLayout(`
+        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${v.brandName} 등록이 거절되었습니다</h2>
+        <p style="color:#6b7280;font-size:14px;line-height:1.6">자세한 사항은 관리자에게 문의해주세요.</p>
+        ${ctaButton('문의하기', `${SITE_URL}/support`)}
+      `, data.recipientEmail),
+    },
+    inApp: {
+      type: 'SYSTEM',
+      title: '브랜드 등록 거절',
+      message: `${data.brandName} 등록이 거절되었습니다. 자세한 사항은 관리자에게 문의하세요.`,
+      linkUrl: '/support',
+    },
+  }
+}
+
+// ---------- 21. 브랜드 상태 변경 → 브랜드 ----------
+
+export function brandStatusChangedTemplate(data: {
+  brandName: string
+  status: string
+  recipientEmail?: string
+}) {
+  const v = { brandName: escapeHtml(data.brandName), status: escapeHtml(data.status) }
+
+  return {
+    email: {
+      subject: `[크넥샵] 브랜드 상태가 변경되었습니다`,
+      html: emailLayout(`
+        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${v.brandName} 상태가 변경되었습니다</h2>
+        ${infoBox(`<div style="font-size:14px"><strong>변경 상태</strong>: ${v.status}</div>`)}
+        <p style="color:#6b7280;font-size:14px">자세한 사항은 관리자에게 문의해주세요.</p>
+        ${ctaButton('브랜드 관리', `${SITE_URL}/brand/dashboard`)}
+      `, data.recipientEmail),
+    },
+    inApp: {
+      type: 'SYSTEM',
+      title: '브랜드 상태 변경',
+      message: `${data.brandName} 상태가 변경되었습니다.`,
+      linkUrl: '/brand/dashboard',
+    },
+  }
+}
+
+// ---------- 22. 주문 취소 (브랜드→구매자) ----------
+
+export function orderCancelledByBrandTemplate(data: {
+  orderNumber: string
+  cancelReason: string
+  recipientEmail?: string
+  orderLinkUrl?: string
+}) {
+  const v = {
+    orderNumber: escapeHtml(data.orderNumber),
+    cancelReason: escapeHtml(data.cancelReason),
+  }
+  const linkUrl = data.orderLinkUrl ?? '/buyer/orders'
+
+  return {
+    email: {
+      subject: `[크넥샵] 주문이 취소되었습니다 (${data.orderNumber})`,
+      html: emailLayout(`
+        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">주문이 취소되었습니다</h2>
+        ${infoBox(`
+          <div style="margin-bottom:8px"><strong>주문번호</strong>: ${v.orderNumber}</div>
+          <div><strong>취소 사유</strong>: ${v.cancelReason}</div>
+        `)}
+        <p style="color:#6b7280;font-size:14px">결제하신 금액은 영업일 기준 3~5일 내 환불됩니다.</p>
+        ${ctaButton('주문 상세보기', `${SITE_URL}${linkUrl}`)}
+      `, data.recipientEmail),
+    },
+    inApp: {
+      type: 'ORDER',
+      title: '주문이 취소되었어요',
+      message: `주문번호 ${data.orderNumber} (사유: ${data.cancelReason})`,
+      linkUrl,
+    },
+  }
+}
+
+// ---------- 23. 주문 취소 (브랜드→크리에이터) ----------
+
+export function orderCancelledByBrandToCreatorTemplate(data: {
+  orderNumber: string
+  recipientEmail?: string
+}) {
+  const v = { orderNumber: escapeHtml(data.orderNumber) }
+
+  return {
+    email: {
+      subject: `[크넥샵] 주문이 취소되었습니다 (${data.orderNumber})`,
+      html: emailLayout(`
+        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">주문이 취소되었습니다</h2>
+        ${infoBox(`<div><strong>주문번호</strong>: ${v.orderNumber}</div>`)}
+        <p style="color:#6b7280;font-size:14px">브랜드에 의해 주문이 취소되었습니다.</p>
+        ${ctaButton('주문 현황 보기', `${SITE_URL}/creator/orders`)}
+      `, data.recipientEmail),
+    },
+    inApp: {
+      type: 'ORDER',
+      title: '주문이 취소되었어요',
+      message: `주문번호 ${data.orderNumber}`,
+      linkUrl: '/creator/orders',
+    },
+  }
+}
+
+// ---------- 24. 주문 취소 (구매자→브랜드) ----------
+
+export function orderCancelledByBuyerTemplate(data: {
+  orderNumber: string
+  recipientEmail?: string
+}) {
+  const v = { orderNumber: escapeHtml(data.orderNumber) }
+
+  return {
+    email: {
+      subject: `[크넥샵] 주문이 취소되었습니다 (${data.orderNumber})`,
+      html: emailLayout(`
+        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">주문이 취소되었습니다</h2>
+        ${infoBox(`<div><strong>주문번호</strong>: ${v.orderNumber}</div>`)}
+        <p style="color:#6b7280;font-size:14px">구매자에 의해 주문이 취소되었습니다.</p>
+        ${ctaButton('주문 관리하기', `${SITE_URL}/brand/orders`)}
+      `, data.recipientEmail),
+    },
+    inApp: {
+      type: 'ORDER',
+      title: '주문이 취소됐어요',
+      message: `주문 ${data.orderNumber}이 취소되었습니다.`,
+      linkUrl: '/brand/orders',
+    },
+  }
+}
+
+// ---------- 25. 주문 취소 (구매자→크리에이터) ----------
+
+export function orderCancelledByBuyerToCreatorTemplate(data: {
+  orderNumber: string
+  recipientEmail?: string
+}) {
+  const v = { orderNumber: escapeHtml(data.orderNumber) }
+
+  return {
+    email: {
+      subject: `[크넥샵] 주문이 취소되었습니다 (${data.orderNumber})`,
+      html: emailLayout(`
+        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">주문이 취소되었습니다</h2>
+        ${infoBox(`<div><strong>주문번호</strong>: ${v.orderNumber}</div>`)}
+        <p style="color:#6b7280;font-size:14px">구매자에 의해 주문이 취소되었습니다.</p>
+        ${ctaButton('판매 현황 보기', `${SITE_URL}/creator/sales`)}
+      `, data.recipientEmail),
+    },
+    inApp: {
+      type: 'ORDER',
+      title: '주문이 취소됐어요',
+      message: `주문 ${data.orderNumber}이 취소되었습니다.`,
+      linkUrl: '/creator/sales',
+    },
+  }
+}
+
+// ---------- 26. 교환 요청 → 브랜드 ----------
+
+export function exchangeRequestedTemplate(data: {
+  orderNumber: string
+  reason: string
+  recipientEmail?: string
+}) {
+  const v = {
+    orderNumber: escapeHtml(data.orderNumber),
+    reason: escapeHtml(data.reason),
+  }
+
+  return {
+    email: {
+      subject: `[크넥샵] 교환 신청이 접수되었습니다 (${data.orderNumber})`,
+      html: emailLayout(`
+        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">교환 신청이 접수되었습니다</h2>
+        ${infoBox(`
+          <div style="margin-bottom:8px"><strong>주문번호</strong>: ${v.orderNumber}</div>
+          <div><strong>사유</strong>: ${v.reason}</div>
+        `)}
+        <p style="color:#6b7280;font-size:14px">빠른 확인 부탁드립니다.</p>
+        ${ctaButton('문의 관리하기', `${SITE_URL}/brand/inquiries`)}
+      `, data.recipientEmail),
+    },
+    inApp: {
+      type: 'ORDER',
+      title: '교환 신청이 접수됐어요',
+      message: `주문 ${data.orderNumber} - ${data.reason}`,
+      linkUrl: '/brand/inquiries',
+    },
+  }
+}
+
+// ---------- 27. 환불 요청 → 브랜드 ----------
+
+export function refundRequestedTemplate(data: {
+  orderNumber: string
+  refundType: string
+  recipientEmail?: string
+}) {
+  const v = {
+    orderNumber: escapeHtml(data.orderNumber),
+    refundType: escapeHtml(data.refundType),
+  }
+
+  return {
+    email: {
+      subject: `[크넥샵] 환불 신청이 접수되었습니다 (${data.orderNumber})`,
+      html: emailLayout(`
+        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">환불 신청이 접수되었습니다</h2>
+        ${infoBox(`
+          <div style="margin-bottom:8px"><strong>주문번호</strong>: ${v.orderNumber}</div>
+          <div><strong>환불 유형</strong>: ${v.refundType}</div>
+        `)}
+        <p style="color:#6b7280;font-size:14px">빠른 확인 부탁드립니다.</p>
+        ${ctaButton('문의 관리하기', `${SITE_URL}/brand/inquiries`)}
+      `, data.recipientEmail),
+    },
+    inApp: {
+      type: 'ORDER',
+      title: '환불 신청이 접수됐어요',
+      message: `주문 ${data.orderNumber} - ${data.refundType} 환불`,
+      linkUrl: '/brand/inquiries',
+    },
+  }
+}
+
+// ---------- 28. 캠페인 참여 거절 → 크리에이터 ----------
+
+export function campaignParticipationRejectedTemplate(data: {
+  creatorName: string
+  campaignTitle: string
+  recipientEmail?: string
+}) {
+  const v = {
+    creatorName: escapeHtml(data.creatorName),
+    campaignTitle: escapeHtml(data.campaignTitle),
+  }
+
+  return {
+    email: {
+      subject: `[크넥샵] 캠페인 참여가 거절되었습니다`,
+      html: emailLayout(`
+        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${v.creatorName}님, 캠페인 참여가 거절되었습니다</h2>
+        ${infoBox(`<div><strong>캠페인</strong>: ${v.campaignTitle}</div>`)}
+        <p style="color:#6b7280;font-size:14px">다른 캠페인에 참여해보세요.</p>
+        ${ctaButton('캠페인 둘러보기', `${SITE_URL}/creator/campaigns`)}
+      `, data.recipientEmail),
+    },
+    inApp: {
+      type: 'CAMPAIGN',
+      title: '공구 참여 거절',
+      message: `"${data.campaignTitle}" 참여가 거절되었습니다.`,
+      linkUrl: '/creator/campaigns',
+    },
+  }
+}
+
+// ---------- 29. 캠페인 모집 시작 → 크리에이터 ----------
+
+export function campaignRecruitingStartedTemplate(data: {
+  campaignTitle: string
+  recipientEmail?: string
+}) {
+  const v = { campaignTitle: escapeHtml(data.campaignTitle) }
+
+  return {
+    email: {
+      subject: `[크넥샵] 새 캠페인이 오픈됐어요 - ${data.campaignTitle}`,
+      html: emailLayout(`
+        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">새 캠페인이 오픈됐어요</h2>
+        ${infoBox(`<div><strong>캠페인</strong>: ${v.campaignTitle}</div>`)}
+        <p style="color:#6b7280;font-size:14px">지금 확인하고 참여해보세요!</p>
+        ${ctaButton('캠페인 확인하기', `${SITE_URL}/creator/campaigns`)}
+      `, data.recipientEmail),
+    },
+    inApp: {
+      type: 'CAMPAIGN',
+      title: '새 캠페인이 오픈됐어요',
+      message: `"${data.campaignTitle}" 캠페인 모집이 시작되었어요. 지금 확인해보세요!`,
+      linkUrl: '/creator/campaigns',
+    },
+  }
+}

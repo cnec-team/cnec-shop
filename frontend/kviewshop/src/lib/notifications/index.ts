@@ -17,6 +17,17 @@ export {
   proposalGongguInviteMessage,
   proposalProductPickMessage,
   bulkSendReportMessage,
+  brandApprovedTemplate,
+  brandRejectedTemplate,
+  brandStatusChangedTemplate,
+  orderCancelledByBrandTemplate,
+  orderCancelledByBrandToCreatorTemplate,
+  orderCancelledByBuyerTemplate,
+  orderCancelledByBuyerToCreatorTemplate,
+  exchangeRequestedTemplate,
+  refundRequestedTemplate,
+  campaignParticipationRejectedTemplate,
+  campaignRecruitingStartedTemplate,
 } from './templates'
 export { normalizePhone, isValidEmail } from './utils'
 

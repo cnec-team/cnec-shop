@@ -11,6 +11,10 @@ import {
   deliveryCompleteMessage,
   campaignApprovedMessage,
   campaignStartedMessage,
+  campaignParticipationRejectedTemplate,
+  orderCancelledByBrandTemplate,
+  orderCancelledByBrandToCreatorTemplate,
+  campaignRecruitingStartedTemplate,
 } from '@/lib/notifications/templates'
 
 async function requireBrand() {
@@ -521,12 +525,16 @@ export async function handleParticipationAction(
           emailTemplate: template.email,
         })
       } else {
+        const rejTmpl = campaignParticipationRejectedTemplate({
+          creatorName: creator.displayName ?? '',
+          campaignTitle: participation.campaign?.title ?? '공구',
+          recipientEmail: creator.email ?? undefined,
+        })
         sendNotification({
           userId: creator.userId,
-          type: 'CAMPAIGN',
-          title: '공구 참여 거절',
-          message: `"${participation.campaign?.title ?? '공구'}" 참여가 거절되었습니다.`,
-          linkUrl: '/creator/campaigns',
+          ...rejTmpl.inApp,
+          email: creator.email ?? undefined,
+          emailTemplate: creator.email ? rejTmpl.email : undefined,
         })
       }
     }
@@ -814,14 +822,18 @@ export async function cancelOrder(orderId: string, cancelReason: string) {
     const cancelPhone = normalizePhone(cancelOrder?.buyerPhone)
 
     if (cancelBuyerUserId || cancelEmail || cancelPhone) {
+      const cancelTmpl = orderCancelledByBrandTemplate({
+        orderNumber: order.orderNumber ?? '',
+        cancelReason,
+        recipientEmail: cancelEmail,
+        orderLinkUrl: cancelBuyerUserId ? `/buyer/orders/${order.id}` : `/order-lookup?orderNumber=${order.orderNumber ?? ''}`,
+      })
       sendNotification({
         userId: cancelBuyerUserId,
-        type: 'ORDER',
-        title: '주문이 취소되었어요',
-        message: `주문번호 ${order.orderNumber} (사유: ${cancelReason})`,
-        linkUrl: cancelBuyerUserId ? `/buyer/orders/${order.id}` : `/order-lookup?orderNumber=${order.orderNumber}`,
+        ...cancelTmpl.inApp,
         email: cancelEmail,
         phone: cancelPhone,
+        emailTemplate: cancelEmail ? cancelTmpl.email : undefined,
       })
     }
   } catch {
@@ -832,15 +844,18 @@ export async function cancelOrder(orderId: string, cancelReason: string) {
   if (order.creatorId) {
     const creator = await prisma.creator.findUnique({
       where: { id: order.creatorId },
-      select: { userId: true },
+      select: { userId: true, email: true },
     })
     if (creator?.userId) {
+      const creatorCancelTmpl = orderCancelledByBrandToCreatorTemplate({
+        orderNumber: order.orderNumber ?? '',
+        recipientEmail: creator.email ?? undefined,
+      })
       sendNotification({
         userId: creator.userId,
-        type: 'ORDER',
-        title: '주문이 취소되었어요',
-        message: `주문번호 ${order.orderNumber}`,
-        linkUrl: '/creator/orders',
+        ...creatorCancelTmpl.inApp,
+        email: creator.email ?? undefined,
+        emailTemplate: creator.email ? creatorCancelTmpl.email : undefined,
       })
     }
   }
@@ -1629,15 +1644,18 @@ export async function updateCampaignStatus(
     try {
       const allCreators = await prisma.creator.findMany({
         where: { status: 'ACTIVE' },
-        select: { userId: true },
+        select: { userId: true, email: true },
       })
       for (const c of allCreators) {
+        const recruitTmpl = campaignRecruitingStartedTemplate({
+          campaignTitle: campaign.title,
+          recipientEmail: c.email ?? undefined,
+        })
         sendNotification({
           userId: c.userId,
-          type: 'CAMPAIGN',
-          title: '새 캠페인이 오픈됐어요',
-          message: `"${campaign.title}" 캠페인 모집이 시작되었어요. 지금 확인해보세요!`,
-          linkUrl: '/creator/campaigns',
+          ...recruitTmpl.inApp,
+          email: c.email ?? undefined,
+          emailTemplate: c.email ? recruitTmpl.email : undefined,
         })
       }
     } catch {

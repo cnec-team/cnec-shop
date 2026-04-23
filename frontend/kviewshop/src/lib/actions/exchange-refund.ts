@@ -2,7 +2,8 @@
 
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
-import { sendNotification } from '@/lib/notifications'
+import { sendNotification, isValidEmail } from '@/lib/notifications'
+import { exchangeRequestedTemplate, refundRequestedTemplate } from '@/lib/notifications/templates'
 
 async function requireBuyer() {
   const session = await auth()
@@ -50,12 +51,21 @@ export async function requestExchange(data: {
 
   try {
     if (order.brand?.userId) {
+      const brandUser = await prisma.user.findUnique({
+        where: { id: order.brand.userId },
+        select: { email: true },
+      })
+      const brandEmail = brandUser?.email && isValidEmail(brandUser.email) ? brandUser.email : undefined
+      const exchTmpl = exchangeRequestedTemplate({
+        orderNumber: order.orderNumber ?? '',
+        reason: data.reason,
+        recipientEmail: brandEmail,
+      })
       await sendNotification({
         userId: order.brand.userId,
-        type: 'ORDER',
-        title: '교환 신청이 접수됐어요',
-        message: `주문 ${order.orderNumber} - ${data.reason}`,
-        linkUrl: '/brand/inquiries',
+        ...exchTmpl.inApp,
+        email: brandEmail,
+        emailTemplate: brandEmail ? exchTmpl.email : undefined,
       })
     }
   } catch {}
@@ -119,12 +129,21 @@ export async function requestRefund(data: {
 
   try {
     if (order.brand?.userId) {
+      const refundBrandUser = await prisma.user.findUnique({
+        where: { id: order.brand.userId },
+        select: { email: true },
+      })
+      const refundBrandEmail = refundBrandUser?.email && isValidEmail(refundBrandUser.email) ? refundBrandUser.email : undefined
+      const refTmpl = refundRequestedTemplate({
+        orderNumber: order.orderNumber ?? '',
+        refundType: data.refundType === 'FULL' ? '전체' : '부분',
+        recipientEmail: refundBrandEmail,
+      })
       await sendNotification({
         userId: order.brand.userId,
-        type: 'ORDER',
-        title: '환불 신청이 접수됐어요',
-        message: `주문 ${order.orderNumber} - ${data.refundType === 'FULL' ? '전체' : '부분'} 환불`,
-        linkUrl: '/brand/inquiries',
+        ...refTmpl.inApp,
+        email: refundBrandEmail,
+        emailTemplate: refundBrandEmail ? refTmpl.email : undefined,
       })
     }
   } catch {}

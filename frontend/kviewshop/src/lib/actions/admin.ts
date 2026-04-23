@@ -3,7 +3,7 @@
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { sendNotification, normalizePhone, isValidEmail } from '@/lib/notifications'
-import { settlementConfirmedMessage, creatorApprovedMessage, creatorRejectedMessage } from '@/lib/notifications/templates'
+import { settlementConfirmedMessage, creatorApprovedMessage, creatorRejectedMessage, brandApprovedTemplate, brandRejectedTemplate, brandStatusChangedTemplate } from '@/lib/notifications/templates'
 
 async function requireAdmin() {
   const session = await auth()
@@ -127,12 +127,20 @@ export async function approveBrand(id: string) {
 
   if (brand.userId) {
     try {
+      const user = await prisma.user.findUnique({
+        where: { id: brand.userId },
+        select: { email: true },
+      })
+      const brandName = brand.companyName ?? '브랜드'
+      const tmpl = brandApprovedTemplate({
+        brandName,
+        recipientEmail: user?.email && isValidEmail(user.email) ? user.email : undefined,
+      })
       await sendNotification({
         userId: brand.userId,
-        type: 'SYSTEM',
-        title: '브랜드 승인 완료',
-        message: `${brand.companyName ?? '브랜드'}가 승인되었어요. 지금 바로 상품을 등록해보세요!`,
-        linkUrl: '/brand/products/new',
+        ...tmpl.inApp,
+        email: user?.email && isValidEmail(user.email) ? user.email : undefined,
+        emailTemplate: user?.email && isValidEmail(user.email) ? tmpl.email : undefined,
       })
     } catch { /* ignore */ }
   }
@@ -146,16 +154,26 @@ export async function updateBrandStatus(brandId: string, action: 'approve' | 'su
   const brand = await prisma.brand.findUnique({ where: { id: brandId }, select: { id: true, userId: true, companyName: true } })
   if (!brand) throw new Error('브랜드를 찾을 수 없습니다')
 
+  const brandName = brand.companyName ?? '브랜드'
+  let brandUser: { email: string | null } | null = null
+  if (brand.userId) {
+    brandUser = await prisma.user.findUnique({
+      where: { id: brand.userId },
+      select: { email: true },
+    })
+  }
+  const brandEmail = brandUser?.email && isValidEmail(brandUser.email) ? brandUser.email : undefined
+
   if (action === 'approve') {
     await prisma.brand.update({ where: { id: brandId }, data: { approved: true, approvedAt: new Date() } })
     if (brand.userId) {
       try {
+        const tmpl = brandApprovedTemplate({ brandName, recipientEmail: brandEmail })
         await sendNotification({
           userId: brand.userId,
-          type: 'SYSTEM',
-          title: '브랜드 승인 완료',
-          message: `${brand.companyName ?? '브랜드'}가 승인되었어요!`,
-          linkUrl: '/brand/products/new',
+          ...tmpl.inApp,
+          email: brandEmail,
+          emailTemplate: brandEmail ? tmpl.email : undefined,
         })
       } catch { /* ignore */ }
     }
@@ -163,11 +181,12 @@ export async function updateBrandStatus(brandId: string, action: 'approve' | 'su
     await prisma.brand.update({ where: { id: brandId }, data: { approved: false } })
     if (brand.userId) {
       try {
+        const tmpl = brandStatusChangedTemplate({ brandName, status: '정지', recipientEmail: brandEmail })
         await sendNotification({
           userId: brand.userId,
-          type: 'SYSTEM',
-          title: '브랜드 정지',
-          message: `${brand.companyName ?? '브랜드'} 계정이 정지되었습니다. 관리자에게 문의하세요.`,
+          ...tmpl.inApp,
+          email: brandEmail,
+          emailTemplate: brandEmail ? tmpl.email : undefined,
         })
       } catch { /* ignore */ }
     }
@@ -175,11 +194,12 @@ export async function updateBrandStatus(brandId: string, action: 'approve' | 'su
     await prisma.brand.update({ where: { id: brandId }, data: { approved: false } })
     if (brand.userId) {
       try {
+        const tmpl = brandRejectedTemplate({ brandName, recipientEmail: brandEmail })
         await sendNotification({
           userId: brand.userId,
-          type: 'SYSTEM',
-          title: '브랜드 등록 거절',
-          message: `${brand.companyName ?? '브랜드'} 등록이 거절되었습니다. 자세한 사항은 관리자에게 문의하세요.`,
+          ...tmpl.inApp,
+          email: brandEmail,
+          emailTemplate: brandEmail ? tmpl.email : undefined,
         })
       } catch { /* ignore */ }
     }
