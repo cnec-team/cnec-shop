@@ -74,15 +74,34 @@ const legacySchema = z.object({
   marketingAgreedAt: z.string().optional(),
 })
 
-async function verifyIdentityToken(token: string): Promise<{ ci: string | null; phone: string; name: string } | null> {
+interface VerifiedIdentity {
+  ci: string | null
+  phone: string
+  name: string
+  /** identity_verification = PortOne 본인인증, phone_verification = SMS 인증 */
+  type: 'identity_verification' | 'phone_verification'
+}
+
+async function verifyIdentityToken(token: string): Promise<VerifiedIdentity | null> {
   try {
     const { payload } = await jwtVerify(token, JWT_SECRET)
-    if (payload.type !== 'identity_verification') return null
-    return {
-      ci: (payload.ci as string) || null,
-      phone: payload.phone as string,
-      name: payload.name as string,
+    if (payload.type === 'identity_verification') {
+      return {
+        ci: (payload.ci as string) || null,
+        phone: payload.phone as string,
+        name: payload.name as string,
+        type: 'identity_verification',
+      }
     }
+    if (payload.type === 'phone_verification') {
+      return {
+        ci: null,
+        phone: payload.phone as string,
+        name: '', // SMS 인증에는 이름 정보 없음
+        type: 'phone_verification',
+      }
+    }
+    return null
   } catch {
     return null
   }
@@ -141,21 +160,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '올바르지 않은 역할입니다' }, { status: 400 })
     }
 
-    // 본인인증 토큰 검증
-    let verifiedIdentity: { ci: string | null; phone: string; name: string } | null = null
+    // 본인인증/SMS인증 토큰 검증
+    let verifiedIdentity: VerifiedIdentity | null = null
     if (validatedData.verificationToken) {
       verifiedIdentity = await verifyIdentityToken(validatedData.verificationToken)
       if (!verifiedIdentity) {
-        return NextResponse.json({ error: '본인인증 토큰이 만료되었거나 유효하지 않습니다. 다시 인증해주세요.' }, { status: 400 })
+        return NextResponse.json({ error: '인증 토큰이 만료되었거나 유효하지 않습니다. 다시 인증해주세요.' }, { status: 400 })
       }
 
-      // CI 중복 체크
+      // CI 중복 체크 (PortOne 본인인증만 해당)
       if (verifiedIdentity.ci) {
         const existingCi = await prisma.user.findUnique({ where: { ci: verifiedIdentity.ci } })
         if (existingCi) {
           return NextResponse.json({ error: '이미 가입된 사용자입니다.' }, { status: 409 })
         }
       }
+    }
+
+    // 브랜드 가입은 인증 필수
+    if (role === 'brand_admin' && !verifiedIdentity) {
+      return NextResponse.json({ error: '휴대폰 인증이 필요합니다.' }, { status: 400 })
     }
 
     // 이메일 중복 체크
@@ -172,6 +196,10 @@ export async function POST(req: NextRequest) {
 
     // Create user
     const now = new Date()
+    // 인증 유형별 플래그
+    const isIdentityVerified = verifiedIdentity?.type === 'identity_verification'
+    const isPhoneReachable = !!verifiedIdentity // SMS든 본인인증이든 전화번호 확인됨
+
     const user = await prisma.user.create({
       data: {
         email: validatedData.email,
@@ -180,7 +208,9 @@ export async function POST(req: NextRequest) {
         role: validatedData.role as 'buyer' | 'creator' | 'brand_admin',
         phone,
         ci: verifiedIdentity?.ci || null,
-        phoneVerifiedAt: verifiedIdentity ? now : null,
+        phoneVerifiedAt: isIdentityVerified ? now : null,
+        phoneReachable: isPhoneReachable,
+        phoneReachableAt: isPhoneReachable ? now : null,
         termsAgreedAt: validatedData.termsAgreedAt ? new Date(validatedData.termsAgreedAt as string) : now,
         privacyAgreedAt: validatedData.privacyAgreedAt ? new Date(validatedData.privacyAgreedAt as string) : now,
         marketingAgreedAt: validatedData.marketingAgreedAt ? new Date(validatedData.marketingAgreedAt as string) : null,

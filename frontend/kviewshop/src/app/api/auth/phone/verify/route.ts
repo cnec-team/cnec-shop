@@ -1,37 +1,79 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { rateLimit } from '@/lib/rate-limit'
-import { getPhoneVerificationProvider } from '@/lib/phone-verification'
+import { prisma } from '@/lib/db'
+import { createHash } from 'crypto'
 import { SignJWT } from 'jose'
 
 const JWT_SECRET = new TextEncoder().encode(process.env.NEXTAUTH_SECRET || 'fallback-secret')
 
+function hashCode(code: string): string {
+  return createHash('sha256').update(code).digest('hex')
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown'
-    const limited = await rateLimit(`phone-verify:${ip}`, 10, 300) // 5분에 10회
-    if (limited) {
-      return NextResponse.json(
-        { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
-        { status: 429 },
-      )
-    }
-
-    const { requestId, code, phoneNumber } = await req.json()
+    const { requestId, code } = await req.json()
     if (!requestId || !code) {
       return NextResponse.json({ error: '인증번호를 입력해주세요.' }, { status: 400 })
     }
 
-    const provider = getPhoneVerificationProvider()
-    const result = await provider.verifyCode(requestId, code)
+    // DB에서 요청 조회
+    const record = await prisma.phoneVerificationRequest.findUnique({
+      where: { id: requestId },
+    })
 
-    if (!result.success) {
-      return NextResponse.json({ error: result.error }, { status: 400 })
+    if (!record) {
+      return NextResponse.json(
+        { error: '인증 요청을 찾을 수 없습니다. 다시 요청해주세요.' },
+        { status: 400 },
+      )
     }
 
-    // 인증 성공 시 JWT 토큰 발급 (가입 시 검증용, 5분 유효)
+    if (record.verifiedAt) {
+      return NextResponse.json(
+        { error: '이미 인증된 요청입니다.' },
+        { status: 400 },
+      )
+    }
+
+    if (new Date() > record.expiresAt) {
+      return NextResponse.json(
+        { error: '인증번호가 만료되었습니다. 다시 요청해주세요.' },
+        { status: 400 },
+      )
+    }
+
+    if (record.attempts >= record.maxAttempts) {
+      return NextResponse.json(
+        { error: '인증 시도 횟수를 초과했습니다. 다시 요청해주세요.' },
+        { status: 400 },
+      )
+    }
+
+    // attempts 증가 (코드 확인 전에 DB update)
+    await prisma.phoneVerificationRequest.update({
+      where: { id: requestId },
+      data: { attempts: { increment: 1 } },
+    })
+
+    // 코드 검증
+    if (record.codeHash !== hashCode(code)) {
+      return NextResponse.json(
+        { error: '인증번호가 일치하지 않습니다.' },
+        { status: 400 },
+      )
+    }
+
+    // 인증 성공 → verifiedAt 기록
+    await prisma.phoneVerificationRequest.update({
+      where: { id: requestId },
+      data: { verifiedAt: new Date() },
+    })
+
+    // JWT 토큰 발급 (가입 시 검증용, 5분 유효)
     const verificationToken = await new SignJWT({
-      phone: phoneNumber?.replace(/-/g, '') || '',
+      phone: record.phoneNumber,
       type: 'phone_verification',
+      requestId: record.id,
     })
       .setProtectedHeader({ alg: 'HS256' })
       .setExpirationTime('5m')
