@@ -25,6 +25,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { IdentityVerificationButton } from '@/components/auth/IdentityVerificationButton';
+import { PhoneVerificationInput } from '@/components/auth/PhoneVerificationInput';
 
 type Role = 'creator' | 'brand_admin';
 
@@ -59,7 +60,7 @@ function formatBusinessNumber(value: string): string {
 
 // ── Step labels ──
 const CREATOR_STEPS = ['본인확인', '계정설정', '프로필', '카테고리', '약관'];
-const BRAND_STEPS = ['본인확인', '계정��정', '브랜드', '약관'];
+const BRAND_STEPS = ['본인확인', '계정설정', '브랜드', '약관'];
 
 export default function SignupPage() {
   const router = useRouter();
@@ -258,7 +259,7 @@ export default function SignupPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        toast.error(data.error || '회��가입에 실패했습니다');
+        toast.error(data.error || '회원가입에 실패했습니다');
         return;
       }
 
@@ -327,7 +328,7 @@ export default function SignupPage() {
             /* ─── Step 0: Role Selection + Social Login ─── */
             <div className="bg-white rounded-3xl shadow-sm p-8">
               <h2 className="text-2xl font-bold text-gray-900 text-center mb-2">시작하기</h2>
-              <p className="text-sm text-gray-500 text-center mb-8">어떤 역할로 가입��시겠어요?</p>
+              <p className="text-sm text-gray-500 text-center mb-8">어떤 역할로 가입하시겠어요?</p>
               <div className="grid grid-cols-2 gap-4">
                 <button
                   type="button"
@@ -352,7 +353,7 @@ export default function SignupPage() {
                   }`}
                 >
                   <Sparkles className="h-8 w-8 mb-3" />
-                  <span className="font-semibold">��리에이터</span>
+                  <span className="font-semibold">크리에이터</span>
                   <span className={`text-xs mt-1 ${role === 'creator' ? 'text-blue-200' : 'text-gray-400'}`}>내 셀렉트샵 시작</span>
                 </button>
               </div>
@@ -404,7 +405,7 @@ export default function SignupPage() {
               </button>
 
               <div className="text-center text-sm mt-6">
-                <span className="text-gray-500">이미 계정��� 있으신가요? </span>
+                <span className="text-gray-500">이미 계정이 있으신가요? </span>
                 <Link href={`/${locale}/login`} className="text-blue-600 font-medium hover:underline">로그인</Link>
               </div>
             </div>
@@ -448,7 +449,7 @@ export default function SignupPage() {
                 </div>
               </div>
 
-              {/* ��─ Form Content ─�� */}
+              {/* ── Form Content ── */}
               <div className="px-8 pb-4 pt-4">
                 {/* Step 1: 본인 정보 + 인증 */}
                 {step === 1 && (
@@ -462,23 +463,45 @@ export default function SignupPage() {
                       <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="이름" className={inputCls} />
                     </div>
 
-                    <div className="flex gap-2">
-                      <div className="relative flex-1">
-                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                        <input type="tel" value={phoneNumber} onChange={e => setPhoneNumber(formatPhone(e.target.value))} placeholder="010-0000-0000" disabled={phoneVerified} className={`${inputCls} disabled:opacity-60`} />
+                    {role === 'brand_admin' ? (
+                      /* 브랜드: SMS 인증번호 방식 */
+                      <div className="flex gap-2 items-start">
+                        <div className="relative flex-1">
+                          <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                          <input type="tel" value={phoneNumber} onChange={e => setPhoneNumber(formatPhone(e.target.value))} placeholder="010-0000-0000" disabled={phoneVerified} className={`${inputCls} disabled:opacity-60`} />
+                        </div>
+                        <PhoneVerificationInput
+                          phoneNumber={phoneNumber}
+                          disabled={phoneVerified}
+                          onVerified={(data) => {
+                            setPhoneNumber(formatPhone(data.phoneNumber));
+                            setPhoneVerified(true);
+                            setVerificationToken(data.verificationToken);
+                            toast.success('휴대폰 인증이 완료되었습니다');
+                          }}
+                          onError={(msg) => toast.error(msg)}
+                        />
                       </div>
-                      <IdentityVerificationButton
-                        name={name}
-                        disabled={phoneVerified}
-                        onSuccess={(data) => {
-                          setPhoneNumber(formatPhone(data.phoneNumber));
-                          setPhoneVerified(true);
-                          setVerificationToken(data.verificationToken);
-                          toast.success('본인인증이 완료되었습니다');
-                        }}
-                        onError={(msg) => toast.error(msg)}
-                      />
-                    </div>
+                    ) : (
+                      /* 크리에이터: PortOne 본인인증 방식 */
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                          <input type="tel" value={phoneNumber} onChange={e => setPhoneNumber(formatPhone(e.target.value))} placeholder="010-0000-0000" disabled={phoneVerified} className={`${inputCls} disabled:opacity-60`} />
+                        </div>
+                        <IdentityVerificationButton
+                          name={name}
+                          disabled={phoneVerified}
+                          onSuccess={(data) => {
+                            setPhoneNumber(formatPhone(data.phoneNumber));
+                            setPhoneVerified(true);
+                            setVerificationToken(data.verificationToken);
+                            toast.success('본인인증이 완료되었습니다');
+                          }}
+                          onError={(msg) => toast.error(msg)}
+                        />
+                      </div>
+                    )}
 
                     {phoneVerified && (
                       <div className="flex items-center gap-2 bg-green-50 text-green-700 rounded-2xl p-4 text-sm">
@@ -514,7 +537,7 @@ export default function SignupPage() {
                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                       <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="비밀번호를 한번 더 입력해주세요" className={inputCls} />
                     </div>
-                    {confirmPassword && password !== confirmPassword && <p className="text-red-500 text-sm -mt-3 ml-1">비���번호가 일치하지 않아요</p>}
+                    {confirmPassword && password !== confirmPassword && <p className="text-red-500 text-sm -mt-3 ml-1">비밀번호가 일치하지 않아요</p>}
                   </div>
                 )}
 
@@ -522,7 +545,7 @@ export default function SignupPage() {
                 {step === 3 && role === 'brand_admin' && (
                   <div className="space-y-5">
                     <h2 className="text-2xl font-bold text-gray-900 leading-tight whitespace-pre-line">
-                      {'마지막으로\n브��드 정보를 알려주세요'}
+                      {'마지막으로\n브랜드 정보를 알려주세요'}
                     </h2>
                     <div className="relative">
                       <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
@@ -533,7 +556,7 @@ export default function SignupPage() {
                         <FileText className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                         <input type="text" value={businessNumber} onChange={e => setBusinessNumber(formatBusinessNumber(e.target.value))} placeholder="000-00-00000" className={inputCls} />
                       </div>
-                      <p className="text-xs text-gray-500 mt-2 ml-1">사업자 번호 10자리를 입력��주세요</p>
+                      <p className="text-xs text-gray-500 mt-2 ml-1">사업자 번호 10자리를 입력해주세요</p>
                     </div>
                   </div>
                 )}
@@ -678,8 +701,8 @@ export default function SignupPage() {
                     {[
                       { id: 'age', label: '만 14세 이상입니다', required: true, checked: agreeAge, onChange: setAgreeAge },
                       { id: 'terms', label: '이용약관 동의', required: true, checked: agreeTerms, onChange: setAgreeTerms, link: `/${locale}/terms` },
-                      { id: 'privacy', label: '개인정�� 수집·이용 동의', required: true, checked: agreePrivacy, onChange: setAgreePrivacy, link: `/${locale}/privacy` },
-                      { id: 'marketing', label: '마케팅 정��� 수신 동의', required: false, checked: agreeMarketing, onChange: setAgreeMarketing },
+                      { id: 'privacy', label: '개인정보 수집·이용 동의', required: true, checked: agreePrivacy, onChange: setAgreePrivacy, link: `/${locale}/privacy` },
+                      { id: 'marketing', label: '마케팅 정보 수신 동의', required: false, checked: agreeMarketing, onChange: setAgreeMarketing },
                     ].map(item => (
                       <label key={item.id} className="flex items-center gap-3 py-1 cursor-pointer group">
                         <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${
@@ -741,7 +764,7 @@ export default function SignupPage() {
                 </button>
 
                 <div className="text-center text-sm mt-4">
-                  <span className="text-gray-500">이미 계��이 있으신가요? </span>
+                  <span className="text-gray-500">이미 계정이 있으신가요? </span>
                   <Link href={`/${locale}/login`} className="text-blue-600 font-medium hover:underline">로그인</Link>
                 </div>
               </div>
