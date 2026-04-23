@@ -8392,6 +8392,7 @@ snapshots:
       clsx: 2.1.1
       cmdk: 1.1.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       date-fns: 4.1.0
+      date-fns-tz: 3.2.0(date-fns@4.1.0)
       framer-motion: 12.38.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       jose: 6.2.2
       lucide-react: 0.563.0(react@19.2.3)

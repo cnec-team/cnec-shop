@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { Header } from '@/components/layout/header';
 import { Sidebar } from '@/components/layout/sidebar';
+import { AdminBreadcrumb } from '@/components/admin/admin-breadcrumb';
 import type { Locale } from '@/lib/i18n/config';
 
 export default async function AdminLayout({
@@ -24,7 +25,10 @@ export default async function AdminLayout({
       <Header locale={locale as Locale} />
       <div className="flex">
         <Sidebar role="super_admin" locale={locale as Locale} />
-        <main className="w-full lg:ml-60 flex-1 p-4 sm:p-6">{children}</main>
+        <main className="w-full lg:ml-60 flex-1 p-4 sm:p-6">
+          <AdminBreadcrumb />
+          {children}
+        </main>
       </div>
     </div>
   );
