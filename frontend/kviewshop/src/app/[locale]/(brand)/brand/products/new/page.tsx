@@ -16,7 +16,7 @@ import {
 } from '@/components/brand/ProductForm/DetailsSection';
 import { CreatorSettingsSection } from '@/components/brand/ProductForm/CreatorSettingsSection';
 import { ProductDescriptionSection } from '@/components/brand/ProductForm/ProductDescriptionSection';
-import { ChannelPricesSection, type ChannelPrice } from '@/components/brand/ProductForm/ChannelPricesSection';
+import { TrustPolicySection } from '@/components/brand/ProductForm/ChannelPricesSection';
 import { IngredientPainPointSection } from '@/components/brand/ProductForm/IngredientPainPointSection';
 import type { IngredientItem } from '@/components/brand/ProductForm/IngredientPicker';
 
@@ -79,13 +79,9 @@ export default function NewProductPage() {
   const [shippingInfoText, setShippingInfoText] = useState('');
   const [freeShippingThreshold, setFreeShippingThreshold] = useState('');
 
-  // Section 3.7: Channel Prices (optional)
-  const emptyChannel: ChannelPrice = { value: '', url: '' };
-  const [channelCoupang, setChannelCoupang] = useState<ChannelPrice>(emptyChannel);
-  const [channelJasa, setChannelJasa] = useState<ChannelPrice>(emptyChannel);
-  const [channelOlive, setChannelOlive] = useState<ChannelPrice>(emptyChannel);
-  const [channelSmart, setChannelSmart] = useState<ChannelPrice>(emptyChannel);
-  const [isExclusive, setIsExclusive] = useState(false);
+  // Section 3.7: Trust Policy (optional)
+  const [lowestPriceGuarantee, setLowestPriceGuarantee] = useState(false);
+  const [cnecExclusive, setCnecExclusive] = useState(false);
 
   // Section 4: Creator
   const [isActive, setIsActive] = useState(true);
@@ -186,6 +182,8 @@ export default function NewProductPage() {
         defaultCommissionRate: commissionRate,
         heroIngredients: selectedIngredients.map(i => i.id),
         targetPainPoints: Object.keys(selectedPainPoints),
+        lowestPriceGuarantee,
+        cnecExclusive,
         asDraft: true,
       });
       localStorage.removeItem(DRAFT_KEY);
@@ -261,6 +259,8 @@ export default function NewProductPage() {
         defaultCommissionRate: commissionRate,
         heroIngredients: selectedIngredients.map(i => i.id),
         targetPainPoints: Object.keys(selectedPainPoints),
+        lowestPriceGuarantee,
+        cnecExclusive,
       });
 
       try {
@@ -393,17 +393,11 @@ export default function NewProductPage() {
             setHowToUse={setHowToUse}
           />
 
-          <ChannelPricesSection
-            coupang={channelCoupang}
-            setCoupang={setChannelCoupang}
-            jasa={channelJasa}
-            setJasa={setChannelJasa}
-            olive={channelOlive}
-            setOlive={setChannelOlive}
-            smart={channelSmart}
-            setSmart={setChannelSmart}
-            isExclusive={isExclusive}
-            setIsExclusive={setIsExclusive}
+          <TrustPolicySection
+            lowestPriceGuarantee={lowestPriceGuarantee}
+            setLowestPriceGuarantee={setLowestPriceGuarantee}
+            cnecExclusive={cnecExclusive}
+            setCnecExclusive={setCnecExclusive}
           />
 
           <CreatorSettingsSection

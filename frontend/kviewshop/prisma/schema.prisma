@@ -816,6 +816,8 @@ model Product {
   status                String          @default("ACTIVE") @db.VarChar(10)
   allowCreatorPick      Boolean         @default(true) @map("allow_creator_pick")
   allowTrial            Boolean         @default(true) @map("allow_trial")
+  lowestPriceGuarantee  Boolean         @default(false) @map("lowest_price_guarantee")
+  cnecExclusive         Boolean         @default(false) @map("cnec_exclusive")
   defaultCommissionRate Decimal         @default(0.10) @map("default_commission_rate") @db.Decimal(5, 4)
   // Shipping
   shippingFeeType       ShippingFeeType @default(FREE) @map("shipping_fee_type")
