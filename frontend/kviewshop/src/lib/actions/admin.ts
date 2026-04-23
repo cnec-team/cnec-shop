@@ -1633,3 +1633,441 @@ export async function getAdminBrandList() {
     orderBy: { companyName: 'asc' },
   })
 }
+
+// ==================== Dashboard V2 (Redesign) ====================
+
+import {
+  nowKst,
+  startOfDayKst,
+  startOfMonthKst,
+  startOfYesterdayKst,
+  yesterdaySameTimeKst,
+  startOfLastMonthKst,
+  lastMonthSameTimeKst,
+  daysAgoStartKst,
+} from '@/lib/utils/timezone'
+import { format, subDays } from 'date-fns'
+import { ko } from 'date-fns/locale'
+import { toZonedTime } from 'date-fns-tz'
+
+const KST_TZ = 'Asia/Seoul'
+
+export async function getAdminKpiStats() {
+  await requireAdmin()
+
+  const now = nowKst()
+  const todayStart = startOfDayKst()
+  const yesterdayStart = startOfYesterdayKst()
+  const yesterdaySameTime = yesterdaySameTimeKst()
+  const monthStart = startOfMonthKst()
+  const lastMonthStart = startOfLastMonthKst()
+  const lastMonthSameTime = lastMonthSameTimeKst()
+
+  const [
+    todayOrders,
+    yesterdayOrders,
+    monthOrders,
+    lastMonthOrders,
+    activeCampaigns,
+    activeCreators,
+    activeBrands,
+    newCreatorsThisMonth,
+    newBrandsThisMonth,
+  ] = await Promise.all([
+    // 오늘 주문 (PAID)
+    prisma.order.findMany({
+      where: { status: 'PAID', paidAt: { gte: todayStart, lte: now } },
+      select: { totalAmount: true },
+    }),
+    // 어제 같은 시점까지 주문
+    prisma.order.findMany({
+      where: { status: 'PAID', paidAt: { gte: yesterdayStart, lte: yesterdaySameTime } },
+      select: { totalAmount: true },
+    }),
+    // 이번 달 주문
+    prisma.order.findMany({
+      where: { status: 'PAID', paidAt: { gte: monthStart, lte: now } },
+      select: { totalAmount: true },
+    }),
+    // 지난 달 같은 시점까지 주문
+    prisma.order.findMany({
+      where: { status: 'PAID', paidAt: { gte: lastMonthStart, lte: lastMonthSameTime } },
+      select: { totalAmount: true },
+    }),
+    // 활성 캠페인
+    prisma.campaign.count({
+      where: { status: 'ACTIVE', endAt: { gte: now } },
+    }),
+    // 활성 크리에이터
+    prisma.creator.count({
+      where: { onboardingStatus: 'APPROVED' },
+    }),
+    // 승인 브랜드
+    prisma.brand.count({
+      where: { approved: true },
+    }),
+    // 이번 달 신규 크리에이터
+    prisma.creator.count({
+      where: { createdAt: { gte: monthStart } },
+    }),
+    // 이번 달 신규 브랜드
+    prisma.brand.count({
+      where: { createdAt: { gte: monthStart } },
+    }),
+  ])
+
+  const sumAmount = (orders: { totalAmount: unknown }[]) =>
+    orders.reduce((sum, o) => sum + Number(o.totalAmount || 0), 0)
+
+  return {
+    todayGmv: sumAmount(todayOrders),
+    todayGmvPrev: sumAmount(yesterdayOrders),
+    todayOrders: todayOrders.length,
+    todayOrdersPrev: yesterdayOrders.length,
+    monthGmv: sumAmount(monthOrders),
+    monthGmvPrev: sumAmount(lastMonthOrders),
+    activeCampaigns,
+    activeCreators,
+    activeBrands,
+    newCreatorsThisMonth,
+    newBrandsThisMonth,
+  }
+}
+
+export async function getAdminPendingQueue() {
+  await requireAdmin()
+
+  const now = nowKst()
+  const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+  const twentyFourHoursLater = new Date(now.getTime() + 24 * 60 * 60 * 1000)
+
+  const [
+    pendingCreatorApprovals,
+    pendingBrandApprovals,
+    pendingSettlementsData,
+    failedPayments,
+    lowStockProducts,
+    expiringCampaigns,
+  ] = await Promise.all([
+    prisma.creator.count({
+      where: { onboardingStatus: 'PENDING' },
+    }),
+    prisma.brand.count({
+      where: { approved: false },
+    }),
+    prisma.settlement.findMany({
+      where: { status: 'PENDING' },
+      select: { netAmount: true },
+    }),
+    prisma.order.count({
+      where: { createdAt: { gte: twentyFourHoursAgo }, status: 'CANCELLED' },
+    }),
+    prisma.product.count({
+      where: { stock: { lte: 10 }, isActive: true, status: 'ACTIVE' },
+    }),
+    prisma.campaign.count({
+      where: { status: 'ACTIVE', endAt: { gte: now, lte: twentyFourHoursLater } },
+    }),
+  ])
+
+  const pendingSettlementTotal = pendingSettlementsData.reduce(
+    (sum, s) => sum + Number(s.netAmount || 0), 0
+  )
+
+  return {
+    pendingCreatorApprovals,
+    pendingBrandApprovals,
+    pendingSettlements: pendingSettlementsData.length,
+    pendingSettlementTotal,
+    failedPayments,
+    lowStockProducts,
+    expiringCampaigns,
+  }
+}
+
+export async function getAdminRecentActivity(limit: number = 20) {
+  await requireAdmin()
+
+  type ActivityItem = {
+    type: string
+    title: string
+    description: string
+    link: string
+    createdAt: string
+    actorName: string
+    iconType: string
+  }
+
+  const activities: ActivityItem[] = []
+
+  // 최근 주문
+  const recentOrders = await prisma.order.findMany({
+    take: limit,
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      orderNumber: true,
+      totalAmount: true,
+      status: true,
+      createdAt: true,
+      buyer: { select: { user: { select: { name: true } } } },
+    },
+  })
+  for (const o of recentOrders) {
+    activities.push({
+      type: o.status === 'CANCELLED' ? 'paymentFailed' : 'newOrder',
+      title: o.status === 'CANCELLED' ? '결제 취소' : '신규 주문',
+      description: `주문번호 ${o.orderNumber || o.id.slice(0, 8)} · ₩${Number(o.totalAmount || 0).toLocaleString()}`,
+      link: `/admin/orders`,
+      createdAt: o.createdAt.toISOString(),
+      actorName: o.buyer?.user?.name || '비회원',
+      iconType: o.status === 'CANCELLED' ? 'paymentFailed' : 'newOrder',
+    })
+  }
+
+  // 최근 캠페인 생성
+  const recentCampaigns = await prisma.campaign.findMany({
+    take: 5,
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      title: true,
+      createdAt: true,
+      brand: { select: { brandName: true, companyName: true } },
+    },
+  })
+  for (const c of recentCampaigns) {
+    activities.push({
+      type: 'newCampaign',
+      title: '신규 캠페인',
+      description: c.title || '제목 없음',
+      link: `/admin/campaigns`,
+      createdAt: c.createdAt.toISOString(),
+      actorName: c.brand?.brandName || c.brand?.companyName || '알 수 없음',
+      iconType: 'newCampaign',
+    })
+  }
+
+  // 최근 브랜드 가입
+  const recentBrands = await prisma.brand.findMany({
+    take: 5,
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      brandName: true,
+      companyName: true,
+      createdAt: true,
+    },
+  })
+  for (const b of recentBrands) {
+    activities.push({
+      type: 'newBrand',
+      title: '신규 브랜드 가입',
+      description: b.brandName || b.companyName || '알 수 없음',
+      link: `/admin/brands`,
+      createdAt: b.createdAt.toISOString(),
+      actorName: b.brandName || b.companyName || '알 수 없음',
+      iconType: 'newBrand',
+    })
+  }
+
+  // 최근 크리에이터 가입
+  const recentCreators = await prisma.creator.findMany({
+    take: 5,
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      displayName: true,
+      username: true,
+      createdAt: true,
+    },
+  })
+  for (const c of recentCreators) {
+    activities.push({
+      type: 'newCreator',
+      title: '신규 크리에이터 가입',
+      description: c.displayName || c.username || '알 수 없음',
+      link: `/admin/creators`,
+      createdAt: c.createdAt.toISOString(),
+      actorName: c.displayName || c.username || '알 수 없음',
+      iconType: 'newCreator',
+    })
+  }
+
+  // 최근 정산 완료
+  const recentSettlements = await prisma.settlement.findMany({
+    take: 5,
+    where: { status: 'COMPLETED' },
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      netAmount: true,
+      createdAt: true,
+      user: { select: { name: true } },
+    },
+  })
+  for (const s of recentSettlements) {
+    activities.push({
+      type: 'settlementComplete',
+      title: '정산 완료',
+      description: `₩${Number(s.netAmount || 0).toLocaleString()}`,
+      link: `/admin/settlements`,
+      createdAt: s.createdAt.toISOString(),
+      actorName: s.user?.name || '알 수 없음',
+      iconType: 'settlementComplete',
+    })
+  }
+
+  // 시간 역순 정렬 후 limit 적용
+  activities.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  return activities.slice(0, limit)
+}
+
+export async function getAdminTopBrands(limit: number = 5) {
+  await requireAdmin()
+
+  const monthStart = startOfMonthKst()
+  const now = nowKst()
+
+  const orders = await prisma.order.findMany({
+    where: { status: 'PAID', paidAt: { gte: monthStart, lte: now } },
+    select: { totalAmount: true, brandId: true },
+  })
+
+  const brandSalesMap = new Map<string, { gmv: number; orderCount: number }>()
+  for (const o of orders) {
+    if (!o.brandId) continue
+    const existing = brandSalesMap.get(o.brandId) || { gmv: 0, orderCount: 0 }
+    existing.gmv += Number(o.totalAmount || 0)
+    existing.orderCount += 1
+    brandSalesMap.set(o.brandId, existing)
+  }
+
+  const topBrandIds = Array.from(brandSalesMap.entries())
+    .sort((a, b) => b[1].gmv - a[1].gmv)
+    .slice(0, limit)
+
+  if (topBrandIds.length === 0) return []
+
+  const brands = await prisma.brand.findMany({
+    where: { id: { in: topBrandIds.map(b => b[0]) } },
+    select: {
+      id: true,
+      brandName: true,
+      companyName: true,
+      logoUrl: true,
+      _count: { select: { campaigns: { where: { status: 'ACTIVE' } } } },
+    },
+  })
+
+  const brandMap = new Map(brands.map(b => [b.id, b]))
+
+  return topBrandIds.map(([id, data]) => {
+    const brand = brandMap.get(id)
+    return {
+      id,
+      name: brand?.brandName || brand?.companyName || '알 수 없음',
+      logoUrl: brand?.logoUrl || null,
+      monthGmv: data.gmv,
+      orderCount: data.orderCount,
+      activeCampaignCount: brand?._count?.campaigns || 0,
+    }
+  })
+}
+
+export async function getAdminTopCreators(limit: number = 5) {
+  await requireAdmin()
+
+  const monthStart = startOfMonthKst()
+  const now = nowKst()
+
+  const orders = await prisma.order.findMany({
+    where: { status: 'PAID', paidAt: { gte: monthStart, lte: now } },
+    select: { totalAmount: true, creatorId: true },
+  })
+
+  const creatorSalesMap = new Map<string, { revenue: number; salesCount: number }>()
+  for (const o of orders) {
+    if (!o.creatorId) continue
+    const existing = creatorSalesMap.get(o.creatorId) || { revenue: 0, salesCount: 0 }
+    existing.revenue += Number(o.totalAmount || 0)
+    existing.salesCount += 1
+    creatorSalesMap.set(o.creatorId, existing)
+  }
+
+  const topCreatorIds = Array.from(creatorSalesMap.entries())
+    .sort((a, b) => b[1].revenue - a[1].revenue)
+    .slice(0, limit)
+
+  if (topCreatorIds.length === 0) return []
+
+  const creators = await prisma.creator.findMany({
+    where: { id: { in: topCreatorIds.map(c => c[0]) } },
+    select: {
+      id: true,
+      displayName: true,
+      username: true,
+      profileImageUrl: true,
+      cnecReliabilityScore: true,
+    },
+  })
+
+  const creatorMap = new Map(creators.map(c => [c.id, c]))
+
+  return topCreatorIds.map(([id, data]) => {
+    const creator = creatorMap.get(id)
+    return {
+      id,
+      name: creator?.displayName || creator?.username || '알 수 없음',
+      profileImageUrl: creator?.profileImageUrl || null,
+      monthRevenue: data.revenue,
+      salesCount: data.salesCount,
+      cnecReliabilityScore: creator?.cnecReliabilityScore
+        ? Number(creator.cnecReliabilityScore.toString())
+        : null,
+    }
+  })
+}
+
+export async function getAdminWeeklyTrend(days: 7 | 30 = 7) {
+  await requireAdmin()
+
+  const startDate = daysAgoStartKst(days - 1)
+  const now = nowKst()
+
+  const orders = await prisma.order.findMany({
+    where: {
+      status: { notIn: ['CANCELLED', 'REFUNDED'] },
+      createdAt: { gte: startDate, lte: now },
+    },
+    select: { totalAmount: true, createdAt: true },
+  })
+
+  // 일별 맵 초기화 (KST 기준)
+  const dailyMap = new Map<string, { gmv: number; orders: number }>()
+  for (let i = days - 1; i >= 0; i--) {
+    const d = toZonedTime(subDays(now, i), KST_TZ)
+    const key = format(d, 'yyyy-MM-dd')
+    dailyMap.set(key, { gmv: 0, orders: 0 })
+  }
+
+  for (const o of orders) {
+    const kstDate = toZonedTime(o.createdAt, KST_TZ)
+    const key = format(kstDate, 'yyyy-MM-dd')
+    const existing = dailyMap.get(key)
+    if (existing) {
+      existing.gmv += Number(o.totalAmount || 0)
+      existing.orders += 1
+    }
+  }
+
+  return Array.from(dailyMap.entries()).map(([date, data]) => {
+    const d = new Date(date + 'T00:00:00+09:00')
+    return {
+      date,
+      dateLabel: format(toZonedTime(d, KST_TZ), 'M/d (EEE)', { locale: ko }),
+      gmv: data.gmv,
+      orders: data.orders,
+    }
+  })
+}
