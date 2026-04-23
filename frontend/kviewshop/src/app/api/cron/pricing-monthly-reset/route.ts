@@ -8,9 +8,18 @@ export async function GET(req: NextRequest) {
   }
 
   await prisma.brandSubscription.updateMany({
+    where: {
+      OR: [
+        { planV3: 'STANDARD', status: 'ACTIVE' },
+        { planV3: 'PRO', status: 'ACTIVE' },
+      ],
+    },
     data: {
       currentMonthUsed: 0,
+      currentMonthCampaigns: 0,
+      currentMonthMessages: 0,
       monthlyDetailViewUsed: 0,
+      currentMonthOverageAmount: 0,
       currentMonthResetAt: new Date(),
     },
   })

@@ -27,19 +27,23 @@ export async function POST(req: NextRequest) {
 
     let amount: number
     let orderName: string
-    let orderIdPrefix: 'PRO_SUB' | 'STD_CHG'
+    let orderIdPrefix: 'PRO_SUB' | 'STD_SUB' | 'STD_CHG'
 
     if (purpose === 'PRO_SUBSCRIPTION') {
-      if (billingCycle === 'QUARTERLY') {
-        amount = PRICING_V3.PRO.QUARTERLY_PRICE
-        orderName = '크넥샵 프로 3개월 구독'
+      if (billingCycle === 'MONTHLY') {
+        amount = PRICING_V3.PRO.MONTHLY_FEE
+        orderName = '크넥샵 프로 월간 구독'
       } else if (billingCycle === 'ANNUAL') {
-        amount = PRICING_V3.PRO.ANNUAL_PRICE
-        orderName = '크넥샵 프로 1년 구독'
+        amount = PRICING_V3.PRO.ANNUAL_FEE
+        orderName = '크넥샵 프로 연간 구독'
       } else {
         return NextResponse.json({ error: '결제 주기를 선택해주세요' }, { status: 400 })
       }
       orderIdPrefix = 'PRO_SUB'
+    } else if (purpose === 'STANDARD_SUBSCRIPTION') {
+      amount = PRICING_V3.STANDARD.MONTHLY_FEE
+      orderName = '크넥샵 스탠다드 월간 구독'
+      orderIdPrefix = 'STD_SUB'
     } else if (purpose === 'STANDARD_CHARGE') {
       if (!VALID_CHARGE_AMOUNTS.includes(Number(chargeAmount))) {
         return NextResponse.json({ error: '충전 금액이 올바르지 않아요' }, { status: 400 })

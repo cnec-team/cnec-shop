@@ -18,6 +18,8 @@ export async function GET(req: NextRequest) {
     trialExpired: 0,
     proExpiringSoon: 0,
     proExpired: 0,
+    restrictedExpired: 0,
+    restrictedReminder: 0,
   }
 
   // 1. 체험 D-1 알림
@@ -45,16 +47,35 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // 2. 체험 종료 → STANDARD 전환
+  // 2. 체험 종료 → 30일 제한 모드 전환
   const trialExpired = await prisma.brandSubscription.findMany({
-    where: { planV3: 'TRIAL', trialEndsAt: { lt: now } },
+    where: { planV3: 'TRIAL', trialEndsAt: { lt: now }, status: 'ACTIVE' },
+    include: { brand: { include: { user: true } } },
   })
   for (const sub of trialExpired) {
+    const restrictedUntil = new Date(now)
+    restrictedUntil.setDate(restrictedUntil.getDate() + 30)
+
     await prisma.brandSubscription.update({
       where: { id: sub.id },
-      data: { planV3: 'STANDARD', shopCommissionRate: 10.0 },
+      data: {
+        status: 'RESTRICTED',
+        restrictedAt: now,
+        restrictedUntil,
+      },
     })
     results.trialExpired++
+
+    try {
+      await sendNotification({
+        userId: sub.brand.userId,
+        type: 'SYSTEM',
+        title: '체험 기간이 종료됐어요',
+        message: '30일 내 결제하시면 데이터를 그대로 유지할 수 있어요. 스탠다드(월 ₩99,000) 또는 프로(월 ₩330,000) 중 선택하세요.',
+      })
+    } catch (e) {
+      console.error('[cron/pricing-daily] trial ended notification', e)
+    }
   }
 
   // 3. 프로 만료 7일 전 알림
@@ -92,6 +113,62 @@ export async function GET(req: NextRequest) {
       data: { planV3: 'STANDARD', shopCommissionRate: 10.0 },
     })
     results.proExpired++
+  }
+
+  // 5. 제한 모드 D-7 알림
+  const sevenDaysFromNow = addDays(now, 7)
+  const restrictedSoonExpiring = await prisma.brandSubscription.findMany({
+    where: {
+      status: 'RESTRICTED',
+      restrictedUntil: {
+        gte: startOfDay(sevenDaysFromNow),
+        lte: endOfDay(sevenDaysFromNow),
+      },
+    },
+    include: { brand: { include: { user: true } } },
+  })
+  for (const sub of restrictedSoonExpiring) {
+    try {
+      await sendNotification({
+        userId: sub.brand.userId,
+        type: 'SYSTEM',
+        title: '7일 후 계정이 비활성화됩니다',
+        message: '지금 결제하면 데이터를 유지할 수 있어요. 스탠다드(월 ₩99,000) 또는 프로(월 ₩330,000) 중 선택하세요.',
+      })
+      results.restrictedReminder++
+    } catch (e) {
+      console.error('[cron/pricing-daily] restricted reminder notification', e)
+    }
+  }
+
+  // 6. 제한 모드 30일 만료 → 비활성화
+  const restrictedExpired = await prisma.brandSubscription.findMany({
+    where: {
+      status: 'RESTRICTED',
+      restrictedUntil: { lt: now },
+    },
+    include: { brand: { include: { user: true } } },
+  })
+  for (const sub of restrictedExpired) {
+    await prisma.brandSubscription.update({
+      where: { id: sub.id },
+      data: {
+        status: 'DEACTIVATED',
+        deactivatedAt: now,
+      },
+    })
+    results.restrictedExpired++
+
+    try {
+      await sendNotification({
+        userId: sub.brand.userId,
+        type: 'SYSTEM',
+        title: '계정이 비활성화됐어요',
+        message: '데이터는 90일간 보존됩니다. 그 안에 결제하시면 복구됩니다.',
+      })
+    } catch (e) {
+      console.error('[cron/pricing-daily] deactivation notification', e)
+    }
   }
 
   return NextResponse.json(results)

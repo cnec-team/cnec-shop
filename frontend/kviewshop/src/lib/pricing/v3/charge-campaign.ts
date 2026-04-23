@@ -37,24 +37,24 @@ export async function chargeCampaignCreation(
   }
 
   if (plan.planV3 === 'STANDARD') {
-    const balance = Number(subscription?.prepaidBalance ?? 0)
-    if (balance < PRICING_V3.STANDARD.CAMPAIGN_PRICE) {
+    const used = subscription?.currentMonthCampaigns ?? 0
+    if (used >= PRICING_V3.STANDARD.CAMPAIGN_MONTHLY_LIMIT) {
       throw new PricingLimitError(
-        LIMIT_MESSAGES.STANDARD_INSUFFICIENT_BALANCE,
-        'INSUFFICIENT_BALANCE',
+        LIMIT_MESSAGES.STANDARD_CAMPAIGN_LIMIT_REACHED,
+        'STANDARD_CAMPAIGN_LIMIT_REACHED',
       )
     }
     await prisma.$transaction([
       prisma.brandSubscription.update({
         where: { brandId },
-        data: { prepaidBalance: { decrement: PRICING_V3.STANDARD.CAMPAIGN_PRICE } },
+        data: { currentMonthCampaigns: { increment: 1 } },
       }),
       prisma.campaignChargeLog.create({
         data: {
           brandId,
           campaignId,
           planV3: 'STANDARD',
-          chargeAmount: PRICING_V3.STANDARD.CAMPAIGN_PRICE,
+          chargeAmount: 0,
           subscriptionId: subscription!.id,
         },
       }),
@@ -63,15 +63,21 @@ export async function chargeCampaignCreation(
   }
 
   if (plan.planV3 === 'PRO') {
-    // 무제한
-    await prisma.campaignChargeLog.create({
-      data: {
-        brandId,
-        campaignId,
-        planV3: 'PRO',
-        chargeAmount: 0,
-        subscriptionId: subscription!.id,
-      },
-    })
+    // 무제한 — 카운터만 증가 (분석용)
+    await prisma.$transaction([
+      prisma.brandSubscription.update({
+        where: { brandId },
+        data: { currentMonthCampaigns: { increment: 1 } },
+      }),
+      prisma.campaignChargeLog.create({
+        data: {
+          brandId,
+          campaignId,
+          planV3: 'PRO',
+          chargeAmount: 0,
+          subscriptionId: subscription!.id,
+        },
+      }),
+    ])
   }
 }

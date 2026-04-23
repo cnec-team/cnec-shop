@@ -5,7 +5,7 @@ import { randomBytes } from 'crypto'
  * 형식: {purpose}_{brandId_short}_{timestamp}_{random_16}
  */
 export function generateOrderId(params: {
-  purpose: 'PRO_SUB' | 'STD_CHG'
+  purpose: 'PRO_SUB' | 'STD_SUB' | 'STD_CHG'
   brandId: string
 }): string {
   const brandShort = params.brandId.slice(0, 8)

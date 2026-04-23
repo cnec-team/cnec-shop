@@ -54,6 +54,45 @@ export async function applyBillingPaymentSuccess(paymentId: string): Promise<voi
     return
   }
 
+  if (payment.purpose === 'STANDARD_SUBSCRIPTION') {
+    const now = new Date()
+    const nextBilling = addMonths(now, 1)
+
+    if (existingSub) {
+      await prisma.brandSubscription.update({
+        where: { id: existingSub.id },
+        data: {
+          plan: 'STANDARD',
+          planV3: 'STANDARD',
+          status: 'ACTIVE',
+          nextBillingAt: nextBilling,
+          shopCommissionRate: 10.0,
+          currentMonthCampaigns: 0,
+          currentMonthMessages: 0,
+          monthlyDetailViewUsed: 0,
+          currentMonthOverageAmount: 0,
+          currentMonthResetAt: now,
+          restrictedAt: null,
+          restrictedUntil: null,
+          deactivatedAt: null,
+        },
+      })
+    } else {
+      await prisma.brandSubscription.create({
+        data: {
+          brandId: payment.brandId,
+          plan: 'STANDARD',
+          planV3: 'STANDARD',
+          status: 'ACTIVE',
+          nextBillingAt: nextBilling,
+          shopCommissionRate: 10.0,
+          startedAt: now,
+        },
+      })
+    }
+    return
+  }
+
   if (payment.purpose === 'PRO_SUBSCRIPTION') {
     const now = new Date()
 
@@ -63,23 +102,32 @@ export async function applyBillingPaymentSuccess(paymentId: string): Promise<voi
           ? existingSub.proExpiresAt
           : now
       const newExpires =
-        payment.billingCycle === 'QUARTERLY'
-          ? addMonths(baseDate, 3)
-          : addYears(baseDate, 1)
+        payment.billingCycle === 'ANNUAL'
+          ? addYears(baseDate, 1)
+          : addMonths(baseDate, 1)
 
       await prisma.brandSubscription.update({
         where: { id: existingSub.id },
         data: {
+          plan: 'PRO',
           planV3: 'PRO',
+          status: 'ACTIVE',
           proBillingCycle: payment.billingCycle,
           proStartedAt: existingSub.proStartedAt ?? now,
           proExpiresAt: newExpires,
           shopCommissionRate: 8.0,
+          currentMonthCampaigns: 0,
+          currentMonthMessages: 0,
+          currentMonthOverageAmount: 0,
+          currentMonthResetAt: now,
+          restrictedAt: null,
+          restrictedUntil: null,
+          deactivatedAt: null,
         },
       })
     } else {
       const expires =
-        payment.billingCycle === 'QUARTERLY' ? addMonths(now, 3) : addYears(now, 1)
+        payment.billingCycle === 'ANNUAL' ? addYears(now, 1) : addMonths(now, 1)
 
       await prisma.brandSubscription.create({
         data: {

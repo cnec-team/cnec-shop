@@ -16,6 +16,11 @@ export async function chargeMessageSendV3(
     throw new Error('v3 과금 함수는 v3 플랜에서만 호출')
   }
 
+  // RESTRICTED / DEACTIVATED 차단
+  if (subscription?.status === 'RESTRICTED' || subscription?.status === 'DEACTIVATED') {
+    throw new PricingLimitError(LIMIT_MESSAGES.SUBSCRIPTION_REQUIRED, 'SUBSCRIPTION_REQUIRED')
+  }
+
   if (plan.planV3 === 'TRIAL') {
     const used = subscription?.trialUsedMessages ?? 0
     if (used >= PRICING_V3.TRIAL.INCLUDED_MESSAGES) {
@@ -32,39 +37,35 @@ export async function chargeMessageSendV3(
   }
 
   if (plan.planV3 === 'STANDARD') {
-    const balance = Number(subscription?.prepaidBalance ?? 0)
-    if (balance < PRICING_V3.STANDARD.MESSAGE_PRICE) {
+    const used = subscription?.currentMonthMessages ?? 0
+    if (used >= PRICING_V3.STANDARD.MESSAGE_MONTHLY_LIMIT) {
       throw new PricingLimitError(
-        LIMIT_MESSAGES.STANDARD_INSUFFICIENT_BALANCE,
-        'INSUFFICIENT_BALANCE',
+        LIMIT_MESSAGES.STANDARD_MESSAGE_LIMIT_REACHED,
+        'STANDARD_MESSAGE_LIMIT_REACHED',
       )
     }
     await prisma.brandSubscription.update({
       where: { brandId },
-      data: { prepaidBalance: { decrement: PRICING_V3.STANDARD.MESSAGE_PRICE } },
+      data: { currentMonthMessages: { increment: 1 } },
     })
     return
   }
 
   if (plan.planV3 === 'PRO') {
-    const used = subscription?.currentMonthUsed ?? 0
+    const used = subscription?.currentMonthMessages ?? 0
     if (used < PRICING_V3.PRO.INCLUDED_MESSAGES_MONTHLY) {
       await prisma.brandSubscription.update({
         where: { brandId },
-        data: { currentMonthUsed: { increment: 1 } },
+        data: { currentMonthMessages: { increment: 1 } },
       })
     } else {
-      // 초과분 ₩700 차감
-      const balance = Number(subscription?.prepaidBalance ?? 0)
-      if (balance < PRICING_V3.PRO.OVERAGE_MESSAGE_PRICE) {
-        throw new PricingLimitError(
-          LIMIT_MESSAGES.STANDARD_INSUFFICIENT_BALANCE,
-          'INSUFFICIENT_BALANCE',
-        )
-      }
+      // 초과분 ₩700 누적
       await prisma.brandSubscription.update({
         where: { brandId },
-        data: { prepaidBalance: { decrement: PRICING_V3.PRO.OVERAGE_MESSAGE_PRICE } },
+        data: {
+          currentMonthMessages: { increment: 1 },
+          currentMonthOverageAmount: { increment: PRICING_V3.PRO.OVERAGE_MESSAGE_PRICE },
+        },
       })
     }
   }

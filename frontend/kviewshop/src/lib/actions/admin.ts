@@ -125,6 +125,34 @@ export async function approveBrand(id: string) {
     select: { id: true, userId: true, companyName: true },
   })
 
+  // Trial 자동 생성 (승인 시점에 3일 체험 시작)
+  try {
+    const now = new Date()
+    const trialEndsAt = new Date(now)
+    trialEndsAt.setDate(trialEndsAt.getDate() + 3)
+
+    await prisma.brandSubscription.upsert({
+      where: { brandId: brand.id },
+      create: {
+        brandId: brand.id,
+        plan: 'TRIAL',
+        planV3: 'TRIAL',
+        status: 'ACTIVE',
+        trialStartedAt: now,
+        trialEndsAt,
+        trialUsedCampaigns: 0,
+        trialUsedMessages: 0,
+        trialUsedDetailViews: 0,
+        currentMonthCampaigns: 0,
+        currentMonthMessages: 0,
+        currentMonthResetAt: now,
+        shopCommissionRate: 10.0,
+        startedAt: now,
+      },
+      update: {},
+    })
+  } catch { /* ignore — 이미 구독이 있으면 건드리지 않음 */ }
+
   if (brand.userId) {
     try {
       const user = await prisma.user.findUnique({
@@ -166,6 +194,34 @@ export async function updateBrandStatus(brandId: string, action: 'approve' | 'su
 
   if (action === 'approve') {
     await prisma.brand.update({ where: { id: brandId }, data: { approved: true, approvedAt: new Date() } })
+
+    // Trial 자동 생성
+    try {
+      const now = new Date()
+      const trialEndsAt = new Date(now)
+      trialEndsAt.setDate(trialEndsAt.getDate() + 3)
+      await prisma.brandSubscription.upsert({
+        where: { brandId },
+        create: {
+          brandId,
+          plan: 'TRIAL',
+          planV3: 'TRIAL',
+          status: 'ACTIVE',
+          trialStartedAt: now,
+          trialEndsAt,
+          trialUsedCampaigns: 0,
+          trialUsedMessages: 0,
+          trialUsedDetailViews: 0,
+          currentMonthCampaigns: 0,
+          currentMonthMessages: 0,
+          currentMonthResetAt: now,
+          shopCommissionRate: 10.0,
+          startedAt: now,
+        },
+        update: {},
+      })
+    } catch { /* ignore */ }
+
     if (brand.userId) {
       try {
         const tmpl = brandApprovedTemplate({ brandName, recipientEmail: brandEmail })

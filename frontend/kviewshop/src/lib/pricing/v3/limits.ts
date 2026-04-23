@@ -33,6 +33,19 @@ export async function checkDailyDbLimit(brandId: string): Promise<void> {
 
   const count = subscription?.dailyDbViewedCount ?? 0
 
+  // DEACTIVATED 완전 차단
+  if (subscription?.status === 'DEACTIVATED') {
+    throw new PricingLimitError(LIMIT_MESSAGES.ACCOUNT_DEACTIVATED, 'ACCOUNT_DEACTIVATED')
+  }
+
+  // RESTRICTED 모드: 일 10명 제한
+  if (subscription?.status === 'RESTRICTED') {
+    if (count >= PRICING_V3.RESTRICTED.DAILY_DB_VIEW_LIMIT) {
+      throw new PricingLimitError(LIMIT_MESSAGES.DAILY_DB_LIMIT_RESTRICTED, 'DAILY_DB_LIMIT_RESTRICTED')
+    }
+    return
+  }
+
   if (plan.planV3 === 'TRIAL' && count >= PRICING_V3.TRIAL.DAILY_DB_VIEW_LIMIT) {
     throw new PricingLimitError(LIMIT_MESSAGES.DAILY_DB_LIMIT_TRIAL, 'DAILY_DB_LIMIT_TRIAL')
   }
