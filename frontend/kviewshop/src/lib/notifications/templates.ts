@@ -1,5 +1,7 @@
 import { escapeHtml, safeUrl } from './email-utils'
 import { getEmailFooter } from './email-footer'
+import { renderEmail } from './email-base'
+import { emailInfoTable, emailNoticeBox, formatKDate } from './email-components'
 
 export const KAKAO_TEMPLATES = {
   ORDER_COMPLETE: 'CNECSHOP_001',
@@ -785,16 +787,28 @@ export function brandApprovedTemplate(data: {
   brandName: string
   recipientEmail?: string
 }) {
-  const v = { brandName: escapeHtml(data.brandName) }
+  const now = new Date()
 
   return {
     email: {
       subject: `[크넥샵] 브랜드 승인이 완료되었습니다`,
-      html: emailLayout(`
-        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${v.brandName} 브랜드가 승인되었습니다</h2>
-        <p style="color:#6b7280;font-size:14px;line-height:1.6">지금 바로 상품을 등록하고 크리에이터와 함께 판매를 시작해보세요!</p>
-        ${ctaButton('상품 등록하기', `${SITE_URL}/brand/products/new`)}
-      `, data.recipientEmail),
+      html: renderEmail({
+        preheader: `크넥샵에서 ${data.brandName} 브랜드의 입점이 승인되었습니다`,
+        heroTitle: `${data.brandName} 브랜드 입점이 승인되었습니다`,
+        heroSubtitle: '지금 바로 상품을 등록하고 크리에이터와 함께 판매를 시작해보세요',
+        sections: [
+          emailInfoTable([
+            { label: '브랜드명', value: data.brandName, emphasis: true },
+            { label: '입점 일시', value: formatKDate(now) },
+            ...(data.recipientEmail ? [{ label: '담당자 이메일', value: data.recipientEmail }] : []),
+          ]),
+          emailNoticeBox('상품 등록 후 어드민 검토를 거쳐 노출됩니다 (영업일 기준 1~2일 소요)', 'info'),
+        ],
+        primaryAction: { text: '상품 등록하기', url: `${SITE_URL}/ko/brand/products/new` },
+        secondaryAction: { text: '브랜드 대시보드', url: `${SITE_URL}/ko/brand/dashboard` },
+        footerNotice: '본 메일은 크넥샵 서비스 이용자에게 발송되는 안내 메일입니다',
+        recipientEmail: data.recipientEmail,
+      }),
     },
     inApp: {
       type: 'SYSTEM',
