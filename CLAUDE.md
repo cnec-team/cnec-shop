@@ -4,6 +4,13 @@
 
 CNEC Shop -- K-뷰티 크리에이터 커머스 플랫폼 (Next.js + Prisma + Railway PostgreSQL + NextAuth v5 + PortOne V2 + Cloudflare R2)
 
+## Development Environment
+
+- 카이는 항상 맥(iMac)에서 Claude Code 실행
+- WSL/Linux 환경 가정 금지
+- .env.local DATABASE_URL = Railway 연결 기준 (127.0.0.1 가정 금지)
+- 환경 확인 질문 생략, 바로 작업 시작
+
 ## Package Manager
 - 이 프로젝트는 **pnpm** 사용. `npm install` 절대 금지.
 - 패키지 설치: `pnpm add [패키지명]`
