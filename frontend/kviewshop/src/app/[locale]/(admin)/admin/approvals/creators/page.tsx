@@ -87,7 +87,7 @@ interface CreatorDetail {
   approvalNote: string | null;
   onboardingCompleted: boolean;
   createdAt: Date;
-  user: { email: string; phone: string | null; name: string | null; createdAt: Date } | null;
+  user: { email: string; phone: string | null; name: string | null; createdAt: Date; ci: string | null; phoneReachable: boolean | null } | null;
 }
 
 const CATEGORIES = [
@@ -544,6 +544,16 @@ export default function AdminCreatorApprovalsPage() {
                 <p className="flex items-center gap-2"><span className="text-muted-foreground">이름:</span> {detail.user?.name || '-'}</p>
                 <p className="flex items-center gap-2"><span className="text-muted-foreground">이메일:</span> {detail.user?.email || '-'}</p>
                 <p className="flex items-center gap-2"><span className="text-muted-foreground">전화:</span> {detail.user?.phone || '-'}</p>
+                <p className="flex items-center gap-2">
+                  <span className="text-muted-foreground">인증:</span>
+                  {detail.user?.ci ? (
+                    <Badge className="bg-green-100 text-green-800 hover:bg-green-100">본인인증 완료</Badge>
+                  ) : detail.user?.phoneReachable ? (
+                    <Badge className="bg-gray-100 text-gray-600 hover:bg-gray-100">번호 확인</Badge>
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
+                </p>
                 <p className="flex items-center gap-2"><span className="text-muted-foreground">가입일:</span> {detail.user?.createdAt ? new Date(detail.user.createdAt).toLocaleDateString('ko-KR') : '-'}</p>
               </div>
 

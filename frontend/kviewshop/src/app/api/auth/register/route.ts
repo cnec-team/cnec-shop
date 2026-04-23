@@ -177,8 +177,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 브랜드 가입은 인증 필수
-    if (role === 'brand_admin' && !verifiedIdentity) {
+    // 브랜드 + 크리에이터 가입은 인증 필수
+    if ((role === 'brand_admin' || role === 'creator') && !verifiedIdentity) {
       return NextResponse.json({ error: '휴대폰 인증이 필요합니다.' }, { status: 400 })
     }
 
