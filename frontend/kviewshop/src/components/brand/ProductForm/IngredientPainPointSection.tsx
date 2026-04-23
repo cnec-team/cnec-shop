@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { FlaskConical } from 'lucide-react';
 import { IngredientPickerV2, type SelectedIngredient } from './IngredientPickerV2';
-import { MatchScorePreview } from './MatchScorePreview';
 import { PainPointTagSelector } from './PainPointTagSelector';
 
 type Ingredient = {
@@ -38,21 +37,16 @@ export function IngredientPainPointSection({
       .catch((err) => console.error('[IngredientPainPointSection] load error:', err));
   }, []);
 
-  // 마스터 DB 성분만 필터링 (자유 입력 제외)
-  const masterIngredientIds = selectedIngredients
-    .filter((ing) => !ing.isCustom)
-    .map((ing) => ing.id);
-
   return (
     <section className="overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm">
       <div className="flex items-center gap-2 border-b border-gray-100 bg-gradient-to-r from-violet-50/50 to-white px-5 py-3.5">
         <FlaskConical className="h-4.5 w-4.5 text-violet-500" />
         <div>
           <h2 className="text-base font-semibold text-gray-900">
-            핵심 성분 (선택)
+            핵심 성분 & 피부 고민 매칭
           </h2>
           <p className="text-xs text-gray-500">
-            크리에이터 매칭 정확도를 높여요
+            성분과 피부 고민을 설정하면 크리에이터 매칭 정확도가 높아져요
           </p>
         </div>
       </div>
@@ -64,9 +58,6 @@ export function IngredientPainPointSection({
           selected={selectedIngredients}
           onChange={onIngredientsChange}
         />
-
-        {/* 실시간 매칭 프리뷰 */}
-        <MatchScorePreview ingredientIds={masterIngredientIds} />
 
         {/* 피부 고민 태그 선택 */}
         <div className="pt-4 border-t">

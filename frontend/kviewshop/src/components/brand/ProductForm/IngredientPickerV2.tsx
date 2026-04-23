@@ -42,7 +42,7 @@ export function IngredientPickerV2({
 }: Props) {
   const [query, setQuery] = useState('');
   const [debouncedQuery] = useDebounce(query, 150);
-  const [activeTab, setActiveTab] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState<string>('moisture');
   const [isFocused, setIsFocused] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);

@@ -11,7 +11,6 @@ export type CategoryTab = {
 };
 
 export const CATEGORY_TABS: CategoryTab[] = [
-  { id: 'all', label: '전체', dbCategories: [] },
   { id: 'moisture', label: '보습', dbCategories: ['보습'] },
   { id: 'whitening', label: '미백', dbCategories: ['미백'] },
   { id: 'soothing', label: '진정', dbCategories: ['진정'] },
@@ -28,9 +27,8 @@ export function filterIngredientsByTab<T extends { category: string }>(
   ingredients: T[],
   tabId: string
 ): T[] {
-  if (tabId === 'all') return ingredients;
   const tab = CATEGORY_TABS.find((t) => t.id === tabId);
-  if (!tab) return ingredients;
+  if (!tab) return [];
   return ingredients.filter((ing) => tab.dbCategories.includes(ing.category));
 }
 
