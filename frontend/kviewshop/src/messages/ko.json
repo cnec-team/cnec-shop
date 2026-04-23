@@ -579,7 +579,55 @@
     "orderManagement": "주문 관리",
     "orderManagementDesc": "전체 주문을 조회하고 상태를 관리합니다",
     "campaignManagement": "캠페인 관리",
-    "campaignManagementDesc": "전체 캠페인 현황을 모니터링합니다"
+    "campaignManagementDesc": "전체 캠페인 현황을 모니터링합니다",
+    "dashboard": {
+      "title": "대시보드",
+      "lastUpdated": "마지막 업데이트",
+      "refresh": "새로고침",
+      "periodToday": "오늘",
+      "periodWeek": "이번 주",
+      "periodMonth": "이번 달",
+      "pendingQueue": {
+        "title": "처리 대기",
+        "empty": "오늘 처리할 일이 없어요. 잘 운영되고 있어요.",
+        "creatorApprovals": "크리에이터 승인",
+        "brandApprovals": "브랜드 승인",
+        "settlements": "정산 대기",
+        "failedPayments": "결제 실패",
+        "expiringCampaigns": "마감 임박",
+        "lowStock": "재고 부족"
+      },
+      "kpi": {
+        "todayGmv": "오늘 GMV",
+        "todayOrders": "오늘 주문",
+        "monthGmv": "이번 달 GMV",
+        "activeUsers": "활성 사용자",
+        "vsYesterday": "어제 대비",
+        "vsLastMonth": "지난 달 대비"
+      },
+      "chart": {
+        "title": "최근 매출 추이",
+        "7days": "7일",
+        "30days": "30일"
+      },
+      "topBrands": {
+        "title": "이번 달 매출 TOP 5 브랜드"
+      },
+      "topCreators": {
+        "title": "이번 달 매출 기여 TOP 5 크리에이터"
+      },
+      "activity": {
+        "title": "최근 활동",
+        "empty": "아직 활동이 없어요",
+        "viewMore": "더 보기",
+        "newOrder": "신규 주문",
+        "newCampaign": "신규 캠페인",
+        "newBrand": "신규 브랜드 가입",
+        "newCreator": "신규 크리에이터 가입",
+        "settlementComplete": "정산 완료",
+        "paymentFailed": "결제 실패"
+      }
+    }
   },
   "home": {
     "title": "크리에이터 셀렉트샵,\n크넥에서 시작하세요",
