@@ -2,7 +2,8 @@
 
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
-import { sendNotification } from '@/lib/notifications'
+import { sendNotification, isValidEmail } from '@/lib/notifications'
+import { orderCancelledByBuyerToCreatorTemplate, orderCancelledByBuyerTemplate } from '@/lib/notifications/templates'
 import { incrementStock } from '@/lib/stock'
 
 async function requireBuyer() {
@@ -21,7 +22,7 @@ export async function cancelOrder(orderId: string, reason?: string) {
       where: { id: orderId, buyerId: buyer.id },
       include: {
         items: true,
-        creator: { select: { userId: true, shopId: true } },
+        creator: { select: { userId: true, shopId: true, email: true } },
         brand: { select: { userId: true, brandName: true } },
       },
     })
@@ -83,21 +84,33 @@ export async function cancelOrder(orderId: string, reason?: string) {
     // 알림
     try {
       if (order.creator?.userId) {
+        const creatorEmail = order.creator.email ?? undefined
+        const crTmpl = orderCancelledByBuyerToCreatorTemplate({
+          orderNumber: order.orderNumber ?? '',
+          recipientEmail: creatorEmail,
+        })
         await sendNotification({
           userId: order.creator.userId,
-          type: 'ORDER',
-          title: '주문이 취소됐어요',
-          message: `주문 ${order.orderNumber}이 취소되었습니다.`,
-          linkUrl: '/creator/sales',
+          ...crTmpl.inApp,
+          email: creatorEmail,
+          emailTemplate: creatorEmail ? crTmpl.email : undefined,
         })
       }
       if (order.brand?.userId) {
+        const brandUser = await prisma.user.findUnique({
+          where: { id: order.brand.userId },
+          select: { email: true },
+        })
+        const brandEmail = brandUser?.email && isValidEmail(brandUser.email) ? brandUser.email : undefined
+        const brTmpl = orderCancelledByBuyerTemplate({
+          orderNumber: order.orderNumber ?? '',
+          recipientEmail: brandEmail,
+        })
         await sendNotification({
           userId: order.brand.userId,
-          type: 'ORDER',
-          title: '주문이 취소됐어요',
-          message: `주문 ${order.orderNumber}이 취소되었습니다.`,
-          linkUrl: '/brand/orders',
+          ...brTmpl.inApp,
+          email: brandEmail,
+          emailTemplate: brandEmail ? brTmpl.email : undefined,
         })
       }
     } catch {}
