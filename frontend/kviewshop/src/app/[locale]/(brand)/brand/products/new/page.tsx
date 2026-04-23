@@ -18,7 +18,7 @@ import { CreatorSettingsSection } from '@/components/brand/ProductForm/CreatorSe
 import { ProductDescriptionSection } from '@/components/brand/ProductForm/ProductDescriptionSection';
 import { TrustPolicySection } from '@/components/brand/ProductForm/ChannelPricesSection';
 import { IngredientPainPointSection } from '@/components/brand/ProductForm/IngredientPainPointSection';
-import type { IngredientItem } from '@/components/brand/ProductForm/IngredientPicker';
+import type { SelectedIngredient } from '@/components/brand/ProductForm/IngredientPickerV2';
 
 const STEPS = [
   { label: '기본 정보' },
@@ -55,8 +55,8 @@ export default function NewProductPage() {
   const [stock, setStock] = useState('');
 
   // Section 1.5: Ingredients & Pain Points
-  const [selectedIngredients, setSelectedIngredients] = useState<IngredientItem[]>([]);
-  const [selectedPainPoints, setSelectedPainPoints] = useState<Record<string, number>>({});
+  const [selectedIngredients, setSelectedIngredients] = useState<SelectedIngredient[]>([]);
+  const [selectedPainPoints, setSelectedPainPoints] = useState<string[]>([]);
 
   // Section 2: Images
   const [images, setImages] = useState<string[]>([]);
@@ -180,8 +180,8 @@ export default function NewProductPage() {
         allowCreatorPick,
         allowTrial,
         defaultCommissionRate: commissionRate,
-        heroIngredients: selectedIngredients.map(i => i.id),
-        targetPainPoints: Object.keys(selectedPainPoints),
+        heroIngredients: selectedIngredients.filter(i => !i.isCustom).map(i => i.id),
+        targetPainPoints: selectedPainPoints,
         lowestPriceGuarantee,
         cnecExclusive,
         asDraft: true,
@@ -257,8 +257,8 @@ export default function NewProductPage() {
         allowCreatorPick,
         allowTrial,
         defaultCommissionRate: commissionRate,
-        heroIngredients: selectedIngredients.map(i => i.id),
-        targetPainPoints: Object.keys(selectedPainPoints),
+        heroIngredients: selectedIngredients.filter(i => !i.isCustom).map(i => i.id),
+        targetPainPoints: selectedPainPoints,
         lowestPriceGuarantee,
         cnecExclusive,
       });
@@ -360,6 +360,7 @@ export default function NewProductPage() {
             selectedPainPoints={selectedPainPoints}
             onPainPointsChange={setSelectedPainPoints}
           />
+
 
           <ImagesSection images={images} onChange={setImages} />
 

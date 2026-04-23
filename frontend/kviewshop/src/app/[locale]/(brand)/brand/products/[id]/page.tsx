@@ -29,6 +29,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import ImageUpload from '@/components/common/ImageUpload';
 import { toast } from 'sonner';
+import { IngredientPainPointSection } from '@/components/brand/ProductForm/IngredientPainPointSection';
+import type { SelectedIngredient } from '@/components/brand/ProductForm/IngredientPickerV2';
 const COURIERS = [
   { code: 'cj', name: 'CJ대한통운' },
   { code: 'hanjin', name: '한진택배' },
@@ -77,6 +79,10 @@ export default function ProductDetailPage() {
   const [allowTrial, setAllowTrial] = useState(true);
   const [commissionRate, setCommissionRate] = useState('10');
 
+  // Ingredients & Pain Points
+  const [selectedIngredients, setSelectedIngredients] = useState<SelectedIngredient[]>([]);
+  const [selectedPainPoints, setSelectedPainPoints] = useState<string[]>([]);
+
   // Trust policy
   const [lowestPriceGuarantee, setLowestPriceGuarantee] = useState(false);
   const [cnecExclusive, setCnecExclusive] = useState(false);
@@ -118,6 +124,29 @@ export default function ProductDetailPage() {
         if (imgs.length > 0) {
           setMainImage(imgs[0]);
           setAdditionalImages(imgs.slice(1));
+        }
+
+        // Ingredients & Pain Points
+        const heroIds = Array.isArray((product as any).heroIngredients) ? (product as any).heroIngredients as string[] : [];
+        const painPoints = Array.isArray((product as any).targetPainPoints) ? (product as any).targetPainPoints as string[] : [];
+        setSelectedPainPoints(painPoints);
+
+        // heroIngredients ID → SelectedIngredient 변환
+        if (heroIds.length > 0) {
+          try {
+            const res = await fetch('/api/brand/ingredients');
+            const data = await res.json();
+            const allIngredients: Array<{ id: string; koName: string }> = data.items || [];
+            const mapped: SelectedIngredient[] = heroIds
+              .map((id: string) => {
+                const found = allIngredients.find((ing) => ing.id === id);
+                return found ? { id: found.id, koName: found.koName } : null;
+              })
+              .filter(Boolean) as SelectedIngredient[];
+            setSelectedIngredients(mapped);
+          } catch {
+            // 성분 로드 실패가 수정을 막지 않도록
+          }
         }
 
         // Trust policy
@@ -181,6 +210,8 @@ export default function ProductDetailPage() {
         allowCreatorPick,
         allowTrial,
         defaultCommissionRate: Number(commissionRate),
+        heroIngredients: selectedIngredients.filter(i => !i.isCustom).map(i => i.id),
+        targetPainPoints: selectedPainPoints,
         lowestPriceGuarantee,
         cnecExclusive,
       });
@@ -297,6 +328,14 @@ export default function ProductDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Ingredients & Pain Points */}
+      <IngredientPainPointSection
+        selectedIngredients={selectedIngredients}
+        onIngredientsChange={setSelectedIngredients}
+        selectedPainPoints={selectedPainPoints}
+        onPainPointsChange={setSelectedPainPoints}
+      />
 
       {/* Detail */}
       <Card>
