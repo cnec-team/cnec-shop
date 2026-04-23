@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getBrandDashboardData, getBrandSession } from '@/lib/actions/brand';
+import { getBrandDashboardData, getBrandSession, getBrandSubscriptionSnapshot } from '@/lib/actions/brand';
 import { getBrandInquiryCount } from '@/lib/actions/brand-inquiry';
+import { UsageWarningBanner } from '@/components/upsell/UsageWarningBanner';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -105,6 +106,7 @@ export default function BrandDashboardPage() {
   const [brand, setBrand] = useState<{ id: string; brandName?: string | null } | null>(null);
   const [data, setData] = useState<DashboardData | null>(null);
   const [openInquiryCount, setOpenInquiryCount] = useState(0);
+  const [subscription, setSubscription] = useState<Awaited<ReturnType<typeof getBrandSubscriptionSnapshot>>>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -113,12 +115,14 @@ export default function BrandDashboardPage() {
         const brandData = await getBrandSession();
         if (!brandData) { setIsLoading(false); return; }
         setBrand(brandData as any);
-        const [dashboardData, inquiryCount] = await Promise.all([
+        const [dashboardData, inquiryCount, subSnapshot] = await Promise.all([
           getBrandDashboardData(brandData.id),
           getBrandInquiryCount().catch(() => 0),
+          getBrandSubscriptionSnapshot().catch(() => null),
         ]);
         setData(dashboardData as any);
         setOpenInquiryCount(inquiryCount);
+        setSubscription(subSnapshot);
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
       } finally {
@@ -167,6 +171,22 @@ export default function BrandDashboardPage() {
           {brand?.brandName ?? '브랜드'} 대시보드
         </h1>
       </div>
+
+      {/* Usage Warning Banners */}
+      {subscription?.planV3 === 'STANDARD' && (
+        <div className="space-y-3">
+          <UsageWarningBanner type="CAMPAIGN" used={subscription.currentMonthCampaigns} limit={3} />
+          <UsageWarningBanner type="MESSAGE" used={subscription.currentMonthMessages} limit={100} />
+        </div>
+      )}
+      {subscription?.planV3 === 'TRIAL' && subscription.trialEndsAt && (
+        <UsageWarningBanner
+          type="TRIAL_ENDING"
+          used={0}
+          limit={0}
+          daysLeft={Math.ceil((new Date(subscription.trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24))}
+        />
+      )}
 
       {/* Onboarding */}
       {stats && stats.productCount === 0 && <OnboardingChecklist stats={stats} />}

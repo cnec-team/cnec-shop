@@ -3,6 +3,7 @@ import { PRICING_V3 } from './constants'
 import { LIMIT_MESSAGES } from './labels'
 import { resolveBrandPlan } from './plan-resolver'
 import { PricingLimitError } from './limits'
+import { UpsellRequiredError } from './errors'
 
 export async function chargeMessageSendV3(
   brandId: string,
@@ -18,7 +19,12 @@ export async function chargeMessageSendV3(
 
   // RESTRICTED / DEACTIVATED 차단
   if (subscription?.status === 'RESTRICTED' || subscription?.status === 'DEACTIVATED') {
-    throw new PricingLimitError(LIMIT_MESSAGES.SUBSCRIPTION_REQUIRED, 'SUBSCRIPTION_REQUIRED')
+    throw new UpsellRequiredError({
+      reason: 'RESTRICTED_MODE',
+      currentPlan: 'TRIAL',
+      suggestedPlan: 'STANDARD',
+      restrictedUntil: subscription.restrictedUntil?.toISOString(),
+    })
   }
 
   if (plan.planV3 === 'TRIAL') {
@@ -39,10 +45,14 @@ export async function chargeMessageSendV3(
   if (plan.planV3 === 'STANDARD') {
     const used = subscription?.currentMonthMessages ?? 0
     if (used >= PRICING_V3.STANDARD.MESSAGE_MONTHLY_LIMIT) {
-      throw new PricingLimitError(
-        LIMIT_MESSAGES.STANDARD_MESSAGE_LIMIT_REACHED,
-        'STANDARD_MESSAGE_LIMIT_REACHED',
-      )
+      throw new UpsellRequiredError({
+        reason: 'MESSAGE_LIMIT_REACHED',
+        currentPlan: 'STANDARD',
+        suggestedPlan: 'PRO',
+        limit: PRICING_V3.STANDARD.MESSAGE_MONTHLY_LIMIT,
+        used,
+        resetAt: subscription?.currentMonthResetAt?.toISOString(),
+      })
     }
     await prisma.brandSubscription.update({
       where: { brandId },

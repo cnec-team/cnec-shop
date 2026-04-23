@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { Header } from '@/components/layout/header';
 import { BrandSidebar } from '@/components/layout/brand-sidebar';
+import { UpsellModal } from '@/components/upsell/UpsellModal';
+import { RestrictedModeBanner } from '@/components/upsell/RestrictedModeBanner';
 import type { Locale } from '@/lib/i18n/config';
 import { getAuthUser } from '@/lib/auth-helpers';
 import { prisma } from '@/lib/db';
@@ -17,6 +19,9 @@ export default async function BrandLayout({
   const { locale } = await params;
 
   let pricingVersion: 'v2' | 'v3' = 'v3';
+  let subscriptionStatus: string | null = null;
+  let restrictedUntil: string | null = null;
+
   try {
     const authUser = await getAuthUser();
     if (authUser) {
@@ -33,14 +38,25 @@ export default async function BrandLayout({
         const subscription = await prisma.brandSubscription.findUnique({ where: { brandId: brand.id } });
         const plan = resolveBrandPlan(subscription);
         pricingVersion = plan.version === 'v2' ? 'v2' : 'v3';
+        subscriptionStatus = subscription?.status ?? null;
+        restrictedUntil = subscription?.restrictedUntil?.toISOString() ?? null;
       }
     }
   } catch {
     // 기본값 v3
   }
 
+  const showRestrictedBanner =
+    subscriptionStatus === 'RESTRICTED' || subscriptionStatus === 'DEACTIVATED';
+
   return (
     <div className="min-h-screen bg-gray-50/50">
+      {showRestrictedBanner && (
+        <RestrictedModeBanner
+          restrictedUntil={restrictedUntil}
+          status={subscriptionStatus as 'RESTRICTED' | 'DEACTIVATED'}
+        />
+      )}
       <Header locale={locale as Locale} />
       <div className="flex">
         <BrandSidebar locale={locale as Locale} pricingVersion={pricingVersion} />
@@ -48,6 +64,7 @@ export default async function BrandLayout({
           {children}
         </main>
       </div>
+      <UpsellModal />
     </div>
   );
 }
