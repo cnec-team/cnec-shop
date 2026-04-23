@@ -170,9 +170,10 @@ ${content}
 
 // ────────────────────────────── 9. emailNoticeBox ──────────────────────────────
 
-export function emailNoticeBox(text: string, type: 'info' | 'warning' | 'danger' = 'info'): string {
+export function emailNoticeBox(text: string, type: 'info' | 'success' | 'warning' | 'danger' = 'info'): string {
   const colorMap = {
     info: { border: COLORS.BRAND_PRIMARY, bg: COLORS.BRAND_PRIMARY_LIGHT, text: COLORS.BRAND_PRIMARY_DARK },
+    success: { border: COLORS.SUCCESS, bg: '#ECFDF5', text: '#065F46' },
     warning: { border: COLORS.WARNING, bg: '#FFF4EE', text: '#C44D1A' },
     danger: { border: COLORS.DANGER, bg: '#FEF3F2', text: '#B42318' },
   }

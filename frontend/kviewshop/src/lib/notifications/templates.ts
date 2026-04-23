@@ -1,7 +1,6 @@
 import { escapeHtml, safeUrl } from './email-utils'
-import { getEmailFooter } from './email-footer'
 import { renderEmail } from './email-base'
-import { emailInfoTable, emailNoticeBox, formatKDate } from './email-components'
+import { emailInfoTable, emailAmountBox, emailNoticeBox, formatKDate, formatKRW } from './email-components'
 
 export const KAKAO_TEMPLATES = {
   ORDER_COMPLETE: 'CNECSHOP_001',
@@ -29,50 +28,6 @@ function formatPrice(amount: number): string {
   return amount.toLocaleString('ko-KR') + '원'
 }
 
-function emailLayout(body: string, recipientEmail?: string): string {
-  const footer = recipientEmail ? getEmailFooter(recipientEmail) : ''
-  return `<!DOCTYPE html>
-<html lang="ko">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:24px 0">
-<tr><td align="center">
-<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden">
-<tr><td style="background:#2563EB;padding:24px 32px">
-<span style="color:#ffffff;font-size:20px;font-weight:700">크넥샵</span>
-</td></tr>
-<tr><td style="padding:32px 24px">
-${body}
-</td></tr>
-<tr><td style="padding:16px 24px;border-top:1px solid #e5e7eb;text-align:center;color:#9ca3af;font-size:12px">
-크넥샵 | cnecshop.com
-${footer}
-</td></tr>
-</table>
-</td></tr>
-</table>
-</body>
-</html>`
-}
-
-function infoBox(content: string): string {
-  return `<div style="background:#f9fafb;border-radius:12px;padding:20px;margin:16px 0">${content}</div>`
-}
-
-function ctaButton(text: string, url: string): string {
-  const escaped = safeUrl(url)
-  return `<div style="text-align:center;margin:24px 0">
-<a href="${escaped}" style="display:inline-block;background:#2563EB;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:600;font-size:15px">${escapeHtml(text)}</a>
-</div>`
-}
-
-function earningsBox(label: string, amount: number): string {
-  return `<div style="background:#f0fdf4;border-radius:12px;padding:20px;margin:16px 0;text-align:center">
-<div style="color:#166534;font-size:13px;margin-bottom:4px">${escapeHtml(label)}</div>
-<div style="color:#166534;font-size:24px;font-weight:700">${formatPrice(amount)}</div>
-</div>`
-}
-
 // ---------- 1. 주문 완료 → 구매자 ----------
 
 export function orderCompleteMessage(data: {
@@ -83,28 +38,30 @@ export function orderCompleteMessage(data: {
   recipientEmail?: string
   orderLinkUrl?: string
 }) {
-  const v = {
-    buyerName: escapeHtml(data.buyerName),
-    orderNumber: escapeHtml(data.orderNumber),
-    productName: escapeHtml(data.productName),
-  }
   const linkUrl = data.orderLinkUrl ?? '/buyer/orders'
   const kakaoMsg = `[크넥샵] 주문 완료\n\n${data.buyerName}님, 주문이 완료되었습니다.\n\n주문번호: ${data.orderNumber}\n상품: ${data.productName}\n결제금액: ${formatPrice(data.totalAmount)}\n\n배송이 시작되면 알려드리겠습니다.`
+  const now = new Date()
 
   return {
     kakao: { templateCode: KAKAO_TEMPLATES.ORDER_COMPLETE, message: kakaoMsg },
     email: {
-      subject: `[크넥샵] 주문이 완료되었습니다 (${data.orderNumber})`,
-      html: emailLayout(`
-        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${v.buyerName}님, 주문이 완료되었습니다</h2>
-        ${infoBox(`
-          <div style="margin-bottom:8px"><strong>주문번호</strong>: ${v.orderNumber}</div>
-          <div style="margin-bottom:8px"><strong>상품</strong>: ${v.productName}</div>
-          <div><strong>결제금액</strong>: ${formatPrice(data.totalAmount)}</div>
-        `)}
-        <p style="color:#6b7280;font-size:14px">배송이 시작되면 알림을 보내드리겠습니다.</p>
-        ${ctaButton('주문 상세보기', `${SITE_URL}${linkUrl}`)}
-      `, data.recipientEmail),
+      subject: `[크넥샵] 주문이 완료됐어요 (${data.orderNumber})`,
+      html: renderEmail({
+        preheader: `${data.productName} 결제가 완료됐어요. 곧 발송 시작해드릴게요`,
+        heroTitle: `${data.buyerName}님, 주문이 완료됐어요`,
+        heroSubtitle: '결제가 정상적으로 처리됐어요. 발송이 시작되면 운송장 번호와 함께 다시 알려드릴게요.',
+        sections: [
+          emailInfoTable([
+            { label: '주문번호', value: data.orderNumber, emphasis: true },
+            { label: '상품', value: data.productName },
+            { label: '결제일', value: formatKDate(now) },
+          ]),
+          emailAmountBox('결제 금액', data.totalAmount, '결제 완료'),
+          emailNoticeBox('평균 1~3일 안에 발송돼요. 주말/공휴일은 제외하고 계산해주세요.', 'info'),
+        ],
+        primaryAction: { text: '주문 상세 보기', url: `${SITE_URL}/ko${linkUrl.startsWith('/') ? linkUrl : '/' + linkUrl}` },
+        recipientEmail: data.recipientEmail,
+      }),
     },
     inApp: {
       type: 'ORDER',
@@ -126,32 +83,33 @@ export function shippingStartMessage(data: {
   recipientEmail?: string
   orderLinkUrl?: string
 }) {
-  const v = {
-    buyerName: escapeHtml(data.buyerName),
-    orderNumber: escapeHtml(data.orderNumber),
-    productName: escapeHtml(data.productName),
-    courierName: escapeHtml(data.courierName ?? ''),
-    trackingNumber: escapeHtml(data.trackingNumber ?? ''),
-  }
   const linkUrl = data.orderLinkUrl ?? '/buyer/orders'
   const trackingInfo = data.trackingNumber ? `\n운송장번호: ${data.trackingNumber}` : ''
   const courierInfo = data.courierName ? `\n택배사: ${data.courierName}` : ''
   const kakaoMsg = `[크넥샵] 배송 시작\n\n${data.buyerName}님, 상품이 발송되었습니다.\n\n주문번호: ${data.orderNumber}\n상품: ${data.productName}${courierInfo}${trackingInfo}`
+  const now = new Date()
 
   return {
     kakao: { templateCode: KAKAO_TEMPLATES.SHIPPING_START, message: kakaoMsg },
     email: {
-      subject: `[크넥샵] 상품이 발송되었습니다 (${data.orderNumber})`,
-      html: emailLayout(`
-        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${v.buyerName}님, 상품이 발송되었습니다</h2>
-        ${infoBox(`
-          <div style="margin-bottom:8px"><strong>주문번호</strong>: ${v.orderNumber}</div>
-          <div style="margin-bottom:8px"><strong>상품</strong>: ${v.productName}</div>
-          ${data.courierName ? `<div style="margin-bottom:8px"><strong>택배사</strong>: ${v.courierName}</div>` : ''}
-          ${data.trackingNumber ? `<div><strong>운송장번호</strong>: ${v.trackingNumber}</div>` : ''}
-        `)}
-        ${ctaButton('배송 추적하기', `${SITE_URL}${linkUrl}`)}
-      `, data.recipientEmail),
+      subject: `[크넥샵] ${data.productName} 발송 시작! 곧 만나보세요`,
+      html: renderEmail({
+        preheader: `${data.courierName ?? '택배'}으로 발송됐어요. 운송장 번호로 배송 위치 확인하세요`,
+        heroTitle: `${data.productName}이(가) 출발했어요`,
+        heroSubtitle: '주문하신 상품이 방금 발송됐어요. 보통 1~2일 안에 도착해요.',
+        sections: [
+          emailInfoTable([
+            { label: '주문번호', value: data.orderNumber, emphasis: true },
+            { label: '상품', value: data.productName },
+            ...(data.courierName ? [{ label: '택배사', value: data.courierName }] : []),
+            ...(data.trackingNumber ? [{ label: '운송장번호', value: data.trackingNumber, emphasis: true }] : []),
+            { label: '발송일', value: formatKDate(now) },
+          ]),
+          emailNoticeBox('아래 버튼을 누르면 실시간 배송 위치를 확인할 수 있어요. 배송 완료까지 보통 1~2일 걸려요.', 'info'),
+        ],
+        primaryAction: { text: '배송 추적하기', url: `${SITE_URL}/ko${linkUrl.startsWith('/') ? linkUrl : '/' + linkUrl}` },
+        recipientEmail: data.recipientEmail,
+      }),
     },
     inApp: {
       type: 'SHIPPING',
@@ -171,27 +129,30 @@ export function deliveryCompleteMessage(data: {
   recipientEmail?: string
   orderLinkUrl?: string
 }) {
-  const v = {
-    buyerName: escapeHtml(data.buyerName),
-    orderNumber: escapeHtml(data.orderNumber),
-    productName: escapeHtml(data.productName),
-  }
   const linkUrl = data.orderLinkUrl ?? '/buyer/reviews'
   const kakaoMsg = `[크넥샵] 배송 완료\n\n${data.buyerName}님, 상품이 배달 완료되었습니다.\n\n주문번호: ${data.orderNumber}\n상품: ${data.productName}\n\n상품이 마음에 드셨다면 리뷰를 남겨주세요!`
+  const now = new Date()
 
   return {
     kakao: { templateCode: KAKAO_TEMPLATES.DELIVERY_COMPLETE, message: kakaoMsg },
     email: {
-      subject: `[크넥샵] 배송이 완료되었습니다 (${data.orderNumber})`,
-      html: emailLayout(`
-        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${v.buyerName}님, 배송이 완료되었습니다</h2>
-        ${infoBox(`
-          <div style="margin-bottom:8px"><strong>주문번호</strong>: ${v.orderNumber}</div>
-          <div><strong>상품</strong>: ${v.productName}</div>
-        `)}
-        <p style="color:#6b7280;font-size:14px">상품이 마음에 드셨다면 리뷰를 남겨주세요!</p>
-        ${ctaButton('리뷰 작성하기', `${SITE_URL}${linkUrl}`)}
-      `, data.recipientEmail),
+      subject: `[크넥샵] ${data.productName} 배송이 완료됐어요`,
+      html: renderEmail({
+        preheader: '잘 받으셨나요? 짧은 후기로 다른 분들도 도와주세요',
+        heroTitle: `${data.productName} 배송이 완료됐어요`,
+        heroSubtitle: '잘 받으셨나요? 사용해보시고 짧은 후기 남겨주시면 다른 분들께도 큰 도움이 돼요.',
+        sections: [
+          emailInfoTable([
+            { label: '주문번호', value: data.orderNumber },
+            { label: '상품', value: data.productName },
+            { label: '배송 완료일', value: formatKDate(now) },
+          ]),
+          emailNoticeBox('리뷰 작성에 1분이면 충분해요. 솔직한 후기는 다른 구매자에게 큰 도움이 돼요.', 'success'),
+        ],
+        primaryAction: { text: '리뷰 작성하기', url: `${SITE_URL}/ko${linkUrl.startsWith('/') ? linkUrl : '/' + linkUrl}` },
+        secondaryAction: { text: '주문 내역', url: `${SITE_URL}/ko/buyer/orders` },
+        recipientEmail: data.recipientEmail,
+      }),
     },
     inApp: {
       type: 'DELIVERY',
@@ -213,29 +174,30 @@ export function newOrderBrandMessage(data: {
   buyerName: string
   recipientEmail?: string
 }) {
-  const v = {
-    brandName: escapeHtml(data.brandName),
-    orderNumber: escapeHtml(data.orderNumber),
-    productName: escapeHtml(data.productName),
-    buyerName: escapeHtml(data.buyerName),
-  }
   const kakaoMsg = `[크넥샵] 새 주문 발생\n\n${data.brandName}님, 새로운 주문이 들어왔습니다.\n\n주문번호: ${data.orderNumber}\n상품: ${data.productName} x ${data.quantity}\n결제금액: ${formatPrice(data.totalAmount)}\n구매자: ${data.buyerName}`
+  const now = new Date()
 
   return {
     kakao: { templateCode: KAKAO_TEMPLATES.NEW_ORDER_BRAND, message: kakaoMsg },
     email: {
-      subject: `[크넥샵] 새 주문이 접수되었습니다 (${data.orderNumber})`,
-      html: emailLayout(`
-        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">새 주문이 접수되었습니다</h2>
-        ${infoBox(`
-          <div style="margin-bottom:8px"><strong>주문번호</strong>: ${v.orderNumber}</div>
-          <div style="margin-bottom:8px"><strong>상품</strong>: ${v.productName} x ${data.quantity}</div>
-          <div style="margin-bottom:8px"><strong>결제금액</strong>: ${formatPrice(data.totalAmount)}</div>
-          <div><strong>구매자</strong>: ${v.buyerName}</div>
-        `)}
-        <p style="color:#6b7280;font-size:14px">빠른 배송 준비를 부탁드립니다.</p>
-        ${ctaButton('주문 관리하기', `${SITE_URL}/brand/orders`)}
-      `, data.recipientEmail),
+      subject: `[크넥샵] 새 주문 접수! ${data.productName} x ${data.quantity}`,
+      html: renderEmail({
+        preheader: `${data.buyerName}님이 주문하셨어요. 빠르게 송장 등록 부탁드려요`,
+        heroTitle: '새 주문이 접수됐어요',
+        heroSubtitle: '구매자가 결제를 완료했어요. 빠른 발송을 위해 1~2일 안에 송장을 등록해주세요.',
+        sections: [
+          emailInfoTable([
+            { label: '주문번호', value: data.orderNumber, emphasis: true },
+            { label: '상품', value: `${data.productName} x ${data.quantity}` },
+            { label: '구매자', value: data.buyerName },
+            { label: '주문일시', value: formatKDate(now) },
+          ]),
+          emailAmountBox('결제 금액', data.totalAmount, '플랫폼 수수료 차감 전'),
+          emailNoticeBox('영업일 기준 2일 내 송장 미입력 시 자동 알림이 다시 발송돼요. 빠른 발송 부탁드려요.', 'warning'),
+        ],
+        primaryAction: { text: '주문 처리하기', url: `${SITE_URL}/ko/brand/orders` },
+        recipientEmail: data.recipientEmail,
+      }),
     },
     inApp: {
       type: 'ORDER',
@@ -255,28 +217,29 @@ export function invoiceReminderMessage(data: {
   orderDate: string
   recipientEmail?: string
 }) {
-  const v = {
-    brandName: escapeHtml(data.brandName),
-    orderNumber: escapeHtml(data.orderNumber),
-    productName: escapeHtml(data.productName),
-    orderDate: escapeHtml(data.orderDate),
-  }
   const kakaoMsg = `[크넥샵] 송장 입력 요청\n\n${data.brandName}님, 아직 송장이 입력되지 않은 주문이 있습니다.\n\n주문번호: ${data.orderNumber}\n상품: ${data.productName}\n주문일: ${data.orderDate}\n\n빠른 배송 처리를 부탁드립니다.`
+  const now = new Date()
 
   return {
     kakao: { templateCode: KAKAO_TEMPLATES.INVOICE_REMINDER, message: kakaoMsg },
     email: {
-      subject: `[크넥샵] 송장 입력을 완료해주세요 (${data.orderNumber})`,
-      html: emailLayout(`
-        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">송장 입력이 필요합니다</h2>
-        <p style="color:#6b7280;font-size:14px">아래 주문의 송장이 아직 입력되지 않았습니다.</p>
-        ${infoBox(`
-          <div style="margin-bottom:8px"><strong>주문번호</strong>: ${v.orderNumber}</div>
-          <div style="margin-bottom:8px"><strong>상품</strong>: ${v.productName}</div>
-          <div><strong>주문일</strong>: ${v.orderDate}</div>
-        `)}
-        ${ctaButton('송장 입력하기', `${SITE_URL}/brand/orders`)}
-      `, data.recipientEmail),
+      subject: `[크넥샵] 송장 등록이 필요해요 (${data.orderNumber})`,
+      html: renderEmail({
+        preheader: `${data.orderDate} 주문이 아직 발송 처리되지 않았어요`,
+        heroTitle: '아직 송장이 등록되지 않았어요',
+        heroSubtitle: '아래 주문이 결제 완료된 지 시간이 지났는데 송장이 등록되지 않았어요. 구매자가 기다리고 있어요.',
+        sections: [
+          emailInfoTable([
+            { label: '주문번호', value: data.orderNumber, emphasis: true },
+            { label: '상품', value: data.productName },
+            { label: '주문일', value: data.orderDate },
+            { label: '독촉 발송일', value: formatKDate(now) },
+          ]),
+          emailNoticeBox('구매자 만족도와 브랜드 평점에 영향을 줄 수 있어요. 가능한 빨리 송장을 등록해주세요.', 'warning'),
+        ],
+        primaryAction: { text: '송장 등록하기', url: `${SITE_URL}/ko/brand/orders` },
+        recipientEmail: data.recipientEmail,
+      }),
     },
     inApp: {
       type: 'ORDER',
@@ -296,25 +259,30 @@ export function saleOccurredMessage(data: {
   commissionAmount: number
   recipientEmail?: string
 }) {
-  const v = {
-    creatorName: escapeHtml(data.creatorName),
-    productName: escapeHtml(data.productName),
-  }
   const kakaoMsg = `[크넥샵] 판매 발생\n\n${data.creatorName}님, 내 샵에서 판매가 발생했습니다!\n\n상품: ${data.productName}\n판매금액: ${formatPrice(data.orderAmount)}\n내 수익: ${formatPrice(data.commissionAmount)}`
+  const now = new Date()
 
   return {
     kakao: { templateCode: KAKAO_TEMPLATES.SALE_OCCURRED, message: kakaoMsg },
     email: {
-      subject: `[크넥샵] 판매가 발생했습니다! (+${formatPrice(data.commissionAmount)})`,
-      html: emailLayout(`
-        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${v.creatorName}님, 판매가 발생했습니다!</h2>
-        ${infoBox(`
-          <div style="margin-bottom:8px"><strong>상품</strong>: ${v.productName}</div>
-          <div><strong>판매금액</strong>: ${formatPrice(data.orderAmount)}</div>
-        `)}
-        ${earningsBox('내 수익', data.commissionAmount)}
-        ${ctaButton('판매 현황 보기', `${SITE_URL}/creator/sales`)}
-      `, data.recipientEmail),
+      subject: `[크넥샵] 판매 발생! +${formatPrice(data.commissionAmount)}`,
+      html: renderEmail({
+        preheader: `${data.productName}이(가) 판매됐어요. 내 수익 ${formatPrice(data.commissionAmount)}`,
+        heroTitle: `${data.creatorName}님, 판매가 발생했어요!`,
+        heroSubtitle: '방금 내 셀렉트샵에서 판매가 일어났어요. 정산은 매월 정해진 날짜에 진행돼요.',
+        sections: [
+          emailInfoTable([
+            { label: '상품', value: data.productName },
+            { label: '판매 금액', value: formatKRW(data.orderAmount) },
+            { label: '판매 시각', value: formatKDate(now) },
+          ]),
+          emailAmountBox('내 수익', data.commissionAmount, '커미션 100% 지급 (수수료 0원)'),
+          emailNoticeBox('정산은 월 1회 진행돼요. 누적 수익은 대시보드에서 실시간으로 확인할 수 있어요.', 'success'),
+        ],
+        primaryAction: { text: '판매 현황 보기', url: `${SITE_URL}/ko/creator/sales` },
+        secondaryAction: { text: '내 샵 가기', url: `${SITE_URL}/ko/creator/shop` },
+        recipientEmail: data.recipientEmail,
+      }),
     },
     inApp: {
       type: 'SALE',
@@ -333,26 +301,28 @@ export function campaignApprovedMessage(data: {
   campaignTitle: string
   recipientEmail?: string
 }) {
-  const v = {
-    creatorName: escapeHtml(data.creatorName),
-    brandName: escapeHtml(data.brandName),
-    campaignTitle: escapeHtml(data.campaignTitle),
-  }
   const kakaoMsg = `[크넥샵] 캠페인 참여 승인\n\n${data.creatorName}님, 캠페인 참여가 승인되었습니다.\n\n브랜드: ${data.brandName}\n캠페인: ${data.campaignTitle}\n\n이제 해당 상품을 내 샵에서 판매할 수 있습니다.`
+  const now = new Date()
 
   return {
     kakao: { templateCode: KAKAO_TEMPLATES.CAMPAIGN_APPROVED, message: kakaoMsg },
     email: {
-      subject: `[크넥샵] 캠페인 참여가 승인되었습니다`,
-      html: emailLayout(`
-        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${v.creatorName}님, 캠페인 참여가 승인되었습니다</h2>
-        ${infoBox(`
-          <div style="margin-bottom:8px"><strong>브랜드</strong>: ${v.brandName}</div>
-          <div><strong>캠페인</strong>: ${v.campaignTitle}</div>
-        `)}
-        <p style="color:#6b7280;font-size:14px">이제 해당 상품을 내 샵에서 판매할 수 있습니다.</p>
-        ${ctaButton('내 샵 확인하기', `${SITE_URL}/creator/shop`)}
-      `, data.recipientEmail),
+      subject: `[크넥샵] ${data.brandName} 캠페인 참여가 확정됐어요`,
+      html: renderEmail({
+        preheader: `${data.campaignTitle} 캠페인 참여가 승인됐어요. 지금 바로 판매 가능해요`,
+        heroTitle: '캠페인 참여가 확정됐어요',
+        heroSubtitle: `${data.brandName}의 캠페인에 참여가 승인됐어요. 이미 내 셀렉트샵에 자동으로 추가됐어요.`,
+        sections: [
+          emailInfoTable([
+            { label: '브랜드', value: data.brandName },
+            { label: '캠페인', value: data.campaignTitle, emphasis: true },
+            { label: '승인일', value: formatKDate(now) },
+          ]),
+          emailNoticeBox('SNS에 셀렉트샵 링크를 공유하면 바로 판매가 시작돼요. 첫 판매까지 보통 3~7일 걸려요.', 'success'),
+        ],
+        primaryAction: { text: '내 샵 확인하기', url: `${SITE_URL}/ko/creator/shop` },
+        recipientEmail: data.recipientEmail,
+      }),
     },
     inApp: {
       type: 'CAMPAIGN',
@@ -372,29 +342,30 @@ export function campaignStartedMessage(data: {
   endDate?: string
   recipientEmail?: string
 }) {
-  const v = {
-    creatorName: escapeHtml(data.creatorName),
-    brandName: escapeHtml(data.brandName),
-    campaignTitle: escapeHtml(data.campaignTitle),
-    endDate: escapeHtml(data.endDate ?? ''),
-  }
   const endInfo = data.endDate ? `\n종료일: ${data.endDate}` : ''
   const kakaoMsg = `[크넥샵] 캠페인 시작\n\n${data.creatorName}님, 참여 중인 캠페인이 시작되었습니다.\n\n브랜드: ${data.brandName}\n캠페인: ${data.campaignTitle}${endInfo}\n\n지금부터 판매가 가능합니다!`
+  const now = new Date()
 
   return {
     kakao: { templateCode: KAKAO_TEMPLATES.CAMPAIGN_STARTED, message: kakaoMsg },
     email: {
-      subject: `[크넥샵] 캠페인이 시작되었습니다 - ${data.campaignTitle}`,
-      html: emailLayout(`
-        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">캠페인이 시작되었습니다!</h2>
-        ${infoBox(`
-          <div style="margin-bottom:8px"><strong>브랜드</strong>: ${v.brandName}</div>
-          <div style="margin-bottom:8px"><strong>캠페인</strong>: ${v.campaignTitle}</div>
-          ${data.endDate ? `<div><strong>종료일</strong>: ${v.endDate}</div>` : ''}
-        `)}
-        <p style="color:#6b7280;font-size:14px">지금부터 판매가 가능합니다. 내 팔로워들에게 공유해보세요!</p>
-        ${ctaButton('내 샵 확인하기', `${SITE_URL}/creator/shop`)}
-      `, data.recipientEmail),
+      subject: `[크넥샵] ${data.campaignTitle} 캠페인 오픈! 지금부터 판매 가능해요`,
+      html: renderEmail({
+        preheader: `${data.brandName}의 캠페인이 방금 시작됐어요`,
+        heroTitle: '캠페인이 시작됐어요',
+        heroSubtitle: '지금부터 캠페인 종료일까지 판매 가능해요. SNS에 공유해서 첫 판매를 만들어보세요.',
+        sections: [
+          emailInfoTable([
+            { label: '브랜드', value: data.brandName },
+            { label: '캠페인', value: data.campaignTitle, emphasis: true },
+            { label: '시작일', value: formatKDate(now) },
+            ...(data.endDate ? [{ label: '종료일', value: data.endDate }] : []),
+          ]),
+          emailNoticeBox('캠페인 기간 종료 시 자동으로 내 샵에서 내려가요. 한정 기간 강조하면 전환율이 더 높아져요.', 'info'),
+        ],
+        primaryAction: { text: '내 샵 확인하기', url: `${SITE_URL}/ko/creator/shop` },
+        recipientEmail: data.recipientEmail,
+      }),
     },
     inApp: {
       type: 'CAMPAIGN',
@@ -413,26 +384,28 @@ export function trialApprovedMessage(data: {
   productName: string
   recipientEmail?: string
 }) {
-  const v = {
-    creatorName: escapeHtml(data.creatorName),
-    brandName: escapeHtml(data.brandName),
-    productName: escapeHtml(data.productName),
-  }
   const kakaoMsg = `[크넥샵] 체험 신청 승인\n\n${data.creatorName}님, 체험 신청이 승인되었습니다.\n\n브랜드: ${data.brandName}\n상품: ${data.productName}\n\n곧 체험 상품이 발송될 예정입니다.`
+  const now = new Date()
 
   return {
     kakao: { templateCode: KAKAO_TEMPLATES.TRIAL_APPROVED, message: kakaoMsg },
     email: {
-      subject: `[크넥샵] 체험 신청이 승인되었습니다`,
-      html: emailLayout(`
-        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${v.creatorName}님, 체험 신청이 승인되었습니다</h2>
-        ${infoBox(`
-          <div style="margin-bottom:8px"><strong>브랜드</strong>: ${v.brandName}</div>
-          <div><strong>상품</strong>: ${v.productName}</div>
-        `)}
-        <p style="color:#6b7280;font-size:14px">곧 체험 상품이 발송될 예정입니다.</p>
-        ${ctaButton('체험 현황 보기', `${SITE_URL}/creator/trial/my`)}
-      `, data.recipientEmail),
+      subject: `[크넥샵] ${data.productName} 체험 신청이 승인됐어요`,
+      html: renderEmail({
+        preheader: `${data.brandName}에서 곧 체험 상품을 발송해드려요`,
+        heroTitle: '체험 신청이 승인됐어요',
+        heroSubtitle: `${data.brandName}에서 곧 체험 상품을 발송해드려요. 발송되면 운송장 번호와 함께 다시 알려드릴게요.`,
+        sections: [
+          emailInfoTable([
+            { label: '브랜드', value: data.brandName },
+            { label: '체험 상품', value: data.productName, emphasis: true },
+            { label: '승인일', value: formatKDate(now) },
+          ]),
+          emailNoticeBox('체험 후 공구 진행 여부는 자유롭게 결정하시면 돼요. 진행 안 해도 불이익 없어요.', 'info'),
+        ],
+        primaryAction: { text: '체험 현황 보기', url: `${SITE_URL}/ko/creator/trial/my` },
+        recipientEmail: data.recipientEmail,
+      }),
     },
     inApp: {
       type: 'CAMPAIGN',
@@ -452,28 +425,30 @@ export function trialShippedMessage(data: {
   trackingNumber?: string
   recipientEmail?: string
 }) {
-  const v = {
-    creatorName: escapeHtml(data.creatorName),
-    brandName: escapeHtml(data.brandName),
-    productName: escapeHtml(data.productName),
-    trackingNumber: escapeHtml(data.trackingNumber ?? ''),
-  }
   const trackingInfo = data.trackingNumber ? `\n운송장번호: ${data.trackingNumber}` : ''
   const kakaoMsg = `[크넥샵] 체험 상품 발송\n\n${data.creatorName}님, 체험 상품이 발송되었습니다.\n\n브랜드: ${data.brandName}\n상품: ${data.productName}${trackingInfo}`
+  const now = new Date()
 
   return {
     kakao: { templateCode: KAKAO_TEMPLATES.TRIAL_SHIPPED, message: kakaoMsg },
     email: {
-      subject: `[크넥샵] 체험 상품이 발송되었습니다`,
-      html: emailLayout(`
-        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">체험 상품이 발송되었습니다</h2>
-        ${infoBox(`
-          <div style="margin-bottom:8px"><strong>브랜드</strong>: ${v.brandName}</div>
-          <div style="margin-bottom:8px"><strong>상품</strong>: ${v.productName}</div>
-          ${data.trackingNumber ? `<div><strong>운송장번호</strong>: ${v.trackingNumber}</div>` : ''}
-        `)}
-        ${ctaButton('체험 현황 보기', `${SITE_URL}/creator/trial/my`)}
-      `, data.recipientEmail),
+      subject: `[크넥샵] ${data.productName} 체험 상품이 출발했어요`,
+      html: renderEmail({
+        preheader: '운송장 번호로 배송 위치 확인하세요',
+        heroTitle: '체험 상품이 출발했어요',
+        heroSubtitle: `${data.brandName}에서 체험 상품을 발송했어요. 보통 1~2일 안에 도착해요.`,
+        sections: [
+          emailInfoTable([
+            { label: '브랜드', value: data.brandName },
+            { label: '체험 상품', value: data.productName, emphasis: true },
+            ...(data.trackingNumber ? [{ label: '운송장번호', value: data.trackingNumber, emphasis: true }] : []),
+            { label: '발송일', value: formatKDate(now) },
+          ]),
+          emailNoticeBox('도착 후 사용해보시고 공구 진행 여부를 결정해주세요. 결정 기한은 보통 7~14일이에요.', 'info'),
+        ],
+        primaryAction: { text: '체험 현황 보기', url: `${SITE_URL}/ko/creator/trial/my` },
+        recipientEmail: data.recipientEmail,
+      }),
     },
     inApp: {
       type: 'CAMPAIGN',
@@ -492,26 +467,28 @@ export function trialRequestedMessage(data: {
   productName: string
   recipientEmail?: string
 }) {
-  const v = {
-    brandName: escapeHtml(data.brandName),
-    creatorName: escapeHtml(data.creatorName),
-    productName: escapeHtml(data.productName),
-  }
   const kakaoMsg = `[크넥샵] 체험 신청 접수\n\n${data.brandName}님, 새로운 체험 신청이 접수되었습니다.\n\n크리에이터: ${data.creatorName}\n상품: ${data.productName}\n\n승인 여부를 결정해주세요.`
+  const now = new Date()
 
   return {
     kakao: { templateCode: KAKAO_TEMPLATES.TRIAL_REQUESTED, message: kakaoMsg },
     email: {
-      subject: `[크넥샵] 새 체험 신청이 접수되었습니다`,
-      html: emailLayout(`
-        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">새 체험 신청이 접수되었습니다</h2>
-        ${infoBox(`
-          <div style="margin-bottom:8px"><strong>크리에이터</strong>: ${v.creatorName}</div>
-          <div><strong>상품</strong>: ${v.productName}</div>
-        `)}
-        <p style="color:#6b7280;font-size:14px">승인 여부를 결정해주세요.</p>
-        ${ctaButton('체험 신청 관리', `${SITE_URL}/brand/trial`)}
-      `, data.recipientEmail),
+      subject: `[크넥샵] ${data.creatorName}님이 ${data.productName} 체험을 신청했어요`,
+      html: renderEmail({
+        preheader: '크리에이터 프로필을 확인하고 승인 여부를 결정해주세요',
+        heroTitle: '새 체험 신청이 접수됐어요',
+        heroSubtitle: `${data.creatorName}님이 체험 상품을 신청했어요. 크리에이터 프로필 확인 후 승인 여부를 결정해주세요.`,
+        sections: [
+          emailInfoTable([
+            { label: '신청 크리에이터', value: data.creatorName, emphasis: true },
+            { label: '체험 상품', value: data.productName },
+            { label: '신청일', value: formatKDate(now) },
+          ]),
+          emailNoticeBox('승인 시 자동으로 크리에이터에게 알림이 가고, 발송 정보 입력 화면으로 이동해요.', 'info'),
+        ],
+        primaryAction: { text: '체험 신청 검토하기', url: `${SITE_URL}/ko/brand/trial` },
+        recipientEmail: data.recipientEmail,
+      }),
     },
     inApp: {
       type: 'CAMPAIGN',
@@ -531,26 +508,29 @@ export function settlementConfirmedMessage(data: {
   paymentDate: string
   recipientEmail?: string
 }) {
-  const v = {
-    creatorName: escapeHtml(data.creatorName),
-    period: escapeHtml(data.period),
-    paymentDate: escapeHtml(data.paymentDate),
-  }
   const kakaoMsg = `[크넥샵] 정산 확정\n\n${data.creatorName}님, ${data.period} 정산이 확정되었습니다.\n\n정산금액: ${formatPrice(data.netAmount)}\n입금예정일: ${data.paymentDate}`
+  const now = new Date()
 
   return {
     kakao: { templateCode: KAKAO_TEMPLATES.SETTLEMENT_CONFIRMED, message: kakaoMsg },
     email: {
-      subject: `[크넥샵] ${data.period} 정산이 확정되었습니다`,
-      html: emailLayout(`
-        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${v.creatorName}님, 정산이 확정되었습니다</h2>
-        ${infoBox(`
-          <div style="margin-bottom:8px"><strong>정산 기간</strong>: ${v.period}</div>
-          <div><strong>입금예정일</strong>: ${v.paymentDate}</div>
-        `)}
-        ${earningsBox('정산 금액', data.netAmount)}
-        ${ctaButton('정산 내역 보기', `${SITE_URL}/creator/settlements`)}
-      `, data.recipientEmail),
+      subject: `[크넥샵] ${data.period} 정산 확정 — ${data.paymentDate}에 입금돼요`,
+      html: renderEmail({
+        preheader: `${formatPrice(data.netAmount)}이 ${data.paymentDate}에 등록 계좌로 입금돼요`,
+        heroTitle: `${data.period} 정산이 확정됐어요`,
+        heroSubtitle: '아래 금액이 등록하신 계좌로 입금될 예정이에요. 입금 완료되면 다시 알려드릴게요.',
+        sections: [
+          emailInfoTable([
+            { label: '정산 기간', value: data.period },
+            { label: '확정일', value: formatKDate(now) },
+            { label: '입금 예정일', value: data.paymentDate, emphasis: true },
+          ]),
+          emailAmountBox('정산 금액', data.netAmount, '세금/수수료 차감 후 실수령액'),
+          emailNoticeBox('계좌 정보가 변경됐다면 정산 페이지에서 미리 수정해주세요. 입금 후엔 변경이 어려워요.', 'success'),
+        ],
+        primaryAction: { text: '정산 내역 보기', url: `${SITE_URL}/ko/creator/settlements` },
+        recipientEmail: data.recipientEmail,
+      }),
     },
     inApp: {
       type: 'SETTLEMENT',
@@ -572,30 +552,34 @@ export function proposalGongguInviteMessage(data: {
   acceptUrl: string
   recipientEmail?: string
 }) {
-  const v = {
-    creatorName: escapeHtml(data.creatorName),
-    brandName: escapeHtml(data.brandName),
-    campaignName: escapeHtml(data.campaignName),
-    messageBody: escapeHtml(data.messageBody ?? ''),
-  }
   const commissionInfo = data.commissionRate ? `\n커미션: ${data.commissionRate}%` : ''
   const kakaoMsg = `[크넥샵] 공구 초대\n\n${data.creatorName}님, 새로운 공구 초대가 도착했어요.\n\n브랜드: ${data.brandName}\n캠페인: ${data.campaignName}${commissionInfo}\n\n아래 링크에서 상세 내용을 확인해주세요.`
+  const now = new Date()
+
+  const sections: string[] = [
+    emailInfoTable([
+      { label: '브랜드', value: data.brandName },
+      { label: '캠페인', value: data.campaignName, emphasis: true },
+      ...(data.commissionRate ? [{ label: '커미션율', value: `${data.commissionRate}%` }] : []),
+      { label: '초대일', value: formatKDate(now) },
+    ]),
+  ]
+  if (data.messageBody) {
+    sections.push(emailNoticeBox(data.messageBody, 'info'))
+  }
 
   return {
     kakao: { templateCode: KAKAO_TEMPLATES.PROPOSAL_GONGGU, message: kakaoMsg },
     email: {
-      subject: `[${data.brandName}] 공구 초대가 도착했어요`,
-      html: emailLayout(`
-        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${v.creatorName}님, 새로운 공구 초대가 도착했어요</h2>
-        ${infoBox(`
-          <div style="margin-bottom:8px"><strong>브랜드</strong>: ${v.brandName}</div>
-          <div style="margin-bottom:8px"><strong>캠페인</strong>: ${v.campaignName}</div>
-          ${data.commissionRate ? `<div><strong>커미션</strong>: ${data.commissionRate}%</div>` : ''}
-        `)}
-        ${data.messageBody ? `<div style="padding:12px 0;font-size:14px;color:#333;white-space:pre-wrap;line-height:1.6">${v.messageBody}</div>` : ''}
-        <p style="color:#6b7280;font-size:14px">답장이나 수락은 크넥샵에 로그인 후 처리해주세요.</p>
-        ${ctaButton('자세히 보기', data.acceptUrl)}
-      `, data.recipientEmail),
+      subject: `[${data.brandName}] ${data.campaignName} 공구 초대가 도착했어요`,
+      html: renderEmail({
+        preheader: `${data.brandName}에서 공구 참여 초대가 왔어요. 커미션 ${data.commissionRate ?? ''}%`,
+        heroTitle: `${data.brandName}에서 공구 초대가 왔어요`,
+        heroSubtitle: `${data.creatorName}님께 새로운 공구 캠페인 참여를 제안드려요. 자세한 내용은 아래에서 확인해주세요.`,
+        sections,
+        primaryAction: { text: '캠페인 자세히 보기', url: data.acceptUrl },
+        recipientEmail: data.recipientEmail,
+      }),
     },
     inApp: {
       type: 'CAMPAIGN',
@@ -617,30 +601,34 @@ export function proposalProductPickMessage(data: {
   acceptUrl: string
   recipientEmail?: string
 }) {
-  const v = {
-    creatorName: escapeHtml(data.creatorName),
-    brandName: escapeHtml(data.brandName),
-    productName: escapeHtml(data.productName),
-    messageBody: escapeHtml(data.messageBody ?? ''),
-  }
   const commissionInfo = data.commissionRate ? `\n커미션: ${data.commissionRate}%` : ''
   const kakaoMsg = `[크넥샵] 상품 추천 요청\n\n${data.creatorName}님, 새로운 상품 추천 요청이 도착했어요.\n\n브랜드: ${data.brandName}\n상품: ${data.productName}${commissionInfo}\n\n내 샵에 상시 추천 상품으로 등록하실지 확인해주세요.`
+  const now = new Date()
+
+  const sections: string[] = [
+    emailInfoTable([
+      { label: '브랜드', value: data.brandName },
+      { label: '상품', value: data.productName, emphasis: true },
+      ...(data.commissionRate ? [{ label: '커미션율', value: `${data.commissionRate}%` }] : []),
+      { label: '요청일', value: formatKDate(now) },
+    ]),
+  ]
+  if (data.messageBody) {
+    sections.push(emailNoticeBox(data.messageBody, 'info'))
+  }
 
   return {
     kakao: { templateCode: KAKAO_TEMPLATES.PROPOSAL_PRODUCT_PICK, message: kakaoMsg },
     email: {
-      subject: `[${data.brandName}] 상품 추천 요청이 도착했어요`,
-      html: emailLayout(`
-        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${v.creatorName}님, 새로운 상품 추천 요청이 도착했어요</h2>
-        ${infoBox(`
-          <div style="margin-bottom:8px"><strong>브랜드</strong>: ${v.brandName}</div>
-          <div style="margin-bottom:8px"><strong>상품</strong>: ${v.productName}</div>
-          ${data.commissionRate ? `<div><strong>커미션</strong>: ${data.commissionRate}%</div>` : ''}
-        `)}
-        ${data.messageBody ? `<div style="padding:12px 0;font-size:14px;color:#333;white-space:pre-wrap;line-height:1.6">${v.messageBody}</div>` : ''}
-        <p style="color:#6b7280;font-size:14px">내 샵에 상시 추천 상품으로 등록하실지 확인해주세요.</p>
-        ${ctaButton('상품 확인하기', data.acceptUrl)}
-      `, data.recipientEmail),
+      subject: `[${data.brandName}] ${data.productName} 추천 요청이 도착했어요`,
+      html: renderEmail({
+        preheader: `${data.brandName}의 ${data.productName} 상시 추천 요청이 왔어요. 커미션 ${data.commissionRate ?? ''}%`,
+        heroTitle: `${data.brandName}에서 상품 추천 요청이 왔어요`,
+        heroSubtitle: `${data.creatorName}님의 셀렉트샵에 상시 추천 상품으로 등록해달라는 요청이에요. 마음에 들면 추가해보세요.`,
+        sections,
+        primaryAction: { text: '상품 자세히 보기', url: data.acceptUrl },
+        recipientEmail: data.recipientEmail,
+      }),
     },
     inApp: {
       type: 'CAMPAIGN',
@@ -663,25 +651,35 @@ export function bulkSendReportMessage(data: {
   reportLink: string
   recipientEmail?: string
 }) {
-  const channels = Object.entries(data.channelBreakdown)
-    .map(([ch, count]) => `<div style="margin-bottom:4px">${escapeHtml(ch)}: ${count}건</div>`)
-    .join('')
+  const now = new Date()
+  const channelRows = Object.entries(data.channelBreakdown)
+    .map(([ch, count]) => ({ label: ch, value: `${count}건` }))
+
+  const sections: string[] = [
+    emailInfoTable([
+      { label: '총 발송', value: `${data.sentCount}건`, emphasis: true },
+      { label: '실패', value: `${data.failedCount}건` },
+      { label: '발송 일시', value: formatKDate(now) },
+      ...channelRows,
+    ]),
+  ]
+  if (data.paidCount > 0) {
+    sections.push(emailAmountBox('유료 발송 비용', data.paidAmount, `유료 ${data.paidCount}건 x 500원`))
+  }
+  sections.push(emailNoticeBox('실패한 발송은 자동으로 재시도되지 않아요. 필요 시 다시 발송해주세요.', 'info'))
 
   return {
     kakao: null,
     email: {
-      subject: `[크넥샵] 일괄 발송 완료 — ${data.sentCount}건 전송`,
-      html: emailLayout(`
-        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">일괄 발송이 완료되었습니다</h2>
-        ${infoBox(`
-          <div style="margin-bottom:8px"><strong>총 발송</strong>: ${data.sentCount}건</div>
-          ${data.failedCount > 0 ? `<div style="margin-bottom:8px;color:#dc2626"><strong>실패</strong>: ${data.failedCount}건</div>` : ''}
-        `)}
-        <h3 style="font-size:14px;color:#374151;margin:16px 0 8px">채널별 발송</h3>
-        <div style="font-size:13px;color:#6b7280;padding:0 8px">${channels}</div>
-        ${data.paidCount > 0 ? `<p style="font-size:13px;margin-top:12px">유료 발송: ${data.paidCount}건 x 500원 = <strong>${data.paidAmount.toLocaleString()}원</strong></p>` : ''}
-        ${ctaButton('발송 내역 보기', data.reportLink)}
-      `, data.recipientEmail),
+      subject: `[크넥샵] 일괄 발송 완료 — ${data.sentCount}건 전송됨`,
+      html: renderEmail({
+        preheader: `총 ${data.sentCount}건 전송, 실패 ${data.failedCount}건. 자세한 리포트를 확인하세요`,
+        heroTitle: '일괄 발송이 완료됐어요',
+        heroSubtitle: '제안 메시지 일괄 발송이 끝났어요. 발송 결과와 비용을 확인해주세요.',
+        sections,
+        primaryAction: { text: '발송 내역 보기', url: data.reportLink },
+        recipientEmail: data.recipientEmail,
+      }),
     },
     inApp: null,
   }
@@ -693,24 +691,28 @@ export function creatorApplicationSubmittedMessage(data: {
   creatorName: string
   recipientEmail?: string
 }) {
-  const v = { creatorName: escapeHtml(data.creatorName) }
   const kakaoMsg = `[크넥샵] 가입 신청 완료\n\n${data.creatorName}님, 크넥샵 크리에이터 가입 신청이 완료됐어요.\n\n1~2영업일 내 심사 결과를 알려드릴게요.\n승인되면 바로 내 샵을 열 수 있어요!`
+  const now = new Date()
 
   return {
     kakao: { templateCode: KAKAO_TEMPLATES.CREATOR_APPLICATION_SUBMITTED, message: kakaoMsg },
     email: {
-      subject: `[크넥샵] 크리에이터 가입 신청이 완료됐어요`,
-      html: emailLayout(`
-        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${v.creatorName}님, 가입 신청이 완료됐어요</h2>
-        <p style="color:#6b7280;font-size:14px;line-height:1.6">1~2영업일 내 심사 결과를 알려드릴게요.<br/>승인되면 바로 내 샵을 열 수 있어요!</p>
-        ${infoBox(`
-          <div style="font-size:13px;color:#6b7280">
-            <div style="margin-bottom:6px">&#x2709;&#xFE0F; 이메일로 심사 결과를 보내드려요</div>
-            <div style="margin-bottom:6px">&#x1F381; 승인 시 가입 축하 3,000원 자동 지급</div>
-          </div>
-        `)}
-        ${ctaButton('크넥샵 둘러보기', SITE_URL)}
-      `, data.recipientEmail),
+      subject: `[크넥샵] ${data.creatorName}님, 가입 신청이 접수됐어요`,
+      html: renderEmail({
+        preheader: '1~2영업일 안에 심사 결과 알려드릴게요',
+        heroTitle: `${data.creatorName}님, 가입 신청이 접수됐어요`,
+        heroSubtitle: '1~2영업일 안에 심사 결과를 이메일로 알려드릴게요. 승인되면 바로 내 셀렉트샵을 열 수 있어요.',
+        sections: [
+          emailInfoTable([
+            { label: '신청일', value: formatKDate(now) },
+            { label: '심사 예정', value: '영업일 기준 1~2일' },
+            { label: '승인 시 혜택', value: '가입 축하 포인트 3,000원 자동 지급' },
+          ]),
+          emailNoticeBox('심사 결과는 가입하신 이메일로 보내드려요. 스팸함도 확인해주세요.', 'info'),
+        ],
+        primaryAction: { text: '크넥샵 둘러보기', url: `${SITE_URL}/ko` },
+        recipientEmail: data.recipientEmail,
+      }),
     },
     inApp: {
       type: 'SYSTEM',
@@ -727,19 +729,29 @@ export function creatorApprovedMessage(data: {
   creatorName: string
   recipientEmail?: string
 }) {
-  const v = { creatorName: escapeHtml(data.creatorName) }
   const kakaoMsg = `[크넥샵] 가입 승인 완료\n\n축하드려요! ${data.creatorName}님의 크넥샵 크리에이터 가입이 승인됐어요.\n\n지금 바로 내 샵을 열어보세요.\n가입 축하 3,000원이 지급됐어요!`
+  const now = new Date()
 
   return {
     kakao: { templateCode: KAKAO_TEMPLATES.CREATOR_APPROVED, message: kakaoMsg },
     email: {
-      subject: `[크넥샵] 축하해요! 크리에이터 가입이 승인됐어요`,
-      html: emailLayout(`
-        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">축하드려요! ${v.creatorName}님</h2>
-        <p style="color:#6b7280;font-size:14px;line-height:1.6">크넥샵 크리에이터 가입이 승인됐어요.<br/>지금 바로 내 샵을 열어보세요!</p>
-        ${earningsBox('가입 축하 포인트', 3000)}
-        ${ctaButton('내 샵 시작하기', `${SITE_URL}/creator/dashboard`)}
-      `, data.recipientEmail),
+      subject: `[크넥샵] ${data.creatorName}님, 크리에이터 가입이 승인됐어요`,
+      html: renderEmail({
+        preheader: '지금 바로 내 셀렉트샵을 열고 첫 판매를 시작해보세요',
+        heroTitle: `축하해요, ${data.creatorName}님!`,
+        heroSubtitle: '크넥샵 크리에이터 가입이 승인됐어요. 지금 바로 내 셀렉트샵을 열고 첫 판매를 시작해보세요.',
+        sections: [
+          emailInfoTable([
+            { label: '승인일', value: formatKDate(now) },
+            { label: '가입 축하 포인트', value: '3,000원 (즉시 지급 완료)' },
+          ]),
+          emailAmountBox('가입 축하 포인트', 3000, '즉시 지급 완료'),
+          emailNoticeBox('대시보드에서 첫 캠페인을 골라 내 샵에 추가해보세요. 보통 첫 판매까지 3~7일 걸려요.', 'success'),
+        ],
+        primaryAction: { text: '내 샵 시작하기', url: `${SITE_URL}/ko/creator/dashboard` },
+        secondaryAction: { text: '캠페인 둘러보기', url: `${SITE_URL}/ko/creator/campaigns` },
+        recipientEmail: data.recipientEmail,
+      }),
     },
     inApp: {
       type: 'SYSTEM',
@@ -757,20 +769,29 @@ export function creatorRejectedMessage(data: {
   reason: string
   recipientEmail?: string
 }) {
-  const v = { creatorName: escapeHtml(data.creatorName), reason: escapeHtml(data.reason) }
   const kakaoMsg = `[크넥샵] 가입 심사 결과\n\n${data.creatorName}님, 아쉽게도 이번 심사에서는 승인이 어려웠어요.\n\n사유: ${data.reason}\n\n보완 후 재신청이 가능합니다.`
+  const now = new Date()
 
   return {
     kakao: { templateCode: KAKAO_TEMPLATES.CREATOR_REJECTED, message: kakaoMsg },
     email: {
-      subject: `[크넥샵] 크리에이터 가입 심사 결과 안내`,
-      html: emailLayout(`
-        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${v.creatorName}님, 심사 결과를 안내드려요</h2>
-        <p style="color:#6b7280;font-size:14px;line-height:1.6">아쉽게도 이번 심사에서는 승인이 어려웠어요.</p>
-        ${infoBox(`<div style="font-size:14px"><strong>사유</strong>: ${v.reason}</div>`)}
-        <p style="color:#6b7280;font-size:14px">정보를 보완해서 다시 신청하실 수 있어요.</p>
-        ${ctaButton('재신청하기', `${SITE_URL}/creator/pending`)}
-      `, data.recipientEmail),
+      subject: `[크넥샵] 가입 심사 결과를 알려드려요`,
+      html: renderEmail({
+        preheader: '아쉽게도 이번엔 승인이 어려웠어요. 다시 신청 가능해요',
+        heroTitle: `${data.creatorName}님, 가입 심사 결과를 알려드려요`,
+        heroSubtitle: '아쉽게도 이번 심사에서는 승인이 어려웠어요. 아래 사유를 확인하시고 정보를 보완해서 다시 신청해주세요.',
+        sections: [
+          emailInfoTable([
+            { label: '심사일', value: formatKDate(now) },
+            { label: '심사 결과', value: '승인 보류' },
+            { label: '사유', value: data.reason, emphasis: true },
+          ]),
+          emailNoticeBox('재신청은 사유 보완 후 언제든 가능해요. 도움이 필요하시면 support@cnecshop.com으로 문의주세요.', 'info'),
+        ],
+        primaryAction: { text: '다시 신청하기', url: `${SITE_URL}/ko/creator/pending` },
+        secondaryAction: { text: '문의하기', url: `${SITE_URL}/ko/support` },
+        recipientEmail: data.recipientEmail,
+      }),
     },
     inApp: {
       type: 'SYSTEM',
@@ -791,22 +812,21 @@ export function brandApprovedTemplate(data: {
 
   return {
     email: {
-      subject: `[크넥샵] 브랜드 승인이 완료되었습니다`,
+      subject: `[크넥샵] ${data.brandName} 입점이 승인됐어요`,
       html: renderEmail({
-        preheader: `크넥샵에서 ${data.brandName} 브랜드의 입점이 승인되었습니다`,
-        heroTitle: `${data.brandName} 브랜드 입점이 승인되었습니다`,
-        heroSubtitle: '지금 바로 상품을 등록하고 크리에이터와 함께 판매를 시작해보세요',
+        preheader: '지금 바로 상품을 등록하고 크리에이터와 함께 판매를 시작해보세요',
+        heroTitle: `${data.brandName} 입점이 승인됐어요`,
+        heroSubtitle: '지금 바로 상품을 등록하고 크리에이터와 함께 판매를 시작해보세요.',
         sections: [
           emailInfoTable([
             { label: '브랜드명', value: data.brandName, emphasis: true },
-            { label: '입점 일시', value: formatKDate(now) },
+            { label: '입점일', value: formatKDate(now) },
             ...(data.recipientEmail ? [{ label: '담당자 이메일', value: data.recipientEmail }] : []),
           ]),
-          emailNoticeBox('상품 등록 후 어드민 검토를 거쳐 노출됩니다 (영업일 기준 1~2일 소요)', 'info'),
+          emailNoticeBox('상품 등록 후 어드민 검토를 거쳐 노출돼요. 영업일 기준 1~2일 걸려요.', 'info'),
         ],
         primaryAction: { text: '상품 등록하기', url: `${SITE_URL}/ko/brand/products/new` },
         secondaryAction: { text: '브랜드 대시보드', url: `${SITE_URL}/ko/brand/dashboard` },
-        footerNotice: '본 메일은 크넥샵 서비스 이용자에게 발송되는 안내 메일입니다',
         recipientEmail: data.recipientEmail,
       }),
     },
@@ -825,16 +845,26 @@ export function brandRejectedTemplate(data: {
   brandName: string
   recipientEmail?: string
 }) {
-  const v = { brandName: escapeHtml(data.brandName) }
+  const now = new Date()
 
   return {
     email: {
-      subject: `[크넥샵] 브랜드 등록 심사 결과 안내`,
-      html: emailLayout(`
-        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${v.brandName} 등록이 거절되었습니다</h2>
-        <p style="color:#6b7280;font-size:14px;line-height:1.6">자세한 사항은 관리자에게 문의해주세요.</p>
-        ${ctaButton('문의하기', `${SITE_URL}/support`)}
-      `, data.recipientEmail),
+      subject: `[크넥샵] 입점 심사 결과를 알려드려요`,
+      html: renderEmail({
+        preheader: '아쉽게도 이번엔 입점이 어려웠어요. 사유와 보완 방법을 안내드려요',
+        heroTitle: `${data.brandName} 입점 심사 결과를 알려드려요`,
+        heroSubtitle: '아쉽게도 이번 심사에서는 입점이 어려웠어요. 사유 확인 후 보완해서 다시 신청 가능해요.',
+        sections: [
+          emailInfoTable([
+            { label: '심사일', value: formatKDate(now) },
+            { label: '심사 결과', value: '입점 보류' },
+            { label: '브랜드명', value: data.brandName },
+          ]),
+          emailNoticeBox('구체적인 사유와 보완 방법은 담당자가 별도로 안내드려요. 빠른 답변이 필요하시면 support@cnecshop.com으로 문의주세요.', 'info'),
+        ],
+        primaryAction: { text: '문의하기', url: `${SITE_URL}/ko/support` },
+        recipientEmail: data.recipientEmail,
+      }),
     },
     inApp: {
       type: 'SYSTEM',
@@ -852,17 +882,27 @@ export function brandStatusChangedTemplate(data: {
   status: string
   recipientEmail?: string
 }) {
-  const v = { brandName: escapeHtml(data.brandName), status: escapeHtml(data.status) }
+  const now = new Date()
 
   return {
     email: {
-      subject: `[크넥샵] 브랜드 상태가 변경되었습니다`,
-      html: emailLayout(`
-        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${v.brandName} 상태가 변경되었습니다</h2>
-        ${infoBox(`<div style="font-size:14px"><strong>변경 상태</strong>: ${v.status}</div>`)}
-        <p style="color:#6b7280;font-size:14px">자세한 사항은 관리자에게 문의해주세요.</p>
-        ${ctaButton('브랜드 관리', `${SITE_URL}/brand/dashboard`)}
-      `, data.recipientEmail),
+      subject: `[크넥샵] ${data.brandName} 운영 상태가 변경됐어요`,
+      html: renderEmail({
+        preheader: `운영 상태가 ${data.status}로 변경됐어요. 자세한 내용을 확인해주세요`,
+        heroTitle: `${data.brandName} 운영 상태가 변경됐어요`,
+        heroSubtitle: '아래 변경된 운영 상태를 확인해주세요. 궁금한 점은 언제든 문의주세요.',
+        sections: [
+          emailInfoTable([
+            { label: '브랜드명', value: data.brandName },
+            { label: '변경일시', value: formatKDate(now) },
+            { label: '변경된 상태', value: data.status, emphasis: true },
+          ]),
+          emailNoticeBox('운영 상태에 따라 상품 노출, 주문 접수, 정산이 달라질 수 있어요. 자세한 내용은 대시보드에서 확인해주세요.', 'warning'),
+        ],
+        primaryAction: { text: '브랜드 대시보드', url: `${SITE_URL}/ko/brand/dashboard` },
+        secondaryAction: { text: '문의하기', url: `${SITE_URL}/ko/support` },
+        recipientEmail: data.recipientEmail,
+      }),
     },
     inApp: {
       type: 'SYSTEM',
@@ -881,24 +921,29 @@ export function orderCancelledByBrandTemplate(data: {
   recipientEmail?: string
   orderLinkUrl?: string
 }) {
-  const v = {
-    orderNumber: escapeHtml(data.orderNumber),
-    cancelReason: escapeHtml(data.cancelReason),
-  }
   const linkUrl = data.orderLinkUrl ?? '/buyer/orders'
+  const now = new Date()
 
   return {
     email: {
-      subject: `[크넥샵] 주문이 취소되었습니다 (${data.orderNumber})`,
-      html: emailLayout(`
-        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">주문이 취소되었습니다</h2>
-        ${infoBox(`
-          <div style="margin-bottom:8px"><strong>주문번호</strong>: ${v.orderNumber}</div>
-          <div><strong>취소 사유</strong>: ${v.cancelReason}</div>
-        `)}
-        <p style="color:#6b7280;font-size:14px">결제하신 금액은 영업일 기준 3~5일 내 환불됩니다.</p>
-        ${ctaButton('주문 상세보기', `${SITE_URL}${linkUrl}`)}
-      `, data.recipientEmail),
+      subject: `[크넥샵] 주문이 취소됐어요 (${data.orderNumber})`,
+      html: renderEmail({
+        preheader: '결제하신 금액은 영업일 기준 3~5일 안에 환불돼요',
+        heroTitle: '주문이 취소됐어요',
+        heroSubtitle: '브랜드 측 사유로 주문이 취소됐어요. 결제하신 금액은 곧 환불해드릴게요.',
+        sections: [
+          emailInfoTable([
+            { label: '주문번호', value: data.orderNumber, emphasis: true },
+            { label: '취소 일시', value: formatKDate(now) },
+            { label: '취소 사유', value: data.cancelReason },
+            { label: '환불 방식', value: '결제하신 카드 또는 계좌로 자동 환불' },
+          ]),
+          emailNoticeBox('카드 결제는 영업일 기준 3~5일, 계좌 환불은 1~2일 안에 처리돼요. 환불 완료 시 다시 알려드릴게요.', 'warning'),
+        ],
+        primaryAction: { text: '주문 상세 보기', url: `${SITE_URL}/ko${linkUrl.startsWith('/') ? linkUrl : '/' + linkUrl}` },
+        secondaryAction: { text: '문의하기', url: `${SITE_URL}/ko/support` },
+        recipientEmail: data.recipientEmail,
+      }),
     },
     inApp: {
       type: 'ORDER',
@@ -915,17 +960,26 @@ export function orderCancelledByBrandToCreatorTemplate(data: {
   orderNumber: string
   recipientEmail?: string
 }) {
-  const v = { orderNumber: escapeHtml(data.orderNumber) }
+  const now = new Date()
 
   return {
     email: {
-      subject: `[크넥샵] 주문이 취소되었습니다 (${data.orderNumber})`,
-      html: emailLayout(`
-        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">주문이 취소되었습니다</h2>
-        ${infoBox(`<div><strong>주문번호</strong>: ${v.orderNumber}</div>`)}
-        <p style="color:#6b7280;font-size:14px">브랜드에 의해 주문이 취소되었습니다.</p>
-        ${ctaButton('주문 현황 보기', `${SITE_URL}/creator/orders`)}
-      `, data.recipientEmail),
+      subject: `[크넥샵] 판매 주문이 취소됐어요 (${data.orderNumber})`,
+      html: renderEmail({
+        preheader: '브랜드가 주문을 취소했어요. 해당 주문 수익은 차감돼요',
+        heroTitle: '판매 주문이 취소됐어요',
+        heroSubtitle: '브랜드가 주문을 취소했어요. 이 주문에서 발생한 수익은 정산에서 자동 차감돼요.',
+        sections: [
+          emailInfoTable([
+            { label: '주문번호', value: data.orderNumber, emphasis: true },
+            { label: '취소 일시', value: formatKDate(now) },
+            { label: '수익 처리', value: '정산 시 자동 차감' },
+          ]),
+          emailNoticeBox('취소 사유는 브랜드와 구매자에게만 공개돼요. 자세한 내역은 판매 현황에서 확인하세요.', 'info'),
+        ],
+        primaryAction: { text: '판매 현황 보기', url: `${SITE_URL}/ko/creator/sales` },
+        recipientEmail: data.recipientEmail,
+      }),
     },
     inApp: {
       type: 'ORDER',
@@ -942,17 +996,26 @@ export function orderCancelledByBuyerTemplate(data: {
   orderNumber: string
   recipientEmail?: string
 }) {
-  const v = { orderNumber: escapeHtml(data.orderNumber) }
+  const now = new Date()
 
   return {
     email: {
-      subject: `[크넥샵] 주문이 취소되었습니다 (${data.orderNumber})`,
-      html: emailLayout(`
-        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">주문이 취소되었습니다</h2>
-        ${infoBox(`<div><strong>주문번호</strong>: ${v.orderNumber}</div>`)}
-        <p style="color:#6b7280;font-size:14px">구매자에 의해 주문이 취소되었습니다.</p>
-        ${ctaButton('주문 관리하기', `${SITE_URL}/brand/orders`)}
-      `, data.recipientEmail),
+      subject: `[크넥샵] 구매자가 주문을 취소했어요 (${data.orderNumber})`,
+      html: renderEmail({
+        preheader: '발송 전이면 처리 중지, 발송 후면 회수 절차 시작해주세요',
+        heroTitle: '구매자가 주문을 취소했어요',
+        heroSubtitle: '아직 발송 전이라면 즉시 처리를 중단해주세요. 이미 발송하셨다면 회수 절차를 진행해주세요.',
+        sections: [
+          emailInfoTable([
+            { label: '주문번호', value: data.orderNumber, emphasis: true },
+            { label: '취소 일시', value: formatKDate(now) },
+            { label: '액션 필요', value: '발송 상태 확인 후 대응' },
+          ]),
+          emailNoticeBox('환불은 크넥샵에서 자동 처리돼요. 발송 후 취소인 경우 회수 후 재고 처리만 부탁드려요.', 'warning'),
+        ],
+        primaryAction: { text: '주문 처리하기', url: `${SITE_URL}/ko/brand/orders` },
+        recipientEmail: data.recipientEmail,
+      }),
     },
     inApp: {
       type: 'ORDER',
@@ -969,17 +1032,26 @@ export function orderCancelledByBuyerToCreatorTemplate(data: {
   orderNumber: string
   recipientEmail?: string
 }) {
-  const v = { orderNumber: escapeHtml(data.orderNumber) }
+  const now = new Date()
 
   return {
     email: {
-      subject: `[크넥샵] 주문이 취소되었습니다 (${data.orderNumber})`,
-      html: emailLayout(`
-        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">주문이 취소되었습니다</h2>
-        ${infoBox(`<div><strong>주문번호</strong>: ${v.orderNumber}</div>`)}
-        <p style="color:#6b7280;font-size:14px">구매자에 의해 주문이 취소되었습니다.</p>
-        ${ctaButton('판매 현황 보기', `${SITE_URL}/creator/sales`)}
-      `, data.recipientEmail),
+      subject: `[크넥샵] 판매 주문이 취소됐어요 (${data.orderNumber})`,
+      html: renderEmail({
+        preheader: '구매자가 주문을 취소했어요. 해당 주문 수익은 차감돼요',
+        heroTitle: '판매 주문이 취소됐어요',
+        heroSubtitle: '구매자가 주문을 취소했어요. 이 주문에서 발생한 수익은 정산에서 자동 차감돼요.',
+        sections: [
+          emailInfoTable([
+            { label: '주문번호', value: data.orderNumber, emphasis: true },
+            { label: '취소 일시', value: formatKDate(now) },
+            { label: '수익 처리', value: '정산 시 자동 차감' },
+          ]),
+          emailNoticeBox('구매자 변심에 의한 취소는 자연스러운 일이에요. 다른 판매로 회복할 수 있어요.', 'info'),
+        ],
+        primaryAction: { text: '판매 현황 보기', url: `${SITE_URL}/ko/creator/sales` },
+        recipientEmail: data.recipientEmail,
+      }),
     },
     inApp: {
       type: 'ORDER',
@@ -997,23 +1069,27 @@ export function exchangeRequestedTemplate(data: {
   reason: string
   recipientEmail?: string
 }) {
-  const v = {
-    orderNumber: escapeHtml(data.orderNumber),
-    reason: escapeHtml(data.reason),
-  }
+  const now = new Date()
 
   return {
     email: {
-      subject: `[크넥샵] 교환 신청이 접수되었습니다 (${data.orderNumber})`,
-      html: emailLayout(`
-        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">교환 신청이 접수되었습니다</h2>
-        ${infoBox(`
-          <div style="margin-bottom:8px"><strong>주문번호</strong>: ${v.orderNumber}</div>
-          <div><strong>사유</strong>: ${v.reason}</div>
-        `)}
-        <p style="color:#6b7280;font-size:14px">빠른 확인 부탁드립니다.</p>
-        ${ctaButton('문의 관리하기', `${SITE_URL}/brand/inquiries`)}
-      `, data.recipientEmail),
+      subject: `[크넥샵] 교환 요청 접수 (${data.orderNumber})`,
+      html: renderEmail({
+        preheader: '구매자가 교환을 요청했어요. 1~2일 안에 응답 부탁드려요',
+        heroTitle: '교환 요청이 접수됐어요',
+        heroSubtitle: '구매자가 상품 교환을 요청했어요. 빠른 처리를 위해 영업일 기준 1~2일 내 응답 부탁드려요.',
+        sections: [
+          emailInfoTable([
+            { label: '주문번호', value: data.orderNumber, emphasis: true },
+            { label: '교환 사유', value: data.reason },
+            { label: '접수일', value: formatKDate(now) },
+            { label: '응답 마감', value: '영업일 기준 2일' },
+          ]),
+          emailNoticeBox('미응답 시 자동으로 환불 처리될 수 있어요. 빠른 응답이 브랜드 평점에 도움이 돼요.', 'warning'),
+        ],
+        primaryAction: { text: '교환 요청 처리하기', url: `${SITE_URL}/ko/brand/inquiries` },
+        recipientEmail: data.recipientEmail,
+      }),
     },
     inApp: {
       type: 'ORDER',
@@ -1031,23 +1107,27 @@ export function refundRequestedTemplate(data: {
   refundType: string
   recipientEmail?: string
 }) {
-  const v = {
-    orderNumber: escapeHtml(data.orderNumber),
-    refundType: escapeHtml(data.refundType),
-  }
+  const now = new Date()
 
   return {
     email: {
-      subject: `[크넥샵] 환불 신청이 접수되었습니다 (${data.orderNumber})`,
-      html: emailLayout(`
-        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">환불 신청이 접수되었습니다</h2>
-        ${infoBox(`
-          <div style="margin-bottom:8px"><strong>주문번호</strong>: ${v.orderNumber}</div>
-          <div><strong>환불 유형</strong>: ${v.refundType}</div>
-        `)}
-        <p style="color:#6b7280;font-size:14px">빠른 확인 부탁드립니다.</p>
-        ${ctaButton('문의 관리하기', `${SITE_URL}/brand/inquiries`)}
-      `, data.recipientEmail),
+      subject: `[크넥샵] 환불 요청 접수 (${data.orderNumber})`,
+      html: renderEmail({
+        preheader: `${data.refundType} 환불 요청이 왔어요. 1~2일 안에 응답 부탁드려요`,
+        heroTitle: '환불 요청이 접수됐어요',
+        heroSubtitle: '구매자가 환불을 요청했어요. 영업일 기준 1~2일 내 검토 후 응답해주세요.',
+        sections: [
+          emailInfoTable([
+            { label: '주문번호', value: data.orderNumber, emphasis: true },
+            { label: '환불 유형', value: data.refundType },
+            { label: '접수일', value: formatKDate(now) },
+            { label: '응답 마감', value: '영업일 기준 2일' },
+          ]),
+          emailNoticeBox('미응답 시 자동 환불 처리될 수 있어요. 빠른 응답이 브랜드 평점에 도움이 돼요.', 'warning'),
+        ],
+        primaryAction: { text: '환불 요청 처리하기', url: `${SITE_URL}/ko/brand/inquiries` },
+        recipientEmail: data.recipientEmail,
+      }),
     },
     inApp: {
       type: 'ORDER',
@@ -1065,20 +1145,25 @@ export function campaignParticipationRejectedTemplate(data: {
   campaignTitle: string
   recipientEmail?: string
 }) {
-  const v = {
-    creatorName: escapeHtml(data.creatorName),
-    campaignTitle: escapeHtml(data.campaignTitle),
-  }
+  const now = new Date()
 
   return {
     email: {
-      subject: `[크넥샵] 캠페인 참여가 거절되었습니다`,
-      html: emailLayout(`
-        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">${v.creatorName}님, 캠페인 참여가 거절되었습니다</h2>
-        ${infoBox(`<div><strong>캠페인</strong>: ${v.campaignTitle}</div>`)}
-        <p style="color:#6b7280;font-size:14px">다른 캠페인에 참여해보세요.</p>
-        ${ctaButton('캠페인 둘러보기', `${SITE_URL}/creator/campaigns`)}
-      `, data.recipientEmail),
+      subject: `[크넥샵] ${data.campaignTitle} 참여 결과를 알려드려요`,
+      html: renderEmail({
+        preheader: '아쉽지만 이번 캠페인은 어려웠어요. 다른 좋은 캠페인이 기다리고 있어요',
+        heroTitle: `${data.creatorName}님, 참여 결과를 알려드려요`,
+        heroSubtitle: '아쉽게도 이번 캠페인은 참여가 어려웠어요. 다른 캠페인에서 더 좋은 기회를 만나보세요.',
+        sections: [
+          emailInfoTable([
+            { label: '캠페인', value: data.campaignTitle, emphasis: true },
+            { label: '결과 통보일', value: formatKDate(now) },
+          ]),
+          emailNoticeBox('브랜드별 선정 기준이 다르니 다양한 캠페인에 도전해보세요. 거절 사유는 브랜드 정책상 비공개예요.', 'info'),
+        ],
+        primaryAction: { text: '다른 캠페인 보기', url: `${SITE_URL}/ko/creator/campaigns` },
+        recipientEmail: data.recipientEmail,
+      }),
     },
     inApp: {
       type: 'CAMPAIGN',
@@ -1095,17 +1180,25 @@ export function campaignRecruitingStartedTemplate(data: {
   campaignTitle: string
   recipientEmail?: string
 }) {
-  const v = { campaignTitle: escapeHtml(data.campaignTitle) }
+  const now = new Date()
 
   return {
     email: {
-      subject: `[크넥샵] 새 캠페인이 오픈됐어요 - ${data.campaignTitle}`,
-      html: emailLayout(`
-        <h2 style="margin:0 0 16px;font-size:18px;color:#111827">새 캠페인이 오픈됐어요</h2>
-        ${infoBox(`<div><strong>캠페인</strong>: ${v.campaignTitle}</div>`)}
-        <p style="color:#6b7280;font-size:14px">지금 확인하고 참여해보세요!</p>
-        ${ctaButton('캠페인 확인하기', `${SITE_URL}/creator/campaigns`)}
-      `, data.recipientEmail),
+      subject: `[크넥샵] 새 캠페인 오픈! ${data.campaignTitle}`,
+      html: renderEmail({
+        preheader: '지금 신청하면 먼저 참여할 수 있어요',
+        heroTitle: '새 캠페인이 오픈됐어요',
+        heroSubtitle: '관심 있는 카테고리의 신규 캠페인이 시작됐어요. 인기 캠페인은 일찍 마감될 수 있어요.',
+        sections: [
+          emailInfoTable([
+            { label: '캠페인', value: data.campaignTitle, emphasis: true },
+            { label: '오픈일', value: formatKDate(now) },
+          ]),
+          emailNoticeBox('먼저 참여 신청하면 더 많은 판매 기회를 잡을 수 있어요. 자세한 내용은 캠페인 페이지에서 확인하세요.', 'success'),
+        ],
+        primaryAction: { text: '캠페인 자세히 보기', url: `${SITE_URL}/ko/creator/campaigns` },
+        recipientEmail: data.recipientEmail,
+      }),
     },
     inApp: {
       type: 'CAMPAIGN',
