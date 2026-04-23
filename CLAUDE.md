@@ -119,3 +119,83 @@ CNEC Shop -- K-뷰티 크리에이터 커머스 플랫폼 (Next.js + Prisma + Ra
 - PR 생성 불필요, 직접 머지
 - git checkout main && git pull origin main && git merge [브랜치] --no-ff && git push origin main
 - 중간에 질문하지 말고 끝까지 자율 실행
+
+## Prompt Authoring Rules (claude.ai → Claude Code)
+
+claude.ai에서 Claude Code용 실행 프롬프트를 작성할 때 항상 아래 규칙을 따른다.
+카이가 추가로 지시하지 않아도 기본 적용되는 규칙.
+
+### 1. 포맷
+- 반드시 마크다운 코드블록(```)으로 감싸서 제공 — 카이가 바로 복사·붙여넣기 가능하도록
+- 프롬프트 외부 설명은 최소화. 프롬프트 자체에 모든 컨텍스트 포함
+- 여러 단계로 쪼개지 말고 하나의 블록에 완결시킴 (STEP 0 ~ STEP N 구조)
+
+### 2. 필수 헤더 (모든 프롬프트 최상단에 포함)
+승인 없이 끝까지 실행. 질문하지 말고 진행.
+에러 발생 시 스스로 해결 시도.
+작업 완료 후 커밋+푸시+main 머지까지 자동 실행 (PR 불필요).
+git 명령 순서: git checkout main && git pull origin main && git merge [브랜치] --no-ff && git push origin main
+
+### 3. 구조 (7단계 고정)
+1. **작업 개요** — 무엇을 왜 하는지 3~5줄
+2. **브랜치명** — `feat/` `fix/` `chore/` `docs/` prefix + kebab-case + v1/v2 suffix
+3. **STEP 0: 현황 파악** — 수정 전 반드시 실행할 grep/find 명령어 묶음
+4. **STEP 1 ~ N: 작업 단계** — 각 단계마다 대상 파일 + Before/After 코드 + 주의사항
+5. **100점 체크리스트** — 완료 후 검증할 항목을 STEP별로 분리 + 공통 검증 + Git 완료 3개 그룹
+6. **완료 후 보고 포맷** — 변경 파일 목록 / build 결과 / 커밋 해시 / 체크리스트 통과 여부
+7. **(선택) 롤백 시나리오** — 중대 변경(migration, 대량 삭제) 시에만 포함
+
+### 4. STEP 0 현황 파악 의무
+- 기존 코드를 수정하는 모든 프롬프트는 STEP 0 필수
+- grep → 수정 → grep 재검증 원칙을 프롬프트에도 반영
+- 파악 항목: 대상 파일 위치, 기존 구현 흔적, 중복 구현 여부, 관련 DB 스키마
+
+### 5. Before/After 코드 블록
+- 설명만 적지 말고 실제 코드 스니펫을 Before/After로 제시
+- Claude Code가 추측하게 만들지 않음
+- 타입, import 문, props 전부 명시
+
+### 6. 기술 규칙 자동 포함
+모든 프롬프트에 다음이 자연스럽게 녹아있어야 함:
+- TypeScript strict mode
+- shadcn/ui 컴포넌트 사용
+- lucide-react 아이콘만 (이모지 금지)
+- sonner 토스트
+- 한국어 UI (영어 노출 금지)
+- Decimal → Number() 변환
+- Prisma migration 후 `npx prisma generate`
+- sendNotification 호출 시 try/catch 감싸기
+- `npm run build` 통과 + TypeScript 에러 0개
+
+### 7. 100점 체크리스트 원칙
+- STEP별로 검증 항목 분리 (STEP 1 검증 / STEP 2 검증 / ...)
+- 공통 검증 그룹 (build, 반응형, 회귀 테스트)
+- Git 완료 그룹 (브랜치, 커밋, 머지, 푸시)
+- 각 항목은 `- [ ]` 체크박스 형식
+- "정상 동작" 같은 모호한 표현 금지 → "A 클릭 시 B 페이지로 이동" 같이 구체적으로
+- 항목 하나하나가 실제로 눈으로 확인 가능해야 함
+
+### 8. 병렬 작업 판단
+- 파일 충돌 위험이 있으면 순차 실행 지시
+- 독립적 작업이면 병렬 실행 가능 명시
+- 카이가 병렬 가능 여부를 먼저 물어볼 가능성 → 프롬프트에 미리 표시
+
+### 9. 완료 후 보고 포맷 강제
+✅ 완료: [작업명]
+변경 파일:
+
+path/to/file1.tsx — [변경 요약]
+path/to/file2.ts — [변경 요약]
+
+체크리스트 전체 통과 여부: O/X
+npm run build 결과: 통과/실패
+커밋 해시: xxx
+main 머지 해시: xxx
+
+### 10. 금지 사항
+- "~하면 좋을 것 같습니다" 같은 모호한 지시
+- "기존 코드 스타일 참고" 같은 추상적 지시
+- STEP 0 없는 수정 프롬프트
+- 체크리스트 없는 완료 조건
+- Before/After 코드 없는 UI 변경 지시
+- 파일럿/MVP/최소 기능 프레이밍
