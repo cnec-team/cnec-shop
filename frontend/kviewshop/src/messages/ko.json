@@ -627,6 +627,49 @@
         "settlementComplete": "정산 완료",
         "paymentFailed": "결제 실패"
       }
+    },
+    "search": {
+      "placeholder": "브랜드, 크리에이터, 주문, 캠페인 검색",
+      "shortcut": "⌘K",
+      "empty": "검색 결과가 없어요",
+      "emptyHint": "다른 키워드로 시도해보세요",
+      "brands": "브랜드",
+      "creators": "크리에이터",
+      "orders": "주문",
+      "campaigns": "캠페인",
+      "suspended": "정지",
+      "quickActions": "빠른 액션",
+      "searchCampaigns": "캠페인 검색",
+      "activityLog": "활동 로그 보기",
+      "broadcast": "공지 발송",
+      "audit": "감사 로그",
+      "comingSoon": "준비 중"
+    },
+    "sidebar": {
+      "main": "메인",
+      "approvals": "승인",
+      "operations": "운영",
+      "settlements": "정산",
+      "notifications": "알림",
+      "settings": "설정",
+      "dashboard": "대시보드",
+      "creatorApprovals": "크리에이터 승인",
+      "brandApprovals": "브랜드 승인",
+      "brands": "브랜드 관리",
+      "creators": "크리에이터 관리",
+      "campaigns": "캠페인 관리",
+      "orders": "주문 관리",
+      "settlementManagement": "정산 관리",
+      "broadcast": "공지 발송",
+      "activity": "활동 로그",
+      "guides": "가이드 관리",
+      "platformSettings": "플랫폼 설정"
+    },
+    "breadcrumb": {
+      "root": "어드민"
+    },
+    "placeholder": {
+      "comingSoon": "준비 중이에요. 곧 만나요."
     }
   },
   "home": {

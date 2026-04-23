@@ -29,9 +29,17 @@ import {
   Mail,
   Database,
   Upload,
+  Search,
+  Building2,
+  Banknote,
+  Activity,
+  Send,
 } from 'lucide-react';
 import type { UserRole } from '@/types/database';
 import type { Locale } from '@/lib/i18n/config';
+import { AdminCommandPalette } from '@/components/admin/search/admin-command-palette';
+import { useCommandPalette } from '@/hooks/use-command-palette';
+import { getAdminPendingQueue } from '@/lib/actions/admin';
 
 interface SidebarProps {
   role: UserRole;
@@ -50,10 +58,44 @@ interface NavSection {
   items: NavItem[];
 }
 
+// 어드민 사이드바 카운트 배지 훅
+function useAdminBadges(role: UserRole) {
+  const [badges, setBadges] = useState<{
+    pendingCreatorApprovals: number;
+    pendingBrandApprovals: number;
+    pendingSettlements: number;
+  }>({ pendingCreatorApprovals: 0, pendingBrandApprovals: 0, pendingSettlements: 0 });
+
+  useEffect(() => {
+    if (role !== 'super_admin') return;
+
+    async function fetchBadges() {
+      try {
+        const queue = await getAdminPendingQueue();
+        setBadges({
+          pendingCreatorApprovals: queue.pendingCreatorApprovals,
+          pendingBrandApprovals: queue.pendingBrandApprovals,
+          pendingSettlements: queue.pendingSettlements,
+        });
+      } catch {
+        // 실패 시 기존 값 유지
+      }
+    }
+
+    fetchBadges();
+    const interval = setInterval(fetchBadges, 30_000);
+    return () => clearInterval(interval);
+  }, [role]);
+
+  return badges;
+}
+
 export function Sidebar({ role, locale }: SidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [pendingProposalCount, setPendingProposalCount] = useState(0);
+  const { open: searchOpen, setOpen: setSearchOpen } = useCommandPalette();
+  const adminBadges = useAdminBadges(role);
 
   useEffect(() => {
     if (role !== 'creator') return;
@@ -67,22 +109,52 @@ export function Sidebar({ role, locale }: SidebarProps) {
     const base = `/${locale}`;
     switch (role) {
       case 'super_admin':
-        return [{
-          items: [
-            { title: '대시보드', href: `${base}/admin/dashboard`, icon: LayoutDashboard },
-            { title: '승인 관리', href: `${base}/admin/approvals`, icon: UserCheck },
-            { title: '브랜드 관리', href: `${base}/admin/brands`, icon: Store },
-            { title: '주문 관리', href: `${base}/admin/orders`, icon: ShoppingBag },
-            { title: '크리에이터 관리', href: `${base}/admin/creators`, icon: Users },
-            { title: '크리에이터 데이터', href: `${base}/admin/creator-data`, icon: Database },
-            { title: '데이터 임포트', href: `${base}/admin/creator-data/import`, icon: Upload },
-            { title: '캠페인 관리', href: `${base}/admin/campaigns`, icon: Megaphone },
-            { title: '샘플 관리', href: `${base}/admin/samples`, icon: Gift },
-            { title: '정산 관리', href: `${base}/admin/settlements`, icon: DollarSign },
-            { title: '가이드 관리', href: `${base}/admin/guides`, icon: BookOpen },
-            { title: '설정', href: `${base}/admin/settings`, icon: Settings },
-          ],
-        }];
+        return [
+          {
+            label: '메인',
+            items: [
+              { title: '대시보드', href: `${base}/admin/dashboard`, icon: LayoutDashboard },
+            ],
+          },
+          {
+            label: '승인',
+            items: [
+              { title: '크리에이터 승인', href: `${base}/admin/approvals/creators`, icon: UserCheck, badge: adminBadges.pendingCreatorApprovals },
+              { title: '브랜드 승인', href: `${base}/admin/approvals/brands`, icon: Building2, badge: adminBadges.pendingBrandApprovals },
+            ],
+          },
+          {
+            label: '운영',
+            items: [
+              { title: '브랜드 관리', href: `${base}/admin/brands`, icon: Store },
+              { title: '크리에이터 관리', href: `${base}/admin/creators`, icon: Users },
+              { title: '크리에이터 데이터', href: `${base}/admin/creator-data`, icon: Database },
+              { title: '캠페인 관리', href: `${base}/admin/campaigns`, icon: Megaphone },
+              { title: '샘플 관리', href: `${base}/admin/samples`, icon: Gift },
+              { title: '주문 관리', href: `${base}/admin/orders`, icon: ShoppingBag },
+            ],
+          },
+          {
+            label: '정산',
+            items: [
+              { title: '정산 관리', href: `${base}/admin/settlements`, icon: Banknote, badge: adminBadges.pendingSettlements },
+            ],
+          },
+          {
+            label: '알림',
+            items: [
+              { title: '공지 발송', href: `${base}/admin/broadcast`, icon: Send },
+              { title: '활동 로그', href: `${base}/admin/activity`, icon: Activity },
+            ],
+          },
+          {
+            label: '설정',
+            items: [
+              { title: '가이드 관리', href: `${base}/admin/guides`, icon: BookOpen },
+              { title: '플랫폼 설정', href: `${base}/admin/settings`, icon: Settings },
+            ],
+          },
+        ];
       case 'brand_admin':
         return [
           { items: [{ title: '대시보드', href: `${base}/brand/dashboard`, icon: LayoutDashboard }] },
@@ -173,39 +245,60 @@ export function Sidebar({ role, locale }: SidebarProps) {
 
   const sections = getSections();
 
+  const searchButton = role === 'super_admin' ? (
+    <div className="px-3 pt-3 pb-1">
+      <button
+        onClick={() => setSearchOpen(true)}
+        className="flex w-full items-center gap-2 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-500 transition-colors hover:bg-stone-100"
+      >
+        <Search className="h-4 w-4" />
+        <span className="flex-1 text-left">검색</span>
+        <kbd className="hidden rounded bg-stone-200 px-1.5 py-0.5 text-[10px] font-medium text-stone-500 sm:inline-block">
+          ⌘K
+        </kbd>
+      </button>
+    </div>
+  ) : null;
+
   const navContent = (
-    <nav className="flex flex-col gap-0.5 px-3 py-4">
+    <nav className="flex flex-col gap-0.5 py-2">
+      {searchButton}
       {sections.map((section, si) => (
         <div key={si}>
+          {si > 0 && role === 'super_admin' && section.label && (
+            <div className="mx-3 my-1 border-t border-stone-200" />
+          )}
           {section.label && (
-            <p className="px-3 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+            <p className="px-6 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-stone-400">
               {section.label}
             </p>
           )}
-          {section.items.map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setMobileOpen(false)}
-                className={cn(
-                  'flex items-center gap-3 rounded-md px-3 py-2 text-[13px] font-medium transition-colors',
-                  isActive
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                )}
-              >
-                <item.icon className={cn('h-4 w-4 shrink-0', isActive ? 'text-primary' : '')} />
-                <span className="flex-1">{item.title}</span>
-                {item.badge && item.badge > 0 ? (
-                  <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">
-                    {item.badge}
-                  </span>
-                ) : null}
-              </Link>
-            );
-          })}
+          <div className="px-3">
+            {section.items.map((item) => {
+              const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMobileOpen(false)}
+                  className={cn(
+                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-colors',
+                    isActive
+                      ? 'bg-stone-100 text-stone-900 border-l-4 border-primary -ml-1 pl-2'
+                      : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'
+                  )}
+                >
+                  <item.icon className={cn('h-[18px] w-[18px] shrink-0', isActive ? 'text-stone-900' : 'text-stone-400')} />
+                  <span className="flex-1">{item.title}</span>
+                  {item.badge && item.badge > 0 ? (
+                    <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                      {item.badge > 99 ? '99+' : item.badge}
+                    </span>
+                  ) : null}
+                </Link>
+              );
+            })}
+          </div>
         </div>
       ))}
     </nav>
@@ -213,6 +306,11 @@ export function Sidebar({ role, locale }: SidebarProps) {
 
   return (
     <>
+      {/* 어드민 통합 검색 */}
+      {role === 'super_admin' && (
+        <AdminCommandPalette open={searchOpen} onOpenChange={setSearchOpen} />
+      )}
+
       {/* Mobile sidebar toggle - hidden for creator (uses bottom tab nav instead) */}
       {role !== 'creator' && (
         <>
