@@ -5,6 +5,7 @@ import { auth } from '@/lib/auth'
 import { logAuditAction } from '@/lib/audit'
 import { sendNotification } from '@/lib/notifications'
 import { incrementStock } from '@/lib/stock'
+import { cancelTossPayment } from '@/lib/toss/payment-cancel'
 
 async function requireAdmin() {
   const session = await auth()
@@ -12,50 +13,6 @@ async function requireAdmin() {
     throw new Error('Forbidden')
   }
   return session.user
-}
-
-const PORTONE_API_SECRET = process.env.PORTONE_API_SECRET
-const PORTONE_API_BASE = 'https://api.portone.io'
-
-async function callPortOneCancel(paymentId: string, reason: string, amount?: number) {
-  const body: Record<string, unknown> = { reason }
-  if (amount) body.amount = amount
-
-  let lastError: string = ''
-
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    try {
-      const res = await fetch(`${PORTONE_API_BASE}/payments/${paymentId}/cancel`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `PortOne ${PORTONE_API_SECRET}`,
-        },
-        body: JSON.stringify(body),
-      })
-
-      if (res.ok) {
-        const data = await res.json()
-        return { success: true as const, cancelId: data.cancellation?.id || 'unknown' }
-      }
-
-      const errorData = await res.json().catch(() => ({ message: 'Unknown error' }))
-      lastError = errorData.message || `HTTP ${res.status}`
-
-      // 영구 실패 (이미 취소됨, 금액 초과 등) → 즉시 반환
-      if (res.status === 400 || res.status === 409) {
-        return { success: false as const, error: lastError }
-      }
-
-      // 재시도 가능한 에러 → 1초 대기
-      if (attempt < 3) await new Promise(r => setTimeout(r, 1000))
-    } catch (err) {
-      lastError = err instanceof Error ? err.message : 'Network error'
-      if (attempt < 3) await new Promise(r => setTimeout(r, 1000))
-    }
-  }
-
-  return { success: false as const, error: `3회 재시도 실패: ${lastError}` }
 }
 
 export async function getOrderForceDetail(orderId: string) {
@@ -142,20 +99,20 @@ export async function forceCancelOrder(params: {
   if (actualRefundAmount <= 0) throw new Error('환불 금액이 유효하지 않아요')
   if (actualRefundAmount > totalAmount) throw new Error('환불 금액이 결제 금액을 초과해요')
 
-  // PortOne 취소 API 호출 (DB 트랜잭션 밖에서)
-  const paymentId = order.paymentIntentId || order.paymentKey
+  // 토스페이먼츠 취소 API 호출 (DB 트랜잭션 밖에서)
+  const paymentKey = order.paymentKey || order.pgTransactionId
   let pgCancelId = ''
 
-  if (paymentId) {
-    const cancelResult = await callPortOneCancel(
-      paymentId,
-      reason,
-      refundType === 'PARTIAL' ? actualRefundAmount : undefined
-    )
+  if (paymentKey) {
+    const cancelResult = await cancelTossPayment({
+      paymentKey,
+      cancelReason: reason,
+      cancelAmount: refundType === 'PARTIAL' ? actualRefundAmount : undefined,
+    })
     if (!cancelResult.success) {
-      throw new Error(`PortOne 취소 실패: ${cancelResult.error}`)
+      throw new Error(`토스 취소 실패: ${cancelResult.error}`)
     }
-    pgCancelId = cancelResult.cancelId
+    pgCancelId = cancelResult.transactionKey
   }
 
   // DB 업데이트 (트랜잭션)

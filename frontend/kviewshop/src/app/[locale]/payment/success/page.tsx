@@ -19,37 +19,28 @@ export default function PaymentSuccessPage() {
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // PortOne V2 redirect sends: paymentId, code, message
-  // Also receive orderId from our redirectUrl query param
+  // 토스페이먼츠 성공 리다이렉트: paymentKey, orderId, amount
   const orderId = searchParams.get('orderId');
-  const paymentId = searchParams.get('paymentId');
-  const code = searchParams.get('code');
+  const paymentKey = searchParams.get('paymentKey');
+  const amount = searchParams.get('amount');
 
   useEffect(() => {
     const confirmPayment = async () => {
-      // PortOne redirect: if code exists and is not null, payment failed
-      if (code) {
-        const message = searchParams.get('message');
-        setError(message || '결제가 실패했습니다');
-        setIsProcessing(false);
-        return;
-      }
-
-      if (!orderId || !paymentId) {
+      if (!orderId || !paymentKey || !amount) {
         setError('결제 정보가 올바르지 않습니다');
         setIsProcessing(false);
         return;
       }
 
       try {
-        // Call PortOne complete endpoint (not Toss confirm)
+        // 토스 confirm API 호출
         const response = await fetch('/api/payments/complete', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             orderId,
-            paymentId,
-            pgProvider: 'portone',
+            paymentKey,
+            amount: Number(amount),
           }),
         });
 
@@ -70,7 +61,7 @@ export default function PaymentSuccessPage() {
     };
 
     confirmPayment();
-  }, [orderId, paymentId, code, searchParams, clearCart]);
+  }, [orderId, paymentKey, amount, clearCart]);
 
   if (isProcessing) {
     return (

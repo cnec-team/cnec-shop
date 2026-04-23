@@ -10,8 +10,11 @@ type ConversionStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED';
 
 interface CompleteRequestBody {
   orderId: string;
-  paymentId: string;
-  pgProvider: string;
+  paymentKey: string;
+  amount: number;
+  // Legacy PortOne fields (kept for backward compat)
+  paymentId?: string;
+  pgProvider?: string;
   guestEmail?: string;
   guestPhone?: string;
 }
@@ -19,12 +22,12 @@ interface CompleteRequestBody {
 export async function POST(request: NextRequest) {
   try {
     const body: CompleteRequestBody = await request.json();
-    const { orderId, paymentId, pgProvider } = body;
+    const { orderId, paymentKey, amount } = body;
 
     // Validate required fields
-    if (!orderId || !paymentId) {
+    if (!orderId || !paymentKey || !amount) {
       return NextResponse.json(
-        { error: 'orderId and paymentId are required' },
+        { error: 'orderId, paymentKey, and amount are required' },
         { status: 400 }
       );
     }
@@ -67,40 +70,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify payment with PortOne API
-    const portoneApiSecret = process.env.PORTONE_API_SECRET;
-    if (!portoneApiSecret) {
-      logger.error('PORTONE_API_SECRET is not configured');
-      return NextResponse.json(
-        { error: 'Payment verification service not configured' },
-        { status: 500 }
-      );
-    }
-
-    const verifyResponse = await fetch(
-      `https://api.portone.io/payments/${encodeURIComponent(paymentId)}`,
-      {
-        headers: {
-          'Authorization': `PortOne ${portoneApiSecret}`,
-        },
-      }
-    );
-
-    if (!verifyResponse.ok) {
-      logger.error('PortOne 결제 검증 실패', undefined, { status: verifyResponse.status });
-      return NextResponse.json(
-        { error: 'Payment verification failed' },
-        { status: 400 }
-      );
-    }
-
-    const paymentData = await verifyResponse.json();
-
-    // Verify the payment amount matches the order
-    if (paymentData.amount?.total !== Number(order.totalAmount)) {
+    // 서버 측 금액 검증: 클라이언트 금액 신뢰 X
+    if (amount !== Number(order.totalAmount)) {
       logger.error('결제 금액 불일치', undefined, {
-        portone: paymentData.amount?.total,
-        order: Number(order.totalAmount),
+        clientAmount: amount,
+        orderAmount: Number(order.totalAmount),
       });
       return NextResponse.json(
         { error: 'Payment amount does not match order total' },
@@ -108,10 +82,64 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify payment status is actually paid
-    if (paymentData.status !== 'PAID') {
+    // 토스페이먼츠 결제 승인 (confirm) API 호출
+    const tossSecretKey = process.env.TOSS_PAYMENTS_SECRET_KEY;
+    if (!tossSecretKey) {
+      logger.error('TOSS_PAYMENTS_SECRET_KEY is not configured');
       return NextResponse.json(
-        { error: `Payment is not in PAID status. Current: ${paymentData.status}` },
+        { error: 'Payment service not configured' },
+        { status: 500 }
+      );
+    }
+
+    const tossAuth = Buffer.from(tossSecretKey + ':').toString('base64');
+    const confirmResponse = await fetch(
+      'https://api.tosspayments.com/v1/payments/confirm',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Basic ${tossAuth}`,
+        },
+        body: JSON.stringify({ paymentKey, orderId, amount }),
+      }
+    );
+
+    if (!confirmResponse.ok) {
+      const errData = await confirmResponse.json().catch(() => ({ message: 'Unknown' }));
+      logger.error('토스 결제 승인 실패', undefined, { status: confirmResponse.status, error: errData });
+      return NextResponse.json(
+        { error: errData.message || 'Payment confirmation failed' },
+        { status: 400 }
+      );
+    }
+
+    const paymentData = await confirmResponse.json();
+
+    // 토스 응답 금액 이중 검증
+    if (paymentData.totalAmount !== Number(order.totalAmount)) {
+      logger.error('토스 응답 금액 불일치 — 자동 취소 시도', undefined, {
+        tossAmount: paymentData.totalAmount,
+        orderAmount: Number(order.totalAmount),
+      });
+      // 금액 불일치 시 자동 취소
+      try {
+        await fetch(`https://api.tosspayments.com/v1/payments/${paymentKey}/cancel`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Basic ${tossAuth}` },
+          body: JSON.stringify({ cancelReason: '서버 금액 검증 실패' }),
+        });
+      } catch {}
+      return NextResponse.json(
+        { error: 'Payment amount mismatch — auto cancelled' },
+        { status: 409 }
+      );
+    }
+
+    // 결제 상태 확인
+    if (paymentData.status !== 'DONE') {
+      return NextResponse.json(
+        { error: `Payment is not DONE. Current: ${paymentData.status}` },
         { status: 400 }
       );
     }
@@ -123,9 +151,10 @@ export async function POST(request: NextRequest) {
       data: {
         status: 'PAID',
         paidAt: now,
-        paymentMethod: paymentData.method?.type || 'CARD',
-        pgTransactionId: paymentId,
-        pgProvider: pgProvider || 'portone',
+        paymentMethod: paymentData.method || 'CARD',
+        paymentKey: paymentKey,
+        pgTransactionId: paymentData.paymentKey,
+        pgProvider: 'toss',
       },
     });
 

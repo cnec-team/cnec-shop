@@ -416,11 +416,10 @@ export default function CheckoutPage() {
   const handleCheckout = async () => {
     if (!validateForm() || !creator || isProcessing) return;
 
-    // 무통장입금이 아닌 경우에만 PortOne 설정 확인
+    // 무통장입금이 아닌 경우에만 토스 결제 설정 확인
     if (!isBankTransfer) {
-      const storeId = process.env.NEXT_PUBLIC_PORTONE_STORE_ID;
-      const channelKey = process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY;
-      if (!storeId || !channelKey) {
+      const tossClientKey = process.env.NEXT_PUBLIC_TOSS_PAYMENTS_CLIENT_KEY;
+      if (!tossClientKey) {
         toast.error('결제 시스템 설정이 완료되지 않았습니다. 관리자에게 문의해주세요.');
         return;
       }
@@ -465,18 +464,15 @@ export default function CheckoutPage() {
         return;
       }
 
-      // 2. 포트원 SDK 로드 및 결제 요청
-      const storeId = process.env.NEXT_PUBLIC_PORTONE_STORE_ID!;
-      const channelKey = process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY!;
+      // 2. 토스페이먼츠 SDK 로드 및 결제 요청
+      const tossClientKey = process.env.NEXT_PUBLIC_TOSS_PAYMENTS_CLIENT_KEY!;
 
-      let PortOne;
+      let tossModule;
       try {
-        PortOne = await import('@portone/browser-sdk/v2');
+        tossModule = await import('@tosspayments/tosspayments-sdk');
       } catch {
         throw new Error('결제 시스템을 불러오는 중 문제가 생겼어요. 새로고침 후 다시 시도해주세요.');
       }
-
-      const paymentId = `${orderNumber}-${Date.now()}`;
 
       const firstItem = cartItems[0];
       const orderName =
@@ -484,61 +480,45 @@ export default function CheckoutPage() {
           ? (firstItem.product?.name || firstItem.product?.nameKo || '상품')
           : `${firstItem.product?.name || firstItem.product?.nameKo || '상품'} 외 ${cartItems.length - 1}건`;
 
-      const selectedMethod = PAYMENT_METHODS.find((m) => m.value === selectedPayment) || PAYMENT_METHODS[0];
+      // customerKey: 회원은 buyer ID, 비회원은 세션 UUID
+      let customerKey = buyer?.id || sessionStorage.getItem('cnec-guest-customer-key');
+      if (!customerKey) {
+        customerKey = crypto.randomUUID();
+        sessionStorage.setItem('cnec-guest-customer-key', customerKey);
+      }
 
-      const paymentRequest: Parameters<typeof PortOne.requestPayment>[0] = {
-        storeId,
-        channelKey,
-        paymentId,
+      const tossPayments = await tossModule.loadTossPayments(tossClientKey);
+      const payment = tossPayments.payment({ customerKey });
+
+      // 성공/실패 URL에 orderId 포함
+      const successUrl = `${window.location.origin}/${locale}/payment/success?orderId=${orderId}`;
+      const failUrl = `${window.location.origin}/${locale}/payment/fail?orderId=${orderId}`;
+
+      // 토스 결제 요청 (리다이렉트 방식)
+      await payment.requestPayment({
+        method: 'CARD',
+        amount: { currency: 'KRW', value: Number(serverTotal) },
+        orderId,
         orderName,
-        totalAmount: Number(serverTotal),
-        currency: 'KRW',
-        payMethod: selectedMethod.payMethod as 'CARD' | 'EASY_PAY',
-        redirectUrl: `${window.location.origin}/${locale}/payment/success?orderId=${orderId}`,
-        customer: {
-          fullName: form.name,
-          phoneNumber: form.phone,
-          email: form.email,
+        customerEmail: form.email,
+        customerName: form.name,
+        customerMobilePhone: form.phone.replace(/-/g, ''),
+        successUrl,
+        failUrl,
+        card: {
+          useEscrow: false,
+          flowMode: 'DEFAULT',
+          useCardPoint: false,
+          useAppCardOnly: false,
         },
-      };
-
-      if (selectedMethod.payMethod === 'EASY_PAY' && selectedMethod.easyPayProvider) {
-        paymentRequest.easyPay = { easyPayProvider: selectedMethod.easyPayProvider };
-      }
-
-      const paymentResponse = await PortOne.requestPayment(paymentRequest);
-
-      // 3. SDK 결과 처리
-      if (!paymentResponse || paymentResponse.code != null) {
-        const code = paymentResponse?.code;
-        if (code === 'USER_CANCEL') {
-          toast.error('결제가 취소되었어요');
-        } else {
-          toast.error(paymentResponse?.message || '결제에 실패했어요. 다른 결제 수단을 시도해주세요.');
-        }
-        return;
-      }
-
-      // 4. 서버에서 결제 검증
-      const completeRes = await fetch('/api/payments/complete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          orderId,
-          paymentId: paymentResponse.paymentId,
-          pgProvider: 'portone',
-        }),
       });
 
-      if (!completeRes.ok) {
-        const err = await completeRes.json();
-        throw new Error(err.error || '결제 확인 중 문제가 생겼어요. 고객센터에 문의해주세요.');
-      }
+      // 토스는 리다이렉트 방식이므로 여기에 도달하지 않음 (팝업이 아닌 경우)
+      // 모바일에서는 리다이렉트, 데스크톱에서도 리다이렉트
+      return;
 
-      const completeData = await completeRes.json();
-
-      // 5. 결제 성공 — 장바구니 비우고 완료 페이지로 이동
-      const completeOrderNumber = completeData.orderNumber || orderNumber;
+      // 아래 코드는 토스 리다이렉트 후 /payment/success에서 처리
+      const completeOrderNumber = orderNumber;
       sessionStorage.setItem('cnec-order-complete', JSON.stringify({
         orderNumber: completeOrderNumber,
         totalAmount: Number(serverTotal),

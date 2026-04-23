@@ -33,8 +33,8 @@ importers:
         specifier: ^5.2.2
         version: 5.2.2(react-hook-form@7.72.1(react@19.2.3))
       '@portone/browser-sdk':
-        specifier: ^0.1.3
-        version: 0.1.3
+        specifier: ^0.1.5
+        version: 0.1.5
       '@prisma/adapter-pg':
         specifier: ^7.4.2
         version: 7.7.0
@@ -1133,8 +1133,8 @@ packages:
     resolution: {integrity: sha512-tmmZ3lQxAe/k/+rNnXQRawJ4NjxO2hqiOLTHvWchtGZULp4RyFeh6aU4XdOYBFe2KE1oShQTv4AblOs2iOrNnQ==}
     engines: {node: '>= 10.0.0'}
 
-  '@portone/browser-sdk@0.1.3':
-    resolution: {integrity: sha512-GRmXb8gBLs/23CES1YRvzMggbL8+tFeH5WS9YSA6WUPu5/9kgRKKZLeC25N2raq3zVJd9OfDTeSf0tUr27vF1Q==}
+  '@portone/browser-sdk@0.1.5':
+    resolution: {integrity: sha512-6PoIfcAhhCa/AgZQqUy2bXa2p2TAVsD5aNQgIXBPDf45MwKQRa0/qmKE/UoBPNzK3Dktpgye8WnTipNOcN0wXw==}
 
   '@prisma/adapter-pg@7.7.0':
     resolution: {integrity: sha512-q33Ta8sKbgzEpAy0lx45tAq//yMv0qcb+8nj+TCA3P4wiAY+OBFEFk/NDkZncAfHaNJeGo5WJpJdpbL+ijYx8g==}
@@ -5647,7 +5647,7 @@ snapshots:
       '@parcel/watcher-win32-ia32': 2.5.6
       '@parcel/watcher-win32-x64': 2.5.6
 
-  '@portone/browser-sdk@0.1.3': {}
+  '@portone/browser-sdk@0.1.5': {}
 
   '@prisma/adapter-pg@7.7.0':
     dependencies:
@@ -8379,7 +8379,6 @@ snapshots:
       '@dnd-kit/sortable': 10.0.0(@dnd-kit/core@6.3.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)
       '@dnd-kit/utilities': 3.2.2(react@19.2.3)
       '@hookform/resolvers': 5.2.2(react-hook-form@7.72.1(react@19.2.3))
-      '@portone/browser-sdk': 0.1.3
       '@prisma/adapter-pg': 7.7.0
       '@prisma/client': 7.7.0(prisma@7.7.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(typescript@5.9.3))(typescript@5.9.3)
       '@radix-ui/react-accordion': 1.2.12(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)

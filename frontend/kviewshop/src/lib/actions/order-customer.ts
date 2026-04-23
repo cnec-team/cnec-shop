@@ -62,22 +62,24 @@ export async function cancelOrder(orderId: string, reason?: string) {
       })
     }
 
-    // PortOne V2 결제 취소 API
-    const portOneSecret = process.env.PORTONE_API_SECRET
-    if (portOneSecret && order.pgTransactionId) {
+    // 토스페이먼츠 결제 취소 API
+    const tossSecretKey = process.env.TOSS_PAYMENTS_SECRET_KEY
+    const paymentKey = order.paymentKey || order.pgTransactionId
+    if (tossSecretKey && paymentKey) {
       try {
-        await fetch(`https://api.portone.io/payments/${order.pgTransactionId}/cancel`, {
+        const auth = Buffer.from(tossSecretKey + ':').toString('base64')
+        await fetch(`https://api.tosspayments.com/v1/payments/${paymentKey}/cancel`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `PortOne ${portOneSecret}`,
+            'Authorization': `Basic ${auth}`,
           },
           body: JSON.stringify({
-            reason: reason || '구매자 취소',
+            cancelReason: reason || '구매자 취소',
           }),
         })
       } catch (e) {
-        console.error('[cancelOrder] PortOne cancel failed:', e)
+        console.error('[cancelOrder] Toss cancel failed:', e)
       }
     }
 
