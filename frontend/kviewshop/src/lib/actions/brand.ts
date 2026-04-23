@@ -212,13 +212,13 @@ export async function getBrandDashboardData(brandId: string) {
 
 export async function getBrandCampaigns(
   brandId: string,
-  type: 'ALWAYS' | 'GONGGU'
+  type?: 'ALWAYS' | 'GONGGU'
 ) {
   const { brand } = await requireBrand()
   if (brand.id !== brandId) throw new Error('Forbidden')
 
   const campaigns = await prisma.campaign.findMany({
-    where: { brandId: brand.id, type },
+    where: { brandId: brand.id, ...(type ? { type } : {}) },
     orderBy: { createdAt: 'desc' },
     include: {
       products: {

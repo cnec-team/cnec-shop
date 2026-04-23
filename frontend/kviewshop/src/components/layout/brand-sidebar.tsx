@@ -20,7 +20,7 @@ import {
   ChevronLeft,
   ChevronRight,
   BarChart3,
-  Repeat,
+
   Zap,
   Gift,
   MessageSquare,
@@ -79,8 +79,7 @@ export function BrandSidebar({ locale, brandName, brandStatus, pricingVersion }:
     {
       label: '캠페인',
       items: [
-        { title: '공구 캠페인', href: `${base}/brand/campaigns/gonggu`, icon: Megaphone },
-        { title: '상시 캠페인', href: `${base}/brand/campaigns/always`, icon: Repeat },
+        { title: '캠페인 관리', href: `${base}/brand/campaigns`, icon: Megaphone },
         { title: '캠페인 생성', href: `${base}/brand/campaigns/new`, icon: Zap },
       ],
     },
@@ -131,6 +130,7 @@ export function BrandSidebar({ locale, brandName, brandStatus, pricingVersion }:
 
   function isActive(href: string) {
     if (href === `${base}/brand/products` && pathname === `${base}/brand/products/new`) return false;
+    if (href === `${base}/brand/campaigns` && pathname === `${base}/brand/campaigns/new`) return false;
     return pathname === href || pathname.startsWith(href + '/');
   }
 
