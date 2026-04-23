@@ -1029,6 +1029,8 @@ export async function updateProduct(
     defaultCommissionRate?: number
     heroIngredients?: string[]
     targetPainPoints?: string[]
+    lowestPriceGuarantee?: boolean
+    cnecExclusive?: boolean
   }
 ) {
   const { brand } = await requireBrand()
@@ -1069,6 +1071,8 @@ export async function updateProduct(
   }
   if (data.heroIngredients !== undefined) updateData.heroIngredients = data.heroIngredients
   if (data.targetPainPoints !== undefined) updateData.targetPainPoints = data.targetPainPoints
+  if (data.lowestPriceGuarantee !== undefined) updateData.lowestPriceGuarantee = data.lowestPriceGuarantee
+  if (data.cnecExclusive !== undefined) updateData.cnecExclusive = data.cnecExclusive
 
   const updated = await prisma.product.update({
     where: { id: productId },
@@ -1174,6 +1178,8 @@ export async function createProduct(data: {
   defaultCommissionRate?: number
   heroIngredients?: string[]
   targetPainPoints?: string[]
+  lowestPriceGuarantee?: boolean
+  cnecExclusive?: boolean
   asDraft?: boolean
 }) {
   const { brand } = await requireBrand()
@@ -1213,6 +1219,8 @@ export async function createProduct(data: {
       defaultCommissionRate: clampedRate,
       heroIngredients: data.heroIngredients ?? Prisma.JsonNull,
       targetPainPoints: data.targetPainPoints ?? [],
+      lowestPriceGuarantee: data.lowestPriceGuarantee ?? false,
+      cnecExclusive: data.cnecExclusive ?? false,
     },
   })
 

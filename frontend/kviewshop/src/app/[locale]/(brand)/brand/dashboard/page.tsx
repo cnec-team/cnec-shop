@@ -71,7 +71,7 @@ function OnboardingChecklist({ stats }: { stats: DashboardData['stats'] }) {
         <span className="text-xs text-gray-400">{completed}/{steps.length}</span>
       </div>
       <Progress value={progressPercent} className="h-1.5 mb-4" />
-      <p className="text-xs text-emerald-600 font-semibold mb-4">30일간 수수료 0%로 시작하세요</p>
+      <p className="text-xs text-emerald-600 font-semibold mb-4">3일간 모든 기능 무료로 체험하세요</p>
       <div className="space-y-2">
         {steps.map((step, i) => (
           <div key={i} className="flex items-center justify-between rounded-xl px-3 py-2.5 hover:bg-gray-50 transition-colors">
