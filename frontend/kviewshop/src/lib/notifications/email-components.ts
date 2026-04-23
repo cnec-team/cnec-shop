@@ -1,5 +1,5 @@
 /**
- * 크넥샵 이메일 재사용 컴포넌트
+ * 크넥샵 이메일 재사용 컴포넌트 V3
  * 테이블 기반 (Outlook 호환), inline style only
  */
 
@@ -17,7 +17,7 @@ import {
 // ────────────────────────────── 유틸 ──────────────────────────────
 
 export function formatKRW(amount: number): string {
-  return '₩' + amount.toLocaleString('ko-KR')
+  return '\u20A9' + amount.toLocaleString('ko-KR')
 }
 
 const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토']
@@ -34,7 +34,7 @@ export function formatKDate(date: Date): string {
   return `${y}년 ${m}월 ${d}일 (${day}) ${ampm} ${h12}:${min}`
 }
 
-// ────────────────────────────── 1. emailWrapper ──────────────────────────────
+// ────────────────────────────── emailWrapper ──────────────────────────────
 
 export function emailWrapper(content: string): string {
   return `<!DOCTYPE html>
@@ -73,128 +73,177 @@ ${content}
 </html>`
 }
 
-// ────────────────────────────── 2. emailHeader ──────────────────────────────
+// ────────────────────────────── emailHeader V3 ──────────────────────────────
 
-export function emailHeader(title?: string): string {
-  return `<tr><td style="background:${COLORS.BRAND_PRIMARY};padding:18px ${SPACING.XL};height:60px;vertical-align:middle">
+export function emailHeader(recipientType?: 'creator' | 'brand' | 'buyer' | null): string {
+  const labelMap: Record<string, string> = { creator: 'for creators', brand: 'for brands' }
+  const label = recipientType && labelMap[recipientType] ? labelMap[recipientType] : ''
+  return `<tr><td style="padding:40px 40px 32px 40px;vertical-align:middle">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
 <tr>
-<td style="color:${COLORS.BG_WHITE};font-size:18px;font-weight:${FONT_WEIGHT.BOLD};font-family:${FONT_FAMILY}">크넥샵</td>
-${title ? `<td align="right" style="color:rgba(255,255,255,0.8);font-size:${FONT_SIZE.SMALL};font-family:${FONT_FAMILY}">${escapeHtml(title)}</td>` : ''}
+<td style="vertical-align:middle">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+<td style="width:10px;height:10px;background:${COLORS.BRAND_PRIMARY};border-radius:3px"></td>
+<td style="padding-left:8px;font-size:18px;font-weight:${FONT_WEIGHT.BOLD};color:${COLORS.TEXT_PRIMARY};font-family:${FONT_FAMILY}">크넥샵</td>
+</tr></table>
+</td>
+${label ? `<td align="right" style="font-size:13px;color:${COLORS.TEXT_TERTIARY};font-family:${FONT_FAMILY}">${label}</td>` : ''}
 </tr>
 </table>
 </td></tr>`
 }
 
-// ────────────────────────────── 3. emailHero ──────────────────────────────
+// ────────────────────────────── emailStatusBadge (V3) ──────────────────────────────
 
-export function emailHero(title: string, subtitle?: string): string {
-  return `<tr><td class="email-padding" style="padding:${SPACING.XL} ${SPACING.XL} ${SPACING.LG}">
-<h1 style="margin:0;font-size:${FONT_SIZE.H1};font-weight:${FONT_WEIGHT.BOLD};color:${COLORS.TEXT_PRIMARY};line-height:1.4;font-family:${FONT_FAMILY}">${escapeHtml(title)}</h1>
-${subtitle ? `<p style="margin:${SPACING.SM} 0 0;font-size:${FONT_SIZE.BODY};color:${COLORS.TEXT_SECONDARY};line-height:${LINE_HEIGHT};font-family:${FONT_FAMILY}">${escapeHtml(subtitle)}</p>` : ''}
-</td></tr>`
-}
-
-// ────────────────────────────── 4. emailInfoTable ──────────────────────────────
-
-export function emailInfoTable(rows: { label: string; value: string; emphasis?: boolean }[]): string {
-  const tableRows = rows.map((row) => {
-    const valueStyle = row.emphasis
-      ? `font-weight:${FONT_WEIGHT.BOLD};color:${COLORS.TEXT_PRIMARY}`
-      : `color:${COLORS.TEXT_PRIMARY}`
-    return `<tr>
-<td style="padding:12px 16px;background:${COLORS.BG_GRAY};width:30%;font-size:${FONT_SIZE.BODY};color:${COLORS.TEXT_SECONDARY};font-family:${FONT_FAMILY};border-bottom:1px solid ${COLORS.BORDER};vertical-align:top">${escapeHtml(row.label)}</td>
-<td style="padding:12px 16px;width:70%;font-size:${FONT_SIZE.BODY};${valueStyle};font-family:${FONT_FAMILY};border-bottom:1px solid ${COLORS.BORDER};vertical-align:top">${escapeHtml(row.value)}</td>
-</tr>`
-  }).join('')
-
-  return `<tr><td class="email-padding" style="padding:0 ${SPACING.XL}">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid ${COLORS.BORDER};border-radius:8px;overflow:hidden;border-collapse:separate">
-${tableRows}
+export function emailStatusBadge(text: string, variant: 'info' | 'success' | 'warning' | 'neutral'): string {
+  const bgMap = { info: COLORS.PILL_BADGE_BG_INFO, success: COLORS.PILL_BADGE_BG_SUCCESS, warning: COLORS.PILL_BADGE_BG_WARNING, neutral: COLORS.PILL_BADGE_BG_NEUTRAL }
+  const fgMap = { info: COLORS.PILL_BADGE_FG_INFO, success: COLORS.PILL_BADGE_FG_SUCCESS, warning: COLORS.PILL_BADGE_FG_WARNING, neutral: COLORS.PILL_BADGE_FG_NEUTRAL }
+  return `<tr><td class="email-padding" style="padding:0 40px ${SPACING.SM}">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="background:${bgMap[variant]};color:${fgMap[variant]};font-size:13px;font-weight:${FONT_WEIGHT.MEDIUM};font-family:${FONT_FAMILY};padding:6px 12px;border-radius:20px;line-height:1">${escapeHtml(text)}</td></tr>
 </table>
 </td></tr>`
 }
 
-// ────────────────────────────── 5. emailAmountBox ──────────────────────────────
+// ────────────────────────────── emailHero ──────────────────────────────
 
-export function emailAmountBox(label: string, amount: number, sublabel?: string): string {
-  return `<tr><td class="email-padding" style="padding:${SPACING.MD} ${SPACING.XL}">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${COLORS.BRAND_PRIMARY_LIGHT};border-radius:8px">
-<tr><td style="padding:${SPACING.LG};text-align:center">
-<div style="font-size:${FONT_SIZE.SMALL};color:${COLORS.TEXT_TERTIARY};font-family:${FONT_FAMILY};margin-bottom:${SPACING.XS}">${escapeHtml(label)}</div>
-<div style="font-size:28px;font-weight:${FONT_WEIGHT.BOLD};color:${COLORS.BRAND_PRIMARY};font-family:${FONT_FAMILY}">${formatKRW(amount)}</div>
-${sublabel ? `<div style="font-size:${FONT_SIZE.SMALL};color:${COLORS.TEXT_SECONDARY};font-family:${FONT_FAMILY};margin-top:${SPACING.XS}">${escapeHtml(sublabel)}</div>` : ''}
+export function emailHero(title: string, subtitle?: string): string {
+  const escapedTitle = escapeHtml(title).replace(/\n/g, '<br>')
+  return `<tr><td class="email-padding" style="padding:${SPACING.SM} 40px ${SPACING.LG}">
+<h1 style="margin:0;font-size:${FONT_SIZE.H1};font-weight:${FONT_WEIGHT.BOLD};color:${COLORS.TEXT_PRIMARY};line-height:1.35;font-family:${FONT_FAMILY}">${escapedTitle}</h1>
+${subtitle ? `<p style="margin:${SPACING.SM} 0 0;font-size:${FONT_SIZE.BODY};color:${COLORS.TEXT_SECONDARY};line-height:${LINE_HEIGHT};font-family:${FONT_FAMILY}">${escapeHtml(subtitle).replace(/\\n/g, '<br>')}</p>` : ''}
+</td></tr>`
+}
+
+// ────────────────────────────── emailDarkHeroCard (V3) ──────────────────────────────
+
+export function emailDarkHeroCard(params: { label: string; title: string; subLabel?: string }): string {
+  return `<tr><td class="email-padding" style="padding:${SPACING.MD} 40px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${COLORS.DARK_CARD_BG};border-radius:12px">
+<tr><td style="padding:40px 32px;text-align:center">
+<div style="font-size:14px;color:${COLORS.DARK_CARD_TEXT_SECONDARY};font-family:${FONT_FAMILY};margin-bottom:${SPACING.SM}">${escapeHtml(params.label)}</div>
+<div style="font-size:${FONT_SIZE.DARK_HERO};font-weight:${FONT_WEIGHT.BOLD};color:${COLORS.BG_WHITE};font-family:${FONT_FAMILY};line-height:1.3">${escapeHtml(params.title)}</div>
+${params.subLabel ? `<div style="margin-top:12px"><span style="background:rgba(255,255,255,0.12);color:${COLORS.BG_WHITE};font-size:14px;font-family:${FONT_FAMILY};padding:6px 14px;border-radius:20px;display:inline-block">${escapeHtml(params.subLabel)}</span></div>` : ''}
 </td></tr>
 </table>
 </td></tr>`
 }
 
-// ────────────────────────────── 6. emailButton ──────────────────────────────
+// ────────────────────────────── emailInfoTable V3 ──────────────────────────────
+
+export function emailInfoTable(rows: { label: string; value: string; emphasis?: boolean }[]): string {
+  const tableRows = rows.map((row, i) => {
+    const valueStyle = row.emphasis
+      ? `font-weight:${FONT_WEIGHT.BOLD};color:${COLORS.TEXT_PRIMARY}`
+      : `color:${COLORS.TEXT_PRIMARY}`
+    const borderBottom = i < rows.length - 1 ? `border-bottom:0.5px solid ${COLORS.BORDER};` : ''
+    return `<tr>
+<td style="padding:14px 20px;width:30%;font-size:14px;color:${COLORS.TEXT_TERTIARY};font-family:${FONT_FAMILY};${borderBottom}vertical-align:top">${escapeHtml(row.label)}</td>
+<td style="padding:14px 20px;width:70%;font-size:15px;${valueStyle};font-family:${FONT_FAMILY};${borderBottom}vertical-align:top">${escapeHtml(row.value)}</td>
+</tr>`
+  }).join('')
+
+  return `<tr><td class="email-padding" style="padding:${SPACING.MD} 40px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${COLORS.BG_GRAY};border-radius:12px;overflow:hidden;border-collapse:separate">
+${tableRows}
+</table>
+</td></tr>`
+}
+
+// ────────────────────────────── emailAmountBox V3 ──────────────────────────────
+
+export function emailAmountBox(label: string, amount: number | string, sublabel?: string): string {
+  const displayAmount = typeof amount === 'number' ? formatKRW(amount) : escapeHtml(amount)
+  return `<tr><td class="email-padding" style="padding:${SPACING.MD} 40px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${COLORS.GRADIENT_BLUE_START};background:linear-gradient(135deg,${COLORS.GRADIENT_BLUE_START},${COLORS.GRADIENT_BLUE_END});border-radius:12px">
+<tr><td style="padding:32px;text-align:center">
+<div style="font-size:14px;color:rgba(255,255,255,0.8);font-family:${FONT_FAMILY};margin-bottom:${SPACING.XS}">${escapeHtml(label)}</div>
+<div style="font-size:40px;font-weight:${FONT_WEIGHT.BOLD};color:${COLORS.BG_WHITE};font-family:${FONT_FAMILY};line-height:1.2">${displayAmount}</div>
+${sublabel ? `<div style="margin-top:${SPACING.SM}"><span style="background:rgba(255,255,255,0.2);color:${COLORS.BG_WHITE};font-size:13px;font-family:${FONT_FAMILY};padding:4px 12px;border-radius:20px;display:inline-block">${escapeHtml(sublabel)}</span></div>` : ''}
+</td></tr>
+</table>
+</td></tr>`
+}
+
+// ────────────────────────────── emailButton V3 ──────────────────────────────
 
 export function emailButton(text: string, url: string, variant: 'primary' | 'secondary' = 'primary'): string {
   const escaped = safeUrl(url)
   const isPrimary = variant === 'primary'
-  const bgColor = isPrimary ? COLORS.BRAND_PRIMARY : COLORS.BG_WHITE
-  const textColor = isPrimary ? COLORS.BG_WHITE : COLORS.BRAND_PRIMARY
-  const border = isPrimary ? 'none' : `1px solid ${COLORS.BORDER}`
+  const bgColor = isPrimary ? COLORS.BRAND_PRIMARY : COLORS.BG_GRAY
+  const textColor = isPrimary ? COLORS.BG_WHITE : COLORS.TEXT_PRIMARY
 
-  return `<tr><td class="email-padding" style="padding:${SPACING.MD} ${SPACING.XL}">
+  return `<tr><td class="email-padding" style="padding:${SPACING.MD} 40px">
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" class="email-button-full">
-<tr><td align="center" style="border-radius:8px;background:${bgColor};border:${border}">
-<!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="${escaped}" style="height:48px;v-text-anchor:middle;width:200px" arcsize="17%" strokecolor="${isPrimary ? bgColor : COLORS.BORDER}" fillcolor="${bgColor}"><center style="color:${textColor};font-family:${FONT_FAMILY};font-size:${FONT_SIZE.BODY};font-weight:${FONT_WEIGHT.MEDIUM}"><![endif]-->
-<a href="${escaped}" target="_blank" style="display:inline-block;padding:14px 28px;font-size:${FONT_SIZE.BODY};font-weight:${FONT_WEIGHT.MEDIUM};color:${textColor};text-decoration:none;font-family:${FONT_FAMILY};line-height:1">${escapeHtml(text)}</a>
+<tr><td align="center" style="border-radius:12px;background:${bgColor}">
+<!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="${escaped}" style="height:56px;v-text-anchor:middle;width:220px" arcsize="21%" fillcolor="${bgColor}"><center style="color:${textColor};font-family:${FONT_FAMILY};font-size:16px;font-weight:${FONT_WEIGHT.BOLD}"><![endif]-->
+<a href="${escaped}" target="_blank" style="display:inline-block;padding:16px 32px;font-size:16px;font-weight:${FONT_WEIGHT.BOLD};color:${textColor};text-decoration:none;font-family:${FONT_FAMILY};line-height:1">${escapeHtml(text)}</a>
 <!--[if mso]></center></v:roundrect><![endif]-->
 </td></tr>
 </table>
 </td></tr>`
 }
 
-// ────────────────────────────── 7. emailDivider ──────────────────────────────
+// ────────────────────────────── emailDivider ──────────────────────────────
 
 export function emailDivider(): string {
-  return `<tr><td style="padding:${SPACING.LG} ${SPACING.XL}">
+  return `<tr><td style="padding:${SPACING.LG} 40px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
 <tr><td style="border-top:1px solid ${COLORS.BORDER};font-size:0;line-height:0">&nbsp;</td></tr>
 </table>
 </td></tr>`
 }
 
-// ────────────────────────────── 8. emailSection ──────────────────────────────
+// ────────────────────────────── emailSection ──────────────────────────────
 
 export function emailSection(content: string, padding?: string): string {
-  const pad = padding ?? `${SPACING.LG} ${SPACING.XL}`
+  const pad = padding ?? `${SPACING.LG} 40px`
   return `<tr><td class="email-padding" style="padding:${pad};font-family:${FONT_FAMILY};font-size:${FONT_SIZE.BODY};color:${COLORS.TEXT_PRIMARY};line-height:${LINE_HEIGHT}">
 ${content}
 </td></tr>`
 }
 
-// ────────────────────────────── 9. emailNoticeBox ──────────────────────────────
+// ────────────────────────────── emailNoticeBox V3 ──────────────────────────────
 
 export function emailNoticeBox(text: string, type: 'info' | 'success' | 'warning' | 'danger' = 'info'): string {
-  const colorMap = {
-    info: { border: COLORS.BRAND_PRIMARY, bg: COLORS.BRAND_PRIMARY_LIGHT, text: COLORS.BRAND_PRIMARY_DARK },
-    success: { border: COLORS.SUCCESS, bg: '#ECFDF5', text: '#065F46' },
-    warning: { border: COLORS.WARNING, bg: '#FFF4EE', text: '#C44D1A' },
-    danger: { border: COLORS.DANGER, bg: '#FEF3F2', text: '#B42318' },
+  const dotColorMap = {
+    info: COLORS.BRAND_PRIMARY,
+    success: COLORS.SUCCESS,
+    warning: COLORS.WARNING,
+    danger: COLORS.DANGER,
   }
-  const c = colorMap[type]
-
-  return `<tr><td class="email-padding" style="padding:${SPACING.MD} ${SPACING.XL}">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-left:4px solid ${c.border};background:${c.bg};border-radius:0 8px 8px 0">
-<tr><td style="padding:14px 16px;font-size:${FONT_SIZE.BODY};color:${c.text};line-height:${LINE_HEIGHT};font-family:${FONT_FAMILY}">${escapeHtml(text)}</td></tr>
+  return `<tr><td class="email-padding" style="padding:${SPACING.MD} 40px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${COLORS.BG_GRAY};border-radius:12px">
+<tr>
+<td style="padding:16px 20px;vertical-align:top;width:18px"><div style="width:6px;height:6px;background:${dotColorMap[type]};border-radius:50%;margin-top:7px"></div></td>
+<td style="padding:16px 20px 16px 0;font-size:${FONT_SIZE.BODY};color:${COLORS.TEXT_SECONDARY};line-height:${LINE_HEIGHT};font-family:${FONT_FAMILY}">${text}</td>
+</tr>
 </table>
 </td></tr>`
 }
 
-// ────────────────────────────── 10. emailMeta ──────────────────────────────
+// ────────────────────────────── emailTipBlock (V3) ──────────────────────────────
+
+export function emailTipBlock(text: string): string {
+  return `<tr><td class="email-padding" style="padding:0 40px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr><td style="border-top:1px solid ${COLORS.BORDER};border-bottom:1px solid ${COLORS.BORDER};padding:${SPACING.LG} 0">
+<div style="font-size:12px;font-weight:${FONT_WEIGHT.BOLD};color:${COLORS.TEXT_TERTIARY};font-family:${FONT_FAMILY};letter-spacing:1px;margin-bottom:${SPACING.SM}">TIP</div>
+<div style="font-size:${FONT_SIZE.BODY};color:${COLORS.TEXT_PRIMARY};line-height:${LINE_HEIGHT};font-family:${FONT_FAMILY}">${text}</div>
+</td></tr>
+</table>
+</td></tr>`
+}
+
+// ────────────────────────────── emailMeta ──────────────────────────────
 
 export function emailMeta(text: string): string {
-  return `<tr><td class="email-padding" style="padding:${SPACING.SM} ${SPACING.XL}">
+  return `<tr><td class="email-padding" style="padding:${SPACING.SM} 40px">
 <p style="margin:0;font-size:${FONT_SIZE.SMALL};color:${COLORS.TEXT_TERTIARY};line-height:${LINE_HEIGHT};font-family:${FONT_FAMILY}">${escapeHtml(text)}</p>
 </td></tr>`
 }
 
-// ────────────────────────────── 11. emailHighlightText ──────────────────────────────
+// ────────────────────────────── emailHighlightText ──────────────────────────────
 
 export function emailHighlightText(text: string): string {
   return `<span style="color:${COLORS.BRAND_PRIMARY};font-weight:${FONT_WEIGHT.BOLD}">${escapeHtml(text)}</span>`
