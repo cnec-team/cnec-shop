@@ -1297,6 +1297,8 @@ interface CampaignFilters {
   status?: string
   type?: string
   search?: string
+  brandId?: string
+  sort?: string
 }
 
 export async function getAdminCampaigns(filters: CampaignFilters = {}) {
@@ -1310,6 +1312,9 @@ export async function getAdminCampaigns(filters: CampaignFilters = {}) {
   if (filters.type && filters.type !== 'all') {
     where.type = filters.type
   }
+  if (filters.brandId && filters.brandId !== 'all') {
+    where.brandId = filters.brandId
+  }
   if (filters.search) {
     where.OR = [
       { title: { contains: filters.search, mode: 'insensitive' } },
@@ -1317,11 +1322,18 @@ export async function getAdminCampaigns(filters: CampaignFilters = {}) {
     ]
   }
 
+  let orderBy: Record<string, string> | Array<Record<string, unknown>> = { createdAt: 'desc' }
+  if (filters.sort === 'deadline') {
+    orderBy = { endAt: 'asc' }
+  } else if (filters.sort === 'name') {
+    orderBy = [{ brand: { companyName: 'asc' } }, { createdAt: 'desc' }]
+  }
+
   const campaigns = await prisma.campaign.findMany({
     where,
-    orderBy: { createdAt: 'desc' },
+    orderBy,
     include: {
-      brand: { select: { id: true, companyName: true } },
+      brand: { select: { id: true, companyName: true, logoUrl: true } },
       products: {
         include: {
           product: { select: { id: true, name: true, thumbnailUrl: true, price: true } },
@@ -1348,11 +1360,20 @@ export async function getAdminCampaigns(filters: CampaignFilters = {}) {
   }))
 }
 
-export async function getAdminCampaignStats() {
+export async function getAdminCampaignStats(filters: { brandId?: string; type?: string } = {}) {
   await requireAdmin()
+
+  const where: Record<string, unknown> = {}
+  if (filters.brandId && filters.brandId !== 'all') {
+    where.brandId = filters.brandId
+  }
+  if (filters.type && filters.type !== 'all') {
+    where.type = filters.type
+  }
 
   const counts = await prisma.campaign.groupBy({
     by: ['status'],
+    where,
     _count: true,
   })
 
@@ -1551,7 +1572,8 @@ export async function updateAdminSampleNote(sampleId: string, adminNote: string)
 export async function getAdminBrandList() {
   await requireAdmin()
   return prisma.brand.findMany({
-    select: { id: true, brandName: true, companyName: true },
-    orderBy: { brandName: 'asc' },
+    where: { approved: true },
+    select: { id: true, brandName: true, companyName: true, logoUrl: true },
+    orderBy: { companyName: 'asc' },
   })
 }
