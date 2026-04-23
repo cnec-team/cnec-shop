@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
-import { signIn } from 'next-auth/react';
+import { signIn, useSession } from 'next-auth/react';
 import { toast } from 'sonner';
 import {
   Loader2,
@@ -76,13 +76,43 @@ export default function SignupPage() {
     roleParam === 'brand_admin' || roleParam === 'creator' ? roleParam : 'creator',
   );
   const [isLoading, setIsLoading] = useState(false);
+  const [socialMode, setSocialMode] = useState(false);
+  const { status: sessionStatus } = useSession();
 
   useEffect(() => {
     if (roleParam === 'brand_admin' || roleParam === 'creator') {
       setRole(roleParam);
-      setStep(1);
+      const stepParam = searchParams.get('step');
+      const socialParam = searchParams.get('social');
+      if (socialParam === '1' && stepParam) {
+        if (sessionStatus === 'loading') return;
+        if (sessionStatus === 'unauthenticated') {
+          toast.error('소셜 로그인에 실패했습니다. 다시 시도해주세요.');
+          setStep(1);
+          return;
+        }
+        setStep(parseInt(stepParam, 10));
+        setSocialMode(true);
+      } else {
+        setStep(1);
+      }
     }
-  }, [roleParam]);
+  }, [roleParam, searchParams, sessionStatus]);
+
+  // 소셜 가입 에러 메시지 처리
+  useEffect(() => {
+    const errorParam = searchParams.get('error');
+    if (!errorParam) return;
+    const errorMessages: Record<string, string> = {
+      verification_required: '본인인증이 필요합니다. 다시 시도해주세요.',
+      verification_expired: '인증 정보가 만료되었습니다. 다시 인증해주세요.',
+      already_registered: '이미 가입된 사용자입니다.',
+      email_exists: '이미 사용 중인 이메일입니다.',
+    };
+    if (errorMessages[errorParam]) {
+      toast.error(errorMessages[errorParam]);
+    }
+  }, [searchParams]);
 
   // Step 1: 본인 정보
   const [name, setName] = useState('');
@@ -290,9 +320,53 @@ export default function SignupPage() {
     }
   };
 
+  const handleSocialSubmit = async () => {
+    setIsLoading(true);
+    try {
+      const now = new Date().toISOString();
+      const payload: Record<string, unknown> = {
+        displayName,
+        shopId,
+        instagramHandle: instagramHandle || undefined,
+        tiktok: tiktokHandle || undefined,
+        youtube: youtubeHandle || undefined,
+        bio: bio || undefined,
+        primaryCategory: primaryCategory || undefined,
+        categories: subCategories.length > 0 ? subCategories : undefined,
+        termsAgreedAt: now,
+        privacyAgreedAt: now,
+        marketingAgreedAt: agreeMarketing ? now : undefined,
+        refCode: refCode || undefined,
+      };
+
+      const res = await fetch('/api/auth/complete-social-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || '프로필 저장에 실패했습니다');
+        return;
+      }
+
+      router.push(`/${locale}/signup/persona`);
+      router.refresh();
+    } catch {
+      toast.error('오류가 발생했습니다');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const nextStep = () => {
     if (step === termsStep) {
-      handleSubmit();
+      if (socialMode) {
+        handleSocialSubmit();
+      } else {
+        handleSubmit();
+      }
     } else {
       setStep(s => s + 1);
     }
@@ -300,11 +374,11 @@ export default function SignupPage() {
 
   const subtitle = role === 'brand_admin' ? '브랜드 파트너스 가입' : '크리에이터 가입';
 
-  // Social login for creators
-  function handleSocialLogin(provider: string) {
-    // Store role=creator intent in cookie before OAuth redirect
+  // 크리에이터 소셜 가입 (Step 2: 본인인증 완료 후)
+  function handleCreatorSocialLogin(provider: string) {
     document.cookie = `signup_role=creator;path=/;max-age=600;samesite=lax`;
-    signIn(provider, { callbackUrl: `/${locale}/creator/pending` });
+    document.cookie = `signup_verification_token=${encodeURIComponent(verificationToken)};path=/;max-age=600;samesite=lax`;
+    signIn(provider, { callbackUrl: `/${locale}/signup?role=creator&step=3&social=1` });
   }
 
   // Input class reused everywhere
@@ -358,50 +432,12 @@ export default function SignupPage() {
                 </button>
               </div>
 
-              {/* Social Login (Creator only) */}
-              {role === 'creator' && (
-                <div className="mt-6 space-y-3">
-                  <button
-                    type="button"
-                    onClick={() => handleSocialLogin('kakao')}
-                    className="relative w-full h-14 rounded-2xl bg-[#FEE500] text-[#391B1B] font-semibold text-base flex items-center justify-center gap-2 hover:brightness-95 transition-all"
-                  >
-                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3C6.48 3 2 6.36 2 10.44c0 2.62 1.75 4.93 4.38 6.24l-1.12 4.16c-.1.37.32.67.65.47l4.96-3.26c.37.04.74.06 1.13.06 5.52 0 10-3.36 10-7.44C22 6.36 17.52 3 12 3z"/></svg>
-                    카카오로 시작하기
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] bg-[#391B1B]/10 rounded-full px-2 py-0.5">가장 빠른 방법</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleSocialLogin('naver')}
-                    className="w-full h-14 rounded-2xl bg-[#03C75A] text-white font-semibold text-base flex items-center justify-center gap-2 hover:brightness-95 transition-all"
-                  >
-                    <span className="font-bold text-lg">N</span>
-                    네이버로 시작하기
-                  </button>
-
-                  <div className="flex items-center gap-3 py-2">
-                    <div className="flex-1 h-px bg-gray-200" />
-                    <span className="text-xs text-gray-400">또는</span>
-                    <div className="flex-1 h-px bg-gray-200" />
-                  </div>
-                </div>
-              )}
-
               <button
                 type="button"
                 onClick={nextStep}
-                className={`w-full h-14 rounded-2xl font-semibold text-base transition-colors ${
-                  role === 'creator'
-                    ? 'bg-white border-2 border-gray-200 text-gray-700 hover:bg-gray-50 mt-0'
-                    : 'bg-blue-600 text-white hover:bg-blue-700 mt-8'
-                }`}
+                className="w-full h-14 rounded-2xl font-semibold text-base transition-colors bg-blue-600 text-white hover:bg-blue-700 mt-8"
               >
-                {role === 'creator' ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <Phone className="h-4 w-4" />
-                    휴대폰으로 시작하기
-                  </span>
-                ) : '다음'}
+                다음
               </button>
 
               <div className="text-center text-sm mt-6">
@@ -417,7 +453,14 @@ export default function SignupPage() {
                 <div className="flex items-center justify-between mb-6">
                   <button
                     type="button"
-                    onClick={() => setStep(s => s - 1)}
+                    onClick={() => {
+                      if (socialMode && step <= 3) {
+                        setStep(0);
+                        setSocialMode(false);
+                        return;
+                      }
+                      setStep(s => s - 1);
+                    }}
                     className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-100 transition-colors -ml-2"
                   >
                     <ChevronLeft className="h-5 w-5 text-gray-600" />
@@ -518,6 +561,36 @@ export default function SignupPage() {
                     <h2 className="text-2xl font-bold text-gray-900 leading-tight whitespace-pre-line">
                       {'로그인에 사용할\n정보를 입력해주세요'}
                     </h2>
+
+                    {/* 소셜 가입 버튼 (크리에이터 전용) */}
+                    {role === 'creator' && (
+                      <>
+                        <div className="space-y-3">
+                          <button
+                            type="button"
+                            onClick={() => handleCreatorSocialLogin('kakao')}
+                            className="relative w-full h-14 rounded-2xl bg-[#FEE500] text-[#391B1B] font-semibold text-base flex items-center justify-center gap-2 hover:brightness-95 transition-all"
+                          >
+                            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3C6.48 3 2 6.36 2 10.44c0 2.62 1.75 4.93 4.38 6.24l-1.12 4.16c-.1.37.32.67.65.47l4.96-3.26c.37.04.74.06 1.13.06 5.52 0 10-3.36 10-7.44C22 6.36 17.52 3 12 3z"/></svg>
+                            카카오로 시작하기
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] bg-[#391B1B]/10 rounded-full px-2 py-0.5">간편 가입</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleCreatorSocialLogin('naver')}
+                            className="w-full h-14 rounded-2xl bg-[#03C75A] text-white font-semibold text-base flex items-center justify-center gap-2 hover:brightness-95 transition-all"
+                          >
+                            <span className="font-bold text-lg">N</span>
+                            네이버로 시작하기
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-3 py-1">
+                          <div className="flex-1 h-px bg-gray-200" />
+                          <span className="text-xs text-gray-400">또는</span>
+                          <div className="flex-1 h-px bg-gray-200" />
+                        </div>
+                      </>
+                    )}
 
                     <div className="relative">
                       <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />

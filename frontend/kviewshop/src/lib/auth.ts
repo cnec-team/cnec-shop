@@ -150,6 +150,103 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       try {
         const providerKey = `${account.provider}:${account.providerAccountId}`
 
+        // === 크리에이터 소셜 가입 처리 ===
+        let signupRole: string | null = null
+        let signupVerificationToken: string | null = null
+        try {
+          const { cookies } = await import('next/headers')
+          const cookieStore = await cookies()
+          signupRole = cookieStore.get('signup_role')?.value ?? null
+          signupVerificationToken = cookieStore.get('signup_verification_token')?.value ?? null
+        } catch {}
+
+        if (signupRole === 'creator') {
+          if (!signupVerificationToken) {
+            return '/signup?role=creator&error=verification_required'
+          }
+
+          const { jwtVerify } = await import('jose')
+          const jwtSecret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET || 'fallback-secret')
+          let verifiedCI: string | null = null
+          let verifiedPhone: string | null = null
+          let verifiedName: string | null = null
+
+          try {
+            const { payload } = await jwtVerify(signupVerificationToken, jwtSecret)
+            if (payload.type === 'identity_verification' || payload.type === 'phone_verification') {
+              verifiedCI = (payload.ci as string) || null
+              verifiedPhone = payload.phone as string
+              verifiedName = (payload.name as string) || null
+            }
+          } catch {
+            return '/signup?role=creator&error=verification_expired'
+          }
+
+          if (!verifiedPhone) {
+            return '/signup?role=creator&error=verification_required'
+          }
+
+          // CI 중복 체크
+          if (verifiedCI) {
+            const existingCI = await prisma.user.findUnique({ where: { ci: verifiedCI } })
+            if (existingCI) {
+              return '/signup?role=creator&error=already_registered'
+            }
+          }
+
+          const creatorEmail = user.email ?? `${account.provider}_${account.providerAccountId}@cnecshop.local`
+
+          // 이메일 중복 체크
+          const existingEmail = await prisma.user.findUnique({ where: { email: creatorEmail } })
+          if (existingEmail) {
+            try {
+              const { cookies } = await import('next/headers')
+              const cookieStore = await cookies()
+              cookieStore.delete('signup_role')
+              cookieStore.delete('signup_verification_token')
+            } catch {}
+            return '/signup?role=creator&error=email_exists'
+          }
+
+          const now = new Date()
+          const displayName = verifiedName || user.name || creatorEmail.split('@')[0]
+          const isIdentityVerified = !!verifiedCI
+
+          const newUser = await prisma.user.create({
+            data: {
+              email: creatorEmail,
+              name: displayName,
+              role: 'creator',
+              passwordHash: null,
+              phone: verifiedPhone,
+              ci: verifiedCI,
+              phoneVerifiedAt: isIdentityVerified ? now : null,
+              phoneReachable: true,
+              phoneReachableAt: now,
+            }
+          })
+
+          await prisma.creator.create({
+            data: {
+              userId: newUser.id,
+              displayName,
+              status: 'PENDING',
+              submittedAt: now,
+              themeColor: '#1a1a1a',
+            }
+          })
+
+          // 가입 쿠키 정리
+          try {
+            const { cookies } = await import('next/headers')
+            const cookieStore = await cookies()
+            cookieStore.delete('signup_role')
+            cookieStore.delete('signup_verification_token')
+          } catch {}
+
+          return true
+        }
+
         // 이메일 없는 카카오 fallback
         const effectiveEmail = user.email
           ?? `${account.provider}_${account.providerAccountId}@cnecshop.local`
@@ -181,6 +278,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!existingUser && user.email) {
           existingUser = await prisma.user.findUnique({
             where: { email: user.email },
+            include: { buyer: true },
+          })
+        }
+
+        // 이메일 없는 소셜 로그인 fallback (카카오 등 — 크리에이터 재로그인 포함)
+        if (!existingUser && !user.email) {
+          existingUser = await prisma.user.findUnique({
+            where: { email: effectiveEmail },
             include: { buyer: true },
           })
         }
