@@ -96,8 +96,7 @@ export function Sidebar({ role, locale }: SidebarProps) {
           {
             label: '캠페인 관리',
             items: [
-              { title: '공구 캠페인', href: `${base}/brand/campaigns/gonggu`, icon: Megaphone },
-              { title: '상시 캠페인', href: `${base}/brand/campaigns/always`, icon: Megaphone },
+              { title: '캠페인 관리', href: `${base}/brand/campaigns`, icon: Megaphone },
               { title: '캠페인 생성', href: `${base}/brand/campaigns/new`, icon: Megaphone },
             ],
           },
