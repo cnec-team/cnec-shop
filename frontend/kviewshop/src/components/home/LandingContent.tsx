@@ -24,6 +24,7 @@ import {
   Building2,
   Store,
   ClipboardCheck,
+  Bell,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -196,61 +197,87 @@ export function LandingContent() {
           {/* Phone Mockup */}
           <div className={`relative ${anim(hero.isInView, 'animate-fade-in-right delay-300')}`}>
             <div className="relative mx-auto w-[300px] md:w-[340px]">
-              <div className="rounded-[3rem] border-[6px] border-gray-900 bg-white shadow-2xl shadow-gray-900/10 overflow-hidden">
-                <div className="relative flex justify-center"><div className="w-[100px] h-[26px] bg-gray-900 rounded-b-2xl" /></div>
-                <div className="px-5 pt-5 pb-3">
-                  <p className="text-[10px] text-gray-400 tracking-wider">MY SELECT SHOP</p>
-                  <div className="flex items-center justify-between mt-1">
-                    <p className="text-xl font-black text-gray-900">크넥 뷰티 공구샵</p>
-                    <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center"><Heart className="h-5 w-5 text-white fill-white" /></div>
+              <div className="rounded-[3rem] border-[6px] border-gray-900 bg-gray-50 shadow-2xl shadow-gray-900/10 overflow-hidden">
+                <div className="relative flex items-center justify-between px-6 pt-3 pb-1 bg-gray-50">
+                  <span className="text-[11px] font-semibold text-gray-900">9:41</span>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-1.5 h-1.5 rounded-full bg-gray-800" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-gray-800" />
+                    <div className="w-5 h-2.5 rounded-sm border border-gray-800 relative"><div className="absolute inset-0.5 bg-gray-800 rounded-[1px]" /></div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3 mt-5">
+                </div>
+                <div className="px-5 pt-4 pb-3 bg-gray-50">
+                  <div className="flex items-start justify-between">
                     <div>
-                      <div className="relative rounded-2xl overflow-hidden aspect-square">
-                        <Image src="/images/creators/product_serum.jpg" alt="누씨오 세럼" width={256} height={256} className="w-full h-full object-cover" />
-                        <span className="absolute top-2 left-2 bg-blue-600 text-white text-[9px] font-bold px-2.5 py-1 rounded-full">단독공구</span>
-                        <span className="absolute top-2 right-2 bg-gray-900/80 text-white text-[9px] font-bold px-2 py-1 rounded-full">34%</span>
-                      </div>
-                      <p className="text-[10px] text-gray-400 mt-2.5 font-medium tracking-wider">NUCIO</p>
-                      <p className="text-xs font-bold text-gray-900 mt-0.5 leading-snug">누씨오 시그니처 글로우 세럼</p>
-                      <p className="text-[10px] text-gray-300 line-through mt-1">₩58,000</p>
-                      <p className="text-base font-black text-blue-600">₩38,000</p>
+                      <p className="text-xs text-gray-400 font-medium">크리에이터 셀렉트 샵</p>
+                      <p className="text-2xl font-black text-gray-900 mt-0.5">뷰티 라운지</p>
                     </div>
-                    <div>
-                      <div className="relative rounded-2xl overflow-hidden aspect-square">
-                        <Image src="/images/creators/product_ampoule.jpg" alt="하우파파 크림" width={256} height={256} className="w-full h-full object-cover" />
-                        <span className="absolute top-2 left-2 bg-amber-500 text-white text-[9px] font-bold px-2.5 py-1 rounded-full">1차완판</span>
-                        <span className="absolute top-2 right-2 bg-gray-900/80 text-white text-[9px] font-bold px-2 py-1 rounded-full">50%</span>
-                      </div>
-                      <p className="text-[10px] text-gray-400 mt-2.5 font-medium tracking-wider">HAUPAPA</p>
-                      <p className="text-xs font-bold text-gray-900 mt-0.5 leading-snug">하우파파 카밍 크림 (1+1)</p>
-                      <p className="text-[10px] text-gray-300 line-through mt-1">₩58,000</p>
-                      <p className="text-base font-black text-blue-600">₩29,000</p>
+                    <div className="w-10 h-10 rounded-full bg-white border border-gray-100 flex items-center justify-center shadow-sm">
+                      <Bell className="h-4 w-4 text-gray-700" />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3 mt-3">
-                    <div className="relative rounded-2xl overflow-hidden h-[100px]">
-                      <Image src="/images/creators/product_cream.jpg" alt="립 틴트" width={256} height={256} className="w-full h-full object-cover" />
-                      <span className="absolute top-2 left-2 bg-rose-500 text-white text-[9px] font-bold px-2.5 py-1 rounded-full">마감임박</span>
+                  <div className="relative rounded-3xl p-5 mt-5 overflow-hidden" style={blueGradientBg}>
+                    <Sparkles className="absolute top-3 right-6 h-6 w-6 text-white/20" />
+                    <Sparkles className="absolute bottom-10 right-14 h-4 w-4 text-white/15" />
+                    <div className="flex items-start justify-between">
+                      <p className="text-xs text-white/70 font-medium">이번 달 누적 수익</p>
+                      <span className="px-2.5 py-1 rounded-full bg-white/15 text-[10px] font-bold text-white">VIP 등급</span>
                     </div>
-                    <div className="relative rounded-2xl overflow-hidden h-[100px]">
-                      <Image src="/images/creators/product_toner.jpg" alt="앵콜공구" width={256} height={256} className="w-full h-full object-cover" />
-                      <span className="absolute top-2 left-2 bg-emerald-500 text-white text-[9px] font-bold px-2.5 py-1 rounded-full">앵콜공구</span>
+                    <p className="text-[26px] font-black text-white mt-1 tracking-tight">₩ 12,450,000</p>
+                    <div className="mt-4 rounded-full bg-white/15 border border-white/10 py-2.5 flex items-center justify-center gap-1.5">
+                      <span className="text-xs font-semibold text-white">정산 리포트 보기</span>
+                      <ArrowRight className="h-3 w-3 text-white" />
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between mt-5">
+                    <p className="text-base font-black text-gray-900">오픈된 공동구매</p>
+                    <span className="text-[11px] text-gray-400 font-medium">전체보기</span>
+                  </div>
+                  <div className="space-y-2.5 mt-3">
+                    <div className="bg-white rounded-2xl p-2.5 flex items-center gap-3 shadow-sm">
+                      <div className="relative rounded-xl overflow-hidden w-[70px] h-[70px] shrink-0">
+                        <Image src="/images/creators/product_serum.jpg" alt="누씨오 세럼" width={140} height={140} className="w-full h-full object-cover" />
+                        <span className="absolute top-1.5 left-1.5 bg-gray-900/85 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">D-2</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="bg-blue-50 text-blue-600 text-[9px] font-bold px-1.5 py-0.5 rounded">단독공구</span>
+                          <span className="text-[10px] text-gray-400 font-medium">누씨오</span>
+                        </div>
+                        <p className="text-xs font-bold text-gray-900 mt-1 truncate">시그니처 글로우 세럼 50ml</p>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <span className="text-xs font-black text-blue-600">34%</span>
+                          <span className="text-xs font-black text-gray-900">₩ 38,000</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-white rounded-2xl p-2.5 flex items-center gap-3 shadow-sm">
+                      <div className="relative rounded-xl overflow-hidden w-[70px] h-[70px] shrink-0">
+                        <Image src="/images/creators/product_ampoule.jpg" alt="하우파파 크림" width={140} height={140} className="w-full h-full object-cover" />
+                        <span className="absolute top-1.5 left-1.5 bg-rose-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">품절임박</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="bg-gray-100 text-gray-600 text-[9px] font-bold px-1.5 py-0.5 rounded">1차완판</span>
+                          <span className="text-[10px] text-gray-400 font-medium">하우파파</span>
+                        </div>
+                        <p className="text-xs font-bold text-gray-900 mt-1 truncate">카밍 크림 1+1 특별 기획세트</p>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <span className="text-xs font-black text-blue-600">50%</span>
+                          <span className="text-xs font-black text-gray-900">₩ 29,000</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
-                <div className="px-5 py-2.5 border-t border-gray-100 flex justify-around">
-                  {[{ icon: Home, label: '홈', active: true },{ icon: ShoppingBag, label: '상품', active: false },{ icon: BarChart3, label: '매출', active: false },{ icon: User, label: '마이', active: false }].map((tab) => (
-                    <div key={tab.label} className={`flex flex-col items-center gap-0.5 ${tab.active ? 'text-blue-600' : 'text-gray-300'}`}>
-                      <tab.icon className="h-5 w-5" /><span className="text-[10px] font-medium">{tab.label}</span>
+                <div className="px-5 pt-3 pb-2 bg-gray-50 border-t border-gray-100 flex justify-around">
+                  {[{ icon: Home, label: '라운지', active: true },{ icon: ShoppingBag, label: '상품', active: false },{ icon: BarChart3, label: '수익', active: false },{ icon: User, label: '마이', active: false }].map((tab) => (
+                    <div key={tab.label} className={`flex flex-col items-center gap-0.5 ${tab.active ? 'text-gray-900' : 'text-gray-300'}`}>
+                      <tab.icon className="h-5 w-5" /><span className="text-[10px] font-semibold">{tab.label}</span>
                     </div>
                   ))}
                 </div>
-                <div className="mx-4 mb-3 rounded-2xl bg-gray-900 px-4 py-4 flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-full bg-blue-600 flex items-center justify-center shrink-0"><TrendingUp className="h-5 w-5 text-white" /></div>
-                  <div><p className="text-[11px] text-gray-400">VIP 누적 판매액</p><p className="text-xl font-black text-white">₩12,450,000</p></div>
-                </div>
-                <div className="flex justify-center pb-2"><div className="w-[120px] h-[4px] bg-gray-900 rounded-full" /></div>
+                <div className="flex justify-center py-2 bg-gray-50"><div className="w-[120px] h-[4px] bg-gray-900 rounded-full" /></div>
               </div>
             </div>
           </div>
