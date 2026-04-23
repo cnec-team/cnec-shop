@@ -42,6 +42,23 @@ export async function getBrandSession() {
   return brand
 }
 
+export async function getBrandSubscriptionSnapshot() {
+  const session = await auth()
+  if (!session?.user) return null
+  const brand = await prisma.brand.findFirst({ where: { userId: session.user.id } })
+  if (!brand) return null
+  const sub = await prisma.brandSubscription.findUnique({ where: { brandId: brand.id } })
+  if (!sub) return null
+  return {
+    planV3: sub.planV3,
+    status: sub.status,
+    currentMonthCampaigns: sub.currentMonthCampaigns,
+    currentMonthMessages: sub.currentMonthMessages,
+    trialEndsAt: sub.trialEndsAt?.toISOString() ?? null,
+    restrictedUntil: sub.restrictedUntil?.toISOString() ?? null,
+  }
+}
+
 // ==================== Dashboard ====================
 
 export async function getBrandDashboardData(brandId: string) {

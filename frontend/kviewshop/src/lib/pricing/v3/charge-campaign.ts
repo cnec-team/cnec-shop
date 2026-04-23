@@ -3,6 +3,7 @@ import { PRICING_V3 } from './constants'
 import { LIMIT_MESSAGES } from './labels'
 import { resolveBrandPlan } from './plan-resolver'
 import { PricingLimitError } from './limits'
+import { UpsellRequiredError } from './errors'
 
 export async function chargeCampaignCreation(
   brandId: string,
@@ -12,6 +13,16 @@ export async function chargeCampaignCreation(
   const plan = resolveBrandPlan(subscription)
 
   if (plan.version !== 'v3') return // v2는 기존 로직 사용
+
+  // RESTRICTED / DEACTIVATED 차단
+  if (subscription?.status === 'RESTRICTED' || subscription?.status === 'DEACTIVATED') {
+    throw new UpsellRequiredError({
+      reason: 'RESTRICTED_MODE',
+      currentPlan: 'TRIAL',
+      suggestedPlan: 'STANDARD',
+      restrictedUntil: subscription.restrictedUntil?.toISOString(),
+    })
+  }
 
   if (plan.planV3 === 'TRIAL') {
     const used = subscription?.trialUsedCampaigns ?? 0
@@ -39,10 +50,14 @@ export async function chargeCampaignCreation(
   if (plan.planV3 === 'STANDARD') {
     const used = subscription?.currentMonthCampaigns ?? 0
     if (used >= PRICING_V3.STANDARD.CAMPAIGN_MONTHLY_LIMIT) {
-      throw new PricingLimitError(
-        LIMIT_MESSAGES.STANDARD_CAMPAIGN_LIMIT_REACHED,
-        'STANDARD_CAMPAIGN_LIMIT_REACHED',
-      )
+      throw new UpsellRequiredError({
+        reason: 'CAMPAIGN_LIMIT_REACHED',
+        currentPlan: 'STANDARD',
+        suggestedPlan: 'PRO',
+        limit: PRICING_V3.STANDARD.CAMPAIGN_MONTHLY_LIMIT,
+        used,
+        resetAt: subscription?.currentMonthResetAt?.toISOString(),
+      })
     }
     await prisma.$transaction([
       prisma.brandSubscription.update({
