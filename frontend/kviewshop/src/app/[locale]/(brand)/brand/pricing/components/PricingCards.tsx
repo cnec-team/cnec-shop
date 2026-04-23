@@ -1,124 +1,194 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter, useParams } from 'next/navigation'
 import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { BillingCycleToggle } from './BillingCycleToggle'
-import type { ResolvedPlan } from '@/lib/pricing/v3/plan-resolver'
+import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
+import { motion, AnimatePresence } from 'framer-motion'
+import { PLAN_CONFIGS, type BillingCycle, type PlanTier } from './types'
 
-interface Props {
-  currentPlan: ResolvedPlan
+interface PricingCardsProps {
+  billingCycle: BillingCycle
+  currentTier?: PlanTier
 }
 
-export function PricingCards({ currentPlan }: Props) {
-  const router = useRouter()
-  const params = useParams()
-  const locale = params.locale as string ?? 'ko'
-  const [billingCycle, setBillingCycle] = useState<'QUARTERLY' | 'ANNUAL'>('QUARTERLY')
+function formatPrice(n: number) {
+  return `₩${n.toLocaleString('ko-KR')}`
+}
 
-  const isCurrentTrial = currentPlan.version === 'v3' && currentPlan.planV3 === 'TRIAL'
-  const isCurrentStandard = currentPlan.version === 'v3' && currentPlan.planV3 === 'STANDARD'
-  const isCurrentPro = currentPlan.version === 'v3' && currentPlan.planV3 === 'PRO'
+const priceMotion = {
+  initial: { opacity: 0, y: 10 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -10 },
+  transition: { duration: 0.2 },
+}
+
+function PriceDisplay({ tier, billingCycle }: { tier: PlanTier; billingCycle: BillingCycle }) {
+  const config = PLAN_CONFIGS[tier]
+  const isDark = tier === 'pro'
+  const mutedClass = isDark ? 'text-slate-400' : 'text-muted-foreground'
+
+  if (tier === 'trial') {
+    return (
+      <div>
+        <span className="text-[48px] font-bold tabular-nums leading-none" aria-label="무료">
+          {formatPrice(0)}
+        </span>
+        <span className={cn('ml-2 text-base', mutedClass)}>/3일</span>
+      </div>
+    )
+  }
+
+  if (tier === 'standard') {
+    return (
+      <div>
+        <span className="text-[48px] font-bold tabular-nums leading-none" aria-label="월 99,000원">
+          {formatPrice(99000)}
+        </span>
+        <span className={cn('ml-2 text-base', mutedClass)}>/월</span>
+      </div>
+    )
+  }
+
+  const isAnnual = billingCycle === 'annual'
+  const monthlyPrice = isAnnual ? config.priceAnnualMonthly! : config.priceMonthly
 
   return (
-    <div className="mb-16">
-      <div className="grid md:grid-cols-3 gap-6">
-        {/* 체험 */}
-        <Card className="p-8 flex flex-col">
-          <h3 className="text-xl font-semibold mb-2">체험</h3>
-          <p className="text-sm text-muted-foreground mb-6">3일 동안 써보기</p>
-          <div className="mb-6">
-            <span className="text-4xl font-bold">₩0</span>
-          </div>
-          <ul className="space-y-3 mb-8 flex-1">
-            <FeatureItem>공동구매 1번 열기</FeatureItem>
-            <FeatureItem>메시지 10번 보내기</FeatureItem>
-            <FeatureItem>크리에이터 일 30명 보기</FeatureItem>
-            <FeatureItem>상세정보 30번 열어보기</FeatureItem>
-          </ul>
-          <p className="text-xs text-muted-foreground mb-4">카드 등록 없이 시작</p>
-          <Button variant="outline" disabled={isCurrentTrial}>
-            {isCurrentTrial ? '사용 중' : '체험 신청하기'}
-          </Button>
-        </Card>
-
-        {/* 스탠다드 (강조) */}
-        <Card className="p-8 flex flex-col border-2 border-primary relative">
-          <Badge className="absolute -top-3 left-1/2 -translate-x-1/2">가장 인기</Badge>
-          <h3 className="text-xl font-semibold mb-2">스탠다드</h3>
-          <p className="text-sm text-muted-foreground mb-6">쓴 만큼만 결제</p>
-          <div className="mb-6">
-            <span className="text-4xl font-bold">매달 ₩0</span>
-            <span className="text-sm text-muted-foreground"> + 사용분</span>
-          </div>
-          <ul className="space-y-3 mb-8 flex-1">
-            <FeatureItem>공동구매 1번 ₩50,000</FeatureItem>
-            <FeatureItem>메시지 1건 ₩700</FeatureItem>
-            <FeatureItem>크리에이터 일 100명 보기</FeatureItem>
-            <FeatureItem>상세정보 매달 100번 무료</FeatureItem>
-            <FeatureItem>캠페인 성과 리포트</FeatureItem>
-            <FeatureItem>크넥샵 수수료 10%</FeatureItem>
-          </ul>
-          <p className="text-xs text-muted-foreground mb-4">약정 없음, 언제든 그만두기</p>
-          <Button
-            disabled={isCurrentStandard}
-            onClick={() => !isCurrentStandard && router.push(`/${locale}/brand/billing/charge`)}
+    <AnimatePresence mode="wait">
+      <motion.div key={billingCycle} {...priceMotion}>
+        <div>
+          <span
+            className="text-[48px] font-bold tabular-nums leading-none"
+            aria-label={`월 ${monthlyPrice.toLocaleString('ko-KR')}원`}
           >
-            {isCurrentStandard ? '사용 중' : '스탠다드로 시작하기'}
-          </Button>
-        </Card>
-
-        {/* 프로 */}
-        <Card className="p-8 flex flex-col">
-          <h3 className="text-xl font-semibold mb-2">프로</h3>
-          <p className="text-sm text-muted-foreground mb-6">매달 공동구매 여는 브랜드를 위해</p>
-          <BillingCycleToggle value={billingCycle} onChange={setBillingCycle} />
-          <div className="mb-6 mt-4">
-            {billingCycle === 'QUARTERLY' ? (
-              <>
-                <div className="text-4xl font-bold">3개월 ₩990,000</div>
-                <div className="text-sm text-muted-foreground">한 달 ₩330,000</div>
-              </>
-            ) : (
-              <>
-                <div className="text-4xl font-bold">1년 ₩3,168,000</div>
-                <div className="text-sm text-muted-foreground">
-                  <span className="line-through">₩3,960,000</span> 20% 할인 · 한 달 ₩264,000
-                </div>
-              </>
-            )}
+            {formatPrice(monthlyPrice)}
+          </span>
+          <span className={cn('ml-2 text-base', mutedClass)}>/월</span>
+        </div>
+        {isAnnual && (
+          <div className={cn('mt-2 text-sm', mutedClass)}>
+            <span className="line-through mr-2">{formatPrice(config.priceAnnualOriginal!)}</span>
+            연 {formatPrice(config.priceAnnualTotal!)} · 2개월 무료
           </div>
-          <ul className="space-y-3 mb-8 flex-1">
-            <FeatureItem>공동구매 무제한</FeatureItem>
-            <FeatureItem>메시지 매달 500건 무료</FeatureItem>
-            <FeatureItem>크리에이터 무제한 보기</FeatureItem>
-            <FeatureItem>상세정보 무제한 열기</FeatureItem>
-            <FeatureItem>피부 타입 매칭 AI</FeatureItem>
-            <FeatureItem>인스타 DM 자동 발송</FeatureItem>
-            <FeatureItem>캠페인 참여자 엑셀</FeatureItem>
-            <FeatureItem><strong>크넥샵 수수료 8%</strong> (2%p 할인)</FeatureItem>
-          </ul>
-          <Button
-            variant="outline"
-            disabled={isCurrentPro}
-            onClick={() => !isCurrentPro && router.push(`/${locale}/brand/billing/checkout?purpose=PRO_SUBSCRIPTION&cycle=${billingCycle}`)}
-          >
-            {isCurrentPro ? '사용 중' : '프로로 시작하기'}
-          </Button>
-        </Card>
+        )}
+      </motion.div>
+    </AnimatePresence>
+  )
+}
+
+function PricingCard({
+  tier,
+  billingCycle,
+  highlighted,
+  isCurrentTier,
+}: {
+  tier: PlanTier
+  billingCycle: BillingCycle
+  highlighted?: boolean
+  isCurrentTier?: boolean
+}) {
+  const config = PLAN_CONFIGS[tier]
+  const isDark = tier === 'pro'
+  const isAnnual = billingCycle === 'annual'
+
+  function handleClick() {
+    console.log('[Pricing CTA]', { tier, billingCycle })
+    toast.info(`${config.name} 플랜 시작 준비 중입니다 (다음 PR에서 결제 연동 예정)`)
+  }
+
+  return (
+    <div
+      className={cn(
+        'relative flex flex-col rounded-2xl p-8 transition-all duration-200',
+        isDark
+          ? 'bg-slate-900 text-white border border-slate-800'
+          : 'bg-card border shadow-sm',
+        highlighted && !isDark && 'border-2 border-primary md:scale-[1.04]',
+        !isCurrentTier && 'hover:-translate-y-0.5 hover:shadow-lg'
+      )}
+    >
+      {highlighted && !isDark && (
+        <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground rounded-full px-4 py-1 text-xs font-medium">
+          가장 인기
+        </Badge>
+      )}
+
+      {isDark && isAnnual && (
+        <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-400 text-slate-900 rounded-full px-4 py-1 text-xs font-medium">
+          20% 할인 중
+        </Badge>
+      )}
+
+      <h3 className={cn('text-xl font-semibold', isDark && 'text-white')}>
+        {config.name}
+      </h3>
+      <p className={cn('mt-1 text-sm', isDark ? 'text-slate-400' : 'text-muted-foreground')}>
+        {config.description}
+      </p>
+
+      <div className="mt-6 mb-6">
+        <PriceDisplay tier={tier} billingCycle={billingCycle} />
       </div>
+
+      <div className={cn('border-t mb-6', isDark ? 'border-slate-800' : 'border-border')} />
+
+      <ul className="space-y-3 flex-1 mb-8">
+        {config.features.map((feature) => (
+          <li key={feature.label} className="flex items-start gap-2.5 text-sm">
+            <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" aria-label="포함" />
+            <span
+              className={cn(
+                feature.emphasis && 'font-semibold',
+                isDark ? 'text-slate-200' : 'text-foreground'
+              )}
+            >
+              {feature.label}
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      {isCurrentTier ? (
+        <Button
+          disabled
+          className="w-full h-12 rounded-xl text-base font-semibold bg-muted text-muted-foreground"
+        >
+          현재 이용 중
+        </Button>
+      ) : isDark ? (
+        <Button
+          onClick={handleClick}
+          className="w-full h-12 rounded-xl text-base font-semibold bg-white text-slate-900 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
+        >
+          {config.ctaLabel}
+        </Button>
+      ) : (
+        <Button
+          variant={highlighted ? 'default' : 'outline'}
+          onClick={handleClick}
+          className="w-full h-12 rounded-xl text-base font-semibold focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+        >
+          {config.ctaLabel}
+        </Button>
+      )}
     </div>
   )
 }
 
-function FeatureItem({ children }: { children: React.ReactNode }) {
+export function PricingCards({ billingCycle, currentTier }: PricingCardsProps) {
   return (
-    <li className="flex items-start gap-2 text-sm">
-      <Check className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-      <span>{children}</span>
-    </li>
+    <section className="pb-16 md:pb-24">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 md:items-start">
+        <PricingCard tier="trial" billingCycle={billingCycle} isCurrentTier={currentTier === 'trial'} />
+        <PricingCard
+          tier="standard"
+          billingCycle={billingCycle}
+          highlighted
+          isCurrentTier={currentTier === 'standard'}
+        />
+        <PricingCard tier="pro" billingCycle={billingCycle} isCurrentTier={currentTier === 'pro'} />
+      </div>
+    </section>
   )
 }

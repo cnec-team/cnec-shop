@@ -249,8 +249,7 @@
     "myCampaigns": "참여 중",
     "noCampaigns": "지금은 모집 중인 캠페인이 없어요. 곧 새로운 공구가 열릴 거예요!",
     "noMyCampaigns": "참여 중인 캠페인이 없어요. 새로운 공구에 참여해보세요!",
-    "available": "참여 가능",
-    "ended": "종료"
+    "available": "참여 가능"
   },
   "order": {
     "orderNumber": "주문번호",
@@ -369,7 +368,7 @@
     "skinConcerns": "피부 고민",
     "scalpConcerns": "두피 고민",
     "banner": "배너 설정",
-    "bannerImage": "배너 이미지 URL",
+    "bannerImage": "배너 이미지",
     "bannerLink": "클릭 시 이동 링크",
     "collections": "컬렉션",
     "collectionsDesc": "테마별 상품 모음을 관리합니다",
@@ -449,7 +448,6 @@
     "banners": "배너 관리",
     "bannersDesc": "내 셀렉트샵에 노출할 배너를 관리합니다",
     "addBanner": "배너 추가",
-    "bannerImage": "배너 이미지",
     "bannerType": "배너 타입",
     "horizontal": "가로형",
     "vertical": "세로형",
@@ -1160,6 +1158,36 @@
   "creators": {
     "filters": {
       "cnecPartnerOnly": "CNEC 파트너만 보기"
+    }
+  },
+  "pricing": {
+    "hero": {
+      "title": "매출이 되는 가격",
+      "subtitle": "구독료 하나로 캠페인, 메시지, 크리에이터 데이터까지 모두."
+    },
+    "billing": {
+      "monthly": "월간",
+      "annual": "연간",
+      "annualBadge": "20% 할인"
+    },
+    "cta": {
+      "startTrial": "체험 시작",
+      "startStandard": "스탠다드로 시작하기",
+      "startPro": "프로로 시작하기",
+      "currentPlan": "현재 이용 중",
+      "contactSales": "세일즈팀에 문의하기",
+      "startNow": "지금 시작하기"
+    },
+    "calculator": {
+      "title": "내게 맞는 플랜 찾기",
+      "subtitle": "월 사용량을 조절하면 실제 비용을 계산해드려요"
+    },
+    "comparison": {
+      "title": "전체 기능 비교",
+      "subtitle": "플랜별 포함 기능을 한눈에 확인하세요"
+    },
+    "faq": {
+      "title": "자주 묻는 질문"
     }
   }
 }

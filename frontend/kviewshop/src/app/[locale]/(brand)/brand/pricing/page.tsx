@@ -2,10 +2,7 @@ import { getAuthUser } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/db'
 import { resolveBrandPlan } from '@/lib/pricing/v3/plan-resolver'
 import { redirect } from 'next/navigation'
-import { PricingHero } from './components/PricingHero'
-import { PricingCards } from './components/PricingCards'
-import { ComparisonTable } from './components/ComparisonTable'
-import { PricingFAQ } from './components/PricingFAQ'
+import { PricingPageClient } from './PricingPageClient'
 
 export default async function BrandPricingPage() {
   const authUser = await getAuthUser()
@@ -29,13 +26,18 @@ export default async function BrandPricingPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-12">
-      <PricingHero />
-      <PricingCards
-        currentPlan={currentPlan}
-      />
-      <ComparisonTable />
-      <PricingFAQ />
-    </div>
+    <PricingPageClient
+      currentTier={
+        currentPlan.version === 'v3'
+          ? currentPlan.planV3 === 'TRIAL'
+            ? 'trial'
+            : currentPlan.planV3 === 'STANDARD'
+              ? 'standard'
+              : currentPlan.planV3 === 'PRO'
+                ? 'pro'
+                : undefined
+          : undefined
+      }
+    />
   )
 }
