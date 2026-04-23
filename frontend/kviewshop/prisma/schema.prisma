@@ -939,6 +939,14 @@ model Campaign {
   soldCount          Int            @default(0) @map("sold_count")
   targetParticipants Int?           @map("target_participants")
   conditions         String?
+  // Visibility / Force actions
+  isHidden           Boolean        @default(false) @map("is_hidden")
+  hiddenAt           DateTime?      @map("hidden_at") @db.Timestamptz
+  hiddenBy           String?        @map("hidden_by")
+  hiddenReason       String?        @map("hidden_reason")
+  forceEndedAt       DateTime?      @map("force_ended_at") @db.Timestamptz
+  forceEndedBy       String?        @map("force_ended_by")
+  forceEndedReason   String?        @map("force_ended_reason")
   createdAt          DateTime       @default(now()) @map("created_at") @db.Timestamptz
   updatedAt          DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
@@ -1130,6 +1138,13 @@ model Order {
   completedAt     DateTime? @map("completed_at") @db.Timestamptz
   cancelledAt     DateTime? @map("cancelled_at") @db.Timestamptz
   cancelReason    String?   @map("cancel_reason")
+  // Force refund
+  refundedBy       String?   @map("refunded_by")
+  refundReason     String?   @map("refund_reason")
+  refundedAt       DateTime? @map("refunded_at") @db.Timestamptz
+  refundType       String?   @map("refund_type") @db.VarChar(10)
+  refundedAmount   Decimal?  @map("refunded_amount") @db.Decimal(12, 0)
+  pgCancelId       String?   @map("pg_cancel_id")
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 

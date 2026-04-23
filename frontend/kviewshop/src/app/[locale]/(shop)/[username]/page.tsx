@@ -42,7 +42,7 @@ async function getShopItems(creatorId: string) {
         // Campaign (if linked) must be ACTIVE — exclude DRAFT/ENDED/RECRUITING
         OR: [
           { campaignId: null },  // PICK items without campaign
-          { campaign: { status: 'ACTIVE' } },  // Campaign items with ACTIVE campaign
+          { campaign: { status: 'ACTIVE', isHidden: false } },  // Campaign items with ACTIVE, visible campaign
         ],
       },
       include: {

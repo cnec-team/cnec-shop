@@ -670,6 +670,44 @@
     },
     "placeholder": {
       "comingSoon": "준비 중이에요. 곧 만나요."
+    },
+    "orders": {
+      "forceCancel": {
+        "title": "주문 강제 취소",
+        "fullRefund": "전액 환불",
+        "partialRefund": "부분 환불",
+        "reason": "취소 사유 (최소 20자)",
+        "confirmOrderNum": "주문번호 재입력",
+        "confirmAmount": "환불 금액 재입력",
+        "confirmEmail": "구매자 이메일 재입력",
+        "warning": "환불 후 되돌릴 수 없어요",
+        "shippedWarning": "이미 배송 중이에요. 배송 회수를 별도 안내해야 해요.",
+        "deliveredWarning": "이미 배송 완료되었어요. 구매자 동의를 받는 것을 권장해요.",
+        "stockRestore": "재고 복원됨",
+        "stockNoChange": "변화 없음",
+        "processing": "PortOne에서 취소 처리 중..."
+      }
+    },
+    "campaigns": {
+      "forceEnd": {
+        "title": "캠페인 강제 종료",
+        "warning": "강제 종료는 되돌릴 수 없어요",
+        "reason": "종료 사유 (최소 10자)",
+        "confirmInput": "종료하려면 캠페인명을 정확히 입력하세요",
+        "activeOrders": "진행 중 주문은 그대로 유지돼요"
+      },
+      "visibility": {
+        "hide": "노출 차단",
+        "unhide": "노출 해제",
+        "hideWarning": "소비자가 이 캠페인을 볼 수 없어요. 언제든 해제할 수 있어요.",
+        "hideReason": "차단 사유 (최소 10자)",
+        "unhideReason": "해제 사유 (선택)",
+        "confirmInput": "캠페인명을 정확히 입력하세요"
+      },
+      "badge": {
+        "hidden": "노출 차단",
+        "forceEnded": "강제 종료됨"
+      }
     }
   },
   "home": {

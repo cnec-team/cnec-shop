@@ -33,6 +33,7 @@ async function getActiveGonggu() {
     where: {
       type: 'GONGGU',
       status: 'ACTIVE',
+      isHidden: false,
       endAt: {
         gt: new Date(),
       },
