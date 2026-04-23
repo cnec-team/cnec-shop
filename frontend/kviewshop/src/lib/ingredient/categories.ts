@@ -24,10 +24,10 @@ export const CATEGORY_TABS: CategoryTab[] = [
 /**
  * UI 탭 ID로 성분 필터링
  */
-export function filterIngredientsByTab(
-  ingredients: Array<{ category: string }>,
+export function filterIngredientsByTab<T extends { category: string }>(
+  ingredients: T[],
   tabId: string
-) {
+): T[] {
   if (tabId === 'all') return ingredients;
   const tab = CATEGORY_TABS.find((t) => t.id === tabId);
   if (!tab) return ingredients;
