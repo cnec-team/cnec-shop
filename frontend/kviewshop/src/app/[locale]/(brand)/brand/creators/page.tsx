@@ -1,5 +1,5 @@
-import { CreatorExplorerList } from '@/components/brand/CreatorExplorerList'
+import { CreatorExplorerPageClient } from '@/components/brand/creators/CreatorExplorerPageClient'
 
 export default function CreatorExplorerPage() {
-  return <CreatorExplorerList />
+  return <CreatorExplorerPageClient />
 }

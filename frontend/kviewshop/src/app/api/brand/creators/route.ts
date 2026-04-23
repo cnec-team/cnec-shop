@@ -9,6 +9,7 @@ import {
 } from '@/lib/creator/reliability'
 import type { Prisma } from '@/generated/prisma/client'
 import { getCategorySearchTerms } from '@/lib/utils/beauty-labels'
+import { batchCalculateMatchScores } from '@/lib/creator-match/calculate-score'
 
 export async function GET(request: NextRequest) {
   const authUser = await getAuthUser()
@@ -41,7 +42,8 @@ export async function GET(request: NextRequest) {
   const cnecPartnerOnly = sp.get('cnecPartnerOnly') === 'true'
   const sort = sp.get('sort') || 'followers'
   const page = Math.max(1, parseInt(sp.get('page') || '1', 10))
-  const limit = Math.min(50, Math.max(1, parseInt(sp.get('limit') || '20', 10)))
+  const limit = Math.min(50, Math.max(1, parseInt(sp.get('limit') || '24', 10)))
+  const updatedWithinDays = sp.get('updatedWithinDays') ? parseInt(sp.get('updatedWithinDays')!) : undefined
 
   const where: Prisma.CreatorWhereInput = {
     igFollowers: { not: null },
@@ -75,6 +77,11 @@ export async function GET(request: NextRequest) {
   if (verified === 'false') where.igVerified = false
 
   if (cnecPartnerOnly) where.cnecIsPartner = true
+
+  if (updatedWithinDays) {
+    const cutoff = new Date(Date.now() - updatedWithinDays * 24 * 60 * 60 * 1000)
+    where.igDataImportedAt = { gte: cutoff }
+  }
 
   if (includeKeywords.length > 0) {
     const keywordConditions = includeKeywords.map(kw => {
@@ -115,6 +122,11 @@ export async function GET(request: NextRequest) {
     where.AND = andConditions
   }
 
+  // matchScore 정렬 시 더 많이 가져와서 정렬 후 페이지네이션
+  const isMatchSort = sort === 'matchScore'
+  const fetchLimit = isMatchSort ? 500 : limit
+  const fetchSkip = isMatchSort ? 0 : (page - 1) * limit
+
   const orderBy: Prisma.CreatorOrderByWithRelationInput =
     sort === 'engagement'
       ? { igEngagementRate: 'desc' }
@@ -122,19 +134,33 @@ export async function GET(request: NextRequest) {
         ? { igDataImportedAt: 'desc' }
         : { igFollowers: 'desc' }
 
-  const skip = (page - 1) * limit
-
-  const [creators, total] = await Promise.all([
-    prisma.creator.findMany({ where, orderBy, skip, take: limit }),
+  const [creators, total, totalAll, recentUpdatedCount] = await Promise.all([
+    prisma.creator.findMany({ where, orderBy, skip: fetchSkip, take: fetchLimit }),
     prisma.creator.count({ where }),
+    prisma.creator.count({ where: { igFollowers: { not: null } } }),
+    prisma.creator.count({
+      where: {
+        igFollowers: { not: null },
+        igDataImportedAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+      },
+    }),
   ])
 
-  const serialized = creators.map(c => {
+  // 매칭 스코어 배치 계산
+  const scoreMap = await batchCalculateMatchScores(
+    creators.map(c => c.id),
+    brand.id
+  )
+
+  let enriched = creators.map(c => {
     const reliabilityScore = c.cnecReliabilityScore ? Number(c.cnecReliabilityScore) : null
+    const s = scoreMap.get(c.id)
 
     return {
       ...c,
       igEngagementRate: c.igEngagementRate ? Number(c.igEngagementRate) : null,
+      igEstimatedCPRDecimal: c.igEstimatedCPRDecimal ? Number(c.igEstimatedCPRDecimal) : null,
+      igEstimatedAdFee: c.igEstimatedAdFee ? Number(c.igEstimatedAdFee) : null,
       cnecReliabilityScore: reliabilityScore,
       totalSales: Number(c.totalSales),
       totalEarnings: Number(c.totalEarnings),
@@ -143,13 +169,51 @@ export async function GET(request: NextRequest) {
       canSendEmail: canSendEmail(c.cnecEmail1, c.cnecEmail2, c.cnecEmail3),
       starRating: scoreToStarValue(reliabilityScore),
       showStarRating: shouldShowStarRating(c.cnecIsPartner, c.cnecTotalTrials, c.cnecCompletedPayments),
+      matchScore: s?.totalScore ?? 0,
+      matchBreakdown: s ? {
+        audienceFit: s.audienceFit,
+        contentQuality: s.contentQuality,
+        brandTone: s.brandTone,
+        costEfficiency: s.costEfficiency,
+      } : null,
+      estimatedAdCost: s?.estimatedAdCost.toString() ?? '0',
+      estimatedCpm: s?.estimatedCpm ?? 0,
+      expectedReach: s?.expectedReach ?? 0,
+      effectiveFollowerRate: c.igValidFollowers && c.igFollowers
+        ? Math.round((c.igValidFollowers / c.igFollowers) * 100)
+        : c.igEngagementRate
+          ? Math.min(95, Math.round(Number(c.igEngagementRate) * 1000 * 0.9))
+          : null,
     }
   })
 
+  // matchScore 정렬
+  if (isMatchSort) {
+    enriched.sort((a, b) => b.matchScore - a.matchScore)
+    enriched = enriched.slice((page - 1) * limit, page * limit)
+  }
+
+  // KPI 집계
+  const avgMatchScore = enriched.length > 0
+    ? Math.round(enriched.reduce((sum, c) => sum + c.matchScore, 0) / enriched.length)
+    : 0
+
+  const avgEr = enriched.length > 0
+    ? Math.round(
+        enriched.reduce((sum, c) => sum + (c.igEngagementRate ?? 0), 0) / enriched.length * 100
+      ) / 100
+    : 0
+
   return NextResponse.json({
-    creators: serialized,
+    creators: enriched,
     total,
+    totalAll,
     page,
     totalPages: Math.ceil(total / limit),
+    kpi: {
+      avgMatchScore,
+      recentUpdatedCount,
+      avgEr,
+    },
   })
 }
