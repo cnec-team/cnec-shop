@@ -511,6 +511,12 @@ model Brand {
   // Approval
   approved                Boolean     @default(false)
   approvedAt              DateTime?   @map("approved_at") @db.Timestamptz
+  // Suspension
+  suspendedAt             DateTime?   @map("suspended_at") @db.Timestamptz
+  suspendedReason         String?     @map("suspended_reason")
+  suspendedBy             String?     @map("suspended_by")
+  // Custom Commission
+  customCommissionRate    Int?        @map("custom_commission_rate")
   // Brand lines
   brandLines              Json        @default("[]") @map("brand_lines") @db.JsonB
   // Timestamps
@@ -626,6 +632,9 @@ model Creator {
   communityType              String                @default("board") @map("community_type")
   // Status
   status                     String                @default("ACTIVE") @map("status") @db.VarChar(10)
+  suspendedAt                DateTime?             @map("suspended_at") @db.Timestamptz
+  suspendedReason            String?               @map("suspended_reason")
+  suspendedBy                String?               @map("suspended_by")
   country                    String?
   // Picked products
   pickedProducts             String[]              @default([]) @map("picked_products")
@@ -2795,4 +2804,27 @@ model PhoneVerificationRequest {
 
   @@index([phoneNumber, createdAt])
   @@map("phone_verification_requests")
+}
+
+// ============================================================
+// AUDIT LOG
+// ============================================================
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String   @map("actor_id")
+  actorRole  String   @map("actor_role") @db.VarChar(30)
+  action     String   @db.VarChar(50)
+  targetType String   @map("target_type") @db.VarChar(30)
+  targetId   String   @map("target_id")
+  payload    Json?    @db.JsonB
+  reason     String?
+  ipAddress  String?  @map("ip_address") @db.VarChar(50)
+  userAgent  String?  @map("user_agent")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([actorId, createdAt])
+  @@index([targetType, targetId])
+  @@index([action, createdAt])
+  @@map("audit_logs")
 }
