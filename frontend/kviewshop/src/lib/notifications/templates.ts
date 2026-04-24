@@ -1864,3 +1864,237 @@ export function refundRespondedMessage(data: {
     },
   }
 }
+
+// ---------- 46. 장바구니 리마인더 → 구매자 (마케팅) ----------
+
+export function cartReminderMessage(data: {
+  buyerName: string
+  itemCount: number
+  topProductName: string
+  totalAmount: number
+  cartUrl?: string
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: `[크넥샵] 담아두신 상품을 잊지 않으셨나요?`,
+      html: renderEmail({
+        recipientType: 'buyer',
+        preheader: `장바구니에 ${data.itemCount}개 상품이 기다리고 있어요`,
+        statusBadge: { text: '장바구니 안내', variant: 'info' },
+        heroTitle: '담아두신 상품을 잊지 않으셨나요?',
+        heroSubtitle: `장바구니에 ${data.itemCount}개 상품이 기다리고 있어요.\n${data.topProductName} 외 ${data.itemCount - 1}개 상품이 있어요.`,
+        sections: [
+          emailAmountBox('장바구니 합계', data.totalAmount),
+          emailNoticeBox('인기 상품은 <strong>품절될 수 있어요</strong>.', 'warning'),
+        ],
+        primaryAction: { text: '장바구니로 가기', url: data.cartUrl ?? `${SITE_URL}/ko/cart` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'MARKETING',
+      title: '장바구니에 담아둔 상품이 있어요',
+      message: `${data.topProductName} 외 ${data.itemCount - 1}개`,
+      linkUrl: '/cart',
+    },
+  }
+}
+
+// ---------- 47. 재입고 알림 → 구매자 (마케팅) ----------
+
+export function restockNotificationMessage(data: {
+  buyerName: string
+  productName: string
+  productUrl: string
+  price: number
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: `[크넥샵] ${data.productName} 재입고됐어요!`,
+      html: renderEmail({
+        recipientType: 'buyer',
+        preheader: '요청하신 상품이 재입고됐어요. 빠르게 품절될 수 있어요',
+        statusBadge: { text: '재입고 완료', variant: 'success' },
+        heroTitle: '요청하신 상품이 재입고됐어요!',
+        darkHeroCard: { label: '재입고 상품', title: data.productName },
+        sections: [
+          emailAmountBox('가격', data.price),
+          emailNoticeBox('인기 상품이라 <strong>빠르게 품절</strong>될 수 있어요.', 'warning'),
+        ],
+        primaryAction: { text: '지금 구매하기', url: data.productUrl },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'MARKETING',
+      title: '재입고됐어요!',
+      message: `${data.productName}`,
+      linkUrl: data.productUrl,
+    },
+  }
+}
+
+// ---------- 48. 쿠폰 발급 → 사용자 (마케팅) ----------
+
+export function couponIssuedMessage(data: {
+  userName: string
+  couponName: string
+  discountDisplay: string
+  expiresAt: string
+  minOrderAmount?: string
+  useUrl: string
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: `[크넥샵] 새 쿠폰이 도착했어요 - ${data.couponName}`,
+      html: renderEmail({
+        recipientType: null,
+        preheader: `${data.discountDisplay} 쿠폰이 도착했어요`,
+        statusBadge: { text: '쿠폰 도착', variant: 'success' },
+        heroTitle: '새 쿠폰이 도착했어요',
+        sections: [
+          emailAmountBox(data.couponName, data.discountDisplay),
+          emailInfoTable([
+            { label: '쿠폰명', value: data.couponName },
+            { label: '할인', value: data.discountDisplay, emphasis: true },
+            ...(data.minOrderAmount ? [{ label: '최소 주문액', value: data.minOrderAmount }] : []),
+            { label: '만료일', value: data.expiresAt },
+          ]),
+        ],
+        primaryAction: { text: '쿠폰 사용하러 가기', url: data.useUrl },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'MARKETING',
+      title: '새 쿠폰이 도착했어요',
+      message: `${data.couponName} - ${data.discountDisplay}`,
+      linkUrl: '/coupons',
+    },
+  }
+}
+
+// ---------- 49. 쿠폰 만료 임박 → 사용자 (마케팅) ----------
+
+export function couponExpiringMessage(data: {
+  userName: string
+  couponName: string
+  discountDisplay: string
+  expiresAt: string
+  daysLeft: number
+  useUrl: string
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: `[크넥샵] 쿠폰이 ${data.daysLeft}일 후 만료돼요`,
+      html: renderEmail({
+        recipientType: null,
+        preheader: `${data.couponName} 쿠폰이 곧 만료돼요`,
+        statusBadge: { text: '쿠폰 만료 임박', variant: 'warning' },
+        heroTitle: '쿠폰이 곧 만료돼요',
+        sections: [
+          emailAmountBox(data.couponName, data.discountDisplay, `${data.daysLeft}일 후 만료`),
+          emailNoticeBox(`<strong>${data.daysLeft}일</strong> 후 만료되니 잊지 말고 사용해주세요.`, 'warning'),
+        ],
+        primaryAction: { text: '쿠폰 사용하기', url: data.useUrl },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'MARKETING',
+      title: '쿠폰이 곧 만료돼요',
+      message: `${data.couponName} - ${data.daysLeft}일 후 만료`,
+      linkUrl: '/coupons',
+    },
+  }
+}
+
+// ---------- 50. 재구매 리마인더 → 구매자 (마케팅) ----------
+
+export function repurchaseReminderMessage(data: {
+  buyerName: string
+  lastProductName: string
+  lastOrderedAt: string
+  reorderUrl: string
+  discountDisplay?: string
+  recipientEmail?: string
+}) {
+  const sections: string[] = [
+    emailInfoTable([
+      { label: '이전 구매일', value: data.lastOrderedAt },
+      { label: '예상 소진 시점', value: '지금쯤' },
+    ]),
+  ]
+  if (data.discountDisplay) {
+    sections.push(emailAmountBox('재구매 혜택', data.discountDisplay))
+  }
+  return {
+    email: {
+      subject: `[크넥샵] ${data.lastProductName} 다 쓰실 때쯤 아닌가요?`,
+      html: renderEmail({
+        recipientType: 'buyer',
+        preheader: `${data.lastProductName} 재구매 시기가 됐어요`,
+        statusBadge: { text: '재구매 안내', variant: 'info' },
+        heroTitle: `${data.lastProductName} 다 쓰실 때쯤 아닌가요?`,
+        darkHeroCard: { label: '지난번 구매', title: data.lastProductName },
+        sections,
+        primaryAction: { text: '다시 구매하기', url: data.reorderUrl },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'MARKETING',
+      title: '재구매할 시간이에요',
+      message: data.lastProductName,
+      linkUrl: data.reorderUrl,
+    },
+  }
+}
+
+// ---------- 51. 관심 크리에이터 새 공구 → 구매자 (마케팅) ----------
+
+export function interestCreatorNewCampaignMessage(data: {
+  buyerName: string
+  creatorName: string
+  campaignTitle: string
+  campaignUrl: string
+  discountDisplay?: string
+  recipientEmail?: string
+}) {
+  const sections: string[] = [
+    emailInfoTable([
+      { label: '크리에이터', value: data.creatorName },
+      { label: '캠페인', value: data.campaignTitle, emphasis: true },
+      { label: '시작일', value: formatKDate(new Date()) },
+    ]),
+  ]
+  if (data.discountDisplay) {
+    sections.push(emailAmountBox('혜택', data.discountDisplay))
+  }
+  sections.push(emailNoticeBox(`팔로우하시는 크리에이터의 <strong>한정 공구</strong>예요.`, 'info'))
+  return {
+    email: {
+      subject: `[크넥샵] ${data.creatorName}님의 새 공구가 열렸어요`,
+      html: renderEmail({
+        recipientType: 'buyer',
+        preheader: `${data.creatorName}님이 새 공구를 시작했어요`,
+        statusBadge: { text: '팔로우 크리에이터 소식', variant: 'info' },
+        heroTitle: `${data.creatorName}님의 새 공구가 열렸어요`,
+        heroSubtitle: `팔로우하시는 ${data.creatorName}님이 새 공구를 시작했어요.\n한정 기간이니 빠르게 확인해보세요.`,
+        sections,
+        primaryAction: { text: '공구 참여하기', url: data.campaignUrl },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'MARKETING',
+      title: `${data.creatorName}님의 새 공구`,
+      message: data.campaignTitle,
+      linkUrl: data.campaignUrl,
+    },
+  }
+}
