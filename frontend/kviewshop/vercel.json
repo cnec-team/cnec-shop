@@ -25,6 +25,42 @@
     {
       "path": "/api/cron/pricing-monthly-reset",
       "schedule": "0 15 1 * *"
+    },
+    {
+      "path": "/api/cron/shipping-delay",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/dormant-warning",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/dormant-transition",
+      "schedule": "30 0 * * *"
+    },
+    {
+      "path": "/api/cron/cart-reminder",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/coupon-expiry",
+      "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/repurchase-reminder",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/monthly-report",
+      "schedule": "0 0 1 * *"
+    },
+    {
+      "path": "/api/cron/weekly-summary",
+      "schedule": "0 0 * * 1"
+    },
+    {
+      "path": "/api/cron/low-stock-check",
+      "schedule": "15 * * * *"
     }
   ]
 }
