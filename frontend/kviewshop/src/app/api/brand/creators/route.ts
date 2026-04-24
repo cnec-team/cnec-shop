@@ -155,20 +155,68 @@ export async function GET(request: NextRequest) {
   let enriched = creators.map(c => {
     const reliabilityScore = c.cnecReliabilityScore ? Number(c.cnecReliabilityScore) : null
     const s = scoreMap.get(c.id)
+    const erNum = c.igEngagementRate ? Number(c.igEngagementRate) : null
 
     return {
-      ...c,
-      igEngagementRate: c.igEngagementRate ? Number(c.igEngagementRate) : null,
+      // 직렬화 안전 필드만 명시적으로 포함 (Decimal/BigInt 제외)
+      id: c.id,
+      userId: c.userId,
+      displayName: c.displayName,
+      instagramHandle: c.instagramHandle,
+      igUsername: c.igUsername,
+      igFollowers: c.igFollowers,
+      igFollowing: c.igFollowing,
+      igPostsCount: c.igPostsCount,
+      igBio: c.igBio,
+      igCategory: c.igCategory,
+      igVerified: c.igVerified,
+      igExternalUrl: c.igExternalUrl,
+      igIsBusinessAccount: c.igIsBusinessAccount,
+      igDataImportedAt: c.igDataImportedAt,
+      igProfileImageR2Url: c.igProfileImageR2Url,
+      igProfilePicUrl: c.igProfilePicUrl,
+      igTier: c.igTier,
+      igRecentPostThumbnails: c.igRecentPostThumbnails,
+      igFullName: c.igFullName,
+      igFollowersEffective: c.igFollowersEffective,
+      igValidFollowers: c.igValidFollowers,
+      igAvgReach: c.igAvgReach,
+      igAvgLikes: c.igAvgLikes,
+      igAvgComments: c.igAvgComments,
+      igAvgVideoViews: c.igAvgVideoViews,
+      igAvgVideoLikes: c.igAvgVideoLikes,
+      igAudienceGender: c.igAudienceGender,
+      igAudienceAge: c.igAudienceAge,
+      igEstimatedCPR: c.igEstimatedCPR,
+      igEstimatedAdCost: c.igEstimatedAdCost,
+      igLastPostAt: c.igLastPostAt,
+      igDataSource: c.igDataSource,
+      profileImage: c.profileImage,
+      profileImageUrl: c.profileImageUrl,
+      cnecIsPartner: c.cnecIsPartner,
+      cnecTotalTrials: c.cnecTotalTrials,
+      cnecCompletedPayments: c.cnecCompletedPayments,
+      cnecPhone: c.cnecPhone,
+      cnecVerificationStatus: c.cnecVerificationStatus,
+      cnecEmail1: c.cnecEmail1,
+      cnecEmail2: c.cnecEmail2,
+      cnecEmail3: c.cnecEmail3,
+      hasPhone: c.hasPhone,
+      phoneForAlimtalk: c.phoneForAlimtalk,
+      // Decimal → Number 변환
+      igEngagementRate: erNum,
       igEstimatedCPRDecimal: c.igEstimatedCPRDecimal ? Number(c.igEstimatedCPRDecimal) : null,
       igEstimatedAdFee: c.igEstimatedAdFee ? Number(c.igEstimatedAdFee) : null,
       cnecReliabilityScore: reliabilityScore,
       totalSales: Number(c.totalSales),
       totalEarnings: Number(c.totalEarnings),
       totalRevenue: Number(c.totalRevenue),
+      // 파생 필드
       canSendAlimtalk: canSendAlimtalk(c.cnecPhone, c.cnecVerificationStatus),
       canSendEmail: canSendEmail(c.cnecEmail1, c.cnecEmail2, c.cnecEmail3),
       starRating: scoreToStarValue(reliabilityScore),
       showStarRating: shouldShowStarRating(c.cnecIsPartner, c.cnecTotalTrials, c.cnecCompletedPayments),
+      // 매칭 스코어
       matchScore: s?.totalScore ?? 0,
       matchBreakdown: s ? {
         audienceFit: s.audienceFit,
@@ -176,13 +224,13 @@ export async function GET(request: NextRequest) {
         brandTone: s.brandTone,
         costEfficiency: s.costEfficiency,
       } : null,
-      estimatedAdCost: s?.estimatedAdCost.toString() ?? '0',
+      estimatedAdCost: s?.estimatedAdCost?.toString() ?? '0',
       estimatedCpm: s?.estimatedCpm ?? 0,
       expectedReach: s?.expectedReach ?? 0,
       effectiveFollowerRate: c.igValidFollowers && c.igFollowers
         ? Math.round((c.igValidFollowers / c.igFollowers) * 100)
-        : c.igEngagementRate
-          ? Math.min(95, Math.round(Number(c.igEngagementRate) * 1000 * 0.9))
+        : erNum
+          ? Math.min(95, Math.round(erNum * 1000 * 0.9))
           : null,
     }
   })

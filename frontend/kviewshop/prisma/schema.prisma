@@ -2831,7 +2831,7 @@ model CreatorMatchScore {
 
   // 파생 수치
   estimatedCpm    Int      @map("estimated_cpm")
-  estimatedAdCost BigInt   @map("estimated_ad_cost")
+  estimatedAdCost Int      @map("estimated_ad_cost")
   expectedReach   Int      @map("expected_reach")
 
   calculatedAt    DateTime @default(now()) @map("calculated_at") @db.Timestamptz
