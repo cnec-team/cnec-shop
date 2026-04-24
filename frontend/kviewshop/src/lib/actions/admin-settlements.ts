@@ -173,13 +173,57 @@ export async function getAdminSettlementDetail(id: string) {
 
   if (!settlement) throw new Error('정산을 찾을 수 없어요')
 
+  // 포함 주문 조회 (정산 기간 + 브랜드/크리에이터 매칭)
+  let orders: {
+    id: string
+    orderNumber: string | null
+    buyerName: string | null
+    customerName: string | null
+    totalAmount: unknown
+    status: string
+    paidAt: Date | null
+    items: { productName: string | null }[]
+  }[] = []
+
+  if (settlement.periodStart && settlement.periodEnd) {
+    const orderWhere: Record<string, unknown> = {
+      paidAt: {
+        gte: settlement.periodStart,
+        lte: settlement.periodEnd,
+      },
+      status: { in: ['PAID', 'PREPARING', 'SHIPPING', 'DELIVERED', 'CONFIRMED'] },
+    }
+
+    if (settlement.user?.brand?.id) {
+      orderWhere.brandId = settlement.user.brand.id
+    } else if (settlement.creatorId) {
+      orderWhere.creatorId = settlement.creatorId
+    }
+
+    orders = await prisma.order.findMany({
+      where: orderWhere as never,
+      orderBy: { paidAt: 'desc' },
+      take: 100,
+      select: {
+        id: true,
+        orderNumber: true,
+        buyerName: true,
+        customerName: true,
+        totalAmount: true,
+        status: true,
+        paidAt: true,
+        items: { select: { productName: true } },
+      },
+    })
+  }
+
   const auditLogs = await prisma.auditLog.findMany({
     where: { targetType: 'Settlement', targetId: id },
     orderBy: { createdAt: 'desc' },
     take: 20,
   })
 
-  return { settlement, auditLogs }
+  return { settlement, orders, auditLogs }
 }
 
 // ==================== Force Pay ====================
@@ -492,7 +536,7 @@ export async function updateSettlementMemo(params: {
   await logAuditAction({
     actorId: admin.id!,
     actorRole: 'super_admin',
-    action: 'SETTLEMENT_FORCE_PAY',
+    action: 'SETTLEMENT_MEMO_UPDATE',
     targetType: 'Settlement',
     targetId: settlementId,
     payload: {

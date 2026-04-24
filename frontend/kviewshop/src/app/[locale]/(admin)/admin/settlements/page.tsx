@@ -115,7 +115,26 @@ export default function AdminSettlementsPage() {
   const brandFilter = searchParams.get('brand') || 'all'
   const sortFilter = (searchParams.get('sort') as string) || 'createdAt'
   const searchQuery = searchParams.get('q') || ''
+  const periodPreset = searchParams.get('period') || 'all'
   const pageNum = parseInt(searchParams.get('page') || '1', 10)
+
+  // Period range calculation
+  const periodRange = useMemo(() => {
+    const now = new Date()
+    if (periodPreset === 'thisMonth') {
+      return {
+        start: new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10),
+        end: new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10),
+      }
+    }
+    if (periodPreset === 'lastMonth') {
+      return {
+        start: new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10),
+        end: new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10),
+      }
+    }
+    return { start: undefined, end: undefined }
+  }, [periodPreset])
 
   const updateParams = useCallback((updates: Record<string, string>) => {
     const params = new URLSearchParams(searchParams.toString())
@@ -141,6 +160,8 @@ export default function AdminSettlementsPage() {
             brandId: brandFilter !== 'all' ? brandFilter : undefined,
             sort: sortFilter as 'createdAt' | 'amount' | 'brandName',
             q: searchQuery || undefined,
+            periodStart: periodRange.start,
+            periodEnd: periodRange.end,
             page: pageNum,
             pageSize: 20,
           }),
@@ -160,7 +181,7 @@ export default function AdminSettlementsPage() {
     }
     fetch()
     return () => { cancelled = true }
-  }, [statusFilter, brandFilter, sortFilter, searchQuery, pageNum])
+  }, [statusFilter, brandFilter, sortFilter, searchQuery, pageNum, periodRange.start, periodRange.end])
 
   // Fetch brands once
   useEffect(() => {
@@ -190,6 +211,8 @@ export default function AdminSettlementsPage() {
         status: statusFilter as 'all' | 'PENDING' | 'PAID' | 'HOLD' | 'CANCELLED',
         brandId: brandFilter !== 'all' ? brandFilter : undefined,
         q: searchQuery || undefined,
+        periodStart: periodRange.start,
+        periodEnd: periodRange.end,
       })
       if (data.length === 0) { toast.error('내보낼 데이터가 없어요'); return }
 
@@ -346,6 +369,17 @@ export default function AdminSettlementsPage() {
                   {brands.map(b => (
                     <SelectItem key={b.userId} value={b.userId}>{b.brandName ?? '이름 없음'}</SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={periodPreset} onValueChange={v => updateParams({ period: v, page: '1' })}>
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="기간 전체" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">기간 전체</SelectItem>
+                  <SelectItem value="thisMonth">이번 달</SelectItem>
+                  <SelectItem value="lastMonth">지난 달</SelectItem>
                 </SelectContent>
               </Select>
 
