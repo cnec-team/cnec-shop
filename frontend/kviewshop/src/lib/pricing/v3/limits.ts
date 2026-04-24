@@ -58,11 +58,19 @@ export async function checkDailyDbLimit(brandId: string): Promise<void> {
 }
 
 export async function incrementDailyDbView(brandId: string): Promise<void> {
-  await prisma.brandSubscription.update({
-    where: { brandId },
-    data: {
-      dailyDbViewedCount: { increment: 1 },
-      dailyDbViewedAt: new Date(),
-    },
-  })
+  try {
+    await prisma.brandSubscription.update({
+      where: { brandId },
+      data: {
+        dailyDbViewedCount: { increment: 1 },
+        dailyDbViewedAt: new Date(),
+      },
+    })
+  } catch (e: any) {
+    if (e?.code === 'P2025') {
+      // 구독 레코드 없음 — 조용히 스킵
+      return
+    }
+    throw e
+  }
 }
