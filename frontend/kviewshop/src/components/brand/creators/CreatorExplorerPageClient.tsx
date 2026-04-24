@@ -8,7 +8,7 @@ import { KpiCards } from './KpiCards'
 import { CreatorMatchGrid } from './CreatorMatchGrid'
 import { MatchSortDropdown } from './MatchSortDropdown'
 import { ViewToggle } from '@/components/brand/ViewToggle'
-import { CreatorFilter } from '@/components/brand/CreatorFilter'
+import { ExplorerFilterPanel } from './ExplorerFilterPanel'
 import { BulkActionBar } from '@/components/brand/BulkActionBar'
 import { InviteModal } from '@/components/brand/InviteModal'
 import { GroupSaveDialog } from '@/components/brand/GroupSaveDialog'
@@ -153,7 +153,7 @@ function CreatorExplorerContent() {
       {/* 필터 */}
       <section className="border-b border-stone-200 bg-stone-50/50">
         <div className="mx-auto max-w-[1400px] px-6 py-4">
-          <CreatorFilter />
+          <ExplorerFilterPanel />
         </div>
       </section>
 
@@ -203,6 +203,9 @@ function CreatorExplorerContent() {
               selectedIds={[...selectedIds]}
               onToggleSelect={toggleSelect}
               onResetFilters={resetFilters}
+              onPropose={(id: string, type: 'GONGGU' | 'PRODUCT_PICK') =>
+                setProposalModal({ open: true, mode: 'single', creatorIds: [id], defaultType: type })
+              }
             />
           ) : (
             <div className="overflow-x-auto rounded-xl border border-stone-200">

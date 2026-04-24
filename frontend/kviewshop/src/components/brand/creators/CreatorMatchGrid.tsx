@@ -11,7 +11,7 @@ interface Props {
   selectedIds: string[]
   onToggleSelect: (id: string) => void
   onResetFilters: () => void
-  onPropose?: (creatorId: string) => void
+  onPropose?: (creatorId: string, type: 'GONGGU' | 'PRODUCT_PICK') => void
 }
 
 export function CreatorMatchGrid({
@@ -56,7 +56,7 @@ export function CreatorMatchGrid({
           creator={c}
           selected={selectedIds.includes(c.id)}
           onToggleSelect={() => onToggleSelect(c.id)}
-          onPropose={onPropose ? () => onPropose(c.id) : undefined}
+          onPropose={onPropose ? (type: 'GONGGU' | 'PRODUCT_PICK') => onPropose(c.id, type) : undefined}
         />
       ))}
     </div>

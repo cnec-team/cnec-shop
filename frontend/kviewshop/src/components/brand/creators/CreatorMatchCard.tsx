@@ -42,7 +42,7 @@ interface Props {
   creator: CreatorMatchCardData
   selected: boolean
   onToggleSelect: () => void
-  onPropose?: () => void
+  onPropose?: (type: 'GONGGU' | 'PRODUCT_PICK') => void
 }
 
 function scoreColor(score: number) {
@@ -270,7 +270,7 @@ export function CreatorMatchCard({ creator, selected, onToggleSelect, onPropose 
 
       {/* CTA */}
       <div className="flex items-center gap-2">
-        <Button className="flex-1 rounded-lg bg-stone-900 text-white hover:bg-stone-800" size="sm" onClick={onPropose}>
+        <Button className="flex-1 rounded-lg bg-stone-900 text-white hover:bg-stone-800" size="sm" onClick={() => onPropose?.('GONGGU')}>
           공동구매 제안
         </Button>
         <Button asChild variant="outline" size="sm" className="rounded-lg">

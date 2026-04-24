@@ -10,6 +10,9 @@ export async function chargeDetailView(brandId: string, creatorId: string): Prom
 
   if (plan.version !== 'v3') return // v2는 과금 없음
 
+  // 구독 레코드 없으면 과금 불가 — 무과금 통과
+  if (!subscription) return
+
   if (plan.planV3 === 'TRIAL') {
     const used = subscription?.trialUsedDetailViews ?? 0
     if (used >= PRICING_V3.TRIAL.INCLUDED_DETAIL_VIEWS) {
