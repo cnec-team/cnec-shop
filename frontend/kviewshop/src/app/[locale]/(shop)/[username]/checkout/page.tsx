@@ -90,10 +90,8 @@ export default function CheckoutPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [creator, setCreator] = useState<any>(null);
   const [cartItems, setCartItems] = useState<CartItemWithProduct[]>([]);
-  const [isBankTransfer, setIsBankTransfer] = useState(false);
   const [deliveryMemo, setDeliveryMemo] = useState('선택하세요');
 
-  const [depositorName, setDepositorName] = useState('');
   const [returnUrl, setReturnUrl] = useState('');
 
   // 결제위젯 상태
@@ -370,7 +368,7 @@ export default function CheckoutPage() {
 
   // 1. SDK 초기화 + 위젯 생성
   useEffect(() => {
-    if (!TOSS_CLIENT_KEY || isBankTransfer || cartItems.length === 0) return;
+    if (!TOSS_CLIENT_KEY || cartItems.length === 0) return;
 
     let cancelled = false;
 
@@ -393,7 +391,7 @@ export default function CheckoutPage() {
 
     init();
     return () => { cancelled = true; };
-  }, [isBankTransfer, cartItems.length, getCustomerKey]);
+  }, [cartItems.length, getCustomerKey]);
 
   // 2. 금액 설정 + UI 렌더링
   useEffect(() => {
@@ -475,10 +473,6 @@ export default function CheckoutPage() {
           detail: shippingForm.addressDetail || undefined,
           memo: deliveryMemo !== '선택하세요' ? deliveryMemo : undefined,
         },
-        ...(isBankTransfer && {
-          paymentMethod: 'BANK_TRANSFER',
-          depositorName: depositorName.trim() || undefined,
-        }),
       }),
     });
 
@@ -496,12 +490,9 @@ export default function CheckoutPage() {
   const handleCheckout = async () => {
     if (!validateForm() || !creator || isProcessing) return;
 
-    // 결제위젯 준비 확인 (무통장입금이 아닌 경우)
-    if (!isBankTransfer) {
-      if (!widgets || !widgetReady) {
-        toast.error('결제 시스템이 아직 준비되지 않았어요. 잠시 후 다시 시도해주세요.');
-        return;
-      }
+    if (!widgets || !widgetReady) {
+      toast.error('결제 시스템이 아직 준비되지 않았어요. 잠시 후 다시 시도해주세요.');
+      return;
     }
 
     setIsProcessing(true);
@@ -509,39 +500,7 @@ export default function CheckoutPage() {
     try {
       // 1. 서버에서 주문 생성 + 재고 차감
       const prepareData = await createOrder();
-      const { orderId, orderNumber, totalAmount: serverTotal, bankInfo } = prepareData;
-
-      // 무통장입금: 바로 주문 완료 페이지로 이동
-      if (isBankTransfer) {
-        sessionStorage.setItem('cnec-order-complete', JSON.stringify({
-          orderNumber,
-          totalAmount: Number(serverTotal),
-          createdAt: new Date().toISOString(),
-          isBankTransfer: true,
-          bankInfo: bankInfo || undefined,
-          shopUsername: username,
-          creatorName: creator.displayName || username,
-          isLoggedIn: !!buyer,
-          items: cartItems.map((item) => ({
-            id: item.productId,
-            productName: item.product?.name || item.product?.nameKo || '상품',
-            productImage: item.product?.images?.[0] || item.product?.imageUrl || null,
-            quantity: item.quantity,
-            unitPrice: Number(item.unitPrice),
-            totalPrice: Number(item.unitPrice) * item.quantity,
-          })),
-          shippingAddress: form.address + (form.addressDetail ? ' ' + form.addressDetail : ''),
-          buyerName: form.name,
-          buyerPhone: form.phone,
-          shippingFee,
-          brandName: cartItems[0]?.product?.brand?.brandName || undefined,
-        }));
-        checkoutDoneRef.current = true;
-        clearCart();
-        if (creator?.id) clearServerCart(creator.id).catch(() => {});
-        router.push(`/${locale}/${username}/order-complete?orderNumber=${orderNumber}`);
-        return;
-      }
+      const { orderId } = prepareData;
 
       // 2. 결제위젯으로 결제 요청
       const firstItem = cartItems[0];
@@ -553,7 +512,7 @@ export default function CheckoutPage() {
       const successUrl = `${window.location.origin}/${locale}/payment/success?orderId=${orderId}`;
       const failUrl = `${window.location.origin}/${locale}/payment/fail?orderId=${orderId}`;
 
-      await widgets!.requestPayment({
+      await widgets.requestPayment({
         orderId,
         orderName,
         customerEmail: form.email,
@@ -866,65 +825,41 @@ export default function CheckoutPage() {
           </div>
         </div>
 
-        {/* 결제 방식 선택: 위젯 vs 무통장입금 */}
+        {/* 결제 수단 — 토스 결제위젯이 자동 렌더링 */}
         <div className="bg-white rounded-2xl p-5">
           <h2 className="text-base font-semibold text-gray-900 mb-4">결제 수단</h2>
 
-          {/* 무통장입금 토글 */}
-          <label className="flex items-center gap-3 p-3.5 rounded-xl border cursor-pointer transition-colors border-gray-200 hover:border-gray-300 mb-3">
-            <input
-              type="checkbox"
-              checked={isBankTransfer}
-              onChange={(e) => setIsBankTransfer(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-300 text-gray-900 focus:ring-gray-900"
-            />
-            <span className="text-sm text-gray-900">무통장입금으로 결제</span>
-          </label>
-
-          {isBankTransfer ? (
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-gray-500">입금자명</label>
-              <input
-                type="text"
-                value={depositorName}
-                onChange={(e) => setDepositorName(e.target.value)}
-                placeholder="주문자와 다를 경우 입력해주세요"
-                className="w-full h-11 px-4 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-300"
-              />
+          {/* 결제위젯 에러 */}
+          {widgetError && (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 text-sm text-red-600 mb-3">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>{widgetError}</span>
             </div>
-          ) : (
-            <>
-              {/* 결제위젯 에러 */}
-              {widgetError && (
-                <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 text-sm text-red-600 mb-3">
-                  <AlertCircle className="h-4 w-4 shrink-0" />
-                  <span>{widgetError}</span>
-                </div>
-              )}
-
-              {/* 결제위젯 로딩 */}
-              {!widgetReady && !widgetError && TOSS_CLIENT_KEY && (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-                  <span className="ml-2 text-sm text-gray-400">결제 정보를 불러오고 있어요</span>
-                </div>
-              )}
-
-              {/* 클라이언트 키 미설정 */}
-              {!TOSS_CLIENT_KEY && (
-                <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 text-sm text-red-600">
-                  <AlertCircle className="h-4 w-4 shrink-0" />
-                  <span>결제 시스템 설정이 완료되지 않았습니다. 관리자에게 문의해주세요.</span>
-                </div>
-              )}
-
-              {/* 토스 결제 UI 렌더링 영역 */}
-              <div id="payment-method" className="w-full" />
-
-              {/* 토스 약관 UI 렌더링 영역 */}
-              <div id="agreement" className="w-full" />
-            </>
           )}
+
+          {/* 결제위젯 로딩 */}
+          {!widgetReady && !widgetError && TOSS_CLIENT_KEY && (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+              <span className="ml-2 text-sm text-gray-400">결제 정보를 불러오고 있어요</span>
+            </div>
+          )}
+
+          {/* 클라이언트 키 미설정 */}
+          {!TOSS_CLIENT_KEY && (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 text-sm text-red-600">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>결제 시스템 설정이 완료되지 않았습니다. 관리자에게 문의해주세요.</span>
+            </div>
+          )}
+
+          {/* 토스 결제 UI 렌더링 영역 */}
+          <div id="payment-method" className="w-full" />
+        </div>
+
+        {/* 약관 — 토스 결제위젯이 자동 렌더링 */}
+        <div className="bg-white rounded-2xl p-5">
+          <div id="agreement" className="w-full" />
         </div>
 
         {/* Total Amount */}
@@ -963,18 +898,16 @@ export default function CheckoutPage() {
         <div className="max-w-lg mx-auto px-4 py-3">
           <button
             onClick={handleCheckout}
-            disabled={isProcessing || (!isBankTransfer && (!widgetReady || !TOSS_CLIENT_KEY))}
+            disabled={isProcessing || !widgetReady || !TOSS_CLIENT_KEY}
             className="w-full h-14 bg-gray-900 text-white rounded-xl font-semibold text-base hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isProcessing ? (
               <>
                 <Loader2 className="h-5 w-5 animate-spin" />
-                {isBankTransfer ? '주문 접수중...' : '결제 처리중...'}
+                결제 처리중...
               </>
             ) : (
-              isBankTransfer
-                ? <>총 {formatKRW(totalAmount)} 주문하기</>
-                : <>총 {formatKRW(totalAmount)} 결제하기</>
+              <>총 {formatKRW(totalAmount)} 결제하기</>
             )}
           </button>
         </div>
