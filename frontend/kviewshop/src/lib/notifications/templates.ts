@@ -2098,3 +2098,248 @@ export function interestCreatorNewCampaignMessage(data: {
     },
   }
 }
+
+// ---------- 52. 크리에이터 월간 리포트 → 크리에이터 ----------
+
+export function creatorMonthlyReportMessage(data: {
+  creatorName: string
+  period: string
+  totalRevenue: number
+  revenueChangePercent: number
+  orderCount: number
+  visitCount: number
+  conversionRate: number
+  topProductsText: string
+  tipText: string
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: `[크넥샵] ${data.period} 내 샵 성과 리포트`,
+      html: renderEmail({
+        recipientType: 'creator',
+        preheader: `${data.period} 셀렉트샵 성과를 정리해드렸어요`,
+        statusBadge: { text: '월간 리포트', variant: 'info' },
+        heroTitle: `${data.period} 내 샵 성과`,
+        heroSubtitle: `${data.creatorName}님, 지난 한 달 셀렉트샵 성과를 정리해드렸어요.`,
+        sections: [
+          emailAmountBox('이번 달 내 수익', data.totalRevenue, `전월 대비 ${data.revenueChangePercent}%`),
+          emailInfoTable([
+            { label: '주문 수', value: `${data.orderCount}건` },
+            { label: '방문자', value: `${data.visitCount}명` },
+            { label: '전환율', value: `${data.conversionRate}%` },
+            { label: 'TOP 상품', value: data.topProductsText },
+          ]),
+          emailNoticeBox(data.tipText, 'info'),
+        ],
+        primaryAction: { text: '상세 리포트 보기', url: `${SITE_URL}/ko/creator/dashboard` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'REPORT',
+      title: `${data.period} 월간 리포트`,
+      message: `내 수익 ${formatKRW(data.totalRevenue)} (전월 대비 ${data.revenueChangePercent}%)`,
+      linkUrl: '/creator/dashboard',
+    },
+  }
+}
+
+// ---------- 53. 브랜드 월간 리포트 → 브랜드 ----------
+
+export function brandMonthlyReportMessage(data: {
+  brandName: string
+  period: string
+  totalSales: number
+  salesChangePercent: number
+  creatorCount: number
+  orderCount: number
+  topProductText: string
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: `[크넥샵] ${data.period} 브랜드 성과 리포트`,
+      html: renderEmail({
+        recipientType: 'brand',
+        preheader: `${data.period} 브랜드 판매 성과를 정리해드렸어요`,
+        statusBadge: { text: '월간 리포트', variant: 'info' },
+        heroTitle: `${data.period} 브랜드 성과`,
+        heroSubtitle: `${data.brandName}님, 지난 한 달 판매 성과를 정리해드렸어요.`,
+        sections: [
+          emailAmountBox('이번 달 총 매출', data.totalSales, `전월 대비 ${data.salesChangePercent}%`),
+          emailInfoTable([
+            { label: '참여 크리에이터', value: `${data.creatorCount}명` },
+            { label: '주문 수', value: `${data.orderCount}건` },
+            { label: 'TOP 상품', value: data.topProductText },
+          ]),
+        ],
+        primaryAction: { text: '상세 리포트 보기', url: `${SITE_URL}/ko/brand/dashboard` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'REPORT',
+      title: `${data.period} 월간 리포트`,
+      message: `총 매출 ${formatKRW(data.totalSales)}`,
+      linkUrl: '/brand/dashboard',
+    },
+  }
+}
+
+// ---------- 54. 재고 소진 임박 → 브랜드 ----------
+
+export function lowStockAlertMessage(data: {
+  brandName: string
+  productName: string
+  currentStock: number
+  threshold: number
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: `[크넥샵] ${data.productName} 재고가 얼마 남지 않았어요`,
+      html: renderEmail({
+        recipientType: 'brand',
+        preheader: `${data.productName} 재고 ${data.currentStock}개 남음`,
+        statusBadge: { text: '재고 소진 임박', variant: 'warning' },
+        heroTitle: '재고가 얼마 남지 않았어요',
+        sections: [
+          emailAmountBox('남은 재고', `${data.currentStock}개`, `임계치 ${data.threshold}개`),
+          emailInfoTable([
+            { label: '상품', value: data.productName, emphasis: true },
+            { label: '현재 재고', value: `${data.currentStock}개` },
+            { label: '임계치', value: `${data.threshold}개` },
+          ]),
+          emailNoticeBox('품절 시 크리에이터 판매에 <strong>영향</strong>이 있어요.', 'warning'),
+        ],
+        primaryAction: { text: '재고 보충하기', url: `${SITE_URL}/ko/brand/products` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SYSTEM',
+      title: '재고 소진 임박',
+      message: `${data.productName} ${data.currentStock}개 남음`,
+      linkUrl: '/brand/products',
+    },
+  }
+}
+
+// ---------- 55. 정산 입금 완료 → 크리에이터 ----------
+
+export function settlementDepositedMessage(data: {
+  creatorName: string
+  period: string
+  depositedAmount: number
+  bankAccountMasked: string
+  depositedAt: Date
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: `[크넥샵] ${data.period} 정산금이 입금됐어요`,
+      html: renderEmail({
+        recipientType: 'creator',
+        preheader: `${formatKRW(data.depositedAmount)}이 입금됐어요`,
+        statusBadge: { text: '입금 완료', variant: 'success' },
+        heroTitle: '정산금이 입금됐어요',
+        sections: [
+          emailAmountBox('입금 금액', data.depositedAmount),
+          emailInfoTable([
+            { label: '정산 기간', value: data.period },
+            { label: '입금 계좌', value: data.bankAccountMasked },
+            { label: '입금 일시', value: formatKDate(data.depositedAt) },
+          ]),
+          emailNoticeBox('이번 달 성과도 계속 이어가세요.', 'success'),
+        ],
+        primaryAction: { text: '정산 내역 보기', url: `${SITE_URL}/ko/creator/settlements` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SETTLEMENT',
+      title: '정산금이 입금됐어요',
+      message: `${data.period} ${formatKRW(data.depositedAmount)}`,
+      linkUrl: '/creator/settlements',
+    },
+  }
+}
+
+// ---------- 56. 세금계산서 발행 → 브랜드 ----------
+
+export function taxInvoiceIssuedMessage(data: {
+  brandName: string
+  period: string
+  amount: number
+  invoicePdfUrl: string
+  recipientEmail?: string
+}) {
+  const now = new Date()
+  return {
+    email: {
+      subject: `[크넥샵] ${data.period} 세금계산서가 발행됐어요`,
+      html: renderEmail({
+        recipientType: 'brand',
+        preheader: `${data.period} 세금계산서를 확인해주세요`,
+        statusBadge: { text: '세금계산서 발행', variant: 'info' },
+        heroTitle: '세금계산서가 발행됐어요',
+        sections: [
+          emailAmountBox('발행 금액', data.amount),
+          emailInfoTable([
+            { label: '브랜드', value: data.brandName },
+            { label: '기간', value: data.period },
+            { label: '발행일', value: formatKDate(now) },
+          ]),
+        ],
+        primaryAction: { text: 'PDF 다운로드', url: data.invoicePdfUrl },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SETTLEMENT',
+      title: '세금계산서가 발행됐어요',
+      message: `${data.period} ${formatKRW(data.amount)}`,
+      linkUrl: '/brand/settlements',
+    },
+  }
+}
+
+// ---------- 57. 크리에이터 주간 요약 → 크리에이터 ----------
+
+export function creatorWeeklySummaryMessage(data: {
+  creatorName: string
+  weekStart: string
+  weekEnd: string
+  totalRevenue: number
+  revenueChangePercent: number
+  topProductName: string
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: `[크넥샵] 이번 주 판매 요약 (${data.weekStart}~${data.weekEnd})`,
+      html: renderEmail({
+        recipientType: 'creator',
+        preheader: `이번 주 수익 ${formatKRW(data.totalRevenue)}`,
+        statusBadge: { text: '주간 요약', variant: 'info' },
+        heroTitle: '이번 주 판매 요약',
+        sections: [
+          emailAmountBox('이번 주 수익', data.totalRevenue, `지난주 대비 ${data.revenueChangePercent}%`),
+          emailInfoTable([
+            { label: '기간', value: `${data.weekStart} ~ ${data.weekEnd}` },
+            { label: 'TOP 상품', value: data.topProductName },
+          ]),
+        ],
+        primaryAction: { text: '상세 보기', url: `${SITE_URL}/ko/creator/dashboard` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'REPORT',
+      title: '이번 주 판매 요약',
+      message: `수익 ${formatKRW(data.totalRevenue)} (${data.revenueChangePercent > 0 ? '+' : ''}${data.revenueChangePercent}%)`,
+      linkUrl: '/creator/dashboard',
+    },
+  }
+}
