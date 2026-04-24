@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Switch } from '@/components/ui/switch'
-import { ChevronDown, ChevronUp, RotateCcw, SlidersHorizontal, Sparkles } from 'lucide-react'
+import { ChevronDown, ChevronUp, Instagram, Mail, MessageSquare, RotateCcw, SlidersHorizontal, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { BEAUTY_CATEGORIES } from '@/lib/creator-match/category-keywords'
 
@@ -64,13 +64,18 @@ export function ExplorerFilterPanel() {
   const erMax = searchParams.get('maxEngagement') || ''
   const uploadDays = searchParams.get('updatedWithinDays') || ''
   const cnecPartner = searchParams.get('cnecPartnerOnly') === 'true'
+  const dmFilter = searchParams.get('canSendDM') === 'true'
+  const emailFilter = searchParams.get('canSendEmail') === 'true'
+  const alimtalkFilter = searchParams.get('canSendAlimtalk') === 'true'
 
+  const contactFilterCount = (dmFilter ? 1 : 0) + (emailFilter ? 1 : 0) + (alimtalkFilter ? 1 : 0)
   const activeCount =
     (selectedCategories.length > 0 ? 1 : 0) +
     (selectedTiers.length > 0 ? 1 : 0) +
     (erMin || erMax ? 1 : 0) +
     (uploadDays ? 1 : 0) +
-    (cnecPartner ? 1 : 0)
+    (cnecPartner ? 1 : 0) +
+    (contactFilterCount > 0 ? 1 : 0)
 
   function updateParams(updates: Record<string, string | null>) {
     const params = new URLSearchParams(searchParams.toString())
@@ -240,6 +245,34 @@ export function ExplorerFilterPanel() {
                   />
                 ))}
               </div>
+            </div>
+          </div>
+
+          {/* 연락 수단 */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <p className="text-sm font-medium text-stone-900">연락 수단</p>
+              <span className="text-xs text-stone-500">발송 가능한 채널로 필터</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Chip
+                label="DM 가능"
+                selected={dmFilter}
+                onClick={() => updateParams({ canSendDM: dmFilter ? null : 'true' })}
+                selectedClass="bg-stone-900 text-white border-stone-900"
+              />
+              <Chip
+                label="이메일 발송"
+                selected={emailFilter}
+                onClick={() => updateParams({ canSendEmail: emailFilter ? null : 'true' })}
+                selectedClass="bg-blue-500 text-white border-blue-500"
+              />
+              <Chip
+                label="알림톡 발송"
+                selected={alimtalkFilter}
+                onClick={() => updateParams({ canSendAlimtalk: alimtalkFilter ? null : 'true' })}
+                selectedClass="bg-green-500 text-white border-green-500"
+              />
             </div>
           </div>
 

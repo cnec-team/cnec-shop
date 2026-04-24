@@ -5,6 +5,7 @@ import { getOrCalculateMatchScore } from '@/lib/creator-match/calculate-score'
 import {
   canSendAlimtalk,
   canSendEmail,
+  canSendDM,
   scoreToStarValue,
   shouldShowStarRating,
 } from '@/lib/creator/reliability'
@@ -216,8 +217,11 @@ export async function GET(
       totalEarnings: Number(creator.totalEarnings),
       totalRevenue: Number(creator.totalRevenue),
       // 파생 필드
+      canSendDM: canSendDM(creator.igUsername),
       canSendAlimtalk: canSendAlimtalk(creator.cnecPhone, creator.cnecVerificationStatus),
       canSendEmail: canSendEmail(creator.cnecEmail1, creator.cnecEmail2, creator.cnecEmail3),
+      isContactable: canSendDM(creator.igUsername) || canSendEmail(creator.cnecEmail1, creator.cnecEmail2, creator.cnecEmail3) || canSendAlimtalk(creator.cnecPhone, creator.cnecVerificationStatus),
+      isVerifiedPartner: Boolean(creator.cnecIsPartner) && (creator.cnecCompletedPayments ?? 0) > 0,
       starRating: scoreToStarValue(reliabilityScore),
       showStarRating: shouldShowStarRating(creator.cnecIsPartner, creator.cnecTotalTrials, creator.cnecCompletedPayments),
       effectiveFollowerRate: creator.igValidFollowers && creator.igFollowers

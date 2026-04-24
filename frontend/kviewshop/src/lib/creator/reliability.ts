@@ -42,6 +42,30 @@ export function shouldShowStarRating(
 }
 
 /**
+ * DM 발송 가능 여부
+ * 조건: igUsername이 존재하고 비어있지 않음
+ */
+export function canSendDM(igUsername: string | null | undefined): boolean {
+  return !!igUsername && igUsername.trim().length > 0
+}
+
+/**
+ * 종합 연락 가능 여부
+ */
+export function isContactable(creator: {
+  igUsername?: string | null
+  cnecEmail1?: string | null
+  cnecEmail2?: string | null
+  cnecEmail3?: string | null
+  cnecPhone?: string | null
+  cnecVerificationStatus?: string | null
+}): boolean {
+  return canSendDM(creator.igUsername) ||
+    canSendEmail(creator.cnecEmail1, creator.cnecEmail2, creator.cnecEmail3) ||
+    canSendAlimtalk(creator.cnecPhone, creator.cnecVerificationStatus)
+}
+
+/**
  * 알림톡 발송 가능 여부
  * 조건: cnecPhone 존재 AND cnecVerificationStatus가 인증 완료 상태
  */

@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { Mail, MessageSquare, Instagram, Bookmark, Sparkles, Star, Users, ShieldCheck, TrendingUp, Calendar, CheckCircle2 } from 'lucide-react'
+import { Mail, MessageSquare, Instagram, Bookmark, Sparkles, Star, Users, ShieldCheck, TrendingUp, Calendar, CheckCircle2, Phone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
@@ -32,8 +32,11 @@ interface CreatorMatchCardData {
   expectedReach: number
   effectiveFollowerRate: number | null
   igValidFollowers: number | null
+  canSendDM: boolean
   canSendEmail: boolean
   canSendAlimtalk: boolean
+  isContactable: boolean
+  isVerifiedPartner: boolean
   audienceGenderRatio?: Record<string, number> | null
   audienceAgeRatio?: Record<string, number> | null
 }
@@ -163,10 +166,16 @@ export function CreatorMatchCard({ creator, selected, onToggleSelect, onPropose 
                   {creator.igCategory}
                 </span>
               )}
-              {creator.cnecIsPartner && (
+              {creator.isVerifiedPartner && (
                 <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-blue-700 bg-blue-50 rounded-sm px-1.5 py-0.5">
                   <Sparkles className="w-2.5 h-2.5" />
                   크넥 파트너
+                </span>
+              )}
+              {creator.isContactable && !creator.isVerifiedPartner && (
+                <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-stone-600 bg-stone-100 border border-stone-200 rounded-sm px-1.5 py-0.5">
+                  <Phone className="w-2.5 h-2.5" />
+                  연락 가능
                 </span>
               )}
               {creator.showStarRating && creator.starRating !== null && (
