@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { CNEC_COMMISSION_RATE } from '@/lib/constants';
+import { useUpsellModal } from '@/lib/store/upsell';
 
 type CampaignType = 'GONGGU' | 'ALWAYS';
 type RecruitmentType = 'OPEN' | 'APPROVAL';
@@ -268,6 +269,8 @@ export default function NewCampaignPage() {
     setCurrentStep((prev) => Math.max(prev - 1, 0));
   }
 
+  const { open: openUpsell } = useUpsellModal();
+
   async function handleSave() {
     if (!brand?.id) return;
     if (!validateStep()) return;
@@ -276,7 +279,7 @@ export default function NewCampaignPage() {
     setError(null);
 
     try {
-      await createCampaign({
+      const result = await createCampaign({
         brandId: brand.id,
         type: campaignType,
         title: title.trim(),
@@ -296,6 +299,16 @@ export default function NewCampaignPage() {
           perCreatorLimit: sp.perCreatorLimit ? Number(sp.perCreatorLimit) : undefined,
         })),
       });
+
+      if (!result.success && result.upsell) {
+        openUpsell(result.upsell);
+        return;
+      }
+      if (!result.success) {
+        setError(result.error ?? '캠페인 생성에 실패했습니다.');
+        toast.error(result.error ?? '캠페인 생성에 실패했습니다');
+        return;
+      }
 
       toast.success('캠페인이 생성되었습니다');
       if (campaignType === 'GONGGU') {

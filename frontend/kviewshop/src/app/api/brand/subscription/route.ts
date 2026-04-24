@@ -111,6 +111,7 @@ export async function GET() {
 
   return NextResponse.json({
     subscription: {
+      // v2 필드 (기존 유지)
       id: subscription.id,
       plan: subscription.plan,
       status: subscription.status,
@@ -119,6 +120,25 @@ export async function GET() {
       currentMonthUsed: subscription.currentMonthUsed,
       nextBillingAt: subscription.nextBillingAt?.toISOString() ?? null,
       startedAt: subscription.startedAt.toISOString(),
+      // v3 필드
+      planV3: subscription.planV3 ?? null,
+      trialStartedAt: subscription.trialStartedAt?.toISOString() ?? null,
+      trialEndsAt: subscription.trialEndsAt?.toISOString() ?? null,
+      trialUsedCampaigns: subscription.trialUsedCampaigns ?? 0,
+      trialUsedMessages: subscription.trialUsedMessages ?? 0,
+      trialUsedDetailViews: subscription.trialUsedDetailViews ?? 0,
+      currentMonthCampaigns: subscription.currentMonthCampaigns ?? 0,
+      currentMonthMessages: subscription.currentMonthMessages ?? 0,
+      currentMonthOverageAmount: subscription.currentMonthOverageAmount?.toString() ?? '0',
+      currentMonthResetAt: subscription.currentMonthResetAt?.toISOString() ?? null,
+      proBillingCycle: subscription.proBillingCycle ?? null,
+      proStartedAt: subscription.proStartedAt?.toISOString() ?? null,
+      proExpiresAt: subscription.proExpiresAt?.toISOString() ?? null,
+      proAutoRenew: subscription.proAutoRenew ?? false,
+      restrictedAt: subscription.restrictedAt?.toISOString() ?? null,
+      restrictedUntil: subscription.restrictedUntil?.toISOString() ?? null,
+      deactivatedAt: subscription.deactivatedAt?.toISOString() ?? null,
+      shopCommissionRate: subscription.shopCommissionRate?.toString() ?? '0.10',
     },
     summary: { freeCount, paidCount, paidAmount, dailySends },
     payments,

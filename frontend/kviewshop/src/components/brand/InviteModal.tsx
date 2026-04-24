@@ -39,6 +39,7 @@ import {
   ArrowRight,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { useUpsellModal } from '@/lib/store/upsell'
 import { getCreatorChannels, canProposalBeSent } from '@/lib/messaging/channel-availability'
 import { InviteCostSummary } from './invite/InviteCostSummary'
 import { InAppPreview } from './invite/previews/InAppPreview'
@@ -228,6 +229,8 @@ export function InviteModal({
 
   const freeQuota = { used: 0, total: 50 } // placeholder
 
+  const { open: openUpsell } = useUpsellModal()
+
   const handleSubmit = async () => {
     if (type === 'GONGGU' && !campaignId) {
       toast.error('공구 초대 시 캠페인을 선택해주세요')
@@ -239,7 +242,7 @@ export function InviteModal({
       const payload = {
         ...(mode === 'single'
           ? { creatorId: creatorIds[0] }
-          : { creatorIds }),
+          : { creatorIds, confirm: true }),
         type,
         campaignId: campaignId || undefined,
         templateId: templateId || undefined,
@@ -255,16 +258,26 @@ export function InviteModal({
         body: JSON.stringify(payload),
       })
 
+      const data = await res.json().catch(() => null)
+
+      if (res.status === 402 && data?.upsell) {
+        openUpsell(data.upsell)
+        if (data.partial && data.created > 0) {
+          toast.info(`${data.created}명에게만 발송됐어요. 나머지는 한도 초과`)
+        }
+        onOpenChange(false)
+        return
+      }
+
       if (!res.ok) {
-        const data = await res.json()
-        toast.error(data.error || '초대 전송에 실패했습니다')
+        toast.error(data?.message || data?.error || '초대 전송에 실패했습니다')
         return
       }
 
       toast.success(
         mode === 'single'
           ? '초대를 보냈습니다'
-          : `${creatorIds.length}명에게 초대를 보냈습니다`
+          : `${data?.created ?? creatorIds.length}명에게 초대를 보냈습니다`
       )
       onSuccess()
       onOpenChange(false)

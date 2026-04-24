@@ -6,6 +6,11 @@ import { proposalGongguInviteMessage, proposalProductPickMessage } from '@/lib/n
 import { canSendMessage, consumeMessageCredit } from '@/lib/subscription/check'
 import { getCreatorChannels, canProposalBeSent } from '@/lib/messaging/channel-availability'
 import { withRetry } from '@/lib/messaging/retry'
+import { isV3Plan } from '@/lib/pricing/v3/plan-resolver'
+import { chargeMessageSendV3 } from '@/lib/pricing/v3/charge-message'
+import { checkCreatorProtection, incrementCreatorProposalCount } from '@/lib/pricing/v3/creator-protection'
+import { isUpsellError, pricingLimitToUpsellContext } from '@/lib/pricing/v3/errors'
+import { PricingLimitError } from '@/lib/pricing/v3/limits'
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,21 +32,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '브랜드를 찾을 수 없습니다' }, { status: 404 })
     }
 
-    // 1. 구독 체크
-    const subCheck = await canSendMessage(brand.id)
-    if (!subCheck.ok) {
-      return NextResponse.json(
-        {
-          error: '구독이 필요합니다',
-          reason: subCheck.reason,
-          currentPlan: subCheck.plan,
-          currentUsed: subCheck.currentUsed,
-          quota: subCheck.quota,
-          upgradeUrl: '/brand/settings/subscription',
-        },
-        { status: 402 },
-      )
-    }
+    // 1. 플랜 확인
+    const subscription = await prisma.brandSubscription.findUnique({ where: { brandId: brand.id } })
+    const v3 = isV3Plan(subscription)
 
     const body = await request.json()
     const { creatorId, type, campaignId, templateId, commissionRate, message, useInstagramDm } =
@@ -118,7 +111,49 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '이미 제안을 보낸 크리에이터입니다' }, { status: 409 })
     }
 
-    // 3. 채널 결정
+    // 3. v3 크리에이터 보호 체크
+    if (v3) {
+      try {
+        await checkCreatorProtection(brand.id, creatorId)
+      } catch (err) {
+        if (isUpsellError(err)) {
+          return NextResponse.json({ error: 'UPSELL_REQUIRED', upsell: err.toJSON() }, { status: 402 })
+        }
+        if (err instanceof PricingLimitError) {
+          return NextResponse.json({ error: 'CREATOR_PROTECTED', message: err.message }, { status: 400 })
+        }
+        throw err
+      }
+    }
+
+    // 4. 메시지 과금 (v3/v2 분기)
+    if (v3) {
+      try {
+        await chargeMessageSendV3(brand.id, creatorId)
+      } catch (err) {
+        if (isUpsellError(err)) {
+          return NextResponse.json({ error: 'UPSELL_REQUIRED', upsell: err.toJSON() }, { status: 402 })
+        }
+        if (err instanceof PricingLimitError) {
+          const upsellCtx = pricingLimitToUpsellContext(err.code, err.message)
+          if (upsellCtx) {
+            return NextResponse.json({ error: 'UPSELL_REQUIRED', upsell: upsellCtx, message: err.message }, { status: 402 })
+          }
+          return NextResponse.json({ error: err.code, message: err.message }, { status: 400 })
+        }
+        throw err
+      }
+    } else {
+      const subCheck = await canSendMessage(brand.id)
+      if (!subCheck.ok) {
+        return NextResponse.json(
+          { error: '구독이 필요합니다', reason: subCheck.reason, currentPlan: subCheck.plan, currentUsed: subCheck.currentUsed, quota: subCheck.quota, upgradeUrl: '/brand/settings/subscription' },
+          { status: 402 },
+        )
+      }
+    }
+
+    // 5. 채널 결정
     const channels = getCreatorChannels(creator)
     const attemptedChannels: string[] = []
     const succeededChannels: string[] = []
@@ -129,16 +164,18 @@ export async function POST(request: NextRequest) {
     if (channels.kakao) attemptedChannels.push('KAKAO')
     if (useDm) attemptedChannels.push('DM')
 
-    // 4. 크레딧 소비 (시도 시점 과금)
-    const credit = await consumeMessageCredit(
-      brand.id,
-      null, // proposalId는 아직 없음
-      creatorId,
-      attemptedChannels,
-      succeededChannels,
-    )
+    // 6. 크레딧 소비
+    let credit: { creditId: string; type: string; cost: number }
+    if (v3) {
+      const mc = await prisma.messageCredit.create({
+        data: { brandId: brand.id, type: 'SUBSCRIPTION_FREE', cost: 0, pricePerMessage: 0, attemptedChannels, succeededChannels, creatorId },
+      })
+      credit = { creditId: mc.id, type: 'SUBSCRIPTION_FREE', cost: 0 }
+    } else {
+      credit = await consumeMessageCredit(brand.id, null, creatorId, attemptedChannels, succeededChannels)
+    }
 
-    // 5. 제안 생성
+    // 7. 제안 생성
     const now = new Date()
     const proposal = await prisma.creatorProposal.create({
       data: {
@@ -326,8 +363,12 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // 남은 쿼터 계산
-    const remainingQuota = Math.max(0, subCheck.quota - subCheck.currentUsed - 1)
+    // v3: 크리에이터 프로포절 카운트 증가
+    if (v3) {
+      incrementCreatorProposalCount(creatorId).catch(err => {
+        console.error('[incrementCreatorProposalCount]', err)
+      })
+    }
 
     return NextResponse.json({
       proposal,
@@ -336,7 +377,6 @@ export async function POST(request: NextRequest) {
         type: credit.type,
         cost: credit.cost,
       },
-      remainingQuota,
       channelResults,
     })
   } catch (error) {

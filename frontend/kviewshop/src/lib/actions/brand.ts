@@ -301,16 +301,21 @@ export async function createCampaign(data: {
     campaignPrice: number
     perCreatorLimit?: number
   }>
-}) {
+}): Promise<{
+  success: boolean
+  campaignId?: string
+  upsell?: import('@/lib/pricing/v3/errors').UpsellContext
+  error?: string
+}> {
   const { brand } = await requireBrand()
-  if (brand.id !== data.brandId) throw new Error('Forbidden')
+  if (brand.id !== data.brandId) return { success: false, error: 'FORBIDDEN' }
 
-  // Convert commission rate: if > 1 treat as percentage (e.g. 10 → 0.10)
   const commRate = data.commissionRate > 1
     ? data.commissionRate / 100
     : data.commissionRate
   const clampedCommRate = Math.min(Math.max(commRate, 0), 0.9999)
 
+  // 1. 캠페인 생성
   const campaign = await prisma.campaign.create({
     data: {
       brandId: brand.id,
@@ -331,6 +336,29 @@ export async function createCampaign(data: {
     },
   })
 
+  // 2. v3 공구 제한 체크
+  try {
+    const { chargeCampaignCreation } = await import('@/lib/pricing/v3/charge-campaign')
+    await chargeCampaignCreation(brand.id, campaign.id)
+  } catch (err) {
+    const { isUpsellError, pricingLimitToUpsellContext } = await import('@/lib/pricing/v3/errors')
+    const { PricingLimitError } = await import('@/lib/pricing/v3/limits')
+
+    // 제한 초과 시 생성된 캠페인 삭제
+    await prisma.campaignProduct.deleteMany({ where: { campaignId: campaign.id } }).catch(() => {})
+    await prisma.campaign.delete({ where: { id: campaign.id } }).catch(() => {})
+
+    if (isUpsellError(err)) return { success: false, upsell: err.toJSON() }
+    if (err instanceof PricingLimitError) {
+      const upsellCtx = pricingLimitToUpsellContext(err.code, err.message)
+      if (upsellCtx) return { success: false, upsell: upsellCtx }
+      return { success: false, error: err.message }
+    }
+    console.error('[createCampaign] charge failed:', err)
+    return { success: false, error: err instanceof Error ? err.message : 'UNKNOWN_ERROR' }
+  }
+
+  // 3. 상품 연결
   if (data.products.length > 0) {
     await prisma.campaignProduct.createMany({
       data: data.products.map((p) => ({
@@ -342,7 +370,7 @@ export async function createCampaign(data: {
     })
   }
 
-  return campaign
+  return { success: true, campaignId: campaign.id }
 }
 
 // ==================== Creators ====================

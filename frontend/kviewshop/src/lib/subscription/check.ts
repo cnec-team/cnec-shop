@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db'
 import { SUBSCRIPTION_PLANS, MESSAGE_PRICE_KRW } from './plans'
 import type { SubscriptionPlan } from '@/generated/prisma/client'
+import { isV3Plan } from '@/lib/pricing/v3/plan-resolver'
 
 interface CanSendResult {
   ok: boolean
@@ -14,6 +15,12 @@ export async function canSendMessage(brandId: string): Promise<CanSendResult> {
   const subscription = await prisma.brandSubscription.findUnique({
     where: { brandId },
   })
+
+  // v3 플랜이 이 함수 호출하면 안전하게 통과 (호출부에서 분기해야 함)
+  if (subscription && isV3Plan(subscription)) {
+    console.warn('[canSendMessage] v2 함수가 v3 플랜에 호출됨', { brandId, planV3: subscription.planV3 })
+    return { ok: true, plan: subscription.plan, currentUsed: 0, quota: Infinity }
+  }
 
   if (!subscription || subscription.status !== 'ACTIVE') {
     return {
