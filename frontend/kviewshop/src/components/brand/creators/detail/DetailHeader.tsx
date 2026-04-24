@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { ExternalLink, Sparkles, Star, CheckCircle2, Calendar, Users } from 'lucide-react'
+import { ExternalLink, Sparkles, Star, CheckCircle2, Calendar, Users, Instagram, Mail, MessageSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -84,6 +84,32 @@ export function DetailHeader({ creator, matchScore }: Props) {
                   <Calendar className="w-3.5 h-3.5" />
                   업로드 {Math.floor((Date.now() - new Date(creator.igDataImportedAt).getTime()) / (1000 * 60 * 60 * 24))}일 전
                 </span>
+              )}
+            </div>
+            {/* 연락 수단 */}
+            <div className="flex items-center flex-wrap gap-2 mt-3">
+              {creator.canSendDM && (
+                <div className="inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3 py-2 text-xs font-medium text-stone-700">
+                  <Instagram className="w-4 h-4 text-stone-700" />
+                  Instagram DM
+                </div>
+              )}
+              {creator.canSendEmail && (
+                <div className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700">
+                  <Mail className="w-4 h-4 text-blue-700" />
+                  이메일
+                </div>
+              )}
+              {creator.canSendAlimtalk && (
+                <div className="inline-flex items-center gap-1.5 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-xs font-medium text-green-700">
+                  <MessageSquare className="w-4 h-4 text-green-700" />
+                  알림톡
+                </div>
+              )}
+              {!creator.isContactable && (
+                <div className="inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-xs text-stone-500">
+                  연락 수단 미등록
+                </div>
               )}
             </div>
           </div>

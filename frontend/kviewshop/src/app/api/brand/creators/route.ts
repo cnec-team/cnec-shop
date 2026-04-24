@@ -4,6 +4,7 @@ import { getAuthUser } from '@/lib/auth-helpers'
 import {
   canSendAlimtalk,
   canSendEmail,
+  canSendDM,
   scoreToStarValue,
   shouldShowStarRating,
 } from '@/lib/creator/reliability'
@@ -69,6 +70,9 @@ export async function GET(request: NextRequest) {
   const excludeKeywords = excludeKeywordsParam ? excludeKeywordsParam.split(',').map(k => k.trim()).filter(Boolean) : []
   const searchScope = sp.get('searchScope') === 'bio' ? 'bio' : 'all'
   const cnecPartnerOnly = sp.get('cnecPartnerOnly') === 'true'
+  const canSendDMFilter = sp.get('canSendDM') === 'true'
+  const canSendEmailFilter = sp.get('canSendEmail') === 'true'
+  const canSendAlimtalkFilter = sp.get('canSendAlimtalk') === 'true'
   const sort = sp.get('sort') || 'followers'
   const page = Math.max(1, parseInt(sp.get('page') || '1', 10))
   const limit = Math.min(50, Math.max(1, parseInt(sp.get('limit') || '24', 10)))
@@ -101,7 +105,28 @@ export async function GET(request: NextRequest) {
   if (verified === 'true') where.igVerified = true
   if (verified === 'false') where.igVerified = false
 
-  if (cnecPartnerOnly) where.cnecIsPartner = true
+  if (cnecPartnerOnly) {
+    andConditions.push({ cnecIsPartner: true, cnecCompletedPayments: { gt: 0 } })
+  }
+
+  if (canSendDMFilter) {
+    andConditions.push({ igUsername: { not: null } })
+  }
+  if (canSendEmailFilter) {
+    andConditions.push({
+      OR: [
+        { cnecEmail1: { not: null } },
+        { cnecEmail2: { not: null } },
+        { cnecEmail3: { not: null } },
+      ],
+    })
+  }
+  if (canSendAlimtalkFilter) {
+    andConditions.push({
+      cnecPhone: { not: null },
+      cnecVerificationStatus: { in: ['VERIFIED', 'COMPLETED'] },
+    })
+  }
 
   if (updatedWithinDays) {
     const cutoff = new Date(Date.now() - updatedWithinDays * 24 * 60 * 60 * 1000)
@@ -237,8 +262,11 @@ export async function GET(request: NextRequest) {
       totalEarnings: Number(c.totalEarnings),
       totalRevenue: Number(c.totalRevenue),
       // 파생 필드
+      canSendDM: canSendDM(c.igUsername),
       canSendAlimtalk: canSendAlimtalk(c.cnecPhone, c.cnecVerificationStatus),
       canSendEmail: canSendEmail(c.cnecEmail1, c.cnecEmail2, c.cnecEmail3),
+      isContactable: canSendDM(c.igUsername) || canSendEmail(c.cnecEmail1, c.cnecEmail2, c.cnecEmail3) || canSendAlimtalk(c.cnecPhone, c.cnecVerificationStatus),
+      isVerifiedPartner: Boolean(c.cnecIsPartner) && (c.cnecCompletedPayments ?? 0) > 0,
       starRating: scoreToStarValue(reliabilityScore),
       showStarRating: shouldShowStarRating(c.cnecIsPartner, c.cnecTotalTrials, c.cnecCompletedPayments),
       // 매칭 스코어
