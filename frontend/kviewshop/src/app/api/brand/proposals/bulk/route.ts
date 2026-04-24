@@ -6,6 +6,12 @@ import { proposalGongguInviteMessage, proposalProductPickMessage, bulkSendReport
 import { canSendMessage, consumeMessageCredit } from '@/lib/subscription/check'
 import { getCreatorChannels, canProposalBeSent } from '@/lib/messaging/channel-availability'
 import { withRetry } from '@/lib/messaging/retry'
+import { isV3Plan } from '@/lib/pricing/v3/plan-resolver'
+import { chargeMessageSendV3 } from '@/lib/pricing/v3/charge-message'
+import { checkCreatorProtection, incrementCreatorProposalCount } from '@/lib/pricing/v3/creator-protection'
+import { isUpsellError, pricingLimitToUpsellContext } from '@/lib/pricing/v3/errors'
+import { PricingLimitError } from '@/lib/pricing/v3/limits'
+import { PRICING_V3 } from '@/lib/pricing/v3/constants'
 
 export async function POST(request: NextRequest) {
   try {
@@ -72,20 +78,20 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 구독 체크
-    const subCheck = await canSendMessage(brand.id)
-    if (!subCheck.ok) {
-      return NextResponse.json(
-        {
-          error: '구독이 필요합니다',
-          reason: subCheck.reason,
-          currentPlan: subCheck.plan,
-          currentUsed: subCheck.currentUsed,
-          quota: subCheck.quota,
-          upgradeUrl: '/brand/settings/subscription',
-        },
-        { status: 402 },
-      )
+    // 플랜 확인
+    const subscription = await prisma.brandSubscription.findUnique({ where: { brandId: brand.id } })
+    const v3 = isV3Plan(subscription)
+
+    // v2: 구독 체크
+    let subCheck: { ok: boolean; plan: string; currentUsed: number; quota: number; reason?: string } | null = null
+    if (!v3) {
+      subCheck = await canSendMessage(brand.id)
+      if (!subCheck.ok) {
+        return NextResponse.json(
+          { error: '구독이 필요합니다', reason: subCheck.reason, currentPlan: subCheck.plan, currentUsed: subCheck.currentUsed, quota: subCheck.quota, upgradeUrl: '/brand/settings/subscription' },
+          { status: 402 },
+        )
+      }
     }
 
     const creators = await prisma.creator.findMany({
@@ -133,7 +139,7 @@ export async function POST(request: NextRequest) {
       unreachable: 0,
     }
     const blockers = {
-      noSubscription: !subCheck.ok,
+      noSubscription: v3 ? false : !subCheck?.ok,
       noChannelNoDm: 0,
       brandIgNotLinked: 0,
     }
@@ -165,11 +171,55 @@ export async function POST(request: NextRequest) {
     // 미리보기 모드
     if (!confirm) {
       const totalCount = reachableCreators.length
-      const freeRemaining = Math.max(0, subCheck.quota - subCheck.currentUsed)
+
+      if (v3 && subscription) {
+        const sub = subscription
+        const planV3 = sub.planV3
+        let monthlyLimit: number | null = null
+        let used = 0
+        let remaining = Infinity
+
+        if (planV3 === 'TRIAL') {
+          monthlyLimit = PRICING_V3.TRIAL.INCLUDED_MESSAGES
+          used = sub.trialUsedMessages ?? 0
+          remaining = Math.max(0, monthlyLimit - used)
+        } else if (planV3 === 'STANDARD') {
+          monthlyLimit = PRICING_V3.STANDARD.MESSAGE_MONTHLY_LIMIT
+          used = sub.currentMonthMessages ?? 0
+          remaining = Math.max(0, monthlyLimit - used)
+        } else if (planV3 === 'PRO') {
+          monthlyLimit = PRICING_V3.PRO.INCLUDED_MESSAGES_MONTHLY
+          used = sub.currentMonthMessages ?? 0
+          remaining = Infinity
+        }
+
+        const canSendCount = Math.min(totalCount, remaining === Infinity ? totalCount : remaining)
+        const blocked = totalCount - canSendCount
+
+        return NextResponse.json({
+          mode: 'v3',
+          requested: totalCount,
+          canSend: canSendCount,
+          blocked,
+          monthlyLimit,
+          used,
+          remaining: remaining === Infinity ? null : remaining,
+          overageUnitPrice: planV3 === 'PRO' ? PRICING_V3.PRO.OVERAGE_MESSAGE_PRICE : null,
+          estimatedCost: planV3 === 'PRO' && used + canSendCount > (monthlyLimit ?? 0)
+            ? Math.max(0, used + canSendCount - (monthlyLimit ?? 0)) * PRICING_V3.PRO.OVERAGE_MESSAGE_PRICE
+            : 0,
+          channelBreakdown,
+          blockers,
+          skipped: existingSet.size,
+        })
+      }
+
+      const freeRemaining = Math.max(0, (subCheck?.quota ?? 0) - (subCheck?.currentUsed ?? 0))
       const freeCount = Math.min(totalCount, freeRemaining)
       const paidCount = Math.max(0, totalCount - freeCount)
 
       return NextResponse.json({
+        mode: 'v2',
         totalCount,
         freeCount,
         paidCount,
@@ -187,7 +237,9 @@ export async function POST(request: NextRequest) {
       creditType: string
       cost: number
       channelResults: Record<string, string>
+      status?: 'SENT' | 'BLOCKED_LIMIT' | 'PROTECTED' | 'FAILED'
     }> = []
+    let upsellContext: Record<string, unknown> | null = null
 
     const now = new Date()
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.cnecshop.com'
@@ -198,6 +250,16 @@ export async function POST(request: NextRequest) {
 
     for (const c of reachableCreators) {
       try {
+        // v3 크리에이터 보호 체크
+        if (v3) {
+          try {
+            await checkCreatorProtection(brand.id, c.id)
+          } catch (err) {
+            if (isUpsellError(err)) throw err
+            continue // PricingLimitError → 스킵
+          }
+        }
+
         const channels = getCreatorChannels(c)
         const attemptedChannels: string[] = []
         const succeededChannels: string[] = []
@@ -208,13 +270,26 @@ export async function POST(request: NextRequest) {
         if (channels.kakao) attemptedChannels.push('KAKAO')
         if (useDm) attemptedChannels.push('DM')
 
-        const credit = await consumeMessageCredit(
-          brand.id,
-          null,
-          c.id,
-          attemptedChannels,
-          succeededChannels,
-        )
+        // 메시지 과금 (v3/v2 분기)
+        let credit: { creditId: string; type: string; cost: number }
+        if (v3) {
+          try {
+            await chargeMessageSendV3(brand.id, c.id)
+          } catch (err) {
+            if (isUpsellError(err)) throw err
+            if (err instanceof PricingLimitError) {
+              const ctx = pricingLimitToUpsellContext(err.code, err.message)
+              if (ctx) { upsellContext = ctx; break }
+            }
+            throw err
+          }
+          const mc = await prisma.messageCredit.create({
+            data: { brandId: brand.id, type: 'SUBSCRIPTION_FREE', cost: 0, pricePerMessage: 0, attemptedChannels, succeededChannels, creatorId: c.id },
+          })
+          credit = { creditId: mc.id, type: 'SUBSCRIPTION_FREE', cost: 0 }
+        } else {
+          credit = await consumeMessageCredit(brand.id, null, c.id, attemptedChannels, succeededChannels)
+        }
 
         const proposal = await prisma.creatorProposal.create({
           data: {
@@ -410,14 +485,20 @@ export async function POST(request: NextRequest) {
           },
         })
 
+        if (v3) {
+          incrementCreatorProposalCount(c.id).catch(err => console.error('[incrementCreatorProposalCount]', err))
+        }
+
         results.push({
           creatorId: c.id,
           proposalId: proposal.id,
           creditType: credit.type,
           cost: credit.cost,
           channelResults,
+          status: 'SENT',
         })
-      } catch {
+      } catch (err) {
+        if (isUpsellError(err)) { upsellContext = err.toJSON(); break }
         // 개별 크리에이터 실패 시 건너뛰기
       }
     }
@@ -458,8 +539,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const sentCount = results.filter(r => r.status === 'SENT').length
+
+    if (upsellContext) {
+      return NextResponse.json(
+        { partial: true, created: sentCount, skipped: existingSet.size, unreachable: channelBreakdown.unreachable, results, upsell: upsellContext },
+        { status: 402 },
+      )
+    }
+
     return NextResponse.json({
-      created: results.length,
+      created: sentCount || results.length,
       skipped: existingSet.size,
       unreachable: channelBreakdown.unreachable,
       results,

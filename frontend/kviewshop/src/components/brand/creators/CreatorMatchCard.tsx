@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { Mail, Bookmark, Sparkles, Star, Users, ShieldCheck, TrendingUp, Calendar, CheckCircle2 } from 'lucide-react'
+import { Mail, MessageSquare, Instagram, Bookmark, Sparkles, Star, Users, ShieldCheck, TrendingUp, Calendar, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
@@ -42,6 +42,7 @@ interface Props {
   creator: CreatorMatchCardData
   selected: boolean
   onToggleSelect: () => void
+  onPropose?: () => void
 }
 
 function scoreColor(score: number) {
@@ -92,7 +93,7 @@ function getAudienceLabel(genderRatio: Record<string, number> | null | undefined
   return { gender, topAge, topPercent: Math.round(female >= male ? female : male) }
 }
 
-export function CreatorMatchCard({ creator, selected, onToggleSelect }: Props) {
+export function CreatorMatchCard({ creator, selected, onToggleSelect, onPropose }: Props) {
   const daysSince = daysAgo(creator.igDataImportedAt)
   const dateStr = formatDate(creator.igDataImportedAt)
   const profileImg = creator.igProfileImageR2Url || creator.igProfilePicUrl
@@ -179,6 +180,30 @@ export function CreatorMatchCard({ creator, selected, onToggleSelect }: Props) {
         </div>
       </Link>
 
+      {/* 연락 수단 뱃지 */}
+      {(creator.canSendEmail || creator.canSendAlimtalk || creator.igUsername) && (
+        <div className="flex items-center flex-wrap gap-1.5 mb-2">
+          {creator.igUsername && (
+            <span className="inline-flex items-center gap-0.5 text-[10px] text-stone-600 bg-stone-50 border border-stone-200 rounded-full px-2 py-0.5">
+              <Instagram className="w-2.5 h-2.5" />
+              DM
+            </span>
+          )}
+          {creator.canSendEmail && (
+            <span className="inline-flex items-center gap-0.5 text-[10px] text-blue-700 bg-blue-50 border border-blue-200 rounded-full px-2 py-0.5">
+              <Mail className="w-2.5 h-2.5" />
+              이메일
+            </span>
+          )}
+          {creator.canSendAlimtalk && (
+            <span className="inline-flex items-center gap-0.5 text-[10px] text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5">
+              <MessageSquare className="w-2.5 h-2.5" />
+              알림톡
+            </span>
+          )}
+        </div>
+      )}
+
       {/* 시청자 정합 */}
       {audience && (
         <div className="flex items-center gap-1 text-xs text-stone-600 mb-3">
@@ -245,8 +270,8 @@ export function CreatorMatchCard({ creator, selected, onToggleSelect }: Props) {
 
       {/* CTA */}
       <div className="flex items-center gap-2">
-        <Button asChild className="flex-1 rounded-lg bg-stone-900 text-white hover:bg-stone-800" size="sm">
-          <Link href={`/brand/creators/${creator.id}?action=propose`}>공동구매 제안</Link>
+        <Button className="flex-1 rounded-lg bg-stone-900 text-white hover:bg-stone-800" size="sm" onClick={onPropose}>
+          공동구매 제안
         </Button>
         <Button asChild variant="outline" size="sm" className="rounded-lg">
           <Link href={`/brand/creators/${creator.id}`}>프로필</Link>

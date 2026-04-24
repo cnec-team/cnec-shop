@@ -8,8 +8,10 @@ import {
   shouldShowStarRating,
 } from '@/lib/creator/reliability'
 import type { Prisma } from '@/generated/prisma/client'
-import { getCategorySearchTerms } from '@/lib/utils/beauty-labels'
+import { buildCategoryWhereClause } from '@/lib/creator-match/category-keywords'
 import { batchCalculateMatchScores } from '@/lib/creator-match/calculate-score'
+import { checkDailyDbLimit, incrementDailyDbView, PricingLimitError } from '@/lib/pricing/v3/limits'
+import { isUpsellError, pricingLimitToUpsellContext } from '@/lib/pricing/v3/errors'
 
 export async function GET(request: NextRequest) {
   const authUser = await getAuthUser()
@@ -33,6 +35,23 @@ export async function GET(request: NextRequest) {
 
   if (!brandId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // v3 일일 DB 열람 제한 체크
+  try {
+    await checkDailyDbLimit(brandId)
+  } catch (err) {
+    if (isUpsellError(err)) {
+      return NextResponse.json({ error: 'UPSELL_REQUIRED', upsell: (err as any).toJSON() }, { status: 402 })
+    }
+    if (err instanceof PricingLimitError) {
+      const upsellCtx = pricingLimitToUpsellContext(err.code, err.message)
+      if (upsellCtx) {
+        return NextResponse.json({ error: 'UPSELL_REQUIRED', upsell: upsellCtx, message: err.message }, { status: 402 })
+      }
+      return NextResponse.json({ error: err.code, message: err.message }, { status: 403 })
+    }
+    throw err
   }
 
   const sp = request.nextUrl.searchParams
@@ -68,12 +87,8 @@ export async function GET(request: NextRequest) {
   const andConditions: Prisma.CreatorWhereInput[] = []
 
   if (categories.length > 0) {
-    const categoryConditions = categories.flatMap(cat =>
-      getCategorySearchTerms(cat).map(term => ({
-        igCategory: { contains: term, mode: 'insensitive' as const },
-      }))
-    )
-    andConditions.push({ OR: categoryConditions })
+    const catClause = buildCategoryWhereClause(categories)
+    if (catClause) andConditions.push(catClause)
   }
 
   if (minEngagement !== undefined || maxEngagement !== undefined) {
@@ -262,6 +277,9 @@ export async function GET(request: NextRequest) {
       ) / 100
     : 0
 
+
+  // v3 일일 DB 열람 횟수 증가 (비동기)
+  incrementDailyDbView(brandId).catch(err => console.error('[incrementDailyDbView]', err))
   return NextResponse.json({
     creators: enriched,
     total,

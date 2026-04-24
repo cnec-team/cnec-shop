@@ -24,8 +24,23 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { useUpsellModal } from '@/lib/store/upsell'
+import { toast } from 'sonner'
 
-const fetcher = (url: string) => fetch(url).then(r => r.json())
+const fetcher = async (url: string) => {
+  const res = await fetch(url)
+  if (res.status === 402) {
+    const d = await res.json()
+    if (d?.upsell) {
+      const err = new Error('UPSELL_REQUIRED') as Error & { upsell: unknown; message402: string }
+      err.upsell = d.upsell
+      err.message402 = d.message ?? ''
+      throw err
+    }
+  }
+  if (!res.ok) throw new Error('API 요청 실패')
+  return res.json()
+}
 
 function CreatorExplorerContent() {
   const router = useRouter()
@@ -57,7 +72,17 @@ function CreatorExplorerContent() {
     ? `/api/brand/creators?${qs}`
     : `/api/brand/creators?${qs}${qs ? '&' : ''}sort=matchScore`
 
-  const { data, isLoading, mutate } = useSWR(apiUrl, fetcher, { revalidateOnFocus: false })
+  const { open: openUpsell } = useUpsellModal()
+
+  const { data, isLoading, mutate } = useSWR(apiUrl, fetcher, {
+    revalidateOnFocus: false,
+    onError: (err: Error & { upsell?: unknown; message402?: string }) => {
+      if (err?.upsell) {
+        openUpsell(err.upsell as import('@/lib/pricing/v3/errors').UpsellContext)
+        if (err.message402) toast.error(err.message402)
+      }
+    },
+  })
 
   const creators = data?.creators ?? []
   const total = data?.total ?? 0

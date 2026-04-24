@@ -8,6 +8,10 @@ import {
   scoreToStarValue,
   shouldShowStarRating,
 } from '@/lib/creator/reliability'
+import { checkRapidDetailView } from '@/lib/pricing/v3/abuse-detection'
+import { chargeDetailView } from '@/lib/pricing/v3/charge-detail-view'
+import { PricingLimitError } from '@/lib/pricing/v3/limits'
+import { isUpsellError, pricingLimitToUpsellContext } from '@/lib/pricing/v3/errors'
 
 export async function GET(
   _request: NextRequest,
@@ -36,7 +40,34 @@ export async function GET(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  // 1. 악용 탐지 (50회/시간)
+  try {
+    await checkRapidDetailView(brandId)
+  } catch (err) {
+    if (err instanceof PricingLimitError && err.code === 'RAPID_DETAIL_VIEW') {
+      return NextResponse.json({ error: 'RATE_LIMITED', message: err.message }, { status: 429 })
+    }
+    throw err
+  }
+
   const { id } = await params
+
+  // 2. v3 상세 조회 제한 + 카운터 증가
+  try {
+    await chargeDetailView(brandId, id)
+  } catch (err) {
+    if (isUpsellError(err)) {
+      return NextResponse.json({ error: 'UPSELL_REQUIRED', upsell: err.toJSON() }, { status: 402 })
+    }
+    if (err instanceof PricingLimitError) {
+      const upsellCtx = pricingLimitToUpsellContext(err.code, err.message)
+      if (upsellCtx) {
+        return NextResponse.json({ error: 'UPSELL_REQUIRED', upsell: upsellCtx, message: err.message }, { status: 402 })
+      }
+      return NextResponse.json({ error: err.code, message: err.message }, { status: 400 })
+    }
+    throw err
+  }
 
   const creator = await prisma.creator.findUnique({ where: { id } })
   if (!creator) {
