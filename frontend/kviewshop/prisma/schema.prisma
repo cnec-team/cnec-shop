@@ -442,6 +442,13 @@ model User {
   notifications     Notification[]
   answeredQuestions ProductQuestion[] @relation("QuestionAnswerer")
 
+  lastLoginAt         DateTime?  @map("last_login_at") @db.Timestamptz
+  lastLoginIp         String?    @map("last_login_ip")
+  lastLoginUserAgent  String?    @map("last_login_user_agent")
+  dormantWarnedAt     DateTime?  @map("dormant_warned_at") @db.Timestamptz
+  dormantAt           DateTime?  @map("dormant_at") @db.Timestamptz
+  birthday            DateTime?  @db.Date
+
   @@map("users")
 }
 
@@ -877,7 +884,9 @@ model Product {
   recentViews      RecentView[]
   // PPM relations
   productIngredients ProductIngredient[]
-  matchScores        MatchScore[]
+  matchScores                MatchScore[]
+  restockNotificationEnabled Boolean   @default(false) @map("restock_notification_enabled")
+  lastLowStockAlertAt        DateTime? @map("last_low_stock_alert_at") @db.Timestamptz
 
   @@index([isActive])
   @@index([status])
@@ -2012,7 +2021,8 @@ model Cart {
   shop      Creator    @relation(fields: [shopId], references: [id], onDelete: Cascade)
   createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
-  items     CartItem[]
+  items          CartItem[]
+  reminderSentAt DateTime? @map("reminder_sent_at") @db.Timestamptz
 
   @@unique([buyerId, shopId])
   @@unique([cookieKey, shopId])
@@ -2885,4 +2895,60 @@ model AuditLog {
   @@index([targetType, targetId])
   @@index([action, createdAt])
   @@map("audit_logs")
+}
+
+// ============================================================
+// NOTIFICATION INFRASTRUCTURE
+// ============================================================
+
+model NotificationLog {
+  id               String   @id @default(cuid())
+  userId           String?  @map("user_id")
+  notificationType String   @map("notification_type")
+  channel          String
+  status           String
+  errorMessage     String?  @map("error_message")
+  payload          Json?    @db.JsonB
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([userId, createdAt])
+  @@index([notificationType, createdAt])
+  @@map("notification_logs")
+}
+
+model CronJobLog {
+  id        String    @id @default(cuid())
+  jobName   String    @map("job_name")
+  startedAt DateTime  @default(now()) @map("started_at") @db.Timestamptz
+  endedAt   DateTime? @map("ended_at") @db.Timestamptz
+  processed Int       @default(0)
+  failed    Int       @default(0)
+  status    String
+  error     String?
+
+  @@index([jobName, startedAt])
+  @@map("cron_job_logs")
+}
+
+model RestockSubscription {
+  id         String    @id @default(cuid())
+  userId     String    @map("user_id")
+  productId  String    @map("product_id")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  notifiedAt DateTime? @map("notified_at") @db.Timestamptz
+
+  @@unique([userId, productId])
+  @@index([productId])
+  @@map("restock_subscriptions")
+}
+
+model Follow {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  creatorId String   @map("creator_id")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([userId, creatorId])
+  @@index([creatorId])
+  @@map("follows")
 }
