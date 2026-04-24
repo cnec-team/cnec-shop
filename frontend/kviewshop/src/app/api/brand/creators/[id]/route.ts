@@ -14,16 +14,26 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const authUser = await getAuthUser()
-  if (!authUser || authUser.role !== 'brand_admin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  let brandId: string | undefined
+
+  if (authUser?.role === 'brand_admin') {
+    const brand = await prisma.brand.findFirst({
+      where: { userId: authUser.id },
+      select: { id: true },
+    })
+    brandId = brand?.id
   }
 
-  const brand = await prisma.brand.findFirst({
-    where: { userId: authUser.id },
-    select: { id: true },
-  })
-  if (!brand) {
-    return NextResponse.json({ error: 'Brand not found' }, { status: 404 })
+  // dev fallback
+  if (!brandId && process.env.NODE_ENV === 'development') {
+    const firstBrand = await prisma.brand.findFirst({ select: { id: true } })
+    brandId = firstBrand?.id
+    if (brandId) console.log('[dev fallback] using first brand:', brandId)
+  }
+
+  if (!brandId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const { id } = await params
@@ -34,7 +44,7 @@ export async function GET(
   }
 
   // 매칭 스코어 계산
-  const matchScore = await getOrCalculateMatchScore(id, brand.id)
+  const matchScore = await getOrCalculateMatchScore(id, brandId)
 
   // 캠페인 이력
   const participations = await prisma.campaignParticipation.findMany({
