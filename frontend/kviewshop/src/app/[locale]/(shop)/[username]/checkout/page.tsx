@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCartStore, useAuthStore } from '@/lib/store/auth';
@@ -15,8 +15,10 @@ import {
   X,
   Search,
   Lightbulb,
+  AlertCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import type { TossPaymentsWidgets } from '@tosspayments/tosspayments-sdk';
 
 // =============================================
 // Helpers
@@ -63,13 +65,7 @@ const DELIVERY_MEMOS = [
   '직접 입력',
 ];
 
-const PAYMENT_METHODS = [
-  { value: 'card', label: '신용카드', payMethod: 'CARD' as const, easyPayProvider: undefined },
-  { value: 'kakao', label: '카카오페이', payMethod: 'EASY_PAY' as const, easyPayProvider: 'KAKAOPAY' as const },
-  { value: 'naver', label: '네이버페이', payMethod: 'EASY_PAY' as const, easyPayProvider: 'NAVERPAY' as const },
-  { value: 'toss', label: '토스페이', payMethod: 'EASY_PAY' as const, easyPayProvider: 'TOSSPAY' as const },
-  { value: 'bank_transfer', label: '무통장입금', payMethod: 'BANK_TRANSFER' as const, easyPayProvider: undefined },
-];
+const TOSS_CLIENT_KEY = process.env.NEXT_PUBLIC_TOSS_PAYMENTS_CLIENT_KEY;
 
 // =============================================
 // Main Component
@@ -94,11 +90,16 @@ export default function CheckoutPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [creator, setCreator] = useState<any>(null);
   const [cartItems, setCartItems] = useState<CartItemWithProduct[]>([]);
-  const [selectedPayment, setSelectedPayment] = useState('card');
+  const [isBankTransfer, setIsBankTransfer] = useState(false);
   const [deliveryMemo, setDeliveryMemo] = useState('선택하세요');
 
   const [depositorName, setDepositorName] = useState('');
   const [returnUrl, setReturnUrl] = useState('');
+
+  // 결제위젯 상태
+  const [widgets, setWidgets] = useState<TossPaymentsWidgets | null>(null);
+  const [widgetReady, setWidgetReady] = useState(false);
+  const [widgetError, setWidgetError] = useState<string | null>(null);
 
   // Orderer / Shipping split
   const [sameAsOrderer, setSameAsOrderer] = useState(true);
@@ -352,6 +353,87 @@ export default function CheckoutPage() {
 
   const totalAmount = productAmount + shippingFee;
 
+  // =============================================
+  // 결제위젯 초기화
+  // =============================================
+
+  // customerKey 생성 (회원: buyer ID, 비회원: 세션 UUID)
+  const getCustomerKey = useCallback(() => {
+    if (buyer?.id) return buyer.id;
+    let key = sessionStorage.getItem('cnec-guest-customer-key');
+    if (!key) {
+      key = crypto.randomUUID();
+      sessionStorage.setItem('cnec-guest-customer-key', key);
+    }
+    return key;
+  }, [buyer?.id]);
+
+  // 1. SDK 초기화 + 위젯 생성
+  useEffect(() => {
+    if (!TOSS_CLIENT_KEY || isBankTransfer || cartItems.length === 0) return;
+
+    let cancelled = false;
+
+    async function init() {
+      try {
+        const { loadTossPayments } = await import('@tosspayments/tosspayments-sdk');
+        const tossPayments = await loadTossPayments(TOSS_CLIENT_KEY!);
+        const customerKey = getCustomerKey();
+        const w = tossPayments.widgets({ customerKey });
+        if (!cancelled) {
+          setWidgets(w);
+          setWidgetError(null);
+        }
+      } catch {
+        if (!cancelled) {
+          setWidgetError('결제 시스템을 불러오지 못했어요. 새로고침 후 다시 시도해주세요.');
+        }
+      }
+    }
+
+    init();
+    return () => { cancelled = true; };
+  }, [isBankTransfer, cartItems.length, getCustomerKey]);
+
+  // 2. 금액 설정 + UI 렌더링
+  useEffect(() => {
+    if (!widgets || totalAmount <= 0) return;
+
+    let cancelled = false;
+
+    async function render() {
+      try {
+        await widgets!.setAmount({ currency: 'KRW', value: totalAmount });
+
+        await Promise.all([
+          widgets!.renderPaymentMethods({
+            selector: '#payment-method',
+            variantKey: 'DEFAULT',
+          }),
+          widgets!.renderAgreement({
+            selector: '#agreement',
+            variantKey: 'AGREEMENT',
+          }),
+        ]);
+
+        if (!cancelled) setWidgetReady(true);
+      } catch {
+        if (!cancelled) {
+          setWidgetError('결제 UI를 불러오지 못했어요. 새로고침 후 다시 시도해주세요.');
+        }
+      }
+    }
+
+    render();
+    return () => { cancelled = true; };
+  }, [widgets, totalAmount]);
+
+  // 3. 금액 변경 시 업데이트 (수량 변경 등)
+  useEffect(() => {
+    if (!widgets || !widgetReady || totalAmount <= 0) return;
+    widgets.setAmount({ currency: 'KRW', value: totalAmount });
+  }, [widgets, widgetReady, totalAmount]);
+
   const validateForm = (): boolean => {
     if (!ordererForm.name.trim()) { toast.error('주문자 이름을 입력해주세요.'); return false; }
     if (!ordererForm.phone.trim()) { toast.error('주문자 전화번호를 입력해주세요.'); return false; }
@@ -366,8 +448,6 @@ export default function CheckoutPage() {
     if (!shippingForm.zipcode.trim()) { toast.error('우편번호를 입력해주세요.'); return false; }
     return true;
   };
-
-  const isBankTransfer = selectedPayment === 'bank_transfer';
 
   // 공통: 주문 생성 (prepare API 호출)
   const createOrder = async () => {
@@ -416,11 +496,10 @@ export default function CheckoutPage() {
   const handleCheckout = async () => {
     if (!validateForm() || !creator || isProcessing) return;
 
-    // 무통장입금이 아닌 경우에만 토스 결제 설정 확인
+    // 결제위젯 준비 확인 (무통장입금이 아닌 경우)
     if (!isBankTransfer) {
-      const tossClientKey = process.env.NEXT_PUBLIC_TOSS_PAYMENTS_CLIENT_KEY;
-      if (!tossClientKey) {
-        toast.error('결제 시스템 설정이 완료되지 않았습니다. 관리자에게 문의해주세요.');
+      if (!widgets || !widgetReady) {
+        toast.error('결제 시스템이 아직 준비되지 않았어요. 잠시 후 다시 시도해주세요.');
         return;
       }
     }
@@ -432,7 +511,7 @@ export default function CheckoutPage() {
       const prepareData = await createOrder();
       const { orderId, orderNumber, totalAmount: serverTotal, bankInfo } = prepareData;
 
-      // 무통장입금: PortOne 스킵, 바로 주문 완료 페이지로 이동
+      // 무통장입금: 바로 주문 완료 페이지로 이동
       if (isBankTransfer) {
         sessionStorage.setItem('cnec-order-complete', JSON.stringify({
           orderNumber,
@@ -464,40 +543,17 @@ export default function CheckoutPage() {
         return;
       }
 
-      // 2. 토스페이먼츠 SDK 로드 및 결제 요청
-      const tossClientKey = process.env.NEXT_PUBLIC_TOSS_PAYMENTS_CLIENT_KEY!;
-
-      let tossModule;
-      try {
-        tossModule = await import('@tosspayments/tosspayments-sdk');
-      } catch {
-        throw new Error('결제 시스템을 불러오는 중 문제가 생겼어요. 새로고침 후 다시 시도해주세요.');
-      }
-
+      // 2. 결제위젯으로 결제 요청
       const firstItem = cartItems[0];
       const orderName =
         cartItems.length === 1
           ? (firstItem.product?.name || firstItem.product?.nameKo || '상품')
           : `${firstItem.product?.name || firstItem.product?.nameKo || '상품'} 외 ${cartItems.length - 1}건`;
 
-      // customerKey: 회원은 buyer ID, 비회원은 세션 UUID
-      let customerKey = buyer?.id || sessionStorage.getItem('cnec-guest-customer-key');
-      if (!customerKey) {
-        customerKey = crypto.randomUUID();
-        sessionStorage.setItem('cnec-guest-customer-key', customerKey);
-      }
-
-      const tossPayments = await tossModule.loadTossPayments(tossClientKey);
-      const payment = tossPayments.payment({ customerKey });
-
-      // 성공/실패 URL에 orderId 포함
       const successUrl = `${window.location.origin}/${locale}/payment/success?orderId=${orderId}`;
       const failUrl = `${window.location.origin}/${locale}/payment/fail?orderId=${orderId}`;
 
-      // 토스 결제 요청 (리다이렉트 방식)
-      await payment.requestPayment({
-        method: 'CARD',
-        amount: { currency: 'KRW', value: Number(serverTotal) },
+      await widgets!.requestPayment({
         orderId,
         orderName,
         customerEmail: form.email,
@@ -505,45 +561,9 @@ export default function CheckoutPage() {
         customerMobilePhone: form.phone.replace(/-/g, ''),
         successUrl,
         failUrl,
-        card: {
-          useEscrow: false,
-          flowMode: 'DEFAULT',
-          useCardPoint: false,
-          useAppCardOnly: false,
-        },
       });
 
-      // 토스는 리다이렉트 방식이므로 여기에 도달하지 않음 (팝업이 아닌 경우)
-      // 모바일에서는 리다이렉트, 데스크톱에서도 리다이렉트
-      return;
-
-      // 아래 코드는 토스 리다이렉트 후 /payment/success에서 처리
-      const completeOrderNumber = orderNumber;
-      sessionStorage.setItem('cnec-order-complete', JSON.stringify({
-        orderNumber: completeOrderNumber,
-        totalAmount: Number(serverTotal),
-        createdAt: new Date().toISOString(),
-        shopUsername: username,
-        creatorName: creator.displayName || username,
-        isLoggedIn: !!buyer,
-        items: cartItems.map((item) => ({
-          id: item.productId,
-          productName: item.product?.name || item.product?.nameKo || '상품',
-          productImage: item.product?.images?.[0] || item.product?.imageUrl || null,
-          quantity: item.quantity,
-          unitPrice: Number(item.unitPrice),
-          totalPrice: Number(item.unitPrice) * item.quantity,
-        })),
-        shippingAddress: form.address + (form.addressDetail ? ' ' + form.addressDetail : ''),
-        buyerName: form.name,
-        buyerPhone: form.phone,
-        shippingFee,
-        brandName: cartItems[0]?.product?.brand?.brandName || undefined,
-      }));
-      checkoutDoneRef.current = true;
-      clearCart();
-      if (creator?.id) clearServerCart(creator.id).catch(() => {});
-      router.push(`/${locale}/${username}/order-complete?orderNumber=${completeOrderNumber}`);
+      // 리다이렉트 방식이므로 여기에 도달하지 않음
     } catch (error: unknown) {
       console.error('Checkout failed:', error);
       toast.error(error instanceof Error ? error.message : '네트워크 오류가 발생했어요. 다시 시도해주세요.');
@@ -846,44 +866,23 @@ export default function CheckoutPage() {
           </div>
         </div>
 
-        {/* Payment Method */}
+        {/* 결제 방식 선택: 위젯 vs 무통장입금 */}
         <div className="bg-white rounded-2xl p-5">
           <h2 className="text-base font-semibold text-gray-900 mb-4">결제 수단</h2>
-          <div className="space-y-2">
-            {PAYMENT_METHODS.map((method) => (
-              <label
-                key={method.value}
-                className={`flex items-center gap-3 p-3.5 rounded-xl border cursor-pointer transition-colors ${
-                  selectedPayment === method.value
-                    ? 'border-gray-900 bg-gray-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value={method.value}
-                  checked={selectedPayment === method.value}
-                  onChange={() => setSelectedPayment(method.value)}
-                  className="sr-only"
-                />
-                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                  selectedPayment === method.value
-                    ? 'border-gray-900'
-                    : 'border-gray-300'
-                }`}>
-                  {selectedPayment === method.value && (
-                    <div className="w-2.5 h-2.5 rounded-full bg-gray-900" />
-                  )}
-                </div>
-                <span className="text-sm text-gray-900">{method.label}</span>
-              </label>
-            ))}
-          </div>
 
-          {/* 무통장입금 선택 시 입금자명 입력 */}
-          {isBankTransfer && (
-            <div className="mt-4 space-y-1.5">
+          {/* 무통장입금 토글 */}
+          <label className="flex items-center gap-3 p-3.5 rounded-xl border cursor-pointer transition-colors border-gray-200 hover:border-gray-300 mb-3">
+            <input
+              type="checkbox"
+              checked={isBankTransfer}
+              onChange={(e) => setIsBankTransfer(e.target.checked)}
+              className="w-4 h-4 rounded border-gray-300 text-gray-900 focus:ring-gray-900"
+            />
+            <span className="text-sm text-gray-900">무통장입금으로 결제</span>
+          </label>
+
+          {isBankTransfer ? (
+            <div className="space-y-1.5">
               <label className="text-xs font-medium text-gray-500">입금자명</label>
               <input
                 type="text"
@@ -893,6 +892,38 @@ export default function CheckoutPage() {
                 className="w-full h-11 px-4 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-300"
               />
             </div>
+          ) : (
+            <>
+              {/* 결제위젯 에러 */}
+              {widgetError && (
+                <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 text-sm text-red-600 mb-3">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span>{widgetError}</span>
+                </div>
+              )}
+
+              {/* 결제위젯 로딩 */}
+              {!widgetReady && !widgetError && TOSS_CLIENT_KEY && (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                  <span className="ml-2 text-sm text-gray-400">결제 정보를 불러오고 있어요</span>
+                </div>
+              )}
+
+              {/* 클라이언트 키 미설정 */}
+              {!TOSS_CLIENT_KEY && (
+                <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 text-sm text-red-600">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span>결제 시스템 설정이 완료되지 않았습니다. 관리자에게 문의해주세요.</span>
+                </div>
+              )}
+
+              {/* 토스 결제 UI 렌더링 영역 */}
+              <div id="payment-method" className="w-full" />
+
+              {/* 토스 약관 UI 렌더링 영역 */}
+              <div id="agreement" className="w-full" />
+            </>
           )}
         </div>
 
@@ -932,7 +963,7 @@ export default function CheckoutPage() {
         <div className="max-w-lg mx-auto px-4 py-3">
           <button
             onClick={handleCheckout}
-            disabled={isProcessing}
+            disabled={isProcessing || (!isBankTransfer && (!widgetReady || !TOSS_CLIENT_KEY))}
             className="w-full h-14 bg-gray-900 text-white rounded-xl font-semibold text-base hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isProcessing ? (
