@@ -12,6 +12,7 @@ export const ADMIN_ROUTES: Record<string, { label: string; parent?: string }> = 
   '/admin/samples': { label: '샘플 관리', parent: '/admin' },
   '/admin/orders': { label: '주문 관리', parent: '/admin' },
   '/admin/settlements': { label: '정산 관리', parent: '/admin' },
+  '/admin/settlements/[id]': { label: '정산 상세', parent: '/admin/settlements' },
   '/admin/broadcast': { label: '공지 발송', parent: '/admin' },
   '/admin/activity': { label: '활동 로그', parent: '/admin' },
   '/admin/guides': { label: '가이드 관리', parent: '/admin' },

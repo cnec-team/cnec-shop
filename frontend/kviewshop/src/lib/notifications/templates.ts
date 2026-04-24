@@ -19,6 +19,9 @@ export const KAKAO_TEMPLATES = {
   CREATOR_APPLICATION_SUBMITTED: 'CNECSHOP_015',
   CREATOR_APPROVED: 'CNECSHOP_016',
   CREATOR_REJECTED: 'CNECSHOP_017',
+  SETTLEMENT_PAID: 'CNECSHOP_026',
+  SETTLEMENT_HELD: 'CNECSHOP_027',
+  SETTLEMENT_CANCELLED: 'CNECSHOP_028',
 } as const
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.cnecshop.com'
@@ -2340,6 +2343,124 @@ export function creatorWeeklySummaryMessage(data: {
       title: '이번 주 판매 요약',
       message: `수익 ${formatKRW(data.totalRevenue)} (${data.revenueChangePercent > 0 ? '+' : ''}${data.revenueChangePercent}%)`,
       linkUrl: '/creator/dashboard',
+    },
+  }
+}
+
+// ---------- 26. 정산 지급 완료 → 브랜드/크리에이터 ----------
+
+export function settlementPaidMessage(data: {
+  recipientName: string
+  amount: number
+  paidAt: string
+  memo: string
+  recipientEmail?: string
+}) {
+  const kakaoMsg = `[크넥샵] 정산 완료\n\n${data.recipientName}님, 정산이 완료되었어요.\n\n정산금액: ${formatPrice(data.amount)}\n정산일시: ${data.paidAt}\n메모: ${data.memo}`
+
+  return {
+    kakao: { templateCode: KAKAO_TEMPLATES.SETTLEMENT_PAID, message: kakaoMsg },
+    email: {
+      subject: `[크넥샵] 정산 완료 — ${formatPrice(data.amount)}이 지급되었어요`,
+      html: renderEmail({
+        recipientType: 'brand',
+        statusBadge: { text: '정산 완료', variant: 'success' },
+        preheader: `${formatPrice(data.amount)}이 지급 완료되었어요`,
+        heroTitle: `${data.recipientName}님, 정산이 완료되었어요`,
+        heroSubtitle: '아래 금액이 지급 처리되었습니다.',
+        sections: [
+          emailInfoTable([
+            { label: '수령인', value: data.recipientName },
+            { label: '정산일시', value: data.paidAt },
+            { label: '메모', value: data.memo },
+          ]),
+          emailAmountBox('정산 금액', data.amount),
+        ],
+        primaryAction: { text: '정산 내역 보기', url: `${SITE_URL}/ko/brand/settlements` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SETTLEMENT',
+      title: '정산이 완료되었습니다',
+      message: `${formatPrice(data.amount)} 지급 완료`,
+      linkUrl: '/brand/settlements',
+    },
+  }
+}
+
+// ---------- 27. 정산 보류 → 브랜드/크리에이터 ----------
+
+export function settlementHeldMessage(data: {
+  recipientName: string
+  reason: string
+  recipientEmail?: string
+}) {
+  const kakaoMsg = `[크넥샵] 정산 보류\n\n${data.recipientName}님, 정산이 일시 보류되었어요.\n\n사유: ${data.reason}\n\n자세한 내용은 고객센터로 문의해주세요.`
+
+  return {
+    kakao: { templateCode: KAKAO_TEMPLATES.SETTLEMENT_HELD, message: kakaoMsg },
+    email: {
+      subject: `[크넥샵] 정산 보류 안내`,
+      html: renderEmail({
+        recipientType: 'brand',
+        statusBadge: { text: '정산 보류', variant: 'warning' },
+        preheader: '정산이 일시 보류되었어요',
+        heroTitle: `${data.recipientName}님, 정산이 보류되었어요`,
+        heroSubtitle: '아래 사유로 정산 지급이 일시 보류되었습니다.',
+        sections: [
+          emailInfoTable([
+            { label: '사유', value: data.reason, emphasis: true },
+          ]),
+          emailNoticeBox('궁금한 점은 support@cnecshop.com으로 문의해주세요.', 'warning'),
+        ],
+        primaryAction: { text: '문의하기', url: `${SITE_URL}/ko/support` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SETTLEMENT',
+      title: '정산이 보류되었습니다',
+      message: `사유: ${data.reason}`,
+      linkUrl: '/brand/settlements',
+    },
+  }
+}
+
+// ---------- 28. 정산 취소 → 브랜드/크리에이터 ----------
+
+export function settlementCancelledMessage(data: {
+  recipientName: string
+  reason: string
+  recipientEmail?: string
+}) {
+  const kakaoMsg = `[크넥샵] 정산 취소\n\n${data.recipientName}님, 정산이 취소되었어요.\n\n사유: ${data.reason}\n\n재정산 관련 문의는 고객센터로 연락주세요.`
+
+  return {
+    kakao: { templateCode: KAKAO_TEMPLATES.SETTLEMENT_CANCELLED, message: kakaoMsg },
+    email: {
+      subject: `[크넥샵] 정산 취소 안내`,
+      html: renderEmail({
+        recipientType: 'brand',
+        statusBadge: { text: '정산 취소', variant: 'warning' },
+        preheader: '정산이 취소되었어요',
+        heroTitle: `${data.recipientName}님, 정산이 취소되었어요`,
+        heroSubtitle: '아래 사유로 정산이 취소되었습니다.',
+        sections: [
+          emailInfoTable([
+            { label: '취소 사유', value: data.reason, emphasis: true },
+          ]),
+          emailNoticeBox('재정산이 필요하시면 support@cnecshop.com으로 문의해주세요.', 'info'),
+        ],
+        primaryAction: { text: '문의하기', url: `${SITE_URL}/ko/support` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SETTLEMENT',
+      title: '정산이 취소되었습니다',
+      message: `사유: ${data.reason}`,
+      linkUrl: '/brand/settlements',
     },
   }
 }

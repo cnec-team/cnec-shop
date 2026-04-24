@@ -564,7 +564,104 @@
     "creatorManagement": "크리에이터 관리",
     "creatorManagementDesc": "등록된 크리에이터를 관리합니다",
     "settlementManagement": "정산 관리",
-    "settlementManagementDesc": "크리에이터 정산을 처리합니다",
+    "settlementManagementDesc": "정산 지급/보류/취소를 관리합니다",
+    "settlements": {
+      "title": "정산 관리",
+      "description": "정산 지급/보류/취소를 관리합니다",
+      "summary": {
+        "pending": "지급 대기",
+        "hold": "보류",
+        "paidThisMonth": "이번 달 지급 완료",
+        "cancelledThisMonth": "이번 달 취소"
+      },
+      "filter": {
+        "status": "상태",
+        "brand": "브랜드",
+        "period": "정산 기간",
+        "search": "검색",
+        "sort": "정렬"
+      },
+      "status": {
+        "all": "전체",
+        "PENDING": "지급대기",
+        "PAID": "지급완료",
+        "HOLD": "보류",
+        "CANCELLED": "취소"
+      },
+      "actions": {
+        "forcePay": "강제 지급",
+        "hold": "보류",
+        "release": "보류 해제",
+        "cancel": "취소",
+        "updateMemo": "메모 수정",
+        "bulkHold": "일괄 보류",
+        "csv": "CSV 다운로드"
+      },
+      "forcePay": {
+        "step1": {
+          "title": "강제 지급 - 정보 입력",
+          "amountLabel": "실제 지급 금액",
+          "memoLabel": "지급 메모 (최소 10자)",
+          "memoPlaceholder": "2026-04-24 KB국민 12345678 송금",
+          "proofLabel": "이체 확인서 (필수)"
+        },
+        "step2": {
+          "title": "강제 지급 - 확인",
+          "warning": "지급 완료로 표시하면 정산 상태가 변경돼요. 실제 송금은 은행에서 별도로 진행해주세요."
+        },
+        "step3": {
+          "title": "강제 지급 - 최종 검증",
+          "idLabel": "정산 ID",
+          "brandLabel": "브랜드명",
+          "amountLabel": "지급 금액"
+        }
+      },
+      "hold": {
+        "title": "정산 보류",
+        "reasonLabel": "보류 사유 (최소 20자)",
+        "warning": "보류하면 지급이 일시 중단돼요. 브랜드에게 알림이 전송됩니다."
+      },
+      "release": {
+        "title": "보류 해제",
+        "memoLabel": "해제 메모"
+      },
+      "cancel": {
+        "title": "정산 취소",
+        "warning": "정산을 취소하면 되돌릴 수 없어요",
+        "paidWarning": "이미 지급 처리된 정산을 취소합니다. 실제 송금이 이미 이루어졌다면 별도 환수 처리가 필요해요.",
+        "confirmCheckbox": "이미 송금된 경우 환수 처리가 필요함을 확인했어요"
+      },
+      "bulkHold": {
+        "title": "일괄 보류",
+        "selectedCount": "건 선택됨",
+        "reasonLabel": "보류 사유 (공통, 최소 20자)",
+        "partialFail": "건 중 {success}건 성공 / {failed}건 실패"
+      },
+      "proof": {
+        "uploadLabel": "이체 확인서 업로드",
+        "sizeLimit": "최대 10MB",
+        "typeLimit": "JPG, PNG, PDF만 가능",
+        "progress": "업로드 중..."
+      },
+      "empty": {
+        "all": "아직 정산 내역이 없어요",
+        "filtered": "조건에 맞는 정산이 없어요"
+      },
+      "banner": {
+        "hold": "이 정산은 보류 중이에요",
+        "paid": "지급 완료",
+        "cancelled": "취소됨"
+      },
+      "toast": {
+        "paySuccess": "지급 완료 처리됐어요",
+        "holdSuccess": "보류되었어요",
+        "releaseSuccess": "보류가 해제되었어요",
+        "cancelSuccess": "취소되었어요",
+        "memoUpdated": "메모가 수정되었어요",
+        "uploadSuccess": "증빙이 업로드됐어요",
+        "uploadFailed": "업로드에 실패했어요"
+      }
+    },
     "allBrands": "전체 브랜드",
     "allCreators": "전체 크리에이터",
     "pendingApprovals": "승인 대기",
