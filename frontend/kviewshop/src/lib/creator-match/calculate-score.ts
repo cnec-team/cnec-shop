@@ -18,7 +18,7 @@ export interface MatchScoreBreakdown {
   costEfficiency: number
   totalScore: number
   estimatedCpm: number
-  estimatedAdCost: bigint
+  estimatedAdCost: number
   expectedReach: number
 }
 
@@ -153,7 +153,7 @@ function scoreCostEfficiency(creator: Creator): {
   score: number
   estimatedCpm: number
   expectedReach: number
-  estimatedAdCost: bigint
+  estimatedAdCost: number
 } {
   const followers = creator.igFollowers ?? 0
   const er = creator.igEngagementRate ? Number(creator.igEngagementRate) : 2
@@ -165,12 +165,12 @@ function scoreCostEfficiency(creator: Creator): {
 
   let estimatedCpm: number
   let expectedReach: number
-  let estimatedAdCost: bigint
+  let estimatedAdCost: number
 
   if (realCpm && realCpm > 0) {
     estimatedCpm = realCpm
     expectedReach = realReach
-    estimatedAdCost = realAdCost ? BigInt(realAdCost) : BigInt(Math.round((expectedReach / 1000) * estimatedCpm))
+    estimatedAdCost = realAdCost ? Number(realAdCost) : Math.round((expectedReach / 1000) * estimatedCpm)
   } else {
     // 폴백: Tier 기반 추정
     const tier = creator.igTier ?? getTier(followers)
@@ -179,7 +179,7 @@ function scoreCostEfficiency(creator: Creator): {
     estimatedCpm = Math.round(baseCpm * erAdjust)
     const reachRate = tier === 'MEGA' ? 0.25 : tier === 'MACRO' ? 0.35 : 0.45
     expectedReach = Math.round(followers * reachRate)
-    estimatedAdCost = BigInt(Math.round((expectedReach / 1000) * estimatedCpm))
+    estimatedAdCost = Math.round((expectedReach / 1000) * estimatedCpm)
   }
 
   // 가성비 점수
@@ -228,7 +228,7 @@ export async function getOrCalculateMatchScore(
       costEfficiency: cached.costEfficiency,
       totalScore: cached.totalScore,
       estimatedCpm: cached.estimatedCpm,
-      estimatedAdCost: cached.estimatedAdCost,
+      estimatedAdCost: Number(cached.estimatedAdCost),
       expectedReach: cached.expectedReach,
     }
   }
@@ -303,7 +303,7 @@ export async function batchCalculateMatchScores(
       costEfficiency: s.costEfficiency,
       totalScore: s.totalScore,
       estimatedCpm: s.estimatedCpm,
-      estimatedAdCost: s.estimatedAdCost,
+      estimatedAdCost: Number(s.estimatedAdCost),
       expectedReach: s.expectedReach,
     })
   }
