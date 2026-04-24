@@ -1282,3 +1282,321 @@ export function campaignRecruitingStartedTemplate(data: {
     },
   }
 }
+
+// ---------- 41. 비밀번호 변경 → 사용자 ----------
+
+export function passwordChangedMessage(data: {
+  userName: string
+  changedAt: Date
+  ipAddress?: string
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: '[크넥샵] 비밀번호가 변경됐어요',
+      html: renderEmail({
+        recipientType: null,
+        preheader: '비밀번호가 방금 변경됐어요. 본인이 아니라면 즉시 조치해주세요',
+        statusBadge: { text: '보안 알림', variant: 'warning' },
+        heroTitle: '비밀번호가 변경됐어요',
+        heroSubtitle: '방금 계정의 비밀번호가 변경됐어요.\n본인이 아니라면 즉시 조치해주세요.',
+        sections: [
+          emailInfoTable([
+            { label: '사용자', value: data.userName },
+            { label: '변경 일시', value: formatKDate(data.changedAt) },
+            ...(data.ipAddress ? [{ label: '접속 IP', value: data.ipAddress }] : []),
+          ]),
+          emailNoticeBox('본인이 아니라면 <strong>즉시 비밀번호를 재설정</strong>하고 <strong>support@cnecshop.com</strong>으로 문의주세요.', 'danger'),
+        ],
+        primaryAction: { text: '비밀번호 재설정', url: `${SITE_URL}/ko/account/reset-password` },
+        secondaryAction: { text: '문의하기', url: `${SITE_URL}/ko/support` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SECURITY',
+      title: '비밀번호가 변경됐어요',
+      message: '본인이 아니면 즉시 재설정해주세요.',
+      linkUrl: '/account/security',
+    },
+  }
+}
+
+// ---------- 42. 새 기기 로그인 → 사용자 ----------
+
+export function loginFromNewDeviceMessage(data: {
+  userName: string
+  loginAt: Date
+  ipAddress?: string
+  userAgent?: string
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: '[크넥샵] 새로운 기기에서 로그인됐어요',
+      html: renderEmail({
+        recipientType: null,
+        preheader: '평소와 다른 기기에서 접속이 감지됐어요',
+        statusBadge: { text: '새 기기 로그인', variant: 'warning' },
+        heroTitle: '새로운 기기에서 로그인됐어요',
+        heroSubtitle: '평소와 다른 기기에서 접속이 감지됐어요.\n본인이 아니라면 즉시 비밀번호를 변경해주세요.',
+        sections: [
+          emailInfoTable([
+            { label: '로그인 일시', value: formatKDate(data.loginAt) },
+            ...(data.userAgent ? [{ label: '기기', value: data.userAgent }] : []),
+            ...(data.ipAddress ? [{ label: 'IP', value: data.ipAddress }] : []),
+          ]),
+          emailNoticeBox('본인이 아니라면 계정이 <strong>도용됐을 가능성</strong>이 있어요.', 'danger'),
+        ],
+        primaryAction: { text: '비밀번호 변경', url: `${SITE_URL}/ko/account/reset-password` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SECURITY',
+      title: '새로운 기기에서 로그인됐어요',
+      message: '본인이 아니라면 비밀번호를 변경해주세요.',
+      linkUrl: '/account/security',
+    },
+  }
+}
+
+// ---------- 43. 이상 접속 감지 → 사용자 ----------
+
+export function loginAbnormalDetectedMessage(data: {
+  userName: string
+  loginAt: Date
+  country?: string
+  ipAddress?: string
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: '[크넥샵] 이상 접속이 감지됐어요',
+      html: renderEmail({
+        recipientType: null,
+        preheader: '평소와 다른 위치에서 로그인이 감지됐어요',
+        statusBadge: { text: '이상 접속 감지', variant: 'warning' },
+        heroTitle: '이상 접속이 감지됐어요',
+        heroSubtitle: '평소와 다른 위치에서 접속이 감지됐어요.\n본인이 아니라면 즉시 비밀번호를 변경해주세요.',
+        sections: [
+          emailInfoTable([
+            { label: '감지 일시', value: formatKDate(data.loginAt) },
+            ...(data.country ? [{ label: '국가', value: data.country }] : []),
+            ...(data.ipAddress ? [{ label: 'IP', value: data.ipAddress }] : []),
+          ]),
+          emailNoticeBox('본인이 아니라면 <strong>즉시 비밀번호를 변경</strong>해주세요.', 'danger'),
+        ],
+        primaryAction: { text: '비밀번호 변경', url: `${SITE_URL}/ko/account/reset-password` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SECURITY',
+      title: '이상 접속이 감지됐어요',
+      message: '본인이 아니라면 즉시 비밀번호를 변경해주세요.',
+      linkUrl: '/account/security',
+    },
+  }
+}
+
+// ---------- 44. 휴면 전환 예정 → 사용자 ----------
+
+export function dormantWarningMessage(data: {
+  userName: string
+  dormantDate: string
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: '[크넥샵] 곧 휴면 계정으로 전환돼요',
+      html: renderEmail({
+        recipientType: null,
+        preheader: '1년 이상 로그인 기록이 없어 휴면 전환 예정이에요',
+        statusBadge: { text: '휴면 전환 예정', variant: 'warning' },
+        heroTitle: '곧 휴면 계정으로 전환돼요',
+        heroSubtitle: `1년 이상 로그인 기록이 없어 ${data.dormantDate}에 휴면 계정으로 전환될 예정이에요.\n계속 이용하려면 지금 로그인해주세요.`,
+        sections: [
+          emailInfoTable([
+            { label: '전환 예정일', value: data.dormantDate, emphasis: true },
+          ]),
+          emailNoticeBox('휴면 전환 후에도 <strong>재로그인 시 즉시 복구</strong>돼요. 개인정보보호법에 따라 휴면 회원 정보는 별도 분리 보관돼요.', 'info'),
+        ],
+        primaryAction: { text: '지금 로그인하기', url: `${SITE_URL}/ko/login` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SYSTEM',
+      title: '곧 휴면 계정으로 전환돼요',
+      message: `${data.dormantDate}까지 로그인하지 않으면 휴면 처리돼요.`,
+      linkUrl: '/login',
+    },
+  }
+}
+
+// ---------- 45. 휴면 전환 완료 → 사용자 ----------
+
+export function dormantTransitionedMessage(data: {
+  userName: string
+  transitionedAt: Date
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: '[크넥샵] 휴면 계정으로 전환됐어요',
+      html: renderEmail({
+        recipientType: null,
+        preheader: '로그인하시면 바로 복구돼요',
+        statusBadge: { text: '휴면 전환 완료', variant: 'neutral' },
+        heroTitle: '휴면 계정으로 전환됐어요',
+        heroSubtitle: '1년 이상 로그인 기록이 없어 휴면 계정으로 전환됐어요.\n로그인하시면 바로 복구돼요.',
+        sections: [
+          emailInfoTable([
+            { label: '전환일', value: formatKDate(data.transitionedAt) },
+          ]),
+          emailNoticeBox('로그인 시 <strong>자동 복구</strong>돼요. 별도 절차가 필요 없어요.', 'info'),
+        ],
+        primaryAction: { text: '계정 복구하기', url: `${SITE_URL}/ko/login` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SYSTEM',
+      title: '휴면 계정으로 전환됐어요',
+      message: '로그인하시면 바로 복구돼요.',
+      linkUrl: '/login',
+    },
+  }
+}
+
+// ---------- 61. 약관 변경 안내 → 전체 사용자 ----------
+
+export function termsChangedMessage(data: {
+  effectiveDate: string
+  summary: string
+  termsUrl: string
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: '[크넥샵] 이용약관이 변경돼요',
+      html: renderEmail({
+        recipientType: null,
+        preheader: `${data.effectiveDate}부터 변경된 약관이 적용돼요`,
+        statusBadge: { text: '약관 변경 안내', variant: 'info' },
+        heroTitle: '이용약관이 변경돼요',
+        heroSubtitle: `${data.effectiveDate}부터 적용될 약관 변경 내용을 안내드려요.\n동의하지 않으시면 탈퇴하실 수 있어요.`,
+        sections: [
+          emailInfoTable([
+            { label: '시행일', value: data.effectiveDate, emphasis: true },
+            { label: '변경 요약', value: data.summary },
+          ]),
+          emailNoticeBox('계속 이용하시면 변경된 약관에 <strong>동의</strong>한 것으로 간주돼요.', 'info'),
+        ],
+        primaryAction: { text: '전체 약관 보기', url: data.termsUrl },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SYSTEM',
+      title: '이용약관이 변경돼요',
+      message: `${data.effectiveDate}부터 적용돼요. 확인해주세요.`,
+      linkUrl: '/terms',
+    },
+  }
+}
+
+// ---------- 62. 개인정보처리방침 변경 → 전체 사용자 ----------
+
+export function privacyPolicyChangedMessage(data: {
+  effectiveDate: string
+  summary: string
+  privacyUrl: string
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: '[크넥샵] 개인정보 처리방침이 변경돼요',
+      html: renderEmail({
+        recipientType: null,
+        preheader: `${data.effectiveDate}부터 변경된 방침이 적용돼요`,
+        statusBadge: { text: '방침 변경 안내', variant: 'info' },
+        heroTitle: '개인정보 처리방침이 변경돼요',
+        heroSubtitle: `${data.effectiveDate}부터 적용될 변경 내용을 안내드려요.`,
+        sections: [
+          emailInfoTable([
+            { label: '시행일', value: data.effectiveDate, emphasis: true },
+            { label: '변경 요약', value: data.summary },
+          ]),
+          emailNoticeBox('계속 이용하시면 변경된 방침에 <strong>동의</strong>한 것으로 간주돼요.', 'info'),
+        ],
+        primaryAction: { text: '전체 방침 보기', url: data.privacyUrl },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SYSTEM',
+      title: '개인정보 처리방침이 변경돼요',
+      message: `${data.effectiveDate}부터 적용돼요.`,
+      linkUrl: '/privacy',
+    },
+  }
+}
+
+// ---------- 63. 탈퇴 완료 → 사용자 ----------
+
+export function accountDeletedMessage(data: {
+  userName: string
+  deletedAt: Date
+  retentionMonths: number
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: '[크넥샵] 탈퇴가 완료됐어요',
+      html: renderEmail({
+        recipientType: null,
+        preheader: '그동안 이용해주셔서 감사해요',
+        statusBadge: { text: '탈퇴 완료', variant: 'neutral' },
+        heroTitle: '탈퇴가 완료됐어요',
+        heroSubtitle: `${data.userName}님의 크넥샵 계정이 탈퇴 처리됐어요.\n그동안 이용해주셔서 감사해요.`,
+        sections: [
+          emailInfoTable([
+            { label: '탈퇴일', value: formatKDate(data.deletedAt) },
+            { label: '개인정보 보유', value: `${data.retentionMonths}개월` },
+            { label: '거래 기록 보유', value: '전자상거래법에 따라 5년' },
+          ]),
+          emailNoticeBox('재가입은 언제든 가능하지만 이전 데이터는 복구되지 않아요.', 'info'),
+        ],
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: null,
+  }
+}
+
+// ---------- 64. 이메일 인증 코드 → 사용자 ----------
+
+export function emailVerificationMessage(data: {
+  verificationCode: string
+  expiresInMinutes: number
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: '[크넥샵] 이메일 인증 코드',
+      html: renderEmail({
+        recipientType: null,
+        preheader: '이메일 인증 코드를 확인해주세요',
+        heroTitle: '이메일 인증 코드',
+        sections: [
+          emailAmountBox('인증 코드', data.verificationCode, `${data.expiresInMinutes}분 동안 유효`),
+          emailNoticeBox('본인이 요청하지 않았다면 이 메일은 무시해주세요.', 'info'),
+        ],
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: null,
+  }
+}
