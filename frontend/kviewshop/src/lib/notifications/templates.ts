@@ -1600,3 +1600,267 @@ export function emailVerificationMessage(data: {
     inApp: null,
   }
 }
+
+// ---------- 31. 결제 실패 → 구매자 ----------
+
+export function paymentFailedMessage(data: {
+  buyerName: string
+  orderNumber: string
+  productName: string
+  reason: string
+  retryUrl?: string
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: `[크넥샵] 결제가 완료되지 않았어요 (${data.orderNumber})`,
+      html: renderEmail({
+        recipientType: 'buyer',
+        preheader: '다시 시도하시거나 다른 결제수단을 이용해주세요',
+        statusBadge: { text: '결제 실패', variant: 'warning' },
+        heroTitle: '결제가 완료되지 않았어요',
+        heroSubtitle: `${data.buyerName}님의 결제가 처리되지 않았어요.\n다시 시도하시거나 다른 결제수단을 이용해주세요.`,
+        sections: [
+          emailInfoTable([
+            { label: '주문번호', value: data.orderNumber, emphasis: true },
+            { label: '상품', value: data.productName },
+            { label: '실패 사유', value: data.reason },
+            { label: '재시도 가능 기한', value: '30분' },
+          ]),
+          emailNoticeBox('상품은 <strong>30분간 예약</strong>돼 있어요. 그 후엔 재고가 사라질 수 있어요.', 'warning'),
+        ],
+        primaryAction: { text: '다시 결제하기', url: data.retryUrl ?? `${SITE_URL}/ko/buyer/orders` },
+        secondaryAction: { text: '다른 결제수단 보기', url: `${SITE_URL}/ko/support` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'ORDER',
+      title: '결제가 완료되지 않았어요',
+      message: `${data.productName} - ${data.reason}`,
+      linkUrl: '/buyer/orders',
+    },
+  }
+}
+
+// ---------- 32. 배송 지연 → 구매자 ----------
+
+export function shippingDelayedMessage(data: {
+  buyerName: string
+  orderNumber: string
+  productName: string
+  expectedDate?: string
+  reason?: string
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: `[크넥샵] 배송이 예상보다 늦어지고 있어요 (${data.orderNumber})`,
+      html: renderEmail({
+        recipientType: 'buyer',
+        preheader: '배송이 지연되고 있어요. 빠른 해결을 위해 노력 중이에요',
+        statusBadge: { text: '배송 지연', variant: 'warning' },
+        heroTitle: '배송이 예상보다 늦어지고 있어요',
+        heroSubtitle: '주문하신 상품 발송이 지연되고 있어요.\n빠른 해결을 위해 노력 중이에요.',
+        sections: [
+          emailInfoTable([
+            { label: '주문번호', value: data.orderNumber, emphasis: true },
+            { label: '상품', value: data.productName },
+            ...(data.expectedDate ? [{ label: '예상 발송일', value: data.expectedDate }] : []),
+            ...(data.reason ? [{ label: '지연 사유', value: data.reason }] : []),
+          ]),
+          emailNoticeBox('원하시면 <strong>주문 취소</strong>도 가능해요.', 'info'),
+        ],
+        primaryAction: { text: '주문 상세 보기', url: `${SITE_URL}/ko/buyer/orders` },
+        secondaryAction: { text: '주문 취소하기', url: `${SITE_URL}/ko/buyer/orders` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'ORDER',
+      title: '배송이 지연되고 있어요',
+      message: `${data.productName} 발송이 지연되고 있어요.`,
+      linkUrl: '/buyer/orders',
+    },
+  }
+}
+
+// ---------- 33. 반품 수거 완료 → 구매자 ----------
+
+export function returnPickedUpMessage(data: {
+  buyerName: string
+  orderNumber: string
+  productName: string
+  pickedUpAt: Date
+  expectedRefundDate: string
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: `[크넥샵] 반품 상품이 수거됐어요 (${data.orderNumber})`,
+      html: renderEmail({
+        recipientType: 'buyer',
+        preheader: '수거 완료! 확인 후 환불 진행할게요',
+        statusBadge: { text: '반품 수거 완료', variant: 'info' },
+        heroTitle: '반품 상품이 수거됐어요',
+        heroSubtitle: '수거된 상품 확인 후 환불을 진행해드릴게요.',
+        sections: [
+          emailInfoTable([
+            { label: '주문번호', value: data.orderNumber },
+            { label: '수거 완료일', value: formatKDate(data.pickedUpAt) },
+            { label: '환불 예정일', value: data.expectedRefundDate, emphasis: true },
+          ]),
+          emailNoticeBox('카드 환불은 <strong>카드사 영업일 기준 3~5일</strong> 추가 소요돼요.', 'info'),
+        ],
+        primaryAction: { text: '반품 상세 보기', url: `${SITE_URL}/ko/buyer/orders` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'ORDER',
+      title: '반품 상품이 수거됐어요',
+      message: `${data.expectedRefundDate}까지 환불 예정이에요.`,
+      linkUrl: '/buyer/orders',
+    },
+  }
+}
+
+// ---------- 34. 환불 완료 → 구매자 ----------
+
+export function refundCompletedMessage(data: {
+  buyerName: string
+  orderNumber: string
+  refundAmount: number
+  refundMethod: string
+  refundedAt: Date
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: `[크넥샵] 환불이 완료됐어요 (${data.orderNumber})`,
+      html: renderEmail({
+        recipientType: 'buyer',
+        preheader: '환불이 정상 처리됐어요',
+        statusBadge: { text: '환불 완료', variant: 'success' },
+        heroTitle: '환불이 완료됐어요',
+        sections: [
+          emailAmountBox('환불 금액', data.refundAmount, data.refundMethod),
+          emailInfoTable([
+            { label: '주문번호', value: data.orderNumber },
+            { label: '환불 수단', value: data.refundMethod },
+            { label: '환불일', value: formatKDate(data.refundedAt) },
+          ]),
+          emailNoticeBox('카드 환불은 카드사 영업일 기준 <strong>3~5일</strong> 안에 입금돼요.', 'success'),
+        ],
+        primaryAction: { text: '환불 내역 보기', url: `${SITE_URL}/ko/buyer/orders` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'ORDER',
+      title: '환불이 완료됐어요',
+      message: `${formatKRW(data.refundAmount)} ${data.refundMethod}로 환불됐어요.`,
+      linkUrl: '/buyer/orders',
+    },
+  }
+}
+
+// ---------- 35. 교환 응답 → 구매자 ----------
+
+export function exchangeRespondedMessage(data: {
+  buyerName: string
+  orderNumber: string
+  productName: string
+  status: 'approved' | 'rejected'
+  reason?: string
+  recipientEmail?: string
+}) {
+  const isApproved = data.status === 'approved'
+  const now = new Date()
+  return {
+    email: {
+      subject: `[크넥샵] 교환 ${isApproved ? '승인' : '거절'} (${data.orderNumber})`,
+      html: renderEmail({
+        recipientType: 'buyer',
+        preheader: isApproved ? '교환이 승인됐어요. 곧 재배송해드릴게요' : '아쉽게도 교환이 어려워요',
+        statusBadge: { text: isApproved ? '교환 승인' : '교환 거절', variant: isApproved ? 'success' : 'warning' },
+        heroTitle: isApproved ? '교환이 승인됐어요' : '교환이 어려워요',
+        heroSubtitle: isApproved
+          ? '브랜드에서 곧 재배송해드려요.'
+          : '아쉽게도 교환이 어렵다는 답변을 받았어요. 사유를 확인해주세요.',
+        sections: [
+          emailInfoTable([
+            { label: '주문번호', value: data.orderNumber },
+            { label: '상품', value: data.productName },
+            { label: isApproved ? '승인일' : '거절 사유', value: isApproved ? formatKDate(now) : (data.reason ?? '-'), emphasis: !isApproved },
+          ]),
+          emailNoticeBox(
+            isApproved
+              ? '평균 <strong>2~3일 내 재배송</strong>돼요.'
+              : '환불을 원하시면 <strong>환불 요청</strong>을 별도로 해주세요.',
+            isApproved ? 'success' : 'info',
+          ),
+        ],
+        primaryAction: { text: '주문 상세 보기', url: `${SITE_URL}/ko/buyer/orders` },
+        ...(isApproved ? {} : { secondaryAction: { text: '환불 요청하기', url: `${SITE_URL}/ko/buyer/orders` } }),
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'ORDER',
+      title: isApproved ? '교환이 승인됐어요' : '교환이 어려워요',
+      message: isApproved ? `${data.productName} 곧 재배송돼요.` : `${data.productName} - ${data.reason ?? '교환 불가'}`,
+      linkUrl: '/buyer/orders',
+    },
+  }
+}
+
+// ---------- 36. 환불 응답 → 구매자 ----------
+
+export function refundRespondedMessage(data: {
+  buyerName: string
+  orderNumber: string
+  productName: string
+  status: 'approved' | 'rejected'
+  reason?: string
+  recipientEmail?: string
+}) {
+  const isApproved = data.status === 'approved'
+  const now = new Date()
+  return {
+    email: {
+      subject: `[크넥샵] 환불 ${isApproved ? '승인' : '거절'} (${data.orderNumber})`,
+      html: renderEmail({
+        recipientType: 'buyer',
+        preheader: isApproved ? '환불이 승인됐어요. 곧 처리해드릴게요' : '아쉽게도 환불이 어려워요',
+        statusBadge: { text: isApproved ? '환불 승인' : '환불 거절', variant: isApproved ? 'success' : 'warning' },
+        heroTitle: isApproved ? '환불이 승인됐어요' : '환불이 어려워요',
+        heroSubtitle: isApproved
+          ? '환불이 승인됐어요. 영업일 기준 3~5일 내 환불 처리해드릴게요.'
+          : '아쉽게도 환불이 어렵다는 답변을 받았어요. 사유를 확인해주세요.',
+        sections: [
+          emailInfoTable([
+            { label: '주문번호', value: data.orderNumber },
+            { label: '상품', value: data.productName },
+            { label: isApproved ? '승인일' : '거절 사유', value: isApproved ? formatKDate(now) : (data.reason ?? '-'), emphasis: !isApproved },
+          ]),
+          emailNoticeBox(
+            isApproved
+              ? '카드 환불은 <strong>영업일 기준 3~5일</strong> 안에 처리돼요.'
+              : '추가 문의는 <strong>support@cnecshop.com</strong>으로 연락주세요.',
+            isApproved ? 'success' : 'info',
+          ),
+        ],
+        primaryAction: { text: '주문 상세 보기', url: `${SITE_URL}/ko/buyer/orders` },
+        ...(isApproved ? {} : { secondaryAction: { text: '문의하기', url: `${SITE_URL}/ko/support` } }),
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'ORDER',
+      title: isApproved ? '환불이 승인됐어요' : '환불이 어려워요',
+      message: isApproved ? `${data.productName} 곧 환불 처리돼요.` : `${data.productName} - ${data.reason ?? '환불 불가'}`,
+      linkUrl: '/buyer/orders',
+    },
+  }
+}
