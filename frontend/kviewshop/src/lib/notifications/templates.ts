@@ -1282,3 +1282,1064 @@ export function campaignRecruitingStartedTemplate(data: {
     },
   }
 }
+
+// ---------- 41. 비밀번호 변경 → 사용자 ----------
+
+export function passwordChangedMessage(data: {
+  userName: string
+  changedAt: Date
+  ipAddress?: string
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: '[크넥샵] 비밀번호가 변경됐어요',
+      html: renderEmail({
+        recipientType: null,
+        preheader: '비밀번호가 방금 변경됐어요. 본인이 아니라면 즉시 조치해주세요',
+        statusBadge: { text: '보안 알림', variant: 'warning' },
+        heroTitle: '비밀번호가 변경됐어요',
+        heroSubtitle: '방금 계정의 비밀번호가 변경됐어요.\n본인이 아니라면 즉시 조치해주세요.',
+        sections: [
+          emailInfoTable([
+            { label: '사용자', value: data.userName },
+            { label: '변경 일시', value: formatKDate(data.changedAt) },
+            ...(data.ipAddress ? [{ label: '접속 IP', value: data.ipAddress }] : []),
+          ]),
+          emailNoticeBox('본인이 아니라면 <strong>즉시 비밀번호를 재설정</strong>하고 <strong>support@cnecshop.com</strong>으로 문의주세요.', 'danger'),
+        ],
+        primaryAction: { text: '비밀번호 재설정', url: `${SITE_URL}/ko/account/reset-password` },
+        secondaryAction: { text: '문의하기', url: `${SITE_URL}/ko/support` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SECURITY',
+      title: '비밀번호가 변경됐어요',
+      message: '본인이 아니면 즉시 재설정해주세요.',
+      linkUrl: '/account/security',
+    },
+  }
+}
+
+// ---------- 42. 새 기기 로그인 → 사용자 ----------
+
+export function loginFromNewDeviceMessage(data: {
+  userName: string
+  loginAt: Date
+  ipAddress?: string
+  userAgent?: string
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: '[크넥샵] 새로운 기기에서 로그인됐어요',
+      html: renderEmail({
+        recipientType: null,
+        preheader: '평소와 다른 기기에서 접속이 감지됐어요',
+        statusBadge: { text: '새 기기 로그인', variant: 'warning' },
+        heroTitle: '새로운 기기에서 로그인됐어요',
+        heroSubtitle: '평소와 다른 기기에서 접속이 감지됐어요.\n본인이 아니라면 즉시 비밀번호를 변경해주세요.',
+        sections: [
+          emailInfoTable([
+            { label: '로그인 일시', value: formatKDate(data.loginAt) },
+            ...(data.userAgent ? [{ label: '기기', value: data.userAgent }] : []),
+            ...(data.ipAddress ? [{ label: 'IP', value: data.ipAddress }] : []),
+          ]),
+          emailNoticeBox('본인이 아니라면 계정이 <strong>도용됐을 가능성</strong>이 있어요.', 'danger'),
+        ],
+        primaryAction: { text: '비밀번호 변경', url: `${SITE_URL}/ko/account/reset-password` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SECURITY',
+      title: '새로운 기기에서 로그인됐어요',
+      message: '본인이 아니라면 비밀번호를 변경해주세요.',
+      linkUrl: '/account/security',
+    },
+  }
+}
+
+// ---------- 43. 이상 접속 감지 → 사용자 ----------
+
+export function loginAbnormalDetectedMessage(data: {
+  userName: string
+  loginAt: Date
+  country?: string
+  ipAddress?: string
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: '[크넥샵] 이상 접속이 감지됐어요',
+      html: renderEmail({
+        recipientType: null,
+        preheader: '평소와 다른 위치에서 로그인이 감지됐어요',
+        statusBadge: { text: '이상 접속 감지', variant: 'warning' },
+        heroTitle: '이상 접속이 감지됐어요',
+        heroSubtitle: '평소와 다른 위치에서 접속이 감지됐어요.\n본인이 아니라면 즉시 비밀번호를 변경해주세요.',
+        sections: [
+          emailInfoTable([
+            { label: '감지 일시', value: formatKDate(data.loginAt) },
+            ...(data.country ? [{ label: '국가', value: data.country }] : []),
+            ...(data.ipAddress ? [{ label: 'IP', value: data.ipAddress }] : []),
+          ]),
+          emailNoticeBox('본인이 아니라면 <strong>즉시 비밀번호를 변경</strong>해주세요.', 'danger'),
+        ],
+        primaryAction: { text: '비밀번호 변경', url: `${SITE_URL}/ko/account/reset-password` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SECURITY',
+      title: '이상 접속이 감지됐어요',
+      message: '본인이 아니라면 즉시 비밀번호를 변경해주세요.',
+      linkUrl: '/account/security',
+    },
+  }
+}
+
+// ---------- 44. 휴면 전환 예정 → 사용자 ----------
+
+export function dormantWarningMessage(data: {
+  userName: string
+  dormantDate: string
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: '[크넥샵] 곧 휴면 계정으로 전환돼요',
+      html: renderEmail({
+        recipientType: null,
+        preheader: '1년 이상 로그인 기록이 없어 휴면 전환 예정이에요',
+        statusBadge: { text: '휴면 전환 예정', variant: 'warning' },
+        heroTitle: '곧 휴면 계정으로 전환돼요',
+        heroSubtitle: `1년 이상 로그인 기록이 없어 ${data.dormantDate}에 휴면 계정으로 전환될 예정이에요.\n계속 이용하려면 지금 로그인해주세요.`,
+        sections: [
+          emailInfoTable([
+            { label: '전환 예정일', value: data.dormantDate, emphasis: true },
+          ]),
+          emailNoticeBox('휴면 전환 후에도 <strong>재로그인 시 즉시 복구</strong>돼요. 개인정보보호법에 따라 휴면 회원 정보는 별도 분리 보관돼요.', 'info'),
+        ],
+        primaryAction: { text: '지금 로그인하기', url: `${SITE_URL}/ko/login` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SYSTEM',
+      title: '곧 휴면 계정으로 전환돼요',
+      message: `${data.dormantDate}까지 로그인하지 않으면 휴면 처리돼요.`,
+      linkUrl: '/login',
+    },
+  }
+}
+
+// ---------- 45. 휴면 전환 완료 → 사용자 ----------
+
+export function dormantTransitionedMessage(data: {
+  userName: string
+  transitionedAt: Date
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: '[크넥샵] 휴면 계정으로 전환됐어요',
+      html: renderEmail({
+        recipientType: null,
+        preheader: '로그인하시면 바로 복구돼요',
+        statusBadge: { text: '휴면 전환 완료', variant: 'neutral' },
+        heroTitle: '휴면 계정으로 전환됐어요',
+        heroSubtitle: '1년 이상 로그인 기록이 없어 휴면 계정으로 전환됐어요.\n로그인하시면 바로 복구돼요.',
+        sections: [
+          emailInfoTable([
+            { label: '전환일', value: formatKDate(data.transitionedAt) },
+          ]),
+          emailNoticeBox('로그인 시 <strong>자동 복구</strong>돼요. 별도 절차가 필요 없어요.', 'info'),
+        ],
+        primaryAction: { text: '계정 복구하기', url: `${SITE_URL}/ko/login` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SYSTEM',
+      title: '휴면 계정으로 전환됐어요',
+      message: '로그인하시면 바로 복구돼요.',
+      linkUrl: '/login',
+    },
+  }
+}
+
+// ---------- 61. 약관 변경 안내 → 전체 사용자 ----------
+
+export function termsChangedMessage(data: {
+  effectiveDate: string
+  summary: string
+  termsUrl: string
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: '[크넥샵] 이용약관이 변경돼요',
+      html: renderEmail({
+        recipientType: null,
+        preheader: `${data.effectiveDate}부터 변경된 약관이 적용돼요`,
+        statusBadge: { text: '약관 변경 안내', variant: 'info' },
+        heroTitle: '이용약관이 변경돼요',
+        heroSubtitle: `${data.effectiveDate}부터 적용될 약관 변경 내용을 안내드려요.\n동의하지 않으시면 탈퇴하실 수 있어요.`,
+        sections: [
+          emailInfoTable([
+            { label: '시행일', value: data.effectiveDate, emphasis: true },
+            { label: '변경 요약', value: data.summary },
+          ]),
+          emailNoticeBox('계속 이용하시면 변경된 약관에 <strong>동의</strong>한 것으로 간주돼요.', 'info'),
+        ],
+        primaryAction: { text: '전체 약관 보기', url: data.termsUrl },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SYSTEM',
+      title: '이용약관이 변경돼요',
+      message: `${data.effectiveDate}부터 적용돼요. 확인해주세요.`,
+      linkUrl: '/terms',
+    },
+  }
+}
+
+// ---------- 62. 개인정보처리방침 변경 → 전체 사용자 ----------
+
+export function privacyPolicyChangedMessage(data: {
+  effectiveDate: string
+  summary: string
+  privacyUrl: string
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: '[크넥샵] 개인정보 처리방침이 변경돼요',
+      html: renderEmail({
+        recipientType: null,
+        preheader: `${data.effectiveDate}부터 변경된 방침이 적용돼요`,
+        statusBadge: { text: '방침 변경 안내', variant: 'info' },
+        heroTitle: '개인정보 처리방침이 변경돼요',
+        heroSubtitle: `${data.effectiveDate}부터 적용될 변경 내용을 안내드려요.`,
+        sections: [
+          emailInfoTable([
+            { label: '시행일', value: data.effectiveDate, emphasis: true },
+            { label: '변경 요약', value: data.summary },
+          ]),
+          emailNoticeBox('계속 이용하시면 변경된 방침에 <strong>동의</strong>한 것으로 간주돼요.', 'info'),
+        ],
+        primaryAction: { text: '전체 방침 보기', url: data.privacyUrl },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SYSTEM',
+      title: '개인정보 처리방침이 변경돼요',
+      message: `${data.effectiveDate}부터 적용돼요.`,
+      linkUrl: '/privacy',
+    },
+  }
+}
+
+// ---------- 63. 탈퇴 완료 → 사용자 ----------
+
+export function accountDeletedMessage(data: {
+  userName: string
+  deletedAt: Date
+  retentionMonths: number
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: '[크넥샵] 탈퇴가 완료됐어요',
+      html: renderEmail({
+        recipientType: null,
+        preheader: '그동안 이용해주셔서 감사해요',
+        statusBadge: { text: '탈퇴 완료', variant: 'neutral' },
+        heroTitle: '탈퇴가 완료됐어요',
+        heroSubtitle: `${data.userName}님의 크넥샵 계정이 탈퇴 처리됐어요.\n그동안 이용해주셔서 감사해요.`,
+        sections: [
+          emailInfoTable([
+            { label: '탈퇴일', value: formatKDate(data.deletedAt) },
+            { label: '개인정보 보유', value: `${data.retentionMonths}개월` },
+            { label: '거래 기록 보유', value: '전자상거래법에 따라 5년' },
+          ]),
+          emailNoticeBox('재가입은 언제든 가능하지만 이전 데이터는 복구되지 않아요.', 'info'),
+        ],
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: null,
+  }
+}
+
+// ---------- 64. 이메일 인증 코드 → 사용자 ----------
+
+export function emailVerificationMessage(data: {
+  verificationCode: string
+  expiresInMinutes: number
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: '[크넥샵] 이메일 인증 코드',
+      html: renderEmail({
+        recipientType: null,
+        preheader: '이메일 인증 코드를 확인해주세요',
+        heroTitle: '이메일 인증 코드',
+        sections: [
+          emailAmountBox('인증 코드', data.verificationCode, `${data.expiresInMinutes}분 동안 유효`),
+          emailNoticeBox('본인이 요청하지 않았다면 이 메일은 무시해주세요.', 'info'),
+        ],
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: null,
+  }
+}
+
+// ---------- 31. 결제 실패 → 구매자 ----------
+
+export function paymentFailedMessage(data: {
+  buyerName: string
+  orderNumber: string
+  productName: string
+  reason: string
+  retryUrl?: string
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: `[크넥샵] 결제가 완료되지 않았어요 (${data.orderNumber})`,
+      html: renderEmail({
+        recipientType: 'buyer',
+        preheader: '다시 시도하시거나 다른 결제수단을 이용해주세요',
+        statusBadge: { text: '결제 실패', variant: 'warning' },
+        heroTitle: '결제가 완료되지 않았어요',
+        heroSubtitle: `${data.buyerName}님의 결제가 처리되지 않았어요.\n다시 시도하시거나 다른 결제수단을 이용해주세요.`,
+        sections: [
+          emailInfoTable([
+            { label: '주문번호', value: data.orderNumber, emphasis: true },
+            { label: '상품', value: data.productName },
+            { label: '실패 사유', value: data.reason },
+            { label: '재시도 가능 기한', value: '30분' },
+          ]),
+          emailNoticeBox('상품은 <strong>30분간 예약</strong>돼 있어요. 그 후엔 재고가 사라질 수 있어요.', 'warning'),
+        ],
+        primaryAction: { text: '다시 결제하기', url: data.retryUrl ?? `${SITE_URL}/ko/buyer/orders` },
+        secondaryAction: { text: '다른 결제수단 보기', url: `${SITE_URL}/ko/support` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'ORDER',
+      title: '결제가 완료되지 않았어요',
+      message: `${data.productName} - ${data.reason}`,
+      linkUrl: '/buyer/orders',
+    },
+  }
+}
+
+// ---------- 32. 배송 지연 → 구매자 ----------
+
+export function shippingDelayedMessage(data: {
+  buyerName: string
+  orderNumber: string
+  productName: string
+  expectedDate?: string
+  reason?: string
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: `[크넥샵] 배송이 예상보다 늦어지고 있어요 (${data.orderNumber})`,
+      html: renderEmail({
+        recipientType: 'buyer',
+        preheader: '배송이 지연되고 있어요. 빠른 해결을 위해 노력 중이에요',
+        statusBadge: { text: '배송 지연', variant: 'warning' },
+        heroTitle: '배송이 예상보다 늦어지고 있어요',
+        heroSubtitle: '주문하신 상품 발송이 지연되고 있어요.\n빠른 해결을 위해 노력 중이에요.',
+        sections: [
+          emailInfoTable([
+            { label: '주문번호', value: data.orderNumber, emphasis: true },
+            { label: '상품', value: data.productName },
+            ...(data.expectedDate ? [{ label: '예상 발송일', value: data.expectedDate }] : []),
+            ...(data.reason ? [{ label: '지연 사유', value: data.reason }] : []),
+          ]),
+          emailNoticeBox('원하시면 <strong>주문 취소</strong>도 가능해요.', 'info'),
+        ],
+        primaryAction: { text: '주문 상세 보기', url: `${SITE_URL}/ko/buyer/orders` },
+        secondaryAction: { text: '주문 취소하기', url: `${SITE_URL}/ko/buyer/orders` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'ORDER',
+      title: '배송이 지연되고 있어요',
+      message: `${data.productName} 발송이 지연되고 있어요.`,
+      linkUrl: '/buyer/orders',
+    },
+  }
+}
+
+// ---------- 33. 반품 수거 완료 → 구매자 ----------
+
+export function returnPickedUpMessage(data: {
+  buyerName: string
+  orderNumber: string
+  productName: string
+  pickedUpAt: Date
+  expectedRefundDate: string
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: `[크넥샵] 반품 상품이 수거됐어요 (${data.orderNumber})`,
+      html: renderEmail({
+        recipientType: 'buyer',
+        preheader: '수거 완료! 확인 후 환불 진행할게요',
+        statusBadge: { text: '반품 수거 완료', variant: 'info' },
+        heroTitle: '반품 상품이 수거됐어요',
+        heroSubtitle: '수거된 상품 확인 후 환불을 진행해드릴게요.',
+        sections: [
+          emailInfoTable([
+            { label: '주문번호', value: data.orderNumber },
+            { label: '수거 완료일', value: formatKDate(data.pickedUpAt) },
+            { label: '환불 예정일', value: data.expectedRefundDate, emphasis: true },
+          ]),
+          emailNoticeBox('카드 환불은 <strong>카드사 영업일 기준 3~5일</strong> 추가 소요돼요.', 'info'),
+        ],
+        primaryAction: { text: '반품 상세 보기', url: `${SITE_URL}/ko/buyer/orders` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'ORDER',
+      title: '반품 상품이 수거됐어요',
+      message: `${data.expectedRefundDate}까지 환불 예정이에요.`,
+      linkUrl: '/buyer/orders',
+    },
+  }
+}
+
+// ---------- 34. 환불 완료 → 구매자 ----------
+
+export function refundCompletedMessage(data: {
+  buyerName: string
+  orderNumber: string
+  refundAmount: number
+  refundMethod: string
+  refundedAt: Date
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: `[크넥샵] 환불이 완료됐어요 (${data.orderNumber})`,
+      html: renderEmail({
+        recipientType: 'buyer',
+        preheader: '환불이 정상 처리됐어요',
+        statusBadge: { text: '환불 완료', variant: 'success' },
+        heroTitle: '환불이 완료됐어요',
+        sections: [
+          emailAmountBox('환불 금액', data.refundAmount, data.refundMethod),
+          emailInfoTable([
+            { label: '주문번호', value: data.orderNumber },
+            { label: '환불 수단', value: data.refundMethod },
+            { label: '환불일', value: formatKDate(data.refundedAt) },
+          ]),
+          emailNoticeBox('카드 환불은 카드사 영업일 기준 <strong>3~5일</strong> 안에 입금돼요.', 'success'),
+        ],
+        primaryAction: { text: '환불 내역 보기', url: `${SITE_URL}/ko/buyer/orders` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'ORDER',
+      title: '환불이 완료됐어요',
+      message: `${formatKRW(data.refundAmount)} ${data.refundMethod}로 환불됐어요.`,
+      linkUrl: '/buyer/orders',
+    },
+  }
+}
+
+// ---------- 35. 교환 응답 → 구매자 ----------
+
+export function exchangeRespondedMessage(data: {
+  buyerName: string
+  orderNumber: string
+  productName: string
+  status: 'approved' | 'rejected'
+  reason?: string
+  recipientEmail?: string
+}) {
+  const isApproved = data.status === 'approved'
+  const now = new Date()
+  return {
+    email: {
+      subject: `[크넥샵] 교환 ${isApproved ? '승인' : '거절'} (${data.orderNumber})`,
+      html: renderEmail({
+        recipientType: 'buyer',
+        preheader: isApproved ? '교환이 승인됐어요. 곧 재배송해드릴게요' : '아쉽게도 교환이 어려워요',
+        statusBadge: { text: isApproved ? '교환 승인' : '교환 거절', variant: isApproved ? 'success' : 'warning' },
+        heroTitle: isApproved ? '교환이 승인됐어요' : '교환이 어려워요',
+        heroSubtitle: isApproved
+          ? '브랜드에서 곧 재배송해드려요.'
+          : '아쉽게도 교환이 어렵다는 답변을 받았어요. 사유를 확인해주세요.',
+        sections: [
+          emailInfoTable([
+            { label: '주문번호', value: data.orderNumber },
+            { label: '상품', value: data.productName },
+            { label: isApproved ? '승인일' : '거절 사유', value: isApproved ? formatKDate(now) : (data.reason ?? '-'), emphasis: !isApproved },
+          ]),
+          emailNoticeBox(
+            isApproved
+              ? '평균 <strong>2~3일 내 재배송</strong>돼요.'
+              : '환불을 원하시면 <strong>환불 요청</strong>을 별도로 해주세요.',
+            isApproved ? 'success' : 'info',
+          ),
+        ],
+        primaryAction: { text: '주문 상세 보기', url: `${SITE_URL}/ko/buyer/orders` },
+        ...(isApproved ? {} : { secondaryAction: { text: '환불 요청하기', url: `${SITE_URL}/ko/buyer/orders` } }),
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'ORDER',
+      title: isApproved ? '교환이 승인됐어요' : '교환이 어려워요',
+      message: isApproved ? `${data.productName} 곧 재배송돼요.` : `${data.productName} - ${data.reason ?? '교환 불가'}`,
+      linkUrl: '/buyer/orders',
+    },
+  }
+}
+
+// ---------- 36. 환불 응답 → 구매자 ----------
+
+export function refundRespondedMessage(data: {
+  buyerName: string
+  orderNumber: string
+  productName: string
+  status: 'approved' | 'rejected'
+  reason?: string
+  recipientEmail?: string
+}) {
+  const isApproved = data.status === 'approved'
+  const now = new Date()
+  return {
+    email: {
+      subject: `[크넥샵] 환불 ${isApproved ? '승인' : '거절'} (${data.orderNumber})`,
+      html: renderEmail({
+        recipientType: 'buyer',
+        preheader: isApproved ? '환불이 승인됐어요. 곧 처리해드릴게요' : '아쉽게도 환불이 어려워요',
+        statusBadge: { text: isApproved ? '환불 승인' : '환불 거절', variant: isApproved ? 'success' : 'warning' },
+        heroTitle: isApproved ? '환불이 승인됐어요' : '환불이 어려워요',
+        heroSubtitle: isApproved
+          ? '환불이 승인됐어요. 영업일 기준 3~5일 내 환불 처리해드릴게요.'
+          : '아쉽게도 환불이 어렵다는 답변을 받았어요. 사유를 확인해주세요.',
+        sections: [
+          emailInfoTable([
+            { label: '주문번호', value: data.orderNumber },
+            { label: '상품', value: data.productName },
+            { label: isApproved ? '승인일' : '거절 사유', value: isApproved ? formatKDate(now) : (data.reason ?? '-'), emphasis: !isApproved },
+          ]),
+          emailNoticeBox(
+            isApproved
+              ? '카드 환불은 <strong>영업일 기준 3~5일</strong> 안에 처리돼요.'
+              : '추가 문의는 <strong>support@cnecshop.com</strong>으로 연락주세요.',
+            isApproved ? 'success' : 'info',
+          ),
+        ],
+        primaryAction: { text: '주문 상세 보기', url: `${SITE_URL}/ko/buyer/orders` },
+        ...(isApproved ? {} : { secondaryAction: { text: '문의하기', url: `${SITE_URL}/ko/support` } }),
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'ORDER',
+      title: isApproved ? '환불이 승인됐어요' : '환불이 어려워요',
+      message: isApproved ? `${data.productName} 곧 환불 처리돼요.` : `${data.productName} - ${data.reason ?? '환불 불가'}`,
+      linkUrl: '/buyer/orders',
+    },
+  }
+}
+
+// ---------- 46. 장바구니 리마인더 → 구매자 (마케팅) ----------
+
+export function cartReminderMessage(data: {
+  buyerName: string
+  itemCount: number
+  topProductName: string
+  totalAmount: number
+  cartUrl?: string
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: `[크넥샵] 담아두신 상품을 잊지 않으셨나요?`,
+      html: renderEmail({
+        recipientType: 'buyer',
+        preheader: `장바구니에 ${data.itemCount}개 상품이 기다리고 있어요`,
+        statusBadge: { text: '장바구니 안내', variant: 'info' },
+        heroTitle: '담아두신 상품을 잊지 않으셨나요?',
+        heroSubtitle: `장바구니에 ${data.itemCount}개 상품이 기다리고 있어요.\n${data.topProductName} 외 ${data.itemCount - 1}개 상품이 있어요.`,
+        sections: [
+          emailAmountBox('장바구니 합계', data.totalAmount),
+          emailNoticeBox('인기 상품은 <strong>품절될 수 있어요</strong>.', 'warning'),
+        ],
+        primaryAction: { text: '장바구니로 가기', url: data.cartUrl ?? `${SITE_URL}/ko/cart` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'MARKETING',
+      title: '장바구니에 담아둔 상품이 있어요',
+      message: `${data.topProductName} 외 ${data.itemCount - 1}개`,
+      linkUrl: '/cart',
+    },
+  }
+}
+
+// ---------- 47. 재입고 알림 → 구매자 (마케팅) ----------
+
+export function restockNotificationMessage(data: {
+  buyerName: string
+  productName: string
+  productUrl: string
+  price: number
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: `[크넥샵] ${data.productName} 재입고됐어요!`,
+      html: renderEmail({
+        recipientType: 'buyer',
+        preheader: '요청하신 상품이 재입고됐어요. 빠르게 품절될 수 있어요',
+        statusBadge: { text: '재입고 완료', variant: 'success' },
+        heroTitle: '요청하신 상품이 재입고됐어요!',
+        darkHeroCard: { label: '재입고 상품', title: data.productName },
+        sections: [
+          emailAmountBox('가격', data.price),
+          emailNoticeBox('인기 상품이라 <strong>빠르게 품절</strong>될 수 있어요.', 'warning'),
+        ],
+        primaryAction: { text: '지금 구매하기', url: data.productUrl },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'MARKETING',
+      title: '재입고됐어요!',
+      message: `${data.productName}`,
+      linkUrl: data.productUrl,
+    },
+  }
+}
+
+// ---------- 48. 쿠폰 발급 → 사용자 (마케팅) ----------
+
+export function couponIssuedMessage(data: {
+  userName: string
+  couponName: string
+  discountDisplay: string
+  expiresAt: string
+  minOrderAmount?: string
+  useUrl: string
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: `[크넥샵] 새 쿠폰이 도착했어요 - ${data.couponName}`,
+      html: renderEmail({
+        recipientType: null,
+        preheader: `${data.discountDisplay} 쿠폰이 도착했어요`,
+        statusBadge: { text: '쿠폰 도착', variant: 'success' },
+        heroTitle: '새 쿠폰이 도착했어요',
+        sections: [
+          emailAmountBox(data.couponName, data.discountDisplay),
+          emailInfoTable([
+            { label: '쿠폰명', value: data.couponName },
+            { label: '할인', value: data.discountDisplay, emphasis: true },
+            ...(data.minOrderAmount ? [{ label: '최소 주문액', value: data.minOrderAmount }] : []),
+            { label: '만료일', value: data.expiresAt },
+          ]),
+        ],
+        primaryAction: { text: '쿠폰 사용하러 가기', url: data.useUrl },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'MARKETING',
+      title: '새 쿠폰이 도착했어요',
+      message: `${data.couponName} - ${data.discountDisplay}`,
+      linkUrl: '/coupons',
+    },
+  }
+}
+
+// ---------- 49. 쿠폰 만료 임박 → 사용자 (마케팅) ----------
+
+export function couponExpiringMessage(data: {
+  userName: string
+  couponName: string
+  discountDisplay: string
+  expiresAt: string
+  daysLeft: number
+  useUrl: string
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: `[크넥샵] 쿠폰이 ${data.daysLeft}일 후 만료돼요`,
+      html: renderEmail({
+        recipientType: null,
+        preheader: `${data.couponName} 쿠폰이 곧 만료돼요`,
+        statusBadge: { text: '쿠폰 만료 임박', variant: 'warning' },
+        heroTitle: '쿠폰이 곧 만료돼요',
+        sections: [
+          emailAmountBox(data.couponName, data.discountDisplay, `${data.daysLeft}일 후 만료`),
+          emailNoticeBox(`<strong>${data.daysLeft}일</strong> 후 만료되니 잊지 말고 사용해주세요.`, 'warning'),
+        ],
+        primaryAction: { text: '쿠폰 사용하기', url: data.useUrl },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'MARKETING',
+      title: '쿠폰이 곧 만료돼요',
+      message: `${data.couponName} - ${data.daysLeft}일 후 만료`,
+      linkUrl: '/coupons',
+    },
+  }
+}
+
+// ---------- 50. 재구매 리마인더 → 구매자 (마케팅) ----------
+
+export function repurchaseReminderMessage(data: {
+  buyerName: string
+  lastProductName: string
+  lastOrderedAt: string
+  reorderUrl: string
+  discountDisplay?: string
+  recipientEmail?: string
+}) {
+  const sections: string[] = [
+    emailInfoTable([
+      { label: '이전 구매일', value: data.lastOrderedAt },
+      { label: '예상 소진 시점', value: '지금쯤' },
+    ]),
+  ]
+  if (data.discountDisplay) {
+    sections.push(emailAmountBox('재구매 혜택', data.discountDisplay))
+  }
+  return {
+    email: {
+      subject: `[크넥샵] ${data.lastProductName} 다 쓰실 때쯤 아닌가요?`,
+      html: renderEmail({
+        recipientType: 'buyer',
+        preheader: `${data.lastProductName} 재구매 시기가 됐어요`,
+        statusBadge: { text: '재구매 안내', variant: 'info' },
+        heroTitle: `${data.lastProductName} 다 쓰실 때쯤 아닌가요?`,
+        darkHeroCard: { label: '지난번 구매', title: data.lastProductName },
+        sections,
+        primaryAction: { text: '다시 구매하기', url: data.reorderUrl },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'MARKETING',
+      title: '재구매할 시간이에요',
+      message: data.lastProductName,
+      linkUrl: data.reorderUrl,
+    },
+  }
+}
+
+// ---------- 51. 관심 크리에이터 새 공구 → 구매자 (마케팅) ----------
+
+export function interestCreatorNewCampaignMessage(data: {
+  buyerName: string
+  creatorName: string
+  campaignTitle: string
+  campaignUrl: string
+  discountDisplay?: string
+  recipientEmail?: string
+}) {
+  const sections: string[] = [
+    emailInfoTable([
+      { label: '크리에이터', value: data.creatorName },
+      { label: '캠페인', value: data.campaignTitle, emphasis: true },
+      { label: '시작일', value: formatKDate(new Date()) },
+    ]),
+  ]
+  if (data.discountDisplay) {
+    sections.push(emailAmountBox('혜택', data.discountDisplay))
+  }
+  sections.push(emailNoticeBox(`팔로우하시는 크리에이터의 <strong>한정 공구</strong>예요.`, 'info'))
+  return {
+    email: {
+      subject: `[크넥샵] ${data.creatorName}님의 새 공구가 열렸어요`,
+      html: renderEmail({
+        recipientType: 'buyer',
+        preheader: `${data.creatorName}님이 새 공구를 시작했어요`,
+        statusBadge: { text: '팔로우 크리에이터 소식', variant: 'info' },
+        heroTitle: `${data.creatorName}님의 새 공구가 열렸어요`,
+        heroSubtitle: `팔로우하시는 ${data.creatorName}님이 새 공구를 시작했어요.\n한정 기간이니 빠르게 확인해보세요.`,
+        sections,
+        primaryAction: { text: '공구 참여하기', url: data.campaignUrl },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'MARKETING',
+      title: `${data.creatorName}님의 새 공구`,
+      message: data.campaignTitle,
+      linkUrl: data.campaignUrl,
+    },
+  }
+}
+
+// ---------- 52. 크리에이터 월간 리포트 → 크리에이터 ----------
+
+export function creatorMonthlyReportMessage(data: {
+  creatorName: string
+  period: string
+  totalRevenue: number
+  revenueChangePercent: number
+  orderCount: number
+  visitCount: number
+  conversionRate: number
+  topProductsText: string
+  tipText: string
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: `[크넥샵] ${data.period} 내 샵 성과 리포트`,
+      html: renderEmail({
+        recipientType: 'creator',
+        preheader: `${data.period} 셀렉트샵 성과를 정리해드렸어요`,
+        statusBadge: { text: '월간 리포트', variant: 'info' },
+        heroTitle: `${data.period} 내 샵 성과`,
+        heroSubtitle: `${data.creatorName}님, 지난 한 달 셀렉트샵 성과를 정리해드렸어요.`,
+        sections: [
+          emailAmountBox('이번 달 내 수익', data.totalRevenue, `전월 대비 ${data.revenueChangePercent}%`),
+          emailInfoTable([
+            { label: '주문 수', value: `${data.orderCount}건` },
+            { label: '방문자', value: `${data.visitCount}명` },
+            { label: '전환율', value: `${data.conversionRate}%` },
+            { label: 'TOP 상품', value: data.topProductsText },
+          ]),
+          emailNoticeBox(data.tipText, 'info'),
+        ],
+        primaryAction: { text: '상세 리포트 보기', url: `${SITE_URL}/ko/creator/dashboard` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'REPORT',
+      title: `${data.period} 월간 리포트`,
+      message: `내 수익 ${formatKRW(data.totalRevenue)} (전월 대비 ${data.revenueChangePercent}%)`,
+      linkUrl: '/creator/dashboard',
+    },
+  }
+}
+
+// ---------- 53. 브랜드 월간 리포트 → 브랜드 ----------
+
+export function brandMonthlyReportMessage(data: {
+  brandName: string
+  period: string
+  totalSales: number
+  salesChangePercent: number
+  creatorCount: number
+  orderCount: number
+  topProductText: string
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: `[크넥샵] ${data.period} 브랜드 성과 리포트`,
+      html: renderEmail({
+        recipientType: 'brand',
+        preheader: `${data.period} 브랜드 판매 성과를 정리해드렸어요`,
+        statusBadge: { text: '월간 리포트', variant: 'info' },
+        heroTitle: `${data.period} 브랜드 성과`,
+        heroSubtitle: `${data.brandName}님, 지난 한 달 판매 성과를 정리해드렸어요.`,
+        sections: [
+          emailAmountBox('이번 달 총 매출', data.totalSales, `전월 대비 ${data.salesChangePercent}%`),
+          emailInfoTable([
+            { label: '참여 크리에이터', value: `${data.creatorCount}명` },
+            { label: '주문 수', value: `${data.orderCount}건` },
+            { label: 'TOP 상품', value: data.topProductText },
+          ]),
+        ],
+        primaryAction: { text: '상세 리포트 보기', url: `${SITE_URL}/ko/brand/dashboard` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'REPORT',
+      title: `${data.period} 월간 리포트`,
+      message: `총 매출 ${formatKRW(data.totalSales)}`,
+      linkUrl: '/brand/dashboard',
+    },
+  }
+}
+
+// ---------- 54. 재고 소진 임박 → 브랜드 ----------
+
+export function lowStockAlertMessage(data: {
+  brandName: string
+  productName: string
+  currentStock: number
+  threshold: number
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: `[크넥샵] ${data.productName} 재고가 얼마 남지 않았어요`,
+      html: renderEmail({
+        recipientType: 'brand',
+        preheader: `${data.productName} 재고 ${data.currentStock}개 남음`,
+        statusBadge: { text: '재고 소진 임박', variant: 'warning' },
+        heroTitle: '재고가 얼마 남지 않았어요',
+        sections: [
+          emailAmountBox('남은 재고', `${data.currentStock}개`, `임계치 ${data.threshold}개`),
+          emailInfoTable([
+            { label: '상품', value: data.productName, emphasis: true },
+            { label: '현재 재고', value: `${data.currentStock}개` },
+            { label: '임계치', value: `${data.threshold}개` },
+          ]),
+          emailNoticeBox('품절 시 크리에이터 판매에 <strong>영향</strong>이 있어요.', 'warning'),
+        ],
+        primaryAction: { text: '재고 보충하기', url: `${SITE_URL}/ko/brand/products` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SYSTEM',
+      title: '재고 소진 임박',
+      message: `${data.productName} ${data.currentStock}개 남음`,
+      linkUrl: '/brand/products',
+    },
+  }
+}
+
+// ---------- 55. 정산 입금 완료 → 크리에이터 ----------
+
+export function settlementDepositedMessage(data: {
+  creatorName: string
+  period: string
+  depositedAmount: number
+  bankAccountMasked: string
+  depositedAt: Date
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: `[크넥샵] ${data.period} 정산금이 입금됐어요`,
+      html: renderEmail({
+        recipientType: 'creator',
+        preheader: `${formatKRW(data.depositedAmount)}이 입금됐어요`,
+        statusBadge: { text: '입금 완료', variant: 'success' },
+        heroTitle: '정산금이 입금됐어요',
+        sections: [
+          emailAmountBox('입금 금액', data.depositedAmount),
+          emailInfoTable([
+            { label: '정산 기간', value: data.period },
+            { label: '입금 계좌', value: data.bankAccountMasked },
+            { label: '입금 일시', value: formatKDate(data.depositedAt) },
+          ]),
+          emailNoticeBox('이번 달 성과도 계속 이어가세요.', 'success'),
+        ],
+        primaryAction: { text: '정산 내역 보기', url: `${SITE_URL}/ko/creator/settlements` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SETTLEMENT',
+      title: '정산금이 입금됐어요',
+      message: `${data.period} ${formatKRW(data.depositedAmount)}`,
+      linkUrl: '/creator/settlements',
+    },
+  }
+}
+
+// ---------- 56. 세금계산서 발행 → 브랜드 ----------
+
+export function taxInvoiceIssuedMessage(data: {
+  brandName: string
+  period: string
+  amount: number
+  invoicePdfUrl: string
+  recipientEmail?: string
+}) {
+  const now = new Date()
+  return {
+    email: {
+      subject: `[크넥샵] ${data.period} 세금계산서가 발행됐어요`,
+      html: renderEmail({
+        recipientType: 'brand',
+        preheader: `${data.period} 세금계산서를 확인해주세요`,
+        statusBadge: { text: '세금계산서 발행', variant: 'info' },
+        heroTitle: '세금계산서가 발행됐어요',
+        sections: [
+          emailAmountBox('발행 금액', data.amount),
+          emailInfoTable([
+            { label: '브랜드', value: data.brandName },
+            { label: '기간', value: data.period },
+            { label: '발행일', value: formatKDate(now) },
+          ]),
+        ],
+        primaryAction: { text: 'PDF 다운로드', url: data.invoicePdfUrl },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SETTLEMENT',
+      title: '세금계산서가 발행됐어요',
+      message: `${data.period} ${formatKRW(data.amount)}`,
+      linkUrl: '/brand/settlements',
+    },
+  }
+}
+
+// ---------- 57. 크리에이터 주간 요약 → 크리에이터 ----------
+
+export function creatorWeeklySummaryMessage(data: {
+  creatorName: string
+  weekStart: string
+  weekEnd: string
+  totalRevenue: number
+  revenueChangePercent: number
+  topProductName: string
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: `[크넥샵] 이번 주 판매 요약 (${data.weekStart}~${data.weekEnd})`,
+      html: renderEmail({
+        recipientType: 'creator',
+        preheader: `이번 주 수익 ${formatKRW(data.totalRevenue)}`,
+        statusBadge: { text: '주간 요약', variant: 'info' },
+        heroTitle: '이번 주 판매 요약',
+        sections: [
+          emailAmountBox('이번 주 수익', data.totalRevenue, `지난주 대비 ${data.revenueChangePercent}%`),
+          emailInfoTable([
+            { label: '기간', value: `${data.weekStart} ~ ${data.weekEnd}` },
+            { label: 'TOP 상품', value: data.topProductName },
+          ]),
+        ],
+        primaryAction: { text: '상세 보기', url: `${SITE_URL}/ko/creator/dashboard` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'REPORT',
+      title: '이번 주 판매 요약',
+      message: `수익 ${formatKRW(data.totalRevenue)} (${data.revenueChangePercent > 0 ? '+' : ''}${data.revenueChangePercent}%)`,
+      linkUrl: '/creator/dashboard',
+    },
+  }
+}
