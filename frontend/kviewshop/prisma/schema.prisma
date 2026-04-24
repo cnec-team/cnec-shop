@@ -1252,9 +1252,19 @@ model Settlement {
   // Status
   status             String    @default("PENDING") @db.VarChar(15)
   paidAt             DateTime? @map("paid_at") @db.Timestamptz
+  paidBy             String?   @map("paid_by")
+  paidAmount         Decimal?  @map("paid_amount") @db.Decimal(12, 2)
+  paidMemo           String?   @map("paid_memo") @db.Text
+  paymentProofUrl    String?   @map("payment_proof_url")
+  heldAt             DateTime? @map("held_at") @db.Timestamptz
+  heldBy             String?   @map("held_by")
+  heldReason         String?   @map("held_reason") @db.Text
+  cancelledAt        DateTime? @map("cancelled_at") @db.Timestamptz
+  cancelledBy        String?   @map("cancelled_by")
+  cancelledReason    String?   @map("cancelled_reason") @db.Text
   createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
-  @@index([status])
+  @@index([status, createdAt])
   @@map("settlements")
 }
 
