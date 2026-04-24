@@ -14,6 +14,8 @@ export const ADMIN_ROUTES: Record<string, { label: string; parent?: string }> = 
   '/admin/settlements': { label: '정산 관리', parent: '/admin' },
   '/admin/settlements/[id]': { label: '정산 상세', parent: '/admin/settlements' },
   '/admin/broadcast': { label: '공지 발송', parent: '/admin' },
+  '/admin/broadcast/new': { label: '새 공지 작성', parent: '/admin/broadcast' },
+  '/admin/broadcast/[id]': { label: '공지 상세', parent: '/admin/broadcast' },
   '/admin/activity': { label: '활동 로그', parent: '/admin' },
   '/admin/guides': { label: '가이드 관리', parent: '/admin' },
   '/admin/settings': { label: '플랫폼 설정', parent: '/admin' },

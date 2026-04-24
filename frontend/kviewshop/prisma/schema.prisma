@@ -2962,3 +2962,54 @@ model Follow {
   @@index([creatorId])
   @@map("follows")
 }
+
+// ============================================================
+// BROADCAST (공지 일괄 발송)
+// ============================================================
+
+model Broadcast {
+  id                String    @id @default(cuid())
+  title             String    @db.VarChar(200)
+  content           String    @db.Text
+  type              String    @db.VarChar(20) // INFORMATIONAL | PROMOTIONAL
+  channels          String[]  // IN_APP, EMAIL, KAKAO
+  targetType        String    @map("target_type") @db.VarChar(20) // ALL_USERS | BRANDS | CREATORS | BUYERS | SEGMENT
+  segmentRules      Json?     @map("segment_rules") @db.JsonB
+  excludeSelf       Boolean   @default(true) @map("exclude_self")
+  kakaoTemplateCode String?   @map("kakao_template_code") @db.VarChar(30)
+  totalCount        Int       @default(0) @map("total_count")
+  sentCount         Int       @default(0) @map("sent_count")
+  failedCount       Int       @default(0) @map("failed_count")
+  status            String    @default("DRAFT") @db.VarChar(15) // DRAFT | SCHEDULED | SENDING | COMPLETED | FAILED | CANCELLED
+  idempotencyKey    String?   @unique @map("idempotency_key")
+  createdBy         String    @map("created_by")
+  scheduledAt       DateTime? @map("scheduled_at") @db.Timestamptz
+  startedAt         DateTime? @map("started_at") @db.Timestamptz
+  completedAt       DateTime? @map("completed_at") @db.Timestamptz
+  lastError         String?   @map("last_error") @db.Text
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  recipients BroadcastRecipient[]
+
+  @@index([status, createdAt])
+  @@index([createdBy])
+  @@map("broadcasts")
+}
+
+model BroadcastRecipient {
+  id          String    @id @default(cuid())
+  broadcastId String    @map("broadcast_id")
+  broadcast   Broadcast @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
+  userId      String    @map("user_id")
+  userType    String    @map("user_type") @db.VarChar(15) // BRAND | CREATOR | BUYER
+  channels    String[]
+  status      String    @default("PENDING") @db.VarChar(10) // PENDING | SENT | FAILED | SKIPPED
+  sentAt      DateTime? @map("sent_at") @db.Timestamptz
+  failedAt    DateTime? @map("failed_at") @db.Timestamptz
+  error       String?   @db.Text
+
+  @@index([broadcastId, status])
+  @@index([userId])
+  @@map("broadcast_recipients")
+}

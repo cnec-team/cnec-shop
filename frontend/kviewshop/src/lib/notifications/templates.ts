@@ -22,6 +22,8 @@ export const KAKAO_TEMPLATES = {
   SETTLEMENT_PAID: 'CNECSHOP_026',
   SETTLEMENT_HELD: 'CNECSHOP_027',
   SETTLEMENT_CANCELLED: 'CNECSHOP_028',
+  BROADCAST_PROMOTIONAL: 'CNECSHOP_029',
+  BROADCAST_INFORMATIONAL: 'CNECSHOP_030',
 } as const
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.cnecshop.com'
@@ -2461,6 +2463,76 @@ export function settlementCancelledMessage(data: {
       title: '정산이 취소되었습니다',
       message: `사유: ${data.reason}`,
       linkUrl: '/brand/settlements',
+    },
+  }
+}
+
+// ---------- 29. 광고성 공지 일괄 발송 ----------
+
+export function broadcastPromotionalMessage(data: {
+  recipientName: string
+  title: string
+  content: string
+  recipientEmail?: string
+}) {
+  const kakaoMsg = `(광고) ${data.recipientName}님,\n\n${data.content}\n\n수신거부: cnecshop.com/settings/notifications`
+
+  return {
+    kakao: { templateCode: KAKAO_TEMPLATES.BROADCAST_PROMOTIONAL, message: kakaoMsg },
+    email: {
+      subject: `[크넥샵] (광고) ${data.title}`,
+      html: renderEmail({
+        recipientType: 'brand',
+        statusBadge: { text: '공지', variant: 'info' },
+        preheader: data.content.slice(0, 80),
+        heroTitle: `(광고) ${data.title}`,
+        heroSubtitle: data.content,
+        sections: [
+          emailNoticeBox('본 메일은 마케팅 수신에 동의하신 분께 발송되었습니다. 수신을 원하지 않으시면 크넥샵 설정에서 변경해주세요.', 'info'),
+        ],
+        primaryAction: { text: '크넥샵 바로가기', url: `${SITE_URL}/ko` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SYSTEM',
+      title: `(광고) ${data.title}`,
+      message: data.content.slice(0, 200),
+      linkUrl: '/',
+    },
+  }
+}
+
+// ---------- 30. 정보성 공지 일괄 발송 ----------
+
+export function broadcastInformationalMessage(data: {
+  recipientName: string
+  title: string
+  content: string
+  recipientEmail?: string
+}) {
+  const kakaoMsg = `${data.recipientName}님, 크넥샵 서비스 공지입니다.\n\n${data.content}`
+
+  return {
+    kakao: { templateCode: KAKAO_TEMPLATES.BROADCAST_INFORMATIONAL, message: kakaoMsg },
+    email: {
+      subject: `[크넥샵] ${data.title}`,
+      html: renderEmail({
+        recipientType: 'brand',
+        statusBadge: { text: '서비스 공지', variant: 'neutral' },
+        preheader: data.content.slice(0, 80),
+        heroTitle: data.title,
+        heroSubtitle: data.content,
+        sections: [],
+        primaryAction: { text: '크넥샵 바로가기', url: `${SITE_URL}/ko` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SYSTEM',
+      title: data.title,
+      message: data.content.slice(0, 200),
+      linkUrl: '/',
     },
   }
 }
