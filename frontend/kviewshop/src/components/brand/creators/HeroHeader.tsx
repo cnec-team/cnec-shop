@@ -27,7 +27,7 @@ export function HeroHeader({ totalCreatorCount, onRefresh }: Props) {
           명을 AI가 적합도 순으로 정렬했어요
         </p>
       </div>
-      <Button variant="outline" onClick={onRefresh} className="gap-2 rounded-full">
+      <Button onClick={onRefresh} className="gap-2 rounded-full bg-stone-900 text-white hover:bg-stone-800">
         <Sparkles className="w-4 h-4" />
         AI 추천 다시 받기
       </Button>

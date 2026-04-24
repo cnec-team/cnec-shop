@@ -13,16 +13,26 @@ import { batchCalculateMatchScores } from '@/lib/creator-match/calculate-score'
 
 export async function GET(request: NextRequest) {
   const authUser = await getAuthUser()
-  if (!authUser || authUser.role !== 'brand_admin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  let brandId: string | undefined
+
+  if (authUser?.role === 'brand_admin') {
+    const brand = await prisma.brand.findFirst({
+      where: { userId: authUser.id },
+      select: { id: true },
+    })
+    brandId = brand?.id
   }
 
-  const brand = await prisma.brand.findFirst({
-    where: { userId: authUser.id },
-    select: { id: true },
-  })
-  if (!brand) {
-    return NextResponse.json({ error: 'Brand not found' }, { status: 404 })
+  // dev fallback
+  if (!brandId && process.env.NODE_ENV === 'development') {
+    const firstBrand = await prisma.brand.findFirst({ select: { id: true } })
+    brandId = firstBrand?.id
+    if (brandId) console.log('[dev fallback] using first brand:', brandId)
+  }
+
+  if (!brandId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const sp = request.nextUrl.searchParams
@@ -149,7 +159,7 @@ export async function GET(request: NextRequest) {
   // 매칭 스코어 배치 계산
   const scoreMap = await batchCalculateMatchScores(
     creators.map(c => c.id),
-    brand.id
+    brandId
   )
 
   let enriched = creators.map(c => {

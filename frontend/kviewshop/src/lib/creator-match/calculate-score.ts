@@ -316,7 +316,8 @@ export async function batchCalculateMatchScores(
     }))
 
     if (newOnes.length > 0) {
-      await prisma.$transaction(
+      // Upsert individually to avoid transaction timeout with Railway DB latency
+      await Promise.all(
         newOnes.map(({ creatorId, result }) =>
           prisma.creatorMatchScore.upsert({
             where: { brandId_creatorId: { brandId, creatorId } },

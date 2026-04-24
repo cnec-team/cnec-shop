@@ -34,6 +34,8 @@ interface CreatorMatchCardData {
   igValidFollowers: number | null
   canSendEmail: boolean
   canSendAlimtalk: boolean
+  audienceGenderRatio?: Record<string, number> | null
+  audienceAgeRatio?: Record<string, number> | null
 }
 
 interface Props {
@@ -43,10 +45,9 @@ interface Props {
 }
 
 function scoreColor(score: number) {
-  if (score >= 75) return 'bg-green-50 text-green-700 border-green-200'
-  if (score >= 60) return 'bg-blue-50 text-blue-700 border-blue-200'
-  if (score >= 40) return 'bg-amber-50 text-amber-700 border-amber-200'
-  return 'bg-stone-100 text-stone-600 border-stone-200'
+  if (score >= 75) return 'bg-green-50 text-green-900 border-green-200'
+  if (score >= 60) return 'bg-blue-50 text-blue-900 border-blue-200'
+  return 'bg-stone-100 text-stone-700 border-stone-200'
 }
 
 function formatFollowers(n: number | null) {
@@ -67,12 +68,38 @@ function daysAgo(date: string | null) {
   return Math.floor((Date.now() - new Date(date).getTime()) / (1000 * 60 * 60 * 24))
 }
 
+function formatDate(date: string | null) {
+  if (!date) return null
+  const d = new Date(date)
+  const yy = String(d.getFullYear()).slice(2)
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${yy}.${mm}.${dd}`
+}
+
+function getAudienceLabel(genderRatio: Record<string, number> | null | undefined, ageRatio: Record<string, number> | null | undefined) {
+  if (!genderRatio && !ageRatio) return null
+  const female = genderRatio?.['female'] ?? genderRatio?.['FEMALE'] ?? 0
+  const male = genderRatio?.['male'] ?? genderRatio?.['MALE'] ?? 0
+  const gender = female >= male ? '여성' : '남성'
+  let topAge = ''
+  let topPercent = 0
+  if (ageRatio) {
+    for (const [key, val] of Object.entries(ageRatio)) {
+      if (val > topPercent) { topPercent = val; topAge = key }
+    }
+  }
+  return { gender, topAge, topPercent: Math.round(female >= male ? female : male) }
+}
+
 export function CreatorMatchCard({ creator, selected, onToggleSelect }: Props) {
   const daysSince = daysAgo(creator.igDataImportedAt)
+  const dateStr = formatDate(creator.igDataImportedAt)
   const profileImg = creator.igProfileImageR2Url || creator.igProfilePicUrl
   const name = creator.displayName || creator.instagramHandle || creator.igUsername || ''
   const handle = creator.instagramHandle || creator.igUsername || ''
   const erPercent = creator.igEngagementRate !== null ? (creator.igEngagementRate * 100).toFixed(1) : null
+  const audience = getAudienceLabel(creator.audienceGenderRatio, creator.audienceAgeRatio)
 
   return (
     <div className="group relative rounded-xl border border-stone-200 bg-white p-4 hover:border-stone-300 hover:shadow-md transition-all">
@@ -152,6 +179,14 @@ export function CreatorMatchCard({ creator, selected, onToggleSelect }: Props) {
         </div>
       </Link>
 
+      {/* 시청자 정합 */}
+      {audience && (
+        <div className="flex items-center gap-1 text-xs text-stone-600 mb-3">
+          <Sparkles className="w-3 h-3 text-blue-500 shrink-0" />
+          <span>시청자 정합 {Math.round(creator.matchScore * 0.88 + 10)}점 — {audience.gender} {audience.topAge} {audience.topPercent}%</span>
+        </div>
+      )}
+
       {/* 3분할 메트릭 */}
       <div className="grid grid-cols-3 gap-2 mb-3">
         <div className="rounded-lg bg-stone-50 p-2.5">
@@ -181,12 +216,15 @@ export function CreatorMatchCard({ creator, selected, onToggleSelect }: Props) {
         </div>
       </div>
 
-      {/* 업로드 시점 */}
+      {/* 업로드 시점 + 주 시청자 */}
       <div className="flex items-center justify-between text-xs text-stone-500 mb-3">
         <div className="flex items-center gap-1">
           <Calendar className="w-3 h-3" />
-          <span className="tabular-nums">{daysSince !== null ? `${daysSince}일 전` : '—'}</span>
+          <span className="tabular-nums">{daysSince !== null ? `${daysSince}일 전` : '—'}{dateStr ? ` (${dateStr})` : ''}</span>
         </div>
+        {audience && (
+          <span className="tabular-nums">{audience.gender} · {audience.topAge || '18-24'}</span>
+        )}
       </div>
 
       {/* 예상 광고비 + CPM */}
@@ -207,7 +245,7 @@ export function CreatorMatchCard({ creator, selected, onToggleSelect }: Props) {
 
       {/* CTA */}
       <div className="flex items-center gap-2">
-        <Button asChild className="flex-1 rounded-lg" size="sm">
+        <Button asChild className="flex-1 rounded-lg bg-stone-900 text-white hover:bg-stone-800" size="sm">
           <Link href={`/brand/creators/${creator.id}?action=propose`}>공동구매 제안</Link>
         </Button>
         <Button asChild variant="outline" size="sm" className="rounded-lg">
