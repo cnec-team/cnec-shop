@@ -14,11 +14,15 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table'
 import { AdminBreadcrumb } from '@/components/admin/admin-breadcrumb'
+import { ProofUploader } from '@/components/admin/settlements/proof-uploader'
 import {
   ChevronLeft, MoreHorizontal, CircleDollarSign, Pause, Play, Ban,
   FileText, Upload, AlertTriangle, Check, X, ExternalLink, Clock,
-  Pencil,
+  Pencil, ShoppingBag,
 } from 'lucide-react'
 import { formatCurrency } from '@/lib/i18n/config'
 import {
@@ -75,6 +79,17 @@ interface AuditEntry {
   createdAt: string
 }
 
+interface OrderRow {
+  id: string
+  orderNumber: string | null
+  buyerName: string | null
+  customerName: string | null
+  totalAmount: unknown
+  status: string
+  paidAt: string | null
+  items: { productName: string | null }[]
+}
+
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
   PENDING: { label: '지급대기', className: 'bg-blue-100 text-blue-800 border-blue-200' },
   PAID: { label: '지급완료', className: 'bg-green-100 text-green-800 border-green-200' },
@@ -87,6 +102,7 @@ const ACTION_LABELS: Record<string, string> = {
   SETTLEMENT_HOLD: '보류',
   SETTLEMENT_RELEASE: '보류 해제',
   SETTLEMENT_CANCEL: '취소',
+  SETTLEMENT_MEMO_UPDATE: '메모 수정',
 }
 
 function getRecipientName(settlement: Settlement): string {
@@ -105,6 +121,7 @@ export default function SettlementDetailPage() {
   const id = params.id as string
 
   const [settlement, setSettlement] = useState<Settlement | null>(null)
+  const [orders, setOrders] = useState<OrderRow[]>([])
   const [auditLogs, setAuditLogs] = useState<AuditEntry[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -120,6 +137,7 @@ export default function SettlementDetailPage() {
     try {
       const data = await getAdminSettlementDetail(id)
       setSettlement(data.settlement as unknown as Settlement)
+      setOrders((data.orders ?? []) as unknown as OrderRow[])
       setAuditLogs(data.auditLogs as unknown as AuditEntry[])
     } catch (err) {
       toast.error(err instanceof Error ? err.message : '정산 상세를 불러오지 못했어요')
@@ -288,6 +306,61 @@ export default function SettlementDetailPage() {
               </dl>
             </CardContent>
           </Card>
+
+          {/* Included orders */}
+          {orders.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ShoppingBag className="h-4 w-4" />
+                  포함 주문 ({orders.length}건)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="hidden sm:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>주문번호</TableHead>
+                        <TableHead>구매자</TableHead>
+                        <TableHead>상품</TableHead>
+                        <TableHead className="text-right">금액</TableHead>
+                        <TableHead>결제일</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {orders.map(o => (
+                        <TableRow key={o.id} className="cursor-pointer hover:bg-muted/50" onClick={() => router.push(`/ko/admin/orders/${o.id}`)}>
+                          <TableCell className="font-mono text-xs">{o.orderNumber ?? o.id.slice(-8)}</TableCell>
+                          <TableCell>{o.buyerName ?? o.customerName ?? '-'}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">{o.items.map(i => i.productName).filter(Boolean).join(', ') || '-'}</TableCell>
+                          <TableCell className="text-right font-bold tabular-nums">{formatCurrency(Number(o.totalAmount), 'KRW')}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{o.paidAt ? new Date(o.paidAt).toLocaleDateString('ko-KR') : '-'}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <div className="sm:hidden divide-y">
+                  {orders.map(o => (
+                    <div key={o.id} className="py-3 cursor-pointer hover:bg-muted/50" onClick={() => router.push(`/ko/admin/orders/${o.id}`)}>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="text-sm font-medium">{o.buyerName ?? o.customerName ?? '-'}</p>
+                          <p className="text-xs text-muted-foreground truncate max-w-[200px]">{o.items.map(i => i.productName).filter(Boolean).join(', ') || '-'}</p>
+                        </div>
+                        <p className="font-bold tabular-nums text-sm">{formatCurrency(Number(o.totalAmount), 'KRW')}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 pt-3 border-t flex justify-between text-sm">
+                  <span className="text-muted-foreground">합계 {orders.length}건</span>
+                  <span className="font-bold tabular-nums">{formatCurrency(orders.reduce((sum, o) => sum + Number(o.totalAmount), 0), 'KRW')}</span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Payment info (PAID only) */}
           {settlement.status === 'PAID' && (
@@ -503,7 +576,6 @@ function ForcePayModal({
   const [amount, setAmount] = useState('')
   const [memo, setMemo] = useState('')
   const [proofUrl, setProofUrl] = useState('')
-  const [uploading, setUploading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   // Step 3 confirmations
@@ -525,31 +597,6 @@ function ForcePayModal({
       setAmount(String(Number(settlement.netAmount)))
     }
   }, [open, settlement.netAmount])
-
-  const handleUpload = async (file: File) => {
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('파일 크기는 10MB 이하여야 해요')
-      return
-    }
-    setUploading(true)
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('settlementId', settlement.id)
-      const res = await fetch('/api/admin/settlements/upload-proof', { method: 'POST', body: formData })
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || '업로드 실패')
-      }
-      const { url } = await res.json()
-      setProofUrl(url)
-      toast.success('증빙이 업로드됐어요')
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : '업로드에 실패했어요')
-    } finally {
-      setUploading(false)
-    }
-  }
 
   const parsedAmount = parseInt(amount.replace(/,/g, ''), 10)
   const step1Valid = parsedAmount > 0 && memo.length >= 10 && !!proofUrl
@@ -624,34 +671,11 @@ function ForcePayModal({
 
             <div>
               <label className="text-sm font-medium">이체 확인서 (필수)</label>
-              {proofUrl ? (
-                <div className="flex items-center gap-3 mt-2 p-3 border rounded-lg">
-                  {proofUrl.endsWith('.pdf') ? (
-                    <FileText className="h-8 w-8 text-muted-foreground" />
-                  ) : (
-                    <img src={proofUrl} alt="증빙" className="h-16 w-16 object-cover rounded" />
-                  )}
-                  <div className="flex-1 text-sm">업로드 완료</div>
-                  <Button variant="outline" size="sm" onClick={() => setProofUrl('')}>교체</Button>
-                </div>
-              ) : (
-                <label className="mt-2 flex flex-col items-center justify-center gap-2 h-24 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
-                  <Upload className="h-6 w-6 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">
-                    {uploading ? '업로드 중...' : 'JPG, PNG, PDF (최대 10MB)'}
-                  </span>
-                  <input
-                    type="file"
-                    accept=".jpg,.jpeg,.png,.pdf"
-                    className="hidden"
-                    disabled={uploading}
-                    onChange={e => {
-                      const f = e.target.files?.[0]
-                      if (f) handleUpload(f)
-                    }}
-                  />
-                </label>
-              )}
+              <ProofUploader
+                settlementId={settlement.id}
+                value={proofUrl}
+                onChange={setProofUrl}
+              />
             </div>
           </div>
         )}
