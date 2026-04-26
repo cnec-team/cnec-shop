@@ -8,6 +8,7 @@ import {
   trialRequestedMessage,
   trialApprovedMessage,
   trialShippedMessage,
+  trialRejectedMessage,
 } from '@/lib/notifications/templates'
 
 // ==================== Auth Helpers ====================
@@ -507,7 +508,10 @@ export async function rejectTrialRequest(data: {
 
   const trial = await prisma.sampleRequest.findUnique({
     where: { id: data.trialId },
-    include: { creator: { select: { userId: true } } },
+    include: {
+      creator: { select: { userId: true, displayName: true, username: true, user: { select: { email: true, phone: true } } } },
+      product: { select: { name: true } },
+    },
   })
   if (!trial) return { success: false, error: '신청을 찾을 수 없습니다.' }
   if (trial.brandId !== brand.id) return { success: false, error: '권한이 없습니다.' }
@@ -522,15 +526,25 @@ export async function rejectTrialRequest(data: {
     },
   })
 
-  // 크리에이터에게 알림
+  // 크리에이터에게 알림 (3채널)
   try {
     if (trial.creator?.userId) {
+      const creatorEmail = isValidEmail(trial.creator.user?.email) ? trial.creator.user!.email! : undefined
+      const creatorPhone = normalizePhone(trial.creator.user?.phone)
+      const tmpl = trialRejectedMessage({
+        creatorName: trial.creator.displayName ?? trial.creator.username ?? '크리에이터',
+        brandName: brand.brandName ?? '',
+        productName: trial.product?.name ?? '상품',
+        reason: data.rejectReason,
+        recipientEmail: creatorEmail,
+      })
       sendNotification({
         userId: trial.creator.userId,
-        type: 'CAMPAIGN',
-        title: '체험 신청 결과',
-        message: '이번 체험은 아쉽게 매칭되지 않았어요.',
-        linkUrl: '/creator/trial/my',
+        ...tmpl.inApp,
+        phone: creatorPhone,
+        email: creatorEmail,
+        kakaoTemplate: creatorPhone ? tmpl.kakao : undefined,
+        emailTemplate: creatorEmail ? tmpl.email : undefined,
       })
     }
   } catch {

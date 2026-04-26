@@ -3,7 +3,8 @@
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { logAuditAction } from '@/lib/audit'
-import { sendNotification } from '@/lib/notifications'
+import { sendNotification, isValidEmail, normalizePhone } from '@/lib/notifications'
+import { brandSuspendedMessage, brandReactivatedMessage } from '@/lib/notifications/templates'
 import { startOfMonthKst, nowKst } from '@/lib/utils/timezone'
 
 async function requireAdmin() {
@@ -205,7 +206,7 @@ export async function suspendBrand(params: {
 
   const brand = await prisma.brand.findUnique({
     where: { id: brandId },
-    select: { id: true, brandName: true, companyName: true, suspendedAt: true, userId: true, approved: true },
+    select: { id: true, brandName: true, companyName: true, suspendedAt: true, userId: true, approved: true, user: { select: { email: true, phone: true } } },
   })
   if (!brand) throw new Error('NOT_FOUND')
   if (brand.suspendedAt) throw new Error('이미 정지된 브랜드예요')
@@ -248,12 +249,20 @@ export async function suspendBrand(params: {
   })
 
   try {
+    const brandEmail = isValidEmail(brand.user?.email) ? brand.user!.email! : undefined
+    const brandPhone = normalizePhone(brand.user?.phone)
+    const tmpl = brandSuspendedMessage({
+      brandName: brand.brandName || brand.companyName || '',
+      reason,
+      recipientEmail: brandEmail,
+    })
     await sendNotification({
       userId: brand.userId,
-      type: 'SYSTEM',
-      title: '계정 정지 안내',
-      message: `${brand.brandName || brand.companyName} 계정이 정지되었어요. 사유: ${reason}`,
-      linkUrl: '/suspended',
+      ...tmpl.inApp,
+      phone: brandPhone,
+      email: brandEmail,
+      kakaoTemplate: brandPhone ? tmpl.kakao : undefined,
+      emailTemplate: brandEmail ? tmpl.email : undefined,
     })
   } catch {}
 
@@ -268,7 +277,7 @@ export async function reactivateBrand(params: { brandId: string; reason: string 
 
   const brand = await prisma.brand.findUnique({
     where: { id: brandId },
-    select: { id: true, brandName: true, companyName: true, suspendedAt: true, suspendedReason: true, userId: true },
+    select: { id: true, brandName: true, companyName: true, suspendedAt: true, suspendedReason: true, userId: true, user: { select: { email: true } } },
   })
   if (!brand) throw new Error('NOT_FOUND')
   if (!brand.suspendedAt) throw new Error('정지 상태가 아닌 브랜드예요')
@@ -297,12 +306,16 @@ export async function reactivateBrand(params: { brandId: string; reason: string 
   })
 
   try {
+    const brandEmail = isValidEmail(brand.user?.email) ? brand.user!.email! : undefined
+    const tmpl = brandReactivatedMessage({
+      brandName: brand.brandName || brand.companyName || '',
+      recipientEmail: brandEmail,
+    })
     await sendNotification({
       userId: brand.userId,
-      type: 'SYSTEM',
-      title: '계정 활성화 안내',
-      message: `${brand.brandName || brand.companyName} 계정이 다시 활성화되었어요.`,
-      linkUrl: '/brand/dashboard',
+      ...tmpl.inApp,
+      email: brandEmail,
+      emailTemplate: brandEmail ? tmpl.email : undefined,
     })
   } catch {}
 

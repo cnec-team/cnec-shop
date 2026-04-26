@@ -2,13 +2,15 @@
 
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
+import { sendNotification, isValidEmail } from '@/lib/notifications'
+import { reviewSubmittedToBrandMessage, reviewSubmittedToCreatorMessage } from '@/lib/notifications/templates'
 
 async function requireBuyer() {
   const session = await auth()
   if (!session?.user) throw new Error('로그인이 필요합니다')
   const buyer = await prisma.buyer.findFirst({ where: { userId: session.user.id } })
   if (!buyer) throw new Error('구매자 정보를 찾을 수 없습니다')
-  return { user: session.user, buyer }
+  return { session, user: session.user, buyer }
 }
 
 export async function writeReview(data: {
@@ -19,7 +21,7 @@ export async function writeReview(data: {
   images?: string[]
   instagramUrl?: string
 }) {
-  const { buyer } = await requireBuyer()
+  const { session, buyer } = await requireBuyer()
 
   if (data.rating < 1 || data.rating > 5) throw new Error('별점은 1~5점이어야 합니다')
   if (data.content.length < 20) throw new Error('후기는 20자 이상 작성해주세요')
@@ -28,7 +30,7 @@ export async function writeReview(data: {
   const orderItem = await prisma.orderItem.findUnique({
     where: { id: data.orderItemId },
     include: {
-      order: { select: { id: true, buyerId: true, status: true } },
+      order: { select: { id: true, buyerId: true, status: true, creatorId: true } },
     },
   })
 
@@ -93,6 +95,56 @@ export async function writeReview(data: {
 
     return r
   })
+
+  // 브랜드 + 크리에이터에게 리뷰 알림
+  try {
+    const productForNotif = await prisma.product.findUnique({
+      where: { id: orderItem.productId },
+      select: {
+        name: true,
+        brand: { select: { userId: true, brandName: true, user: { select: { email: true } } } },
+      },
+    })
+    if (productForNotif?.brand) {
+      const brandEmail = isValidEmail(productForNotif.brand.user?.email) ? productForNotif.brand.user!.email! : undefined
+      const brandTmpl = reviewSubmittedToBrandMessage({
+        brandName: productForNotif.brand.brandName ?? '',
+        productName: productForNotif.name ?? '상품',
+        rating: data.rating,
+        buyerName: session?.user?.name ?? '구매자',
+        recipientEmail: brandEmail,
+      })
+      sendNotification({
+        userId: productForNotif.brand.userId,
+        ...brandTmpl.inApp,
+        email: brandEmail,
+        emailTemplate: brandEmail ? brandTmpl.email : undefined,
+      })
+    }
+
+    // 주문에 크리에이터가 연결되어 있으면 크리에이터에게도 알림
+    if (orderItem.order.creatorId) {
+      const creator = await prisma.creator.findUnique({
+        where: { id: orderItem.order.creatorId },
+        select: { userId: true, displayName: true, username: true, user: { select: { email: true } } },
+      })
+      if (creator) {
+        const creatorEmail = isValidEmail(creator.user?.email) ? creator.user!.email! : undefined
+        const creatorTmpl = reviewSubmittedToCreatorMessage({
+          creatorName: creator.displayName ?? creator.username ?? '크리에이터',
+          productName: productForNotif?.name ?? '상품',
+          rating: data.rating,
+          recipientEmail: creatorEmail,
+        })
+        sendNotification({
+          userId: creator.userId,
+          ...creatorTmpl.inApp,
+          email: creatorEmail,
+          emailTemplate: creatorEmail ? creatorTmpl.email : undefined,
+        })
+      }
+    }
+  } catch { /* 알림 실패 무시 */ }
 
   return { id: review.id, pointsEarned }
 }
