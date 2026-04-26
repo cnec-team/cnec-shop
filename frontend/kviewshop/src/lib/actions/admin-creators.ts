@@ -3,7 +3,8 @@
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { logAuditAction } from '@/lib/audit'
-import { sendNotification } from '@/lib/notifications'
+import { sendNotification, isValidEmail, normalizePhone } from '@/lib/notifications'
+import { creatorSuspendedMessage, creatorReactivatedMessage } from '@/lib/notifications/templates'
 import { startOfMonthKst, nowKst } from '@/lib/utils/timezone'
 
 async function requireAdmin() {
@@ -194,7 +195,7 @@ export async function suspendCreator(params: { creatorId: string; reason: string
 
   const creator = await prisma.creator.findUnique({
     where: { id: creatorId },
-    select: { id: true, displayName: true, username: true, status: true, suspendedAt: true, userId: true },
+    select: { id: true, displayName: true, username: true, status: true, suspendedAt: true, userId: true, user: { select: { email: true, phone: true } } },
   })
   if (!creator) throw new Error('NOT_FOUND')
   if (creator.suspendedAt) throw new Error('이미 정지된 크리에이터예요')
@@ -228,12 +229,20 @@ export async function suspendCreator(params: { creatorId: string; reason: string
   })
 
   try {
+    const creatorEmail = isValidEmail(creator.user?.email) ? creator.user!.email! : undefined
+    const creatorPhone = normalizePhone(creator.user?.phone)
+    const tmpl = creatorSuspendedMessage({
+      creatorName: creator.displayName || creator.username || '',
+      reason,
+      recipientEmail: creatorEmail,
+    })
     await sendNotification({
       userId: creator.userId,
-      type: 'SYSTEM',
-      title: '계정 정지 안내',
-      message: `${creator.displayName || creator.username} 계정이 정지되었어요. 사유: ${reason}`,
-      linkUrl: '/suspended',
+      ...tmpl.inApp,
+      phone: creatorPhone,
+      email: creatorEmail,
+      kakaoTemplate: creatorPhone ? tmpl.kakao : undefined,
+      emailTemplate: creatorEmail ? tmpl.email : undefined,
     })
   } catch {}
 
@@ -248,7 +257,7 @@ export async function reactivateCreator(params: { creatorId: string; reason: str
 
   const creator = await prisma.creator.findUnique({
     where: { id: creatorId },
-    select: { id: true, displayName: true, username: true, suspendedAt: true, suspendedReason: true, userId: true },
+    select: { id: true, displayName: true, username: true, suspendedAt: true, suspendedReason: true, userId: true, user: { select: { email: true } } },
   })
   if (!creator) throw new Error('NOT_FOUND')
   if (!creator.suspendedAt) throw new Error('정지 상태가 아닌 크리에이터예요')
@@ -275,12 +284,16 @@ export async function reactivateCreator(params: { creatorId: string; reason: str
   })
 
   try {
+    const creatorEmail = isValidEmail(creator.user?.email) ? creator.user!.email! : undefined
+    const tmpl = creatorReactivatedMessage({
+      creatorName: creator.displayName || creator.username || '',
+      recipientEmail: creatorEmail,
+    })
     await sendNotification({
       userId: creator.userId,
-      type: 'SYSTEM',
-      title: '계정 활성화 안내',
-      message: `${creator.displayName || creator.username} 계정이 다시 활성화되었어요.`,
-      linkUrl: '/creator/dashboard',
+      ...tmpl.inApp,
+      email: creatorEmail,
+      emailTemplate: creatorEmail ? tmpl.email : undefined,
     })
   } catch {}
 
