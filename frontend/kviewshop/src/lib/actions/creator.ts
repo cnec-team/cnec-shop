@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { Prisma } from '@/generated/prisma/client'
 import { auth } from '@/lib/auth'
 import { sendNotification } from '@/lib/notifications'
+import { campaignParticipationRequestedMessage } from '@/lib/notifications/templates'
 
 async function requireCreator() {
   const session = await auth()
@@ -280,15 +281,22 @@ export async function applyCampaignParticipation(data: {
   try {
     const campaign = await prisma.campaign.findUnique({
       where: { id: data.campaignId },
-      select: { title: true, brand: { select: { userId: true } } },
+      select: { title: true, brand: { select: { userId: true, brandName: true, user: { select: { email: true } } } } },
     })
     if (campaign?.brand?.userId) {
-      sendNotification({
+      const brandEmail = campaign.brand.user?.email ?? undefined
+      const creatorName = creator.displayName ?? creator.username ?? '크리에이터'
+      const tmpl = campaignParticipationRequestedMessage({
+        brandName: campaign.brand.brandName ?? '',
+        creatorName,
+        campaignTitle: campaign.title ?? '',
+        recipientEmail: brandEmail,
+      })
+      await sendNotification({
         userId: campaign.brand.userId,
-        type: 'CAMPAIGN',
-        title: '공구 참여 신청',
-        message: `${creator.displayName ?? creator.username ?? '크리에이터'}님이 "${campaign.title}" 공구에 참여를 신청했습니다.`,
-        linkUrl: '/brand/creators/pending',
+        ...tmpl.inApp,
+        email: brandEmail,
+        emailTemplate: brandEmail ? tmpl.email : undefined,
       })
     }
   } catch {

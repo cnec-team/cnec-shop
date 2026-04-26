@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { sendNotification } from '@/lib/notifications'
+import { inquiryAnsweredMessage } from '@/lib/notifications/templates'
 
 async function requireBrand() {
   const session = await auth()
@@ -175,7 +176,8 @@ export async function answerBrandInquiry(
   const inquiry = await prisma.orderInquiry.findFirst({
     where: { id: inquiryId, brandId: brand.id, status: { in: ['OPEN', 'ANSWERED'] } },
     include: {
-      buyer: { select: { userId: true } },
+      buyer: { select: { userId: true, nickname: true, user: { select: { email: true } } } },
+      order: { select: { orderNumber: true, items: { take: 1, select: { productName: true } } } },
     },
   })
 
@@ -196,15 +198,26 @@ export async function answerBrandInquiry(
     data: { status: 'ANSWERED' },
   })
 
-  // Buyer 알림
+  // Buyer 알림 (인앱 + 이메일)
   if (inquiry.buyer?.userId) {
     try {
+      const buyerEmail = (inquiry.buyer as any).user?.email as string | undefined
+      const buyerName = inquiry.buyer.nickname ?? '고객'
+      const productName = (inquiry.order as any)?.items?.[0]?.productName as string | undefined
+      const orderNumber = (inquiry.order as any)?.orderNumber as string | undefined
+      const tmpl = inquiryAnsweredMessage({
+        buyerName,
+        productName: productName ?? undefined,
+        orderNumber: orderNumber ?? undefined,
+        inquiryId,
+        recipientEmail: buyerEmail,
+      })
       await sendNotification({
         userId: inquiry.buyer.userId,
-        type: 'ORDER',
-        title: '문의에 답변이 도착했어요',
-        message: `${brand.brandName || brand.companyName}에서 답변했어요`,
-        linkUrl: `/my/inquiries/${inquiryId}`,
+        ...tmpl.inApp,
+        email: buyerEmail,
+        emailTemplate: buyerEmail ? tmpl.email : undefined,
+        kakaoTemplate: tmpl.kakao,
       })
     } catch {}
   }

@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { cancelPayment, TossApiError } from '@/lib/toss/billing-client'
 import { rollbackPlanAfterRefund } from '@/lib/billing/rollback-after-refund'
 import { sendNotification } from '@/lib/notifications'
+import { billingRefundApprovedMessage, billingRefundRejectedMessage } from '@/lib/notifications/templates'
 
 export async function POST(req: NextRequest) {
   try {
@@ -34,11 +35,19 @@ export async function POST(req: NextRequest) {
       })
 
       try {
+        const brandEmail = payment.brand.user?.email ?? undefined
+        const brandName = payment.brand.brandName ?? payment.brand.companyName ?? ''
+        const rejTmpl = billingRefundRejectedMessage({
+          brandName,
+          reason,
+          recipientEmail: brandEmail,
+        })
         await sendNotification({
           userId: payment.brand.userId,
-          type: 'SYSTEM',
-          title: '환불 요청이 거절됐어요',
-          message: `환불이 어려운 사유가 있어요. 사유: ${reason}`,
+          ...rejTmpl.inApp,
+          email: brandEmail,
+          emailTemplate: brandEmail ? rejTmpl.email : undefined,
+          kakaoTemplate: rejTmpl.kakao,
         })
       } catch {
         // 알림 실패는 주요 로직에 영향 주지 않음
@@ -71,11 +80,19 @@ export async function POST(req: NextRequest) {
     }
 
     try {
+      const brandEmail = payment.brand.user?.email ?? undefined
+      const brandName = payment.brand.brandName ?? payment.brand.companyName ?? ''
+      const appTmpl = billingRefundApprovedMessage({
+        brandName,
+        refundAmount: Number(refundAmount),
+        recipientEmail: brandEmail,
+      })
       await sendNotification({
         userId: payment.brand.userId,
-        type: 'SYSTEM',
-        title: '환불이 완료됐어요',
-        message: `₩${Number(refundAmount).toLocaleString()} 환불이 완료됐어요. 카드사 정책에 따라 3~5영업일 걸릴 수 있어요.`,
+        ...appTmpl.inApp,
+        email: brandEmail,
+        emailTemplate: brandEmail ? appTmpl.email : undefined,
+        kakaoTemplate: appTmpl.kakao,
       })
     } catch {
       // 알림 실패는 주요 로직에 영향 주지 않음

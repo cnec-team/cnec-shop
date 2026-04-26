@@ -24,6 +24,47 @@ export const KAKAO_TEMPLATES = {
   SETTLEMENT_CANCELLED: 'CNECSHOP_028',
   BROADCAST_PROMOTIONAL: 'CNECSHOP_029',
   BROADCAST_INFORMATIONAL: 'CNECSHOP_030',
+  // 구독/결제
+  BILLING_SUCCESS: 'CNECSHOP_031',
+  BILLING_FAILED: 'CNECSHOP_032',
+  SUBSCRIPTION_RENEWAL_REMINDER: 'CNECSHOP_033',
+  SUBSCRIPTION_EXPIRED: 'CNECSHOP_034',
+  PLAN_CHANGED: 'CNECSHOP_035',
+  BILLING_REFUND_APPROVED: 'CNECSHOP_036',
+  BILLING_REFUND_REJECTED: 'CNECSHOP_037',
+  TRIAL_ENDING: 'CNECSHOP_038',
+  TRIAL_PLAN_EXPIRED: 'CNECSHOP_039',
+  PRO_EXPIRING: 'CNECSHOP_040',
+  PRO_EXPIRED: 'CNECSHOP_041',
+  RESTRICTED_EXPIRING: 'CNECSHOP_042',
+  ACCOUNT_DEACTIVATED_BRAND: 'CNECSHOP_043',
+  // 리뷰/문의
+  REVIEW_TO_BRAND: 'CNECSHOP_044',
+  REVIEW_TO_CREATOR: 'CNECSHOP_045',
+  INQUIRY_ANSWERED: 'CNECSHOP_046',
+  INQUIRY_FOLLOWUP: 'CNECSHOP_047',
+  // 체험/관리
+  TRIAL_REJECTED: 'CNECSHOP_048',
+  BRAND_REACTIVATED: 'CNECSHOP_049',
+  CREATOR_REACTIVATED: 'CNECSHOP_050',
+  BRAND_SUSPENDED: 'CNECSHOP_051',
+  CREATOR_SUSPENDED: 'CNECSHOP_052',
+  // 캠페인
+  CAMPAIGN_ENDED: 'CNECSHOP_053',
+  CAMPAIGN_PARTICIPATION_REQUESTED: 'CNECSHOP_054',
+  // 기존 템플릿 카카오 추가
+  ORDER_CANCELLED_BY_BRAND: 'CNECSHOP_055',
+  ORDER_CANCELLED_BY_BUYER: 'CNECSHOP_056',
+  EXCHANGE_REQUESTED_KAKAO: 'CNECSHOP_057',
+  REFUND_REQUESTED_KAKAO: 'CNECSHOP_058',
+  CAMPAIGN_PARTICIPATION_REJECTED: 'CNECSHOP_059',
+  CAMPAIGN_RECRUITING_STARTED: 'CNECSHOP_060',
+  REFUND_COMPLETED: 'CNECSHOP_061',
+  PAYMENT_FAILED_BUYER: 'CNECSHOP_062',
+  EXCHANGE_RESPONDED: 'CNECSHOP_063',
+  REFUND_RESPONDED: 'CNECSHOP_064',
+  BRAND_APPROVED: 'CNECSHOP_065',
+  BRAND_REJECTED: 'CNECSHOP_066',
 } as const
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.cnecshop.com'
@@ -865,9 +906,11 @@ export function brandApprovedTemplate(data: {
   brandName: string
   recipientEmail?: string
 }) {
+  const kakaoMsg = `[크넥샵] 브랜드 승인 완료\n\n${data.brandName} 브랜드 입점이 승인되었습니다.\n\n지금 바로 상품을 등록하고 크리에이터와 함께 판매를 시작해보세요.`
   const now = new Date()
 
   return {
+    kakao: { templateCode: KAKAO_TEMPLATES.BRAND_APPROVED, message: kakaoMsg },
     email: {
       subject: `[크넥샵] ${data.brandName} 입점이 승인됐어요`,
       html: renderEmail({
@@ -904,9 +947,11 @@ export function brandRejectedTemplate(data: {
   brandName: string
   recipientEmail?: string
 }) {
+  const kakaoMsg = `[크넥샵] 입점 심사 결과\n\n${data.brandName} 입점이 어려웠습니다.\n\n자세한 사항은 관리자에게 문의해주세요.`
   const now = new Date()
 
   return {
+    kakao: { templateCode: KAKAO_TEMPLATES.BRAND_REJECTED, message: kakaoMsg },
     email: {
       subject: `[크넥샵] 입점 심사 결과를 알려드려요`,
       html: renderEmail({
@@ -985,9 +1030,11 @@ export function orderCancelledByBrandTemplate(data: {
   orderLinkUrl?: string
 }) {
   const linkUrl = data.orderLinkUrl ?? '/buyer/orders'
+  const kakaoMsg = `[크넥샵] 주문 취소\n\n주문이 취소되었습니다.\n\n주문번호: ${data.orderNumber}\n취소 사유: ${data.cancelReason}\n\n결제하신 금액은 영업일 기준 3~5일 내 환불됩니다.`
   const now = new Date()
 
   return {
+    kakao: { templateCode: KAKAO_TEMPLATES.ORDER_CANCELLED_BY_BRAND, message: kakaoMsg },
     email: {
       subject: `[크넥샵] 주문이 취소됐어요 (${data.orderNumber})`,
       html: renderEmail({
@@ -1063,9 +1110,11 @@ export function orderCancelledByBuyerTemplate(data: {
   orderNumber: string
   recipientEmail?: string
 }) {
+  const kakaoMsg = `[크넥샵] 주문 취소\n\n주문이 취소되었습니다.\n\n주문번호: ${data.orderNumber}\n\n구매자에 의해 주문이 취소되었습니다.`
   const now = new Date()
 
   return {
+    kakao: { templateCode: KAKAO_TEMPLATES.ORDER_CANCELLED_BY_BUYER, message: kakaoMsg },
     email: {
       subject: `[크넥샵] 구매자가 주문을 취소했어요 (${data.orderNumber})`,
       html: renderEmail({
@@ -1140,9 +1189,11 @@ export function exchangeRequestedTemplate(data: {
   reason: string
   recipientEmail?: string
 }) {
+  const kakaoMsg = `[크넥샵] 교환 요청 접수\n\n교환 요청이 접수되었습니다.\n\n주문번호: ${data.orderNumber}\n사유: ${data.reason}\n\n빠른 확인 부탁드립니다.`
   const now = new Date()
 
   return {
+    kakao: { templateCode: KAKAO_TEMPLATES.EXCHANGE_REQUESTED_KAKAO, message: kakaoMsg },
     email: {
       subject: `[크넥샵] 교환 요청 접수 (${data.orderNumber})`,
       html: renderEmail({
@@ -1180,9 +1231,11 @@ export function refundRequestedTemplate(data: {
   refundType: string
   recipientEmail?: string
 }) {
+  const kakaoMsg = `[크넥샵] 환불 요청 접수\n\n환불 요청이 접수되었습니다.\n\n주문번호: ${data.orderNumber}\n환불 유형: ${data.refundType}\n\n빠른 확인 부탁드립니다.`
   const now = new Date()
 
   return {
+    kakao: { templateCode: KAKAO_TEMPLATES.REFUND_REQUESTED_KAKAO, message: kakaoMsg },
     email: {
       subject: `[크넥샵] 환불 요청 접수 (${data.orderNumber})`,
       html: renderEmail({
@@ -1220,9 +1273,11 @@ export function campaignParticipationRejectedTemplate(data: {
   campaignTitle: string
   recipientEmail?: string
 }) {
+  const kakaoMsg = `[크넥샵] 캠페인 참여 결과\n\n${data.creatorName}님, 아쉽게도 이번 캠페인은 참여가 어려웠어요.\n\n캠페인: ${data.campaignTitle}\n\n다른 캠페인에 참여해보세요.`
   const now = new Date()
 
   return {
+    kakao: { templateCode: KAKAO_TEMPLATES.CAMPAIGN_PARTICIPATION_REJECTED, message: kakaoMsg },
     email: {
       subject: `[크넥샵] ${data.campaignTitle} 참여 결과를 알려드려요`,
       html: renderEmail({
@@ -1257,9 +1312,11 @@ export function campaignRecruitingStartedTemplate(data: {
   campaignTitle: string
   recipientEmail?: string
 }) {
+  const kakaoMsg = `[크넥샵] 새 캠페인 오픈\n\n새 캠페인이 오픈됐어요.\n\n캠페인: ${data.campaignTitle}\n\n지금 확인하고 참여해보세요!`
   const now = new Date()
 
   return {
+    kakao: { templateCode: KAKAO_TEMPLATES.CAMPAIGN_RECRUITING_STARTED, message: kakaoMsg },
     email: {
       subject: `[크넥샵] 새 캠페인 오픈! ${data.campaignTitle}`,
       html: renderEmail({
@@ -1616,7 +1673,9 @@ export function paymentFailedMessage(data: {
   retryUrl?: string
   recipientEmail?: string
 }) {
+  const kakaoMsg = `[크넥샵] 결제 실패\n\n${data.buyerName}님, 결제가 완료되지 않았습니다.\n\n주문번호: ${data.orderNumber}\n상품: ${data.productName}\n실패 사유: ${data.reason}\n\n30분 내 재시도 가능합니다.`
   return {
+    kakao: { templateCode: KAKAO_TEMPLATES.PAYMENT_FAILED_BUYER, message: kakaoMsg },
     email: {
       subject: `[크넥샵] 결제가 완료되지 않았어요 (${data.orderNumber})`,
       html: renderEmail({
@@ -1740,7 +1799,9 @@ export function refundCompletedMessage(data: {
   refundedAt: Date
   recipientEmail?: string
 }) {
+  const kakaoMsg = `[크넥샵] 환불 완료\n\n${data.buyerName}님, 환불이 완료되었습니다.\n\n주문번호: ${data.orderNumber}\n환불금액: ${formatPrice(data.refundAmount)}\n환불수단: ${data.refundMethod}`
   return {
+    kakao: { templateCode: KAKAO_TEMPLATES.REFUND_COMPLETED, message: kakaoMsg },
     email: {
       subject: `[크넥샵] 환불이 완료됐어요 (${data.orderNumber})`,
       html: renderEmail({
@@ -1781,8 +1842,10 @@ export function exchangeRespondedMessage(data: {
   recipientEmail?: string
 }) {
   const isApproved = data.status === 'approved'
+  const kakaoMsg = `[크넥샵] 교환 ${isApproved ? '승인' : '거절'}\n\n${data.buyerName}님, 교환이 ${isApproved ? '승인되었습니다' : '어렵습니다'}.\n\n주문번호: ${data.orderNumber}\n상품: ${data.productName}${!isApproved && data.reason ? `\n사유: ${data.reason}` : ''}`
   const now = new Date()
   return {
+    kakao: { templateCode: KAKAO_TEMPLATES.EXCHANGE_RESPONDED, message: kakaoMsg },
     email: {
       subject: `[크넥샵] 교환 ${isApproved ? '승인' : '거절'} (${data.orderNumber})`,
       html: renderEmail({
@@ -1831,8 +1894,10 @@ export function refundRespondedMessage(data: {
   recipientEmail?: string
 }) {
   const isApproved = data.status === 'approved'
+  const kakaoMsg = `[크넥샵] 환불 ${isApproved ? '승인' : '거절'}\n\n${data.buyerName}님, 환불이 ${isApproved ? '승인되었습니다' : '어렵습니다'}.\n\n주문번호: ${data.orderNumber}\n상품: ${data.productName}${!isApproved && data.reason ? `\n사유: ${data.reason}` : ''}`
   const now = new Date()
   return {
+    kakao: { templateCode: KAKAO_TEMPLATES.REFUND_RESPONDED, message: kakaoMsg },
     email: {
       subject: `[크넥샵] 환불 ${isApproved ? '승인' : '거절'} (${data.orderNumber})`,
       html: renderEmail({
@@ -2533,6 +2598,931 @@ export function broadcastInformationalMessage(data: {
       title: data.title,
       message: data.content.slice(0, 200),
       linkUrl: '/',
+    },
+  }
+}
+
+// ---------- 구독 결제 완료 → 브랜드 ----------
+
+export function billingPaymentSuccessMessage(data: {
+  brandName: string
+  amount: number
+  purpose: string
+  billingCycle?: string
+  recipientEmail?: string
+}) {
+  const purposeLabel = data.purpose === 'PRO_SUBSCRIPTION' ? '프로 구독' : data.purpose === 'STANDARD_SUBSCRIPTION' ? '스탠다드 구독' : '충전'
+  const cycleLabel = data.billingCycle === 'ANNUAL' ? '연간' : '월간'
+  const kakaoMsg = `[크넥샵] 결제 완료\n\n${data.brandName}님, ${purposeLabel} 결제가 완료되었습니다.\n\n결제금액: ${formatPrice(data.amount)}\n${data.billingCycle ? `결제 주기: ${cycleLabel}` : ''}`
+  const now = new Date()
+
+  return {
+    kakao: { templateCode: KAKAO_TEMPLATES.BILLING_SUCCESS, message: kakaoMsg },
+    email: {
+      subject: `[크넥샵] ${purposeLabel} 결제가 완료됐어요`,
+      html: renderEmail({
+        recipientType: 'brand',
+        statusBadge: { text: '결제 완료', variant: 'success' },
+        preheader: `${formatPrice(data.amount)} 결제가 정상 처리됐어요`,
+        heroTitle: `${purposeLabel} 결제가 완료됐어요`,
+        heroSubtitle: '결제가 정상적으로 처리됐어요. 아래에서 자세한 내역을 확인하세요.',
+        sections: [
+          emailAmountBox('결제 금액', data.amount, '결제 완료'),
+          emailInfoTable([
+            { label: '브랜드', value: data.brandName },
+            { label: '결제 항목', value: purposeLabel },
+            ...(data.billingCycle ? [{ label: '결제 주기', value: cycleLabel }] : []),
+            { label: '결제일', value: formatKDate(now) },
+          ]),
+        ],
+        primaryAction: { text: '구독 관리', url: `${SITE_URL}/ko/brand/billing/history` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SYSTEM',
+      title: `${purposeLabel} 결제 완료`,
+      message: `${formatPrice(data.amount)} 결제가 완료됐어요.`,
+      linkUrl: '/brand/billing/history',
+    },
+  }
+}
+
+// ---------- 구독 결제 실패 → 브랜드 ----------
+
+export function billingPaymentFailedMessage(data: {
+  brandName: string
+  amount: number
+  purpose: string
+  errorReason?: string
+  recipientEmail?: string
+}) {
+  const purposeLabel = data.purpose === 'PRO_SUBSCRIPTION' ? '프로 구독' : data.purpose === 'STANDARD_SUBSCRIPTION' ? '스탠다드 구독' : '충전'
+  const kakaoMsg = `[크넥샵] 결제 실패\n\n${data.brandName}님, ${purposeLabel} 결제가 실패했습니다.\n\n결제금액: ${formatPrice(data.amount)}${data.errorReason ? `\n실패 사유: ${data.errorReason}` : ''}\n\n다시 시도해주세요.`
+
+  return {
+    kakao: { templateCode: KAKAO_TEMPLATES.BILLING_FAILED, message: kakaoMsg },
+    email: {
+      subject: `[크넥샵] ${purposeLabel} 결제가 실패했어요`,
+      html: renderEmail({
+        recipientType: 'brand',
+        statusBadge: { text: '결제 실패', variant: 'warning' },
+        preheader: '결제가 처리되지 않았어요. 다시 시도해주세요',
+        heroTitle: `${purposeLabel} 결제가 실패했어요`,
+        heroSubtitle: '결제가 처리되지 않았어요. 카드 정보를 확인하시고 다시 시도해주세요.',
+        sections: [
+          emailAmountBox('결제 시도 금액', data.amount),
+          emailInfoTable([
+            { label: '결제 항목', value: purposeLabel },
+            ...(data.errorReason ? [{ label: '실패 사유', value: data.errorReason }] : []),
+          ]),
+          emailNoticeBox('카드 한도, 잔액 부족, 카드사 점검 등이 원인일 수 있어요. 다른 카드로도 시도 가능해요.', 'warning'),
+        ],
+        primaryAction: { text: '다시 결제하기', url: `${SITE_URL}/ko/brand/billing/checkout` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SYSTEM',
+      title: `${purposeLabel} 결제 실패`,
+      message: data.errorReason ?? '결제가 처리되지 않았어요.',
+      linkUrl: '/brand/billing/checkout',
+    },
+  }
+}
+
+// ---------- 구독 갱신 예정 D-7 → 브랜드 ----------
+
+export function subscriptionRenewalReminderMessage(data: {
+  brandName: string
+  planName: string
+  renewalDate: string
+  amount: number
+  recipientEmail?: string
+}) {
+  const kakaoMsg = `[크넥샵] 구독 갱신 예정\n\n${data.brandName}님, ${data.planName} 구독이 ${data.renewalDate}에 자동 갱신됩니다.\n\n갱신금액: ${formatPrice(data.amount)}\n\n변경이 필요하시면 미리 수정해주세요.`
+
+  return {
+    kakao: { templateCode: KAKAO_TEMPLATES.SUBSCRIPTION_RENEWAL_REMINDER, message: kakaoMsg },
+    email: {
+      subject: `[크넥샵] ${data.planName} 구독이 곧 갱신돼요`,
+      html: renderEmail({
+        recipientType: 'brand',
+        statusBadge: { text: '갱신 예정', variant: 'info' },
+        preheader: `${data.renewalDate}에 자동 갱신돼요`,
+        heroTitle: '구독이 곧 갱신돼요',
+        heroSubtitle: `${data.renewalDate}에 자동으로 갱신됩니다. 변경이 필요하면 미리 수정해주세요.`,
+        sections: [
+          emailAmountBox('갱신 금액', data.amount),
+          emailInfoTable([
+            { label: '플랜', value: data.planName },
+            { label: '갱신 예정일', value: data.renewalDate, emphasis: true },
+          ]),
+          emailNoticeBox('갱신일 전에 플랜 변경 또는 해지가 가능해요.', 'info'),
+        ],
+        primaryAction: { text: '구독 관리', url: `${SITE_URL}/ko/brand/pricing` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SYSTEM',
+      title: '구독 갱신 예정',
+      message: `${data.planName} 구독이 ${data.renewalDate}에 갱신돼요.`,
+      linkUrl: '/brand/pricing',
+    },
+  }
+}
+
+// ---------- 구독 만료 → 브랜드 ----------
+
+export function subscriptionExpiredMessage(data: {
+  brandName: string
+  planName: string
+  recipientEmail?: string
+}) {
+  const kakaoMsg = `[크넥샵] 구독 만료\n\n${data.brandName}님, ${data.planName} 구독이 만료되었습니다.\n\n서비스를 계속 이용하시려면 구독을 갱신해주세요.`
+
+  return {
+    kakao: { templateCode: KAKAO_TEMPLATES.SUBSCRIPTION_EXPIRED, message: kakaoMsg },
+    email: {
+      subject: `[크넥샵] ${data.planName} 구독이 만료됐어요`,
+      html: renderEmail({
+        recipientType: 'brand',
+        statusBadge: { text: '구독 만료', variant: 'warning' },
+        preheader: '구독을 갱신하면 기존 데이터를 유지할 수 있어요',
+        heroTitle: `${data.planName} 구독이 만료됐어요`,
+        heroSubtitle: '구독이 만료되어 일부 기능이 제한돼요. 지금 갱신하면 데이터를 그대로 유지할 수 있어요.',
+        sections: [
+          emailNoticeBox('갱신하면 기존 데이터와 설정이 그대로 유지돼요.', 'warning'),
+        ],
+        primaryAction: { text: '구독 갱신하기', url: `${SITE_URL}/ko/brand/pricing` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SYSTEM',
+      title: '구독이 만료됐어요',
+      message: `${data.planName} 구독이 만료됐어요. 갱신해주세요.`,
+      linkUrl: '/brand/pricing',
+    },
+  }
+}
+
+// ---------- 플랜 변경 완료 → 브랜드 ----------
+
+export function planChangedMessage(data: {
+  brandName: string
+  fromPlan: string
+  toPlan: string
+  recipientEmail?: string
+}) {
+  const kakaoMsg = `[크넥샵] 플랜 변경 완료\n\n${data.brandName}님, 플랜이 변경되었습니다.\n\n변경 전: ${data.fromPlan}\n변경 후: ${data.toPlan}`
+  const now = new Date()
+
+  return {
+    kakao: { templateCode: KAKAO_TEMPLATES.PLAN_CHANGED, message: kakaoMsg },
+    email: {
+      subject: `[크넥샵] ${data.toPlan} 플랜으로 변경됐어요`,
+      html: renderEmail({
+        recipientType: 'brand',
+        statusBadge: { text: '플랜 변경', variant: 'info' },
+        preheader: `${data.fromPlan} → ${data.toPlan} 변경 완료`,
+        heroTitle: '플랜이 변경됐어요',
+        heroSubtitle: '새로운 플랜이 즉시 적용됐어요.',
+        sections: [
+          emailInfoTable([
+            { label: '변경 전', value: data.fromPlan },
+            { label: '변경 후', value: data.toPlan, emphasis: true },
+            { label: '적용일', value: formatKDate(now) },
+          ]),
+        ],
+        primaryAction: { text: '플랜 상세 보기', url: `${SITE_URL}/ko/brand/pricing` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SYSTEM',
+      title: '플랜 변경 완료',
+      message: `${data.fromPlan} → ${data.toPlan}`,
+      linkUrl: '/brand/pricing',
+    },
+  }
+}
+
+// ---------- 결제 환불 승인 → 브랜드 ----------
+
+export function billingRefundApprovedMessage(data: {
+  brandName: string
+  refundAmount: number
+  recipientEmail?: string
+}) {
+  const kakaoMsg = `[크넥샵] 환불 완료\n\n${data.brandName}님, 환불이 완료되었습니다.\n\n환불금액: ${formatPrice(data.refundAmount)}\n\n카드사 정책에 따라 3~5영업일 걸릴 수 있습니다.`
+
+  return {
+    kakao: { templateCode: KAKAO_TEMPLATES.BILLING_REFUND_APPROVED, message: kakaoMsg },
+    email: {
+      subject: `[크넥샵] ${formatPrice(data.refundAmount)} 환불이 완료됐어요`,
+      html: renderEmail({
+        recipientType: 'brand',
+        statusBadge: { text: '환불 완료', variant: 'success' },
+        preheader: '환불이 정상 처리됐어요',
+        heroTitle: '환불이 완료됐어요',
+        sections: [
+          emailAmountBox('환불 금액', data.refundAmount, '카드사 기준 3~5영업일'),
+          emailNoticeBox('카드 환불은 카드사 영업일 기준 <strong>3~5일</strong> 안에 처리돼요.', 'success'),
+        ],
+        primaryAction: { text: '결제 내역 보기', url: `${SITE_URL}/ko/brand/billing/history` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SYSTEM',
+      title: '환불이 완료됐어요',
+      message: `${formatPrice(data.refundAmount)} 환불 처리됐어요.`,
+      linkUrl: '/brand/billing/history',
+    },
+  }
+}
+
+// ---------- 결제 환불 거절 → 브랜드 ----------
+
+export function billingRefundRejectedMessage(data: {
+  brandName: string
+  reason: string
+  recipientEmail?: string
+}) {
+  const kakaoMsg = `[크넥샵] 환불 거절\n\n${data.brandName}님, 환불 요청이 거절되었습니다.\n\n사유: ${data.reason}\n\n문의: support@cnecshop.com`
+
+  return {
+    kakao: { templateCode: KAKAO_TEMPLATES.BILLING_REFUND_REJECTED, message: kakaoMsg },
+    email: {
+      subject: `[크넥샵] 환불 요청이 거절됐어요`,
+      html: renderEmail({
+        recipientType: 'brand',
+        statusBadge: { text: '환불 거절', variant: 'warning' },
+        preheader: '환불이 어려운 사유를 확인해주세요',
+        heroTitle: '환불 요청이 거절됐어요',
+        heroSubtitle: '아래 사유로 환불이 어렵습니다.',
+        sections: [
+          emailInfoTable([
+            { label: '사유', value: data.reason, emphasis: true },
+          ]),
+          emailNoticeBox('추가 문의는 <strong>support@cnecshop.com</strong>으로 연락주세요.', 'info'),
+        ],
+        primaryAction: { text: '문의하기', url: `${SITE_URL}/ko/support` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SYSTEM',
+      title: '환불 요청이 거절됐어요',
+      message: `사유: ${data.reason}`,
+      linkUrl: '/brand/billing/history',
+    },
+  }
+}
+
+// ---------- 무료체험 종료 D-1 → 브랜드 ----------
+
+export function trialEndingMessage(data: {
+  brandName: string
+  trialEndsDate: string
+  usedCampaigns: number
+  usedMessages: number
+  usedDetailViews: number
+  recipientEmail?: string
+}) {
+  const kakaoMsg = `[크넥샵] 체험 종료 예정\n\n${data.brandName}님, 무료 체험이 내일 종료됩니다.\n\n종료일: ${data.trialEndsDate}\n\n스탠다드 또는 프로 플랜으로 전환해주세요.`
+
+  return {
+    kakao: { templateCode: KAKAO_TEMPLATES.TRIAL_ENDING, message: kakaoMsg },
+    email: {
+      subject: `[크넥샵] 무료 체험이 내일 종료돼요`,
+      html: renderEmail({
+        recipientType: 'brand',
+        statusBadge: { text: '체험 종료 임박', variant: 'warning' },
+        preheader: '내일부터 스탠다드로 전환돼요. 지금 플랜을 선택하세요',
+        heroTitle: '무료 체험이 내일 종료돼요',
+        heroSubtitle: '체험 기간 동안의 활동을 확인하고, 적합한 플랜을 선택해주세요.',
+        sections: [
+          emailInfoTable([
+            { label: '종료일', value: data.trialEndsDate, emphasis: true },
+            { label: '공동구매 사용', value: `${data.usedCampaigns}개` },
+            { label: '메시지 발송', value: `${data.usedMessages}건` },
+            { label: '상세정보 조회', value: `${data.usedDetailViews}번` },
+          ]),
+          emailNoticeBox('내일부터 스탠다드로 자동 전환돼요. 프로 기능을 유지하려면 지금 업그레이드하세요.', 'warning'),
+        ],
+        primaryAction: { text: '플랜 선택하기', url: `${SITE_URL}/ko/brand/pricing` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SYSTEM',
+      title: '무료 체험이 내일 종료돼요',
+      message: `공동구매 ${data.usedCampaigns}개, 메시지 ${data.usedMessages}건 사용`,
+      linkUrl: '/brand/pricing',
+    },
+  }
+}
+
+// ---------- 무료체험 종료 → 브랜드 ----------
+
+export function trialPlanExpiredMessage(data: {
+  brandName: string
+  restrictedUntilDate: string
+  recipientEmail?: string
+}) {
+  const kakaoMsg = `[크넥샵] 체험 종료\n\n${data.brandName}님, 무료 체험이 종료되었습니다.\n\n${data.restrictedUntilDate}까지 결제하시면 데이터를 유지할 수 있습니다.`
+
+  return {
+    kakao: { templateCode: KAKAO_TEMPLATES.TRIAL_PLAN_EXPIRED, message: kakaoMsg },
+    email: {
+      subject: `[크넥샵] 무료 체험이 종료됐어요`,
+      html: renderEmail({
+        recipientType: 'brand',
+        statusBadge: { text: '체험 종료', variant: 'warning' },
+        preheader: '30일 내 결제하면 데이터를 유지할 수 있어요',
+        heroTitle: '무료 체험이 종료됐어요',
+        heroSubtitle: `${data.restrictedUntilDate}까지 결제하시면 데이터를 그대로 유지할 수 있어요.`,
+        sections: [
+          emailInfoTable([
+            { label: '데이터 보존 기한', value: data.restrictedUntilDate, emphasis: true },
+          ]),
+          emailNoticeBox('스탠다드(월 99,000원) 또는 프로(월 330,000원) 중 선택하세요.', 'warning'),
+        ],
+        primaryAction: { text: '플랜 선택하기', url: `${SITE_URL}/ko/brand/pricing` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SYSTEM',
+      title: '무료 체험이 종료됐어요',
+      message: `${data.restrictedUntilDate}까지 결제하면 데이터 유지 가능`,
+      linkUrl: '/brand/pricing',
+    },
+  }
+}
+
+// ---------- 프로 만료 D-7 → 브랜드 ----------
+
+export function proExpiringMessage(data: {
+  brandName: string
+  proExpiresDate: string
+  recipientEmail?: string
+}) {
+  const kakaoMsg = `[크넥샵] 프로 만료 예정\n\n${data.brandName}님, 프로 플랜이 ${data.proExpiresDate}에 만료됩니다.\n\n미리 연장하시면 끊김 없이 이용 가능합니다.`
+
+  return {
+    kakao: { templateCode: KAKAO_TEMPLATES.PRO_EXPIRING, message: kakaoMsg },
+    email: {
+      subject: `[크넥샵] 프로 플랜이 곧 만료돼요`,
+      html: renderEmail({
+        recipientType: 'brand',
+        statusBadge: { text: '만료 7일 전', variant: 'warning' },
+        preheader: `${data.proExpiresDate}에 만료돼요. 미리 연장하세요`,
+        heroTitle: '프로 플랜이 곧 만료돼요',
+        heroSubtitle: `${data.proExpiresDate}에 만료됩니다. 미리 연장하시면 끊김 없이 이용할 수 있어요.`,
+        sections: [
+          emailInfoTable([
+            { label: '만료 예정일', value: data.proExpiresDate, emphasis: true },
+          ]),
+          emailNoticeBox('만료 후 스탠다드로 자동 전환돼요. 프로 기능(낮은 수수료, 무제한 메시지 등)을 유지하려면 지금 연장하세요.', 'warning'),
+        ],
+        primaryAction: { text: '프로 연장하기', url: `${SITE_URL}/ko/brand/pricing` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SYSTEM',
+      title: '프로 만료 7일 전이에요',
+      message: `${data.proExpiresDate}에 만료돼요. 미리 연장하세요.`,
+      linkUrl: '/brand/pricing',
+    },
+  }
+}
+
+// ---------- 프로 만료 → 스탠다드 다운그레이드 → 브랜드 ----------
+
+export function proExpiredMessage(data: {
+  brandName: string
+  recipientEmail?: string
+}) {
+  const kakaoMsg = `[크넥샵] 프로 만료\n\n${data.brandName}님, 프로 플랜이 만료되어 스탠다드로 전환되었습니다.\n\n프로 기능을 다시 이용하시려면 재구독해주세요.`
+
+  return {
+    kakao: { templateCode: KAKAO_TEMPLATES.PRO_EXPIRED, message: kakaoMsg },
+    email: {
+      subject: `[크넥샵] 프로 플랜이 만료됐어요`,
+      html: renderEmail({
+        recipientType: 'brand',
+        statusBadge: { text: '프로 만료', variant: 'warning' },
+        preheader: '스탠다드로 전환됐어요. 프로 재구독이 가능해요',
+        heroTitle: '프로 플랜이 만료됐어요',
+        heroSubtitle: '스탠다드 플랜으로 자동 전환됐어요. 프로 기능이 필요하시면 재구독해주세요.',
+        sections: [
+          emailInfoTable([
+            { label: '현재 플랜', value: '스탠다드' },
+            { label: '수수료율', value: '10% (프로: 8%)' },
+          ]),
+          emailNoticeBox('프로를 재구독하면 수수료율이 <strong>8%</strong>로 즉시 복원돼요.', 'info'),
+        ],
+        primaryAction: { text: '프로 재구독', url: `${SITE_URL}/ko/brand/pricing` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SYSTEM',
+      title: '프로가 만료됐어요',
+      message: '스탠다드로 전환됐어요. 재구독이 가능해요.',
+      linkUrl: '/brand/pricing',
+    },
+  }
+}
+
+// ---------- 제한 모드 만료 D-7 → 브랜드 ----------
+
+export function restrictedExpiringMessage(data: {
+  brandName: string
+  restrictedUntilDate: string
+  recipientEmail?: string
+}) {
+  const kakaoMsg = `[크넥샵] 계정 비활성화 예정\n\n${data.brandName}님, 7일 후 계정이 비활성화됩니다.\n\n기한: ${data.restrictedUntilDate}\n\n지금 결제하면 데이터를 유지할 수 있습니다.`
+
+  return {
+    kakao: { templateCode: KAKAO_TEMPLATES.RESTRICTED_EXPIRING, message: kakaoMsg },
+    email: {
+      subject: `[크넥샵] 7일 후 계정이 비활성화돼요`,
+      html: renderEmail({
+        recipientType: 'brand',
+        statusBadge: { text: '비활성화 예정', variant: 'warning' },
+        preheader: '지금 결제하면 데이터를 유지할 수 있어요',
+        heroTitle: '7일 후 계정이 비활성화돼요',
+        heroSubtitle: `${data.restrictedUntilDate}까지 결제하지 않으면 계정이 비활성화돼요. 데이터는 90일간 보존됩니다.`,
+        sections: [
+          emailInfoTable([
+            { label: '비활성화 예정일', value: data.restrictedUntilDate, emphasis: true },
+          ]),
+          emailNoticeBox('스탠다드(월 99,000원) 또는 프로(월 330,000원)를 선택하세요.', 'warning'),
+        ],
+        primaryAction: { text: '지금 결제하기', url: `${SITE_URL}/ko/brand/pricing` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SYSTEM',
+      title: '7일 후 계정이 비활성화돼요',
+      message: `${data.restrictedUntilDate}까지 결제해주세요.`,
+      linkUrl: '/brand/pricing',
+    },
+  }
+}
+
+// ---------- 계정 비활성화 → 브랜드 ----------
+
+export function accountDeactivatedBrandMessage(data: {
+  brandName: string
+  retentionDays: number
+  recipientEmail?: string
+}) {
+  const kakaoMsg = `[크넥샵] 계정 비활성화\n\n${data.brandName}님, 계정이 비활성화되었습니다.\n\n데이터는 ${data.retentionDays}일간 보존됩니다.\n결제하시면 복구됩니다.`
+
+  return {
+    kakao: { templateCode: KAKAO_TEMPLATES.ACCOUNT_DEACTIVATED_BRAND, message: kakaoMsg },
+    email: {
+      subject: `[크넥샵] 계정이 비활성화됐어요`,
+      html: renderEmail({
+        recipientType: 'brand',
+        statusBadge: { text: '계정 비활성화', variant: 'warning' },
+        preheader: '결제하면 복구 가능해요',
+        heroTitle: '계정이 비활성화됐어요',
+        heroSubtitle: `데이터는 ${data.retentionDays}일간 보존됩니다. 그 안에 결제하시면 복구됩니다.`,
+        sections: [
+          emailInfoTable([
+            { label: '데이터 보존 기간', value: `${data.retentionDays}일`, emphasis: true },
+          ]),
+          emailNoticeBox('보존 기간 후 데이터가 영구 삭제될 수 있어요. 빠른 복구를 권장해요.', 'warning'),
+        ],
+        primaryAction: { text: '계정 복구하기', url: `${SITE_URL}/ko/brand/pricing` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SYSTEM',
+      title: '계정이 비활성화됐어요',
+      message: `데이터는 ${data.retentionDays}일간 보존됩니다.`,
+      linkUrl: '/brand/pricing',
+    },
+  }
+}
+
+// ---------- 리뷰 작성됨 → 브랜드 ----------
+
+export function reviewSubmittedToBrandMessage(data: {
+  brandName: string
+  productName: string
+  rating: number
+  buyerName: string
+  recipientEmail?: string
+}) {
+  const stars = '★'.repeat(data.rating) + '☆'.repeat(5 - data.rating)
+  return {
+    email: {
+      subject: `[크넥샵] ${data.productName}에 새 리뷰가 등록됐어요`,
+      html: renderEmail({
+        recipientType: 'brand',
+        statusBadge: { text: '새 리뷰', variant: 'info' },
+        preheader: `${data.buyerName}님이 ${data.rating}점 리뷰를 남겼어요`,
+        heroTitle: '새 리뷰가 등록됐어요',
+        heroSubtitle: `${data.buyerName}님이 ${data.productName}에 리뷰를 남겼어요.`,
+        sections: [
+          emailInfoTable([
+            { label: '상품', value: data.productName, emphasis: true },
+            { label: '평점', value: `${stars} (${data.rating}/5)` },
+            { label: '작성자', value: data.buyerName },
+          ]),
+        ],
+        primaryAction: { text: '리뷰 확인하기', url: `${SITE_URL}/ko/brand/products` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'ORDER',
+      title: '새 리뷰가 등록됐어요',
+      message: `${data.productName} - ${data.rating}점`,
+      linkUrl: '/brand/products',
+    },
+  }
+}
+
+// ---------- 리뷰 작성됨 → 크리에이터 ----------
+
+export function reviewSubmittedToCreatorMessage(data: {
+  creatorName: string
+  productName: string
+  rating: number
+  recipientEmail?: string
+}) {
+  const stars = '★'.repeat(data.rating) + '☆'.repeat(5 - data.rating)
+  return {
+    email: {
+      subject: `[크넥샵] ${data.productName}에 새 리뷰가 달렸어요`,
+      html: renderEmail({
+        recipientType: 'creator',
+        statusBadge: { text: '새 리뷰', variant: 'info' },
+        preheader: `내 셀렉트샵 상품에 ${data.rating}점 리뷰가 달렸어요`,
+        heroTitle: '새 리뷰가 달렸어요',
+        heroSubtitle: `내 셀렉트샵의 ${data.productName}에 리뷰가 달렸어요.`,
+        sections: [
+          emailInfoTable([
+            { label: '상품', value: data.productName, emphasis: true },
+            { label: '평점', value: `${stars} (${data.rating}/5)` },
+          ]),
+        ],
+        primaryAction: { text: '리뷰 확인하기', url: `${SITE_URL}/ko/creator/sales` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'ORDER',
+      title: '새 리뷰가 달렸어요',
+      message: `${data.productName} - ${data.rating}점`,
+      linkUrl: '/creator/sales',
+    },
+  }
+}
+
+// ---------- 문의 답변 완료 → 구매자 ----------
+
+export function inquiryAnsweredMessage(data: {
+  buyerName: string
+  productName?: string
+  orderNumber?: string
+  inquiryId: string
+  recipientEmail?: string
+}) {
+  const kakaoMsg = `[크넥샵] 문의 답변 완료\n\n${data.buyerName}님, 문의하신 내용에 답변이 등록되었습니다.${data.productName ? `\n\n상품: ${data.productName}` : ''}${data.orderNumber ? `\n주문번호: ${data.orderNumber}` : ''}\n\n크넥샵에서 확인해주세요.`
+
+  return {
+    kakao: { templateCode: KAKAO_TEMPLATES.INQUIRY_ANSWERED, message: kakaoMsg },
+    email: {
+      subject: `[크넥샵] 문의하신 내용에 답변이 등록됐어요`,
+      html: renderEmail({
+        recipientType: 'buyer',
+        statusBadge: { text: '답변 완료', variant: 'success' },
+        preheader: '브랜드에서 답변을 등록했어요',
+        heroTitle: '문의에 답변이 등록됐어요',
+        heroSubtitle: '브랜드에서 답변을 등록했어요. 확인해보세요.',
+        sections: [
+          emailInfoTable([
+            ...(data.productName ? [{ label: '상품', value: data.productName }] : []),
+            ...(data.orderNumber ? [{ label: '주문번호', value: data.orderNumber }] : []),
+          ]),
+        ],
+        primaryAction: { text: '답변 확인하기', url: `${SITE_URL}/ko/my/inquiries/${data.inquiryId}` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'ORDER',
+      title: '문의에 답변이 등록됐어요',
+      message: data.productName ?? '답변을 확인해주세요.',
+      linkUrl: `/my/inquiries/${data.inquiryId}`,
+    },
+  }
+}
+
+// ---------- 구매자 추가 문의 → 브랜드 ----------
+
+export function inquiryFollowUpMessage(data: {
+  brandName: string
+  buyerName: string
+  inquirySubject?: string
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: `[크넥샵] ${data.buyerName}님이 추가 문의를 보냈어요`,
+      html: renderEmail({
+        recipientType: 'brand',
+        statusBadge: { text: '추가 문의', variant: 'info' },
+        preheader: '구매자가 문의에 추가 메시지를 보냈어요',
+        heroTitle: '추가 문의가 접수됐어요',
+        heroSubtitle: `${data.buyerName}님이 기존 문의에 추가 메시지를 보냈어요. 빠른 응답 부탁드려요.`,
+        sections: [
+          emailInfoTable([
+            { label: '문의자', value: data.buyerName, emphasis: true },
+            ...(data.inquirySubject ? [{ label: '문의 제목', value: data.inquirySubject }] : []),
+          ]),
+        ],
+        primaryAction: { text: '문의 확인하기', url: `${SITE_URL}/ko/brand/inquiries` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'ORDER',
+      title: '추가 문의가 접수됐어요',
+      message: `${data.buyerName}님이 추가 메시지를 보냈어요.`,
+      linkUrl: '/brand/inquiries',
+    },
+  }
+}
+
+// ---------- 체험 거절 → 크리에이터 ----------
+
+export function trialRejectedMessage(data: {
+  creatorName: string
+  brandName: string
+  productName: string
+  reason?: string
+  recipientEmail?: string
+}) {
+  const kakaoMsg = `[크넥샵] 체험 신청 결과\n\n${data.creatorName}님, 아쉽게도 체험 신청이 거절되었습니다.\n\n브랜드: ${data.brandName}\n상품: ${data.productName}${data.reason ? `\n사유: ${data.reason}` : ''}\n\n다른 상품에 체험 신청해보세요.`
+
+  return {
+    kakao: { templateCode: KAKAO_TEMPLATES.TRIAL_REJECTED, message: kakaoMsg },
+    email: {
+      subject: `[크넥샵] ${data.productName} 체험 신청 결과를 알려드려요`,
+      html: renderEmail({
+        recipientType: 'creator',
+        statusBadge: { text: '체험 결과 안내', variant: 'warning' },
+        preheader: '아쉽지만 다른 상품에 도전해보세요',
+        heroTitle: `${data.creatorName}님, 체험 신청 결과를 알려드려요`,
+        heroSubtitle: '아쉽게도 이번 체험 신청은 거절됐어요. 다른 상품에 체험을 신청해보세요.',
+        sections: [
+          emailInfoTable([
+            { label: '브랜드', value: data.brandName },
+            { label: '상품', value: data.productName, emphasis: true },
+            ...(data.reason ? [{ label: '사유', value: data.reason }] : []),
+          ]),
+          emailNoticeBox('브랜드별 선정 기준이 다르니 다양한 상품에 도전해보세요.', 'info'),
+        ],
+        primaryAction: { text: '다른 체험 보기', url: `${SITE_URL}/ko/creator/trial` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'CAMPAIGN',
+      title: '체험 신청이 거절됐어요',
+      message: `${data.brandName} - ${data.productName}`,
+      linkUrl: '/creator/trial/my',
+    },
+  }
+}
+
+// ---------- 브랜드 복원 → 브랜드 ----------
+
+export function brandReactivatedMessage(data: {
+  brandName: string
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: `[크넥샵] ${data.brandName} 계정이 복원됐어요`,
+      html: renderEmail({
+        recipientType: 'brand',
+        statusBadge: { text: '계정 복원', variant: 'success' },
+        preheader: '모든 기능을 다시 이용할 수 있어요',
+        heroTitle: '계정이 복원됐어요',
+        heroSubtitle: `${data.brandName} 계정이 정상적으로 복원됐어요. 모든 기능을 다시 이용할 수 있어요.`,
+        sections: [
+          emailNoticeBox('상품 노출, 주문 접수, 정산이 정상적으로 재개돼요.', 'success'),
+        ],
+        primaryAction: { text: '브랜드 대시보드', url: `${SITE_URL}/ko/brand/dashboard` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SYSTEM',
+      title: '계정이 복원됐어요',
+      message: `${data.brandName} 계정이 정상 복원됐어요.`,
+      linkUrl: '/brand/dashboard',
+    },
+  }
+}
+
+// ---------- 크리에이터 복원 → 크리에이터 ----------
+
+export function creatorReactivatedMessage(data: {
+  creatorName: string
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: `[크넥샵] ${data.creatorName}님, 계정이 복원됐어요`,
+      html: renderEmail({
+        recipientType: 'creator',
+        statusBadge: { text: '계정 복원', variant: 'success' },
+        preheader: '내 셀렉트샵을 다시 운영할 수 있어요',
+        heroTitle: '계정이 복원됐어요',
+        heroSubtitle: `${data.creatorName}님의 계정이 정상적으로 복원됐어요. 내 셀렉트샵을 다시 운영할 수 있어요.`,
+        sections: [
+          emailNoticeBox('캠페인 참여, 샵 운영, 정산이 정상적으로 재개돼요.', 'success'),
+        ],
+        primaryAction: { text: '대시보드 가기', url: `${SITE_URL}/ko/creator/dashboard` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SYSTEM',
+      title: '계정이 복원됐어요',
+      message: '내 셀렉트샵을 다시 운영할 수 있어요.',
+      linkUrl: '/creator/dashboard',
+    },
+  }
+}
+
+// ---------- 브랜드 정지 → 브랜드 ----------
+
+export function brandSuspendedMessage(data: {
+  brandName: string
+  reason: string
+  recipientEmail?: string
+}) {
+  const kakaoMsg = `[크넥샵] 브랜드 정지\n\n${data.brandName}님, 브랜드 계정이 정지되었습니다.\n\n사유: ${data.reason}\n\n문의: support@cnecshop.com`
+
+  return {
+    kakao: { templateCode: KAKAO_TEMPLATES.BRAND_SUSPENDED, message: kakaoMsg },
+    email: {
+      subject: `[크넥샵] 브랜드 계정이 정지됐어요`,
+      html: renderEmail({
+        recipientType: 'brand',
+        statusBadge: { text: '계정 정지', variant: 'warning' },
+        preheader: '계정 정지 사유를 확인해주세요',
+        heroTitle: '브랜드 계정이 정지됐어요',
+        heroSubtitle: '아래 사유로 계정이 정지됐어요. 문의가 필요하시면 고객센터로 연락주세요.',
+        sections: [
+          emailInfoTable([
+            { label: '사유', value: data.reason, emphasis: true },
+          ]),
+          emailNoticeBox('정지 기간 동안 상품 노출, 주문 접수, 정산이 중단돼요.', 'warning'),
+        ],
+        primaryAction: { text: '문의하기', url: `${SITE_URL}/ko/support` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SYSTEM',
+      title: '브랜드 계정이 정지됐어요',
+      message: `사유: ${data.reason}`,
+      linkUrl: '/brand/dashboard',
+    },
+  }
+}
+
+// ---------- 크리에이터 정지 → 크리에이터 ----------
+
+export function creatorSuspendedMessage(data: {
+  creatorName: string
+  reason: string
+  recipientEmail?: string
+}) {
+  const kakaoMsg = `[크넥샵] 계정 정지\n\n${data.creatorName}님, 크리에이터 계정이 정지되었습니다.\n\n사유: ${data.reason}\n\n문의: support@cnecshop.com`
+
+  return {
+    kakao: { templateCode: KAKAO_TEMPLATES.CREATOR_SUSPENDED, message: kakaoMsg },
+    email: {
+      subject: `[크넥샵] 크리에이터 계정이 정지됐어요`,
+      html: renderEmail({
+        recipientType: 'creator',
+        statusBadge: { text: '계정 정지', variant: 'warning' },
+        preheader: '계정 정지 사유를 확인해주세요',
+        heroTitle: '크리에이터 계정이 정지됐어요',
+        heroSubtitle: '아래 사유로 계정이 정지됐어요. 문의가 필요하시면 고객센터로 연락주세요.',
+        sections: [
+          emailInfoTable([
+            { label: '사유', value: data.reason, emphasis: true },
+          ]),
+          emailNoticeBox('정지 기간 동안 셀렉트샵 운영, 캠페인 참여, 정산이 중단돼요.', 'warning'),
+        ],
+        primaryAction: { text: '문의하기', url: `${SITE_URL}/ko/support` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SYSTEM',
+      title: '크리에이터 계정이 정지됐어요',
+      message: `사유: ${data.reason}`,
+      linkUrl: '/creator/dashboard',
+    },
+  }
+}
+
+// ---------- 캠페인 종료 → 크리에이터 ----------
+
+export function campaignEndedMessage(data: {
+  creatorName: string
+  brandName: string
+  campaignTitle: string
+  recipientEmail?: string
+}) {
+  const kakaoMsg = `[크넥샵] 캠페인 종료\n\n${data.creatorName}님, 참여하신 캠페인이 종료되었습니다.\n\n브랜드: ${data.brandName}\n캠페인: ${data.campaignTitle}\n\n판매 현황을 확인해보세요.`
+
+  return {
+    kakao: { templateCode: KAKAO_TEMPLATES.CAMPAIGN_ENDED, message: kakaoMsg },
+    email: {
+      subject: `[크넥샵] ${data.campaignTitle} 캠페인이 종료됐어요`,
+      html: renderEmail({
+        recipientType: 'creator',
+        statusBadge: { text: '캠페인 종료', variant: 'neutral' },
+        preheader: '캠페인 기간 동안의 판매 현황을 확인해보세요',
+        heroTitle: '캠페인이 종료됐어요',
+        heroSubtitle: `${data.brandName}의 ${data.campaignTitle} 캠페인이 종료됐어요.`,
+        sections: [
+          emailInfoTable([
+            { label: '브랜드', value: data.brandName },
+            { label: '캠페인', value: data.campaignTitle, emphasis: true },
+            { label: '종료일', value: formatKDate(new Date()) },
+          ]),
+          emailNoticeBox('캠페인 기간 동안의 판매 현황을 대시보드에서 확인하세요.', 'info'),
+        ],
+        primaryAction: { text: '판매 현황 보기', url: `${SITE_URL}/ko/creator/sales` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'CAMPAIGN',
+      title: '캠페인이 종료됐어요',
+      message: `${data.brandName} - ${data.campaignTitle}`,
+      linkUrl: '/creator/sales',
+    },
+  }
+}
+
+// ---------- 캠페인 참여 신청 → 브랜드 ----------
+
+export function campaignParticipationRequestedMessage(data: {
+  brandName: string
+  creatorName: string
+  campaignTitle: string
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: `[크넥샵] ${data.creatorName}님이 캠페인 참여를 신청했어요`,
+      html: renderEmail({
+        recipientType: 'brand',
+        statusBadge: { text: '참여 신청', variant: 'info' },
+        preheader: '크리에이터 프로필을 확인하고 승인해주세요',
+        heroTitle: '캠페인 참여 신청이 접수됐어요',
+        heroSubtitle: `${data.creatorName}님이 ${data.campaignTitle} 캠페인 참여를 신청했어요.`,
+        sections: [
+          emailInfoTable([
+            { label: '크리에이터', value: data.creatorName, emphasis: true },
+            { label: '캠페인', value: data.campaignTitle },
+            { label: '신청일', value: formatKDate(new Date()) },
+          ]),
+          emailNoticeBox('크리에이터 프로필을 확인 후 승인/거절을 결정해주세요.', 'info'),
+        ],
+        primaryAction: { text: '신청 확인하기', url: `${SITE_URL}/ko/brand/creators/pending` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'CAMPAIGN',
+      title: '캠페인 참여 신청이 접수됐어요',
+      message: `${data.creatorName}님 - ${data.campaignTitle}`,
+      linkUrl: '/brand/creators/pending',
     },
   }
 }

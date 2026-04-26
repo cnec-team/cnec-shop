@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { verifyCronSecret, logCronJob } from '@/lib/notifications/trigger-utils'
+import { sendNotification } from '@/lib/notifications'
+import { dormantTransitionedMessage } from '@/lib/notifications/templates'
 
 export async function GET(request: Request) {
   if (!verifyCronSecret(request)) {
@@ -22,7 +24,19 @@ export async function GET(request: Request) {
 
     for (const user of users) {
       try {
-        // TODO: Send dormantTransitionedMessage (#45) to user
+        try {
+          const tmpl = dormantTransitionedMessage({
+            userName: user.name ?? '회원',
+            transitionedAt: new Date(),
+            recipientEmail: user.email ?? undefined,
+          })
+          await sendNotification({
+            userId: user.id,
+            ...tmpl.inApp,
+            email: user.email ?? undefined,
+            emailTemplate: user.email ? tmpl.email : undefined,
+          })
+        } catch { /* 알림 실패 무시 */ }
         await prisma.user.update({
           where: { id: user.id },
           data: { dormantAt: new Date() },
