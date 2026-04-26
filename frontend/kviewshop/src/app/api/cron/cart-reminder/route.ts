@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { verifyCronSecret, logCronJob } from '@/lib/notifications/trigger-utils'
+import { sendNotification } from '@/lib/notifications'
+import { cartReminderMessage } from '@/lib/notifications/templates'
 
 export async function GET(request: Request) {
   if (!verifyCronSecret(request)) {
@@ -35,7 +37,23 @@ export async function GET(request: Request) {
 
     for (const cart of carts) {
       try {
-        // TODO: Send cartReminderMessage (#46) to user
+        try {
+          const topProduct = cart.items[0]?.product?.name ?? '상품'
+          const totalAmount = cart.items.reduce((s: number, i: any) => s + Number(i.product?.salePrice ?? i.product?.price ?? 0) * i.quantity, 0)
+          const tmpl = cartReminderMessage({
+            buyerName: cart.buyer?.user?.name ?? '고객',
+            itemCount: cart.items.length,
+            topProductName: topProduct,
+            totalAmount,
+            recipientEmail: cart.buyer?.user?.email ?? undefined,
+          })
+          await sendNotification({
+            userId: cart.buyer?.userId,
+            ...tmpl.inApp,
+            email: cart.buyer?.user?.email ?? undefined,
+            emailTemplate: cart.buyer?.user?.email ? tmpl.email : undefined,
+          })
+        } catch { /* 알림 실패 무시 */ }
         await prisma.cart.update({
           where: { id: cart.id },
           data: { reminderSentAt: new Date() },

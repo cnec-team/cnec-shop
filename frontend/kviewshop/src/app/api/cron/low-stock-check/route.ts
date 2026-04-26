@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { verifyCronSecret, logCronJob } from '@/lib/notifications/trigger-utils'
+import { sendNotification } from '@/lib/notifications'
+import { lowStockAlertMessage } from '@/lib/notifications/templates'
 
 export async function GET(request: Request) {
   if (!verifyCronSecret(request)) {
@@ -28,7 +30,21 @@ export async function GET(request: Request) {
 
     for (const product of lowStockProducts) {
       try {
-        // TODO: Send lowStockAlertMessage (#54) to brand
+        try {
+          const tmpl = lowStockAlertMessage({
+            brandName: product.brand?.brandName ?? '',
+            productName: product.name ?? '',
+            currentStock: product.stock,
+            threshold: 5,
+            recipientEmail: product.brand?.user?.email ?? undefined,
+          })
+          await sendNotification({
+            userId: product.brand?.userId,
+            ...tmpl.inApp,
+            email: product.brand?.user?.email ?? undefined,
+            emailTemplate: product.brand?.user?.email ? tmpl.email : undefined,
+          })
+        } catch { /* 알림 실패 무시 */ }
         await prisma.product.update({
           where: { id: product.id },
           data: { lastLowStockAlertAt: new Date() },

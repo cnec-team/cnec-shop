@@ -15,6 +15,8 @@ import {
   orderCancelledByBrandTemplate,
   orderCancelledByBrandToCreatorTemplate,
   campaignRecruitingStartedTemplate,
+  campaignEndedMessage,
+  campaignParticipationRequestedMessage,
 } from '@/lib/notifications/templates'
 
 async function requireBrand() {
@@ -1740,12 +1742,20 @@ export async function updateCampaignStatus(
         }
       } else {
         for (const c of creators) {
-          sendNotification({
+          const endedTmpl = campaignEndedMessage({
+            creatorName: c.displayName ?? '',
+            brandName: brand.brandName ?? '',
+            campaignTitle: campaign.title ?? '',
+            recipientEmail: c.email ?? undefined,
+          })
+          await sendNotification({
             userId: c.userId,
-            type: 'CAMPAIGN',
-            title: '캠페인 종료',
-            message: `"${campaign.title}" 캠페인이 종료되었어요.`,
-            linkUrl: '/creator/campaigns/my',
+            ...endedTmpl.inApp,
+            phone: c.phone ?? undefined,
+            email: c.email ?? undefined,
+            receiverName: c.displayName ?? undefined,
+            kakaoTemplate: endedTmpl.kakao,
+            emailTemplate: c.email ? endedTmpl.email : undefined,
           })
         }
       }

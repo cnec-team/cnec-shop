@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { sendNotification } from '@/lib/notifications'
+import { inquiryFollowUpMessage } from '@/lib/notifications/templates'
 
 async function requireBuyer() {
   const session = await auth()
@@ -138,6 +139,9 @@ export async function addInquiryMessage(inquiryId: string, content: string, imag
 
   const inquiry = await prisma.orderInquiry.findFirst({
     where: { id: inquiryId, buyerId: buyer.id, status: { in: ['OPEN', 'ANSWERED'] } },
+    include: {
+      brand: { select: { userId: true, brandName: true, companyName: true, user: { select: { email: true } } } },
+    },
   })
 
   if (!inquiry) throw new Error('문의를 찾을 수 없습니다')
@@ -157,6 +161,26 @@ export async function addInquiryMessage(inquiryId: string, content: string, imag
     where: { id: inquiryId },
     data: { status: 'OPEN' },
   })
+
+  // 브랜드에게 추가 문의 알림
+  if (inquiry.brand?.userId) {
+    try {
+      const brandEmail = inquiry.brand.user?.email ?? undefined
+      const brandName = inquiry.brand.brandName ?? inquiry.brand.companyName ?? ''
+      const tmpl = inquiryFollowUpMessage({
+        brandName,
+        buyerName: buyer.nickname ?? '고객',
+        inquirySubject: inquiry.title ?? undefined,
+        recipientEmail: brandEmail,
+      })
+      await sendNotification({
+        userId: inquiry.brand.userId,
+        ...tmpl.inApp,
+        email: brandEmail,
+        emailTemplate: brandEmail ? tmpl.email : undefined,
+      })
+    } catch {}
+  }
 
   return answer
 }

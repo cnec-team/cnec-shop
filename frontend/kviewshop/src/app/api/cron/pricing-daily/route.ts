@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { addDays, startOfDay, endOfDay } from 'date-fns'
 import { sendNotification } from '@/lib/notifications'
+import {
+  trialEndingMessage,
+  trialPlanExpiredMessage,
+  proExpiringMessage,
+  proExpiredMessage,
+  restrictedExpiringMessage,
+  accountDeactivatedBrandMessage,
+} from '@/lib/notifications/templates'
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization')
@@ -35,11 +43,22 @@ export async function GET(req: NextRequest) {
   })
   for (const sub of trialEndingTomorrow) {
     try {
+      const brandEmail = sub.brand.user?.email ?? undefined
+      const brandName = sub.brand.brandName ?? sub.brand.companyName ?? ''
+      const tmpl = trialEndingMessage({
+        brandName,
+        trialEndsDate: sub.trialEndsAt?.toLocaleDateString('ko-KR') ?? '',
+        usedCampaigns: sub.trialUsedCampaigns ?? 0,
+        usedMessages: sub.trialUsedMessages ?? 0,
+        usedDetailViews: sub.trialUsedDetailViews ?? 0,
+        recipientEmail: brandEmail,
+      })
       await sendNotification({
         userId: sub.brand.userId,
-        type: 'SYSTEM',
-        title: '내일이면 체험이 끝나요',
-        message: `3일 체험이 내일까지예요. 공동구매 ${sub.trialUsedCampaigns}개, 메시지 ${sub.trialUsedMessages}건, 상세정보 ${sub.trialUsedDetailViews}번 사용하셨어요. 내일부터 스탠다드로 전환돼요.`,
+        ...tmpl.inApp,
+        email: brandEmail,
+        emailTemplate: brandEmail ? tmpl.email : undefined,
+        kakaoTemplate: tmpl.kakao,
       })
       results.trialEndingTomorrow++
     } catch (e) {
@@ -67,11 +86,19 @@ export async function GET(req: NextRequest) {
     results.trialExpired++
 
     try {
+      const brandEmail = sub.brand.user?.email ?? undefined
+      const brandName = sub.brand.brandName ?? sub.brand.companyName ?? ''
+      const tmpl = trialPlanExpiredMessage({
+        brandName,
+        restrictedUntilDate: restrictedUntil.toLocaleDateString('ko-KR'),
+        recipientEmail: brandEmail,
+      })
       await sendNotification({
         userId: sub.brand.userId,
-        type: 'SYSTEM',
-        title: '체험 기간이 종료됐어요',
-        message: '30일 내 결제하시면 데이터를 그대로 유지할 수 있어요. 스탠다드(월 ₩99,000) 또는 프로(월 ₩330,000) 중 선택하세요.',
+        ...tmpl.inApp,
+        email: brandEmail,
+        emailTemplate: brandEmail ? tmpl.email : undefined,
+        kakaoTemplate: tmpl.kakao,
       })
     } catch (e) {
       console.error('[cron/pricing-daily] trial ended notification', e)
@@ -91,11 +118,19 @@ export async function GET(req: NextRequest) {
   })
   for (const sub of proExpiringSoon) {
     try {
+      const brandEmail = sub.brand.user?.email ?? undefined
+      const brandName = sub.brand.brandName ?? sub.brand.companyName ?? ''
+      const tmpl = proExpiringMessage({
+        brandName,
+        proExpiresDate: sub.proExpiresAt?.toLocaleDateString('ko-KR') ?? '',
+        recipientEmail: brandEmail,
+      })
       await sendNotification({
         userId: sub.brand.userId,
-        type: 'SYSTEM',
-        title: '프로 만료 7일 전이에요',
-        message: `프로가 ${sub.proExpiresAt?.toLocaleDateString('ko-KR')}에 만료돼요. 미리 연장하시면 끊김 없이 이어서 사용하실 수 있어요.`,
+        ...tmpl.inApp,
+        email: brandEmail,
+        emailTemplate: brandEmail ? tmpl.email : undefined,
+        kakaoTemplate: tmpl.kakao,
       })
       results.proExpiringSoon++
     } catch (e) {
@@ -106,6 +141,7 @@ export async function GET(req: NextRequest) {
   // 4. 프로 만료 → STANDARD
   const proExpired = await prisma.brandSubscription.findMany({
     where: { planV3: 'PRO', proExpiresAt: { lt: now } },
+    include: { brand: { include: { user: true } } },
   })
   for (const sub of proExpired) {
     await prisma.brandSubscription.update({
@@ -113,6 +149,24 @@ export async function GET(req: NextRequest) {
       data: { planV3: 'STANDARD', shopCommissionRate: 10.0 },
     })
     results.proExpired++
+
+    try {
+      const brandEmail = sub.brand.user?.email ?? undefined
+      const brandName = sub.brand.brandName ?? sub.brand.companyName ?? ''
+      const tmpl = proExpiredMessage({
+        brandName,
+        recipientEmail: brandEmail,
+      })
+      await sendNotification({
+        userId: sub.brand.userId,
+        ...tmpl.inApp,
+        email: brandEmail,
+        emailTemplate: brandEmail ? tmpl.email : undefined,
+        kakaoTemplate: tmpl.kakao,
+      })
+    } catch (e) {
+      console.error('[cron/pricing-daily] pro expired notification', e)
+    }
   }
 
   // 5. 제한 모드 D-7 알림
@@ -129,11 +183,19 @@ export async function GET(req: NextRequest) {
   })
   for (const sub of restrictedSoonExpiring) {
     try {
+      const brandEmail = sub.brand.user?.email ?? undefined
+      const brandName = sub.brand.brandName ?? sub.brand.companyName ?? ''
+      const tmpl = restrictedExpiringMessage({
+        brandName,
+        restrictedUntilDate: sub.restrictedUntil?.toLocaleDateString('ko-KR') ?? '',
+        recipientEmail: brandEmail,
+      })
       await sendNotification({
         userId: sub.brand.userId,
-        type: 'SYSTEM',
-        title: '7일 후 계정이 비활성화됩니다',
-        message: '지금 결제하면 데이터를 유지할 수 있어요. 스탠다드(월 ₩99,000) 또는 프로(월 ₩330,000) 중 선택하세요.',
+        ...tmpl.inApp,
+        email: brandEmail,
+        emailTemplate: brandEmail ? tmpl.email : undefined,
+        kakaoTemplate: tmpl.kakao,
       })
       results.restrictedReminder++
     } catch (e) {
@@ -160,11 +222,19 @@ export async function GET(req: NextRequest) {
     results.restrictedExpired++
 
     try {
+      const brandEmail = sub.brand.user?.email ?? undefined
+      const brandName = sub.brand.brandName ?? sub.brand.companyName ?? ''
+      const tmpl = accountDeactivatedBrandMessage({
+        brandName,
+        retentionDays: 90,
+        recipientEmail: brandEmail,
+      })
       await sendNotification({
         userId: sub.brand.userId,
-        type: 'SYSTEM',
-        title: '계정이 비활성화됐어요',
-        message: '데이터는 90일간 보존됩니다. 그 안에 결제하시면 복구됩니다.',
+        ...tmpl.inApp,
+        email: brandEmail,
+        emailTemplate: brandEmail ? tmpl.email : undefined,
+        kakaoTemplate: tmpl.kakao,
       })
     } catch (e) {
       console.error('[cron/pricing-daily] deactivation notification', e)

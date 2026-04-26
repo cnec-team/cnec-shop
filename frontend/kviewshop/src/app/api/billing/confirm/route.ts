@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { confirmPayment, TossApiError } from '@/lib/toss/billing-client'
 import { applyBillingPaymentSuccess } from '@/lib/billing/apply-payment'
+import { sendNotification } from '@/lib/notifications'
+import { billingPaymentSuccessMessage, billingPaymentFailedMessage } from '@/lib/notifications/templates'
 
 export async function POST(req: NextRequest) {
   let orderId: string | undefined
@@ -16,7 +18,7 @@ export async function POST(req: NextRequest) {
 
     const payment = await prisma.billingPayment.findUnique({
       where: { orderId },
-      include: { brand: true },
+      include: { brand: { include: { user: { select: { email: true } } } } },
     })
 
     if (!payment) {
@@ -60,6 +62,26 @@ export async function POST(req: NextRequest) {
 
     await applyBillingPaymentSuccess(updated.id)
 
+    // 결제 성공 알림
+    try {
+      const brandEmail = payment.brand?.user?.email ?? undefined
+      const brandName = payment.brand?.brandName ?? payment.brand?.companyName ?? ''
+      const tmpl = billingPaymentSuccessMessage({
+        brandName,
+        amount: Number(payment.amount),
+        purpose: payment.purpose ?? '',
+        billingCycle: payment.billingCycle ?? undefined,
+        recipientEmail: brandEmail,
+      })
+      await sendNotification({
+        userId: payment.brand.userId,
+        ...tmpl.inApp,
+        email: brandEmail,
+        emailTemplate: brandEmail ? tmpl.email : undefined,
+        kakaoTemplate: tmpl.kakao,
+      })
+    } catch {}
+
     return NextResponse.json({ success: true, paymentId: updated.id })
   } catch (error: unknown) {
     console.error('[billing/confirm]', error)
@@ -79,6 +101,33 @@ export async function POST(req: NextRequest) {
       } catch {
         // ignore update error
       }
+
+      // 결제 실패 알림
+      try {
+        const failedPayment = await prisma.billingPayment.findUnique({
+          where: { orderId },
+          include: { brand: { include: { user: { select: { email: true } } } } },
+        })
+        if (failedPayment) {
+          const brandEmail = failedPayment.brand?.user?.email ?? undefined
+          const brandName = failedPayment.brand?.brandName ?? failedPayment.brand?.companyName ?? ''
+          const errorReason = error instanceof TossApiError ? error.message : '결제가 처리되지 않았어요'
+          const failTmpl = billingPaymentFailedMessage({
+            brandName,
+            amount: Number(failedPayment.amount),
+            purpose: failedPayment.purpose ?? '',
+            errorReason,
+            recipientEmail: brandEmail,
+          })
+          await sendNotification({
+            userId: failedPayment.brand.userId,
+            ...failTmpl.inApp,
+            email: brandEmail,
+            emailTemplate: brandEmail ? failTmpl.email : undefined,
+            kakaoTemplate: failTmpl.kakao,
+          })
+        }
+      } catch {}
     }
 
     const message =

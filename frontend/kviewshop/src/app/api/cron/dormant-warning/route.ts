@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { verifyCronSecret, logCronJob } from '@/lib/notifications/trigger-utils'
+import { sendNotification } from '@/lib/notifications'
+import { dormantWarningMessage } from '@/lib/notifications/templates'
 
 export async function GET(request: Request) {
   if (!verifyCronSecret(request)) {
@@ -23,7 +25,20 @@ export async function GET(request: Request) {
 
     for (const user of users) {
       try {
-        // TODO: Send dormantWarningMessage (#44) to user
+        try {
+          const dormantDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('ko-KR')
+          const tmpl = dormantWarningMessage({
+            userName: user.name ?? '회원',
+            dormantDate,
+            recipientEmail: user.email ?? undefined,
+          })
+          await sendNotification({
+            userId: user.id,
+            ...tmpl.inApp,
+            email: user.email ?? undefined,
+            emailTemplate: user.email ? tmpl.email : undefined,
+          })
+        } catch { /* 알림 실패 무시 */ }
         await prisma.user.update({
           where: { id: user.id },
           data: { dormantWarnedAt: new Date() },

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { verifyCronSecret, logCronJob } from '@/lib/notifications/trigger-utils'
+import { sendNotification } from '@/lib/notifications'
+import { shippingDelayedMessage } from '@/lib/notifications/templates'
 
 export async function GET(request: Request) {
   if (!verifyCronSecret(request)) {
@@ -22,12 +24,27 @@ export async function GET(request: Request) {
       include: {
         buyer: { include: { user: true } },
         brand: true,
+        items: { include: { product: true }, take: 1 },
       },
     })
 
     for (const order of delayedOrders) {
       try {
-        // TODO: Send shippingDelayedMessage (#32) to brand
+        try {
+          const firstItem = order.items?.[0]
+          const tmpl = shippingDelayedMessage({
+            buyerName: order.buyerName ?? order.buyer?.user?.name ?? '고객',
+            orderNumber: order.orderNumber ?? order.id,
+            productName: firstItem?.product?.name ?? firstItem?.productName ?? '상품',
+            recipientEmail: order.buyerEmail ?? order.buyer?.user?.email ?? undefined,
+          })
+          await sendNotification({
+            userId: order.buyer?.userId ?? order.buyerId ?? undefined,
+            ...tmpl.inApp,
+            email: order.buyerEmail ?? order.buyer?.user?.email ?? undefined,
+            emailTemplate: (order.buyerEmail ?? order.buyer?.user?.email) ? tmpl.email : undefined,
+          })
+        } catch { /* 알림 실패 무시 */ }
         processed++
       } catch {
         failed++
