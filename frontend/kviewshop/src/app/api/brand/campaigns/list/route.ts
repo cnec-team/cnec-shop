@@ -25,5 +25,11 @@ export async function GET() {
     orderBy: { createdAt: 'desc' },
   })
 
-  return NextResponse.json({ campaigns })
+  // commissionRate: DB는 비율(0.25=25%) → 프론트에서 퍼센트로 표시하도록 변환
+  const serialized = campaigns.map(c => ({
+    ...c,
+    commissionRate: c.commissionRate ? Number(c.commissionRate) * 100 : null,
+  }))
+
+  return NextResponse.json({ campaigns: serialized })
 }

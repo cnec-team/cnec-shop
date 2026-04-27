@@ -23,7 +23,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Search } from 'lucide-react'
+import { Input } from '@/components/ui/input'
 import { useUpsellModal } from '@/lib/store/upsell'
 import { toast } from 'sonner'
 
@@ -59,6 +60,8 @@ function CreatorExplorerContent() {
     open: boolean
     creatorIds: string[]
   }>({ open: false, creatorIds: [] })
+
+  const [searchInput, setSearchInput] = useState(searchParams.get('search') || '')
 
   // Sort 상태는 URL에서 관리
   const sort = searchParams.get('sort') || 'matchScore'
@@ -150,9 +153,55 @@ function CreatorExplorerContent() {
         </div>
       </section>
 
-      {/* 필터 */}
+      {/* 검색 + 필터 */}
       <section className="border-b border-stone-200 bg-stone-50/50">
-        <div className="mx-auto max-w-[1400px] px-6 py-4">
+        <div className="mx-auto max-w-[1400px] px-6 pt-4">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              const params = new URLSearchParams(searchParams.toString())
+              if (searchInput.trim()) {
+                params.set('search', searchInput.trim())
+              } else {
+                params.delete('search')
+              }
+              params.set('page', '1')
+              router.push(`?${params.toString()}`)
+            }}
+            className="flex gap-2 mb-3"
+          >
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+              <Input
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="크리에이터 이름, 핸들, 바이오 검색..."
+                className="pl-9 h-10"
+              />
+            </div>
+            <Button type="submit" variant="outline" size="sm" className="h-10 px-4">
+              검색
+            </Button>
+            {searchParams.get('search') && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-10"
+                onClick={() => {
+                  setSearchInput('')
+                  const params = new URLSearchParams(searchParams.toString())
+                  params.delete('search')
+                  params.set('page', '1')
+                  router.push(`?${params.toString()}`)
+                }}
+              >
+                초기화
+              </Button>
+            )}
+          </form>
+        </div>
+        <div className="mx-auto max-w-[1400px] px-6 pb-4">
           <ExplorerFilterPanel />
         </div>
       </section>
