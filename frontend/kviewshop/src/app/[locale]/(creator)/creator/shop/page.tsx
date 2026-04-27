@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -27,6 +27,11 @@ import {
   Camera,
   Store,
   ImageIcon,
+  ChevronLeft,
+  Eye,
+  Sparkles,
+  RefreshCw,
+  CheckCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ImageUpload from '@/components/common/ImageUpload';
@@ -79,9 +84,11 @@ interface ShopForm {
 export default function CreatorShopPage() {
   const params = useParams();
   const locale = params.locale as string;
+  const router = useRouter();
   const [creator, setCreator] = useState<Record<string, any> | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [aiTab, setAiTab] = useState<'suggest' | 'versions'>('suggest');
   const [form, setForm] = useState<ShopForm>({
     displayName: '',
     bio: '',
@@ -184,90 +191,92 @@ export default function CreatorShopPage() {
   const shopUrl = creator?.shopId ? getShopUrl(creator.shopId) : null;
 
   return (
-    <div className="space-y-6 max-w-2xl pb-24">
-      {/* Instagram-style Profile Preview */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        {/* Cover Image */}
-        <div className="h-32 sm:h-40 bg-gray-100 relative group">
-          {form.coverImageUrl ? (
-            <img src={form.coverImageUrl} alt="Cover" className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200" />
-          )}
-          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/20 transition-opacity">
-            <ImageUpload
-              value={form.coverImageUrl}
-              onChange={(url) => setForm({ ...form, coverImageUrl: url })}
-              placeholder=""
-              aspectRatio="cover"
-              folder="creator/cover"
-              recommendedSize="1200x400px"
-              maxSizeMB={10}
-            />
+    <div className="space-y-6 max-w-2xl pb-32">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => router.back()}
+            className="p-1 -ml-1 text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg font-bold text-gray-900">샵 꾸미기</h1>
+            {creator?.displayName && (
+              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium">
+                {creator.displayName}
+              </span>
+            )}
           </div>
         </div>
+        {shopUrl && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-xl text-xs h-8"
+            onClick={() => window.open(shopUrl, '_blank')}
+          >
+            <Eye className="h-3.5 w-3.5 mr-1" />
+            미리보기
+          </Button>
+        )}
+      </div>
 
-        {/* Profile section */}
-        <div className="px-5 pb-5 relative">
-          {/* Profile image */}
-          <div className="absolute -top-10 left-5">
-            <div className="w-20 h-20 rounded-full border-4 border-white overflow-hidden bg-gray-100 relative group">
-              {form.profileImageUrl ? (
-                <img src={form.profileImageUrl} alt="Profile" className="w-full h-full object-cover" />
+      {/* Live Preview Section — Phone Mockup */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="px-4 pt-3 pb-2">
+          <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Live Preview</span>
+        </div>
+        <div className="px-4 pb-4">
+          <div className="border border-gray-200 rounded-2xl overflow-hidden bg-gray-50">
+            {/* Banner area */}
+            <div className="h-32 sm:h-40 bg-gray-100 relative group">
+              {form.bannerImageUrl ? (
+                <img src={form.bannerImageUrl} alt="배너" className="w-full h-full object-cover" />
+              ) : form.coverImageUrl ? (
+                <img src={form.coverImageUrl} alt="커버" className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-xl font-bold text-gray-300">
-                  {form.displayName?.charAt(0) || '?'}
-                </div>
+                <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200" />
               )}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <ImageUpload
+                  value={form.bannerImageUrl || form.coverImageUrl}
+                  onChange={(url) => setForm({ ...form, bannerImageUrl: url, coverImageUrl: url })}
+                  placeholder=""
+                  aspectRatio="cover"
+                  folder="creator/banner"
+                  recommendedSize="1200x400px"
+                  maxSizeMB={10}
+                />
+              </div>
+              <div className="absolute bottom-2 right-2 pointer-events-none">
+                <span className="bg-white/90 backdrop-blur-sm text-gray-700 text-[11px] font-medium px-3 py-1 rounded-full shadow-sm flex items-center gap-1">
+                  <Camera className="h-3 w-3" />
+                  배너 변경
+                </span>
+              </div>
+            </div>
+
+            {/* Profile preview inside mockup */}
+            <div className="px-4 pb-4 relative bg-white">
+              <div className="absolute -top-8 left-4">
+                <div className="w-16 h-16 rounded-full border-3 border-white overflow-hidden bg-gray-100 shadow-sm">
+                  {form.profileImageUrl ? (
+                    <img src={form.profileImageUrl} alt="프로필" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-lg font-bold text-gray-300">
+                      {form.displayName?.charAt(0) || '?'}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="pt-10">
+                <p className="text-sm font-bold text-gray-900">{form.displayName || '샵 이름'}</p>
+                <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{form.bio || '소개글을 입력해주세요'}</p>
+              </div>
             </div>
           </div>
-
-          {/* Name and bio - inline edit */}
-          <div className="pt-14 space-y-3">
-            <Input
-              value={form.displayName}
-              onChange={(e) => setForm({ ...form, displayName: e.target.value })}
-              placeholder="샵 이름을 입력하세요"
-              className="border-0 border-b border-gray-100 rounded-none px-0 text-lg font-bold focus-visible:ring-0 focus-visible:border-gray-900"
-            />
-            <Textarea
-              value={form.bio}
-              onChange={(e) => setForm({ ...form, bio: e.target.value })}
-              placeholder="샵 소개를 입력하세요"
-              rows={2}
-              className="border-0 border-b border-gray-100 rounded-none px-0 text-sm text-gray-500 resize-none focus-visible:ring-0 focus-visible:border-gray-900"
-            />
-          </div>
-
-          {/* Quick Actions */}
-          {shopUrl && (
-            <div className="mt-4 grid grid-cols-3 gap-2">
-              <button
-                className="bg-gray-50 hover:bg-gray-100 rounded-xl p-3 text-center transition-colors"
-                onClick={() => window.open(shopUrl, '_blank')}
-              >
-                <ExternalLink className="h-4 w-4 mx-auto text-gray-500" />
-                <p className="text-[11px] text-gray-500 mt-1">내 샵 보기</p>
-              </button>
-              <button
-                className="bg-gray-50 hover:bg-gray-100 rounded-xl p-3 text-center transition-colors"
-                onClick={() => {
-                  navigator.clipboard.writeText(shopUrl);
-                  toast('링크가 복사되었습니다');
-                }}
-              >
-                <Copy className="h-4 w-4 mx-auto text-gray-500" />
-                <p className="text-[11px] text-gray-500 mt-1">URL 복사</p>
-              </button>
-              <button
-                className="bg-gray-50 hover:bg-gray-100 rounded-xl p-3 text-center transition-colors"
-                onClick={() => window.open('https://www.instagram.com/', '_blank')}
-              >
-                <Instagram className="h-4 w-4 mx-auto text-gray-500" />
-                <p className="text-[11px] text-gray-500 mt-1">인스타에 공유</p>
-              </button>
-            </div>
-          )}
         </div>
       </div>
 
@@ -306,6 +315,157 @@ export default function CreatorShopPage() {
         </div>
       </div>
 
+      {/* Edit Fields — Name & Bio */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+        <p className="text-sm font-semibold text-gray-900">기본 정보</p>
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs text-gray-500">샵 이름</Label>
+            <Input
+              value={form.displayName}
+              onChange={(e) => setForm({ ...form, displayName: e.target.value })}
+              placeholder="샵 이름을 입력하세요"
+              className="rounded-xl"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-gray-500">소개글</Label>
+            <Textarea
+              value={form.bio}
+              onChange={(e) => setForm({ ...form, bio: e.target.value })}
+              placeholder="샵 소개를 입력하세요"
+              rows={3}
+              className="rounded-xl resize-none"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Actions Row */}
+      {shopUrl && (
+        <div className="grid grid-cols-3 gap-2">
+          <button
+            className="bg-gray-50 hover:bg-gray-100 rounded-xl p-3 text-center transition-colors"
+            onClick={() => window.open(shopUrl, '_blank')}
+          >
+            <ExternalLink className="h-4 w-4 mx-auto text-gray-500" />
+            <p className="text-[11px] text-gray-500 mt-1.5 font-medium">샵 보기</p>
+          </button>
+          <button
+            className="bg-gray-50 hover:bg-gray-100 rounded-xl p-3 text-center transition-colors"
+            onClick={() => {
+              navigator.clipboard.writeText(shopUrl);
+              toast('링크가 복사되었습니다');
+            }}
+          >
+            <Copy className="h-4 w-4 mx-auto text-gray-500" />
+            <p className="text-[11px] text-gray-500 mt-1.5 font-medium">URL 복사</p>
+          </button>
+          <button
+            className="bg-gray-50 hover:bg-gray-100 rounded-xl p-3 text-center transition-colors"
+            onClick={() => window.open('https://www.instagram.com/', '_blank')}
+          >
+            <Instagram className="h-4 w-4 mx-auto text-gray-500" />
+            <p className="text-[11px] text-gray-500 mt-1.5 font-medium">인스타 공유</p>
+          </button>
+        </div>
+      )}
+
+      {/* AI 퍼서스트 Section */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="p-5 space-y-4">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-violet-500" />
+            <p className="text-sm font-semibold text-gray-900">소개글을 더 매력적으로</p>
+          </div>
+
+          <div className="flex gap-1 bg-gray-100 rounded-lg p-0.5">
+            <button
+              onClick={() => setAiTab('suggest')}
+              className={`flex-1 text-xs font-medium py-1.5 rounded-md transition-colors ${
+                aiTab === 'suggest'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              추천 소개글
+            </button>
+            <button
+              onClick={() => setAiTab('versions')}
+              className={`flex-1 text-xs font-medium py-1.5 rounded-md transition-colors ${
+                aiTab === 'versions'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              3개 버전
+            </button>
+          </div>
+
+          <div className="bg-gray-50 rounded-xl p-4 border-l-2 border-violet-300">
+            <p className="text-sm text-gray-700 leading-relaxed italic">
+              {form.bio
+                ? `"${form.displayName || '나'}만의 뷰티 감각으로 엄선한 제품만 추천해요. ${
+                    form.skinType
+                      ? `${(SKIN_TYPE_LABELS as Record<string, string>)[form.skinType] ?? ''} 피부를 위한 `
+                      : ''
+                  }리얼 리뷰를 확인하세요."`
+                : '"나만의 뷰티 철학으로 진짜 좋은 제품만 골라 추천합니다. 직접 써본 솔직 리뷰와 함께."'}
+            </p>
+          </div>
+
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="flex-1 rounded-xl text-xs h-9">
+              <RefreshCw className="h-3.5 w-3.5 mr-1" />
+              다시 생성
+            </Button>
+            <Button
+              size="sm"
+              className="flex-1 rounded-xl text-xs h-9 bg-violet-600 text-white hover:bg-violet-700"
+              onClick={() => {
+                const suggestedBio = form.bio
+                  ? `${form.displayName || '나'}만의 뷰티 감각으로 엄선한 제품만 추천해요. ${
+                      form.skinType
+                        ? `${(SKIN_TYPE_LABELS as Record<string, string>)[form.skinType] ?? ''} 피부를 위한 `
+                        : ''
+                    }리얼 리뷰를 확인하세요.`
+                  : '나만의 뷰티 철학으로 진짜 좋은 제품만 골라 추천합니다. 직접 써본 솔직 리뷰와 함께.';
+                setForm({ ...form, bio: suggestedBio });
+                toast.success('소개글이 적용되었습니다');
+              }}
+            >
+              이걸로 적용
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* 연동 Section */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+        <p className="text-sm font-semibold text-gray-900">연동</p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+              <Instagram className="h-4 w-4 text-white" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-900">인스타그램 연동</p>
+              <p className="text-xs text-gray-400">
+                {form.instagramHandle ? `@${form.instagramHandle}` : '아직 연결되지 않았어요'}
+              </p>
+            </div>
+          </div>
+          {form.instagramHandle ? (
+            <span className="flex items-center gap-1 text-xs text-green-600 font-medium bg-green-50 px-2 py-1 rounded-full">
+              <CheckCircle className="h-3 w-3" />
+              연결됨
+            </span>
+          ) : (
+            <span className="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded-full">미연결</span>
+          )}
+        </div>
+      </div>
+
       {/* Social */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
         <p className="text-sm font-semibold text-gray-900">대표 채널</p>
@@ -319,9 +479,9 @@ export default function CreatorShopPage() {
               className="rounded-xl"
             />
             {form.instagramHandle ? (
-              <span className="text-[10px] text-green-600 font-medium">연결됨</span>
+              <span className="text-[10px] text-green-600 font-medium shrink-0">연결됨</span>
             ) : (
-              <span className="text-[10px] text-gray-400">미연결</span>
+              <span className="text-[10px] text-gray-400 shrink-0">미연결</span>
             )}
           </div>
           <div className="flex items-center gap-3">
@@ -333,9 +493,9 @@ export default function CreatorShopPage() {
               className="rounded-xl"
             />
             {form.youtubeHandle ? (
-              <span className="text-[10px] text-green-600 font-medium">연결됨</span>
+              <span className="text-[10px] text-green-600 font-medium shrink-0">연결됨</span>
             ) : (
-              <span className="text-[10px] text-gray-400">미연결</span>
+              <span className="text-[10px] text-gray-400 shrink-0">미연결</span>
             )}
           </div>
           <div className="flex items-center gap-3">
@@ -347,9 +507,9 @@ export default function CreatorShopPage() {
               className="rounded-xl"
             />
             {form.tiktokHandle ? (
-              <span className="text-[10px] text-green-600 font-medium">연결됨</span>
+              <span className="text-[10px] text-green-600 font-medium shrink-0">연결됨</span>
             ) : (
-              <span className="text-[10px] text-gray-400">미연결</span>
+              <span className="text-[10px] text-gray-400 shrink-0">미연결</span>
             )}
           </div>
         </div>
@@ -432,11 +592,24 @@ export default function CreatorShopPage() {
         </div>
       )}
 
-      {/* Sticky Save */}
-      <div className="sticky bottom-16 md:bottom-0 bg-white/95 backdrop-blur-sm py-3 border-t border-gray-100 z-10 -mx-4 px-4 md:mx-0 md:px-0">
-        <Button className="w-full h-12 text-base bg-gray-900 text-white hover:bg-gray-800 rounded-xl" onClick={handleSave} disabled={isSaving}>
-          {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />저장 중...</> : <><Save className="mr-2 h-4 w-4" />변경사항 저장하기</>}
-        </Button>
+      {/* Sticky Save Button */}
+      <div className="fixed bottom-16 md:bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm py-3 px-4 border-t border-gray-100 z-10">
+        <div className="max-w-2xl mx-auto">
+          <Button
+            className="w-full h-12 text-base bg-foreground text-white hover:bg-foreground/90 rounded-xl font-semibold"
+            onClick={handleSave}
+            disabled={isSaving}
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                저장 중...
+              </>
+            ) : (
+              '변경사항 저장하기'
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   );
