@@ -125,7 +125,7 @@ export async function GET(request: NextRequest) {
   if (canSendAlimtalkFilter) {
     andConditions.push({
       cnecPhone: { not: null },
-      cnecVerificationStatus: { in: ['VERIFIED', 'COMPLETED'] },
+      cnecVerificationStatus: { in: ['VERIFIED', 'COMPLETED', 'verified', 'completed'] },
     })
   }
   if (hasValidFollowersFilter) {

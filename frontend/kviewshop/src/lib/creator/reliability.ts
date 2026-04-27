@@ -74,7 +74,8 @@ export function canSendAlimtalk(
   verificationStatus: string | null | undefined
 ): boolean {
   if (!phone || phone.trim() === '') return false
-  return verificationStatus === 'VERIFIED' || verificationStatus === 'COMPLETED'
+  const status = (verificationStatus ?? '').toUpperCase()
+  return status === 'VERIFIED' || status === 'COMPLETED'
 }
 
 /**

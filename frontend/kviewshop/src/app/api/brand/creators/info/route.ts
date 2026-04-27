@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
       hasBrandEmail: true,
       brandContactEmail: true,
       hasPhone: true,
+      cnecVerificationStatus: true,
     },
   })
 
@@ -37,6 +38,7 @@ export async function POST(request: NextRequest) {
       hasBrandEmail: c.hasBrandEmail ?? false,
       brandContactEmail: c.brandContactEmail,
       hasPhone: c.hasPhone ?? false,
+      cnecVerificationStatus: c.cnecVerificationStatus ?? null,
     })),
   })
 }
