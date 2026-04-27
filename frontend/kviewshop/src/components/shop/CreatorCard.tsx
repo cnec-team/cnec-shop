@@ -3,7 +3,7 @@ import type { Creator, SkinType } from '@/types/database';
 import { SKIN_TYPE_LABELS } from '@/types/database';
 
 interface CreatorCardProps {
-  creator: Creator & { product_count?: number };
+  creator: Creator & { product_count?: number; resolvedProfileImage?: string | null };
   locale: string;
   productsLabel: string;
 }
@@ -11,6 +11,7 @@ interface CreatorCardProps {
 export function CreatorCard({ creator, locale, productsLabel }: CreatorCardProps) {
   const displayName = creator.display_name || creator.shop_id;
   const initials = displayName.slice(0, 1);
+  const profileImage = creator.resolvedProfileImage || creator.profile_image_url;
 
   return (
     <Link
@@ -18,9 +19,9 @@ export function CreatorCard({ creator, locale, productsLabel }: CreatorCardProps
       className="group flex flex-col items-center gap-3 rounded-2xl bg-white p-5 transition-colors hover:bg-gray-50"
     >
       <div className="w-20 h-20 rounded-full overflow-hidden bg-gray-100 ring-2 ring-gray-100 group-hover:ring-gray-200 transition-all">
-        {creator.profile_image_url ? (
+        {profileImage ? (
           <img
-            src={creator.profile_image_url}
+            src={profileImage}
             alt={displayName}
             className="w-full h-full object-cover"
           />

@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db';
 import { CreatorsPageClient } from './creators-client';
+import { getCreatorProfileImage } from '@/lib/utils/image';
 import type { Metadata } from 'next';
 
 export const revalidate = 120;
@@ -60,6 +61,7 @@ async function getCreators() {
     totalEarnings: Number(c.totalEarnings),
     totalRevenue: Number(c.totalRevenue),
     product_count: countMap[c.id] || 0,
+    resolvedProfileImage: getCreatorProfileImage(c) ?? null,
   }));
 }
 
