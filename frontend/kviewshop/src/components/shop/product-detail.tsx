@@ -26,6 +26,7 @@ import {
   Heart,
   X,
   BadgeCheck,
+  Bell,
 } from 'lucide-react';
 import {
   Accordion,
@@ -245,47 +246,48 @@ export function ProductDetailPage({
   const canBuy = !isEnded && !isNotYetStarted && product.stock > 0;
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
-      {/* A. Countdown Banner — sticky */}
-      {isGonggu && (
-        <div
-          className={`sticky top-0 z-40 text-center py-2.5 px-4 ${
-            isEnded
-              ? 'bg-[#F5F5F5]'
-              : 'bg-[#FF3B30]'
-          }`}
-        >
-          {isEnded ? (
-            <p className="text-[15px] font-bold text-[#8E8E93]">마감된 공구 · 다음 공구 알림 받기</p>
-          ) : countdown ? (
-            <p className="text-[15px] font-bold text-white" style={{ fontVariantNumeric: 'tabular-nums' }}>
-              공구 마감까지 {countdown}
-            </p>
-          ) : null}
-        </div>
-      )}
-
-      {/* Top Navigation */}
-      <header className={`sticky ${isGonggu ? 'top-[42px]' : 'top-0'} z-30 bg-white/80 backdrop-blur`}>
+    <div className="min-h-screen bg-white pb-24">
+      {/* A. Sticky Header */}
+      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
         <div className="max-w-lg mx-auto flex items-center justify-between h-12 px-4">
+          <button
+            onClick={() => router.back()}
+            className="flex h-9 w-9 items-center justify-center -ml-1.5 rounded-full hover:bg-gray-100 transition-colors"
+            aria-label="뒤로가기"
+          >
+            <ChevronLeft className="h-5 w-5 text-gray-900" />
+          </button>
+
           <Link
             href={`/${locale}/${username}`}
-            className="flex items-center gap-1 text-gray-500 hover:text-gray-900 transition-colors"
+            className="text-[15px] font-semibold text-gray-900 truncate max-w-[200px]"
           >
-            <ArrowLeft className="w-5 h-5" />
-            <span className="text-sm">돌아가기</span>
+            {creatorName}
           </Link>
-          <ShareSheet
-            url={productUrl}
-            title={ogTitle}
-            description={ogDesc}
-            imageUrl={(p.thumbnail_url || p.thumbnailUrl || images[0]) as string}
-            trigger={
-              <button className="flex items-center gap-1 text-gray-500 hover:text-gray-900 transition-colors">
-                <Share2 className="w-5 h-5" />
-              </button>
-            }
-          />
+
+          <div className="flex items-center gap-0.5">
+            <ShareSheet
+              url={productUrl}
+              title={ogTitle}
+              description={ogDesc}
+              imageUrl={(p.thumbnail_url || p.thumbnailUrl || images[0]) as string}
+              trigger={
+                <button
+                  className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+                  aria-label="공유하기"
+                >
+                  <Share2 className="h-[18px] w-[18px] text-gray-900" />
+                </button>
+              }
+            />
+            <Link
+              href={`/${locale}/${username}/checkout`}
+              className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+              aria-label="장바구니"
+            >
+              <ShoppingBag className="h-[18px] w-[18px] text-gray-900" />
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -294,12 +296,18 @@ export function ProductDetailPage({
         {images.length > 0 ? (
           <div className="relative bg-white">
             <div className="aspect-square relative overflow-hidden">
+              {/* Ended overlay */}
+              {isEnded && (
+                <div className="absolute inset-0 z-10 bg-black/50 flex items-center justify-center">
+                  <span className="text-white text-xl font-bold">마감된 공구</span>
+                </div>
+              )}
               <img
                 src={images[currentImageIndex]}
                 alt={`${product.name} - ${currentImageIndex + 1}`}
                 className="w-full h-full object-cover"
               />
-              {images.length > 1 && (
+              {images.length > 1 && !isEnded && (
                 <>
                   <button
                     onClick={handlePrevImage}
@@ -315,18 +323,10 @@ export function ProductDetailPage({
                   </button>
                 </>
               )}
-              {/* Indicator dots */}
+              {/* Image counter badge */}
               {images.length > 1 && (
-                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
-                  {images.map((_, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setCurrentImageIndex(idx)}
-                      className={`w-2 h-2 rounded-full transition-colors ${
-                        idx === currentImageIndex ? 'bg-white' : 'bg-white/40'
-                      }`}
-                    />
-                  ))}
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/50 text-white text-xs font-medium rounded-full px-3 py-1">
+                  {currentImageIndex + 1}/{images.length}
                 </div>
               )}
             </div>
@@ -337,80 +337,102 @@ export function ProductDetailPage({
           </div>
         )}
 
-        {/* C. Price Area */}
-        <div className="bg-white px-4 py-4">
-          {/* Brand name */}
-          {brandName && (
-            <p className="text-[14px] text-[#8E8E93] mb-1">{brandName}</p>
-          )}
-
-          {/* Product name */}
-          <h1 className="text-[18px] font-bold text-[#1A1A1A] leading-snug">
-            {product.name}
-          </h1>
-
-          {product.volume && (
-            <p className="text-sm text-gray-400 mt-0.5">{product.volume}</p>
-          )}
-
-          {/* Pricing */}
-          <div className="mt-3">
-            {discountPercent > 0 && (
-              <p className="text-[16px] text-[#8E8E93] line-through">
-                {formatKRW(originalPrice)}
+        {/* C. Product Info Section */}
+        <div className="bg-white px-4 py-5">
+          {isEnded ? (
+            <>
+              {/* Ended state info */}
+              {brandName && (
+                <p className="text-sm text-gray-500 mb-1">{brandName}</p>
+              )}
+              <h1 className="text-lg font-bold text-gray-900 leading-snug">
+                {product.name}
+              </h1>
+              <p className="text-base text-gray-400 mt-2">
+                {formatKRW(effectivePrice)} 마감 가격
               </p>
-            )}
-            <div className="flex items-baseline gap-2">
-              {discountPercent > 0 && (
-                <span className="text-[24px] font-bold text-[#FF3B30]">
-                  {discountPercent}%
+            </>
+          ) : (
+            <>
+              {/* Live state info */}
+              {isGonggu && (
+                <span className="inline-flex items-center bg-emerald-50 text-emerald-700 rounded-full px-3 py-1 text-xs font-medium border border-emerald-200 mb-3">
+                  크리에이터 단독가
                 </span>
               )}
-              <span className="text-[24px] font-bold text-[#1A1A1A]">
-                {formatKRW(effectivePrice)}
-              </span>
-            </div>
-          </div>
 
-          {/* Gonggu-only badges */}
-          {isGonggu && (
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1 rounded-full bg-[#E8F0FE] text-[#007AFF] text-[12px] font-medium px-2.5 py-1">
-                크리에이터 단독가
-              </span>
-              {totalStock > 0 && progressPercent > 0 && (
-                <span className="text-xs text-gray-500">
-                  {soldCount}/{totalStock}개 판매
-                </span>
+              {brandName && (
+                <p className="text-sm text-gray-500 mb-1">{brandName}</p>
               )}
-            </div>
-          )}
 
-          {/* Low stock warning */}
-          {remainingStock > 0 && remainingStock <= 10 && (
-            <p className="text-[14px] text-[#FF3B30] font-medium mt-2">
-              한정 수량 {remainingStock}개 남음
-            </p>
-          )}
+              <h1 className="text-lg font-bold text-gray-900 leading-snug">
+                {product.name}
+              </h1>
 
-          {/* Gonggu progress bar */}
-          {isGonggu && totalStock > 0 && (
-            <div className="mt-3">
-              <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-[#FF3B30] rounded-full transition-all"
-                  style={{ width: `${progressPercent}%` }}
-                />
+              {product.volume && (
+                <p className="text-sm text-gray-400 mt-0.5">{product.volume}</p>
+              )}
+
+              {/* Pricing */}
+              <div className="mt-3">
+                <div className="flex items-baseline gap-2">
+                  {discountPercent > 0 && (
+                    <span className="text-2xl font-bold text-red-500">
+                      {discountPercent}%
+                    </span>
+                  )}
+                  <span className="text-2xl font-bold text-gray-900">
+                    {formatKRW(effectivePrice)}
+                  </span>
+                </div>
+                {discountPercent > 0 && (
+                  <p className="text-sm text-gray-400 line-through mt-0.5">
+                    {formatKRW(originalPrice)}
+                  </p>
+                )}
               </div>
-              <p className="text-xs text-gray-400 mt-1 text-right">{progressPercent}%</p>
-            </div>
+
+              {/* Gonggu countdown banner */}
+              {isGonggu && countdown && (
+                <div className="mt-3 bg-red-50 rounded-xl px-4 py-2.5 text-center">
+                  <p className="text-sm font-bold text-red-500" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                    공구 마감까지 {countdown}
+                  </p>
+                </div>
+              )}
+
+              {/* Low stock warning */}
+              {remainingStock > 0 && remainingStock <= 10 && (
+                <p className="text-sm text-red-500 font-medium mt-2">
+                  한정 수량 {remainingStock}개 남음
+                </p>
+              )}
+
+              {/* Gonggu progress bar */}
+              {isGonggu && totalStock > 0 && (
+                <div className="mt-3">
+                  <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-red-500 rounded-full transition-all"
+                      style={{ width: `${progressPercent}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="text-xs text-gray-500">
+                      {soldCount}/{totalStock}개 판매
+                    </span>
+                    <span className="text-xs text-gray-400">{progressPercent}%</span>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
 
         {/* D. Creator Recommendation Card */}
         <Link
           href={`/${locale}/${username}`}
-          className="block mx-4 mt-4 rounded-xl bg-[#F5F5F5] p-3"
+          className="block mx-4 mt-4 rounded-xl bg-gray-50 p-3"
         >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-gray-300 overflow-hidden shrink-0">
@@ -429,8 +451,8 @@ export function ProductDetailPage({
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-[#1A1A1A]">{creatorName}</p>
-              <p className="text-xs text-[#8E8E93] line-clamp-1">
+              <p className="text-sm font-semibold text-gray-900">{creatorName}</p>
+              <p className="text-xs text-gray-500 line-clamp-1">
                 {isGonggu ? '이 크리에이터가 추천하는 공구 상품이에요' : '이 크리에이터가 추천하는 상품이에요'}
               </p>
             </div>
@@ -459,18 +481,18 @@ export function ProductDetailPage({
                 <BrandBadge brandName={brandName} size="sm" />
                 <BadgeCheck className="w-3.5 h-3.5 text-blue-500" />
               </div>
-              <p className="text-xs text-[#8E8E93] mt-0.5">크넥 인증 브랜드</p>
+              <p className="text-xs text-gray-500 mt-0.5">크넥 인증 브랜드</p>
             </div>
           </div>
           <div className="border-t border-gray-100 mt-3 pt-3">
-            <p className="text-xs text-[#8E8E93]">
+            <p className="text-xs text-gray-500">
               배송/교환/환불은 {brandName || '브랜드'}이(가) 처리합니다
             </p>
           </div>
         </div>
 
         {/* Quantity Selector (inline, non-gonggu) */}
-        {!isGonggu && (
+        {!isGonggu && !isEnded && (
           <div className="bg-white px-4 py-4 mt-4 mx-4 rounded-xl border border-gray-100">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-gray-900">수량</span>
@@ -777,43 +799,63 @@ export function ProductDetailPage({
         </div>
       </div>
 
-      {/* F. Fixed Bottom Purchase Bar */}
+      {/* F. Fixed Bottom Action Bar */}
       <div className="fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-gray-100 shadow-lg" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-        <div className="max-w-lg mx-auto flex items-center gap-3 px-4 h-[80px]">
+        <div className="max-w-lg mx-auto flex items-center gap-3 px-4 h-[72px]">
+          {/* Wishlist button (always visible) */}
           <button
             onClick={handleToggleWishlist}
-            className="w-14 h-14 flex items-center justify-center border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+            className="w-12 h-12 flex items-center justify-center border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors shrink-0"
           >
             <Heart className={`w-5 h-5 ${liked ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
           </button>
+
           {isEnded ? (
-            <button
-              disabled
-              className="flex-1 h-14 rounded-xl font-semibold text-[15px] bg-[#F5F5F5] text-[#8E8E93]"
-            >
-              마감된 공구 · 다음 공구 알림 받기
-            </button>
+            <>
+              {/* Ended state buttons */}
+              <button
+                disabled
+                className="flex-1 h-12 rounded-xl font-semibold text-[14px] border border-gray-200 text-gray-400 bg-white"
+              >
+                마감된 공구
+              </button>
+              <button
+                className="flex-1 h-12 rounded-xl font-semibold text-[14px] bg-gray-900 text-white active:scale-[0.98] transition-transform flex items-center justify-center gap-1.5"
+              >
+                <Bell className="w-4 h-4" />
+                다음 공구 알림
+              </button>
+            </>
           ) : isNotYetStarted ? (
             <button
               disabled
-              className="flex-1 h-14 rounded-xl font-semibold text-[15px] bg-[#F5F5F5] text-[#8E8E93]"
+              className="flex-1 h-12 rounded-xl font-semibold text-[14px] bg-gray-100 text-gray-400"
             >
               오픈 예정
             </button>
           ) : product.stock === 0 ? (
             <button
               disabled
-              className="flex-1 h-14 rounded-xl font-semibold text-[15px] bg-[#F5F5F5] text-[#8E8E93]"
+              className="flex-1 h-12 rounded-xl font-semibold text-[14px] bg-gray-100 text-gray-400"
             >
               품절
             </button>
           ) : (
-            <button
-              onClick={() => setSheetOpen(true)}
-              className="flex-1 h-14 rounded-xl font-semibold text-[15px] bg-[#1A1A1A] text-white active:scale-[0.98] transition-transform"
-            >
-              {isGonggu ? '공구 참여하기' : '구매하기'}
-            </button>
+            <>
+              {/* Live state buttons */}
+              <button
+                onClick={handleAddToCartAndClose}
+                className="flex-1 h-12 rounded-xl font-semibold text-[14px] border border-gray-200 text-gray-900 hover:bg-gray-50 transition-colors"
+              >
+                장바구니
+              </button>
+              <button
+                onClick={() => setSheetOpen(true)}
+                className="flex-1 h-12 rounded-xl font-semibold text-[14px] bg-gray-900 text-white active:scale-[0.98] transition-transform"
+              >
+                지금 참여하기
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -836,7 +878,7 @@ export function ProductDetailPage({
 
               {/* Close */}
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-[16px] font-bold text-[#1A1A1A]">옵션 선택</h3>
+                <h3 className="text-[16px] font-bold text-gray-900">옵션 선택</h3>
                 <button onClick={() => setSheetOpen(false)} className="p-1">
                   <X className="w-5 h-5 text-gray-500" />
                 </button>
@@ -882,21 +924,21 @@ export function ProductDetailPage({
               {/* Total */}
               <div className="flex items-center justify-between mb-5 pt-4 border-t border-gray-100">
                 <span className="text-sm text-gray-500">총 금액</span>
-                <span className="text-xl font-bold text-[#1A1A1A]">{formatKRW(effectivePrice * quantity)}</span>
+                <span className="text-xl font-bold text-gray-900">{formatKRW(effectivePrice * quantity)}</span>
               </div>
 
               {/* Action buttons */}
               <div className="flex gap-3">
                 <button
                   onClick={handleAddToCartAndClose}
-                  className="flex-1 h-[52px] rounded-xl font-semibold text-[15px] border border-gray-200 text-[#1A1A1A] hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 h-[52px] rounded-xl font-semibold text-[15px] border border-gray-200 text-gray-900 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
                 >
                   <ShoppingBag className="w-4 h-4" />
                   장바구니
                 </button>
                 <button
                   onClick={handleBuy}
-                  className="flex-1 h-[52px] rounded-xl font-semibold text-[15px] bg-[#1A1A1A] text-white active:scale-[0.98] transition-transform"
+                  className="flex-1 h-[52px] rounded-xl font-semibold text-[15px] bg-gray-900 text-white active:scale-[0.98] transition-transform"
                 >
                   바로 구매
                 </button>
