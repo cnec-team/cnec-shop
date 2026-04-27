@@ -23,6 +23,12 @@ import {
   Sparkles,
   TrendingUp,
   ArrowUpRight,
+  CircleDollarSign,
+  BarChart3,
+  Handshake,
+  Clock,
+  Star,
+  Mail,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/i18n/config';
@@ -172,6 +178,16 @@ export default function CreatorDashboardPage() {
   const animatedMonthly = useCountUp(monthlyEarnings, 800);
   const animatedToday = useCountUp(todayEarnings, 600);
 
+  // Calculate yesterday comparison (mock for now, can be wired to real data)
+  const yesterdayEarnings = (stats as any)?.yesterdayEarnings ?? 0;
+  const earningsDiff = todayEarnings - yesterdayEarnings;
+  const earningsPercent = yesterdayEarnings > 0 ? Math.round((earningsDiff / yesterdayEarnings) * 100) : 0;
+
+  // Matching stats
+  const activeGonggu = stats?.activeGonggu ?? 0;
+  const activePicks = stats?.activePicks ?? 0;
+  const matchingTotal = activeGonggu + activePicks;
+
   if (loading) {
     return (
       <div className="space-y-6 max-w-2xl">
@@ -187,93 +203,169 @@ export default function CreatorDashboardPage() {
     );
   }
 
-  const hasNoEarnings = monthlyEarnings === 0 && todayEarnings === 0;
-
   return (
     <div className="space-y-6 max-w-2xl">
-      {/* Greeting */}
+      {/* Section 1: Greeting + Date */}
       <div>
-        <p className="text-muted-foreground text-sm">{dateStr}</p>
-        <h1 className="text-xl font-bold mt-0.5">
-          안녕하세요, {(creator as any)?.displayName || '크리에이터'}님
-        </h1>
+        <p className="text-sm text-muted-foreground">
+          {dateStr} · 안녕하세요, {(creator as any)?.displayName || '크리에이터'}님
+        </p>
       </div>
 
-      {/* Revenue Dashboard Cards */}
-      <RevenueCard />
-
-      {/* Hero: This month's earnings — one big number */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-        <p className="text-sm text-muted-foreground">이번 달 수익</p>
-        {hasNoEarnings ? (
-          <div className="mt-2">
-            <p className="text-2xl font-bold">오늘 첫 공구를 열어보세요</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              평균 첫 공구 수익 <span className="font-price text-earnings font-bold">₩12,400</span>
-            </p>
-          </div>
-        ) : (
-          <p className="text-4xl font-price mt-1">
-            {formatCurrency(animatedMonthly, 'KRW')}
-          </p>
-        )}
-
-        {/* Shop URL inline */}
-        {creator?.shopId && (
-          <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-50">
-            <Store className="h-4 w-4 text-muted-foreground shrink-0" />
-            <span className="text-xs text-muted-foreground truncate flex-1">{shopUrl}</span>
-            <button
-              onClick={copyShopUrl}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
-            >
-              {copied ? <Check className="h-3 w-3 text-earnings" /> : <Copy className="h-3 w-3" />}
-              {copied ? '복사됨' : '복사'}
-            </button>
-            <a
-              href={shopUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ExternalLink className="h-3 w-3" />
-            </a>
-          </div>
-        )}
+      {/* Section 2: Big Revenue Number */}
+      <div>
+        <div className="flex items-baseline gap-2">
+          <span className="text-4xl font-bold font-price">
+            {formatCurrency(animatedToday, 'KRW')}
+          </span>
+          {earningsPercent > 0 && (
+            <span className="bg-emerald-50 text-emerald-700 rounded-full px-2 py-0.5 text-xs font-medium">
+              <ArrowUpRight className="inline h-3 w-3 -mt-0.5" />+{earningsPercent}%
+            </span>
+          )}
+        </div>
+        <p className="text-sm text-muted-foreground mt-1">
+          오늘 번 수익
+          {earningsDiff > 0 && (
+            <span> · 어제보다 {formatCurrency(earningsDiff, 'KRW')} 더 벌었어요</span>
+          )}
+        </p>
       </div>
 
-      {/* 3 Small Metrics — tabular-nums */}
+      {/* Section 3: Three Metric Cards */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 text-center">
-          <Wallet className="h-4 w-4 text-earnings mx-auto mb-1" />
-          <p className="text-lg font-price text-earnings">{formatCurrency(animatedToday, 'KRW')}</p>
-          <p className="text-[11px] text-muted-foreground">오늘 수익</p>
+        {/* 이번달 수익 */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+          <div className="bg-gray-100 rounded-xl w-8 h-8 flex items-center justify-center mb-2">
+            <CircleDollarSign className="h-4 w-4 text-gray-600" />
+          </div>
+          <p className="text-lg font-bold font-price">{formatCurrency(animatedMonthly, 'KRW')}</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">이번 달 수익</p>
         </div>
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 text-center">
-          <ShoppingCart className="h-4 w-4 text-muted-foreground mx-auto mb-1" />
-          <p className="text-lg font-price">{monthlyOrders.toLocaleString()}<span className="text-xs font-normal text-muted-foreground">건</span></p>
-          <p className="text-[11px] text-muted-foreground">이번 달 주문</p>
+
+        {/* 이번 달 매출 */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+          <div className="bg-gray-100 rounded-xl w-8 h-8 flex items-center justify-center mb-2">
+            <BarChart3 className="h-4 w-4 text-gray-600" />
+          </div>
+          <p className="text-lg font-bold font-price">{monthlyOrders.toLocaleString()}<span className="text-xs font-normal text-muted-foreground">건</span></p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">이번 달 매출</p>
         </div>
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 text-center">
-          <Banknote className="h-4 w-4 text-trust mx-auto mb-1" />
-          <p className="text-lg font-price">{formatCurrency(pendingSettlement, 'KRW')}</p>
-          <p className="text-[11px] text-muted-foreground">
-            {nextSettlementDate ? `${nextSettlementDate} 입금` : '정산 예정'}
-          </p>
+
+        {/* 견적 매칭 */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+          <div className="bg-gray-100 rounded-xl w-8 h-8 flex items-center justify-center mb-2">
+            <Handshake className="h-4 w-4 text-gray-600" />
+          </div>
+          <p className="text-lg font-bold font-price">{activeGonggu}/{matchingTotal > 0 ? matchingTotal : 20}</p>
+          <p className="text-xs text-muted-foreground">{formatCurrency(pendingSettlement, 'KRW')}</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">견적 매칭</p>
         </div>
       </div>
 
-      {/* Zero fee assurance — Soft Commerce trust layer */}
-      <div className="bg-foreground rounded-2xl p-5 text-white">
-        <p className="text-sm font-bold">내 수익, 그대로 받아요</p>
-        <p className="text-xs text-white/60 mt-1">수수료 0원 · 100% 전액 지급</p>
+      {/* Section 4: MY SHOP LINK */}
+      {creator?.shopId && (
+        <div className="flex items-center gap-3 bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3">
+          <span className="text-xs font-semibold text-emerald-600 shrink-0">MY SHOP LINK</span>
+          <span className="text-sm text-muted-foreground truncate flex-1">{shopUrl}</span>
+          <button
+            onClick={copyShopUrl}
+            className="shrink-0 p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+          >
+            {copied ? (
+              <Check className="h-4 w-4 text-emerald-600" />
+            ) : (
+              <Copy className="h-4 w-4 text-muted-foreground" />
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* Section 5: 오늘 할 일 */}
+      <div>
+        <div className="mb-3">
+          <h2 className="text-base font-bold">오늘 할 일</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">3가지를 끝내면 수익이 올라가요</p>
+        </div>
+
+        <div className="space-y-3">
+          {/* 공구 마감 임박 */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="flex items-start gap-3 p-4 border-l-4 border-red-500">
+              <div className="flex-1 min-w-0">
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 mb-1">
+                  <Clock className="h-3 w-3" />
+                  공구 마감 임박
+                </span>
+                <p className="text-sm font-medium">누씨오 선로션 공구</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  마감 1시간 전 / 현재 8명 · 10명 달성 시 {formatCurrency(21000, 'KRW')} 추가
+                </p>
+              </div>
+              <Button
+                size="sm"
+                className="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs h-8 px-3"
+              >
+                지금 공유
+              </Button>
+            </div>
+          </div>
+
+          {/* 체험 도착 */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="flex items-start gap-3 p-4 border-l-4 border-purple-500">
+              <div className="flex-1 min-w-0">
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-purple-600 mb-1">
+                  <Gift className="h-3 w-3" />
+                  체험 도착
+                </span>
+                <p className="text-sm font-medium">유스킨 더마 체험 리뷰 작성하기</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  리뷰 작성 시 +1,500 포인트
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="shrink-0 rounded-xl text-xs h-8 px-3"
+              >
+                리뷰 쓰기
+              </Button>
+            </div>
+          </div>
+
+          {/* 새 제안 */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="flex items-start gap-3 p-4 border-l-4 border-blue-500">
+              <div className="flex-1 min-w-0">
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 mb-1">
+                  <Mail className="h-3 w-3" />
+                  새 제안
+                </span>
+                <p className="text-sm font-medium">누씨오에서 공구 단독 제안이 왔어요</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  예상 수익 {formatCurrency(9800, 'KRW')} · 24시간 내 응답
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="shrink-0 rounded-xl text-xs h-8 px-3"
+              >
+                제안 보기
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* PPM 매칭 상품 피드 */}
       <MatchedProductsSection locale={locale} />
 
-      {/* Recommended Products — horizontal scroll */}
-      {recommendedProducts.length > 0 && (
+      {/* === Commented out sections (available for re-enabling) ===
+
+      {/* Recommended Products -- horizontal scroll */}
+      {/* recommendedProducts.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-base font-bold">추천 상품</h2>
@@ -334,10 +426,10 @@ export default function CreatorDashboardPage() {
             })}
           </div>
         </div>
-      )}
+      ) */}
 
       {/* Trial Products */}
-      {trialProducts.length > 0 && (
+      {/* trialProducts.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -396,10 +488,10 @@ export default function CreatorDashboardPage() {
             })}
           </div>
         </div>
-      )}
+      ) */}
 
-      {/* CS Zero Banner — trust layer */}
-      {showCsBanner && (
+      {/* CS Zero Banner -- trust layer */}
+      {/* showCsBanner && (
         <div className="bg-muted rounded-2xl border border-gray-100 p-5 relative">
           <button
             onClick={dismissCsBanner}
@@ -419,7 +511,13 @@ export default function CreatorDashboardPage() {
             </div>
           </div>
         </div>
-      )}
+      ) */}
+
+      {/* Zero fee assurance -- Soft Commerce trust layer */}
+      {/* <div className="bg-foreground rounded-2xl p-5 text-white">
+        <p className="text-sm font-bold">내 수익, 그대로 받아요</p>
+        <p className="text-xs text-white/60 mt-1">수수료 0원 · 100% 전액 지급</p>
+      </div> */}
     </div>
   );
 }
