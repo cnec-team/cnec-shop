@@ -111,7 +111,7 @@ export function emailHero(title: string, subtitle?: string): string {
   const escapedTitle = escapeHtml(title).replace(/\n/g, '<br>')
   return `<tr><td class="email-padding" style="padding:${SPACING.SM} 40px ${SPACING.LG}">
 <h1 style="margin:0;font-size:${FONT_SIZE.H1};font-weight:${FONT_WEIGHT.BOLD};color:${COLORS.TEXT_PRIMARY};line-height:1.35;font-family:${FONT_FAMILY}">${escapedTitle}</h1>
-${subtitle ? `<p style="margin:${SPACING.SM} 0 0;font-size:${FONT_SIZE.BODY};color:${COLORS.TEXT_SECONDARY};line-height:${LINE_HEIGHT};font-family:${FONT_FAMILY}">${escapeHtml(subtitle).replace(/\\n/g, '<br>')}</p>` : ''}
+${subtitle ? `<p style="margin:${SPACING.SM} 0 0;font-size:${FONT_SIZE.BODY};color:${COLORS.TEXT_SECONDARY};line-height:${LINE_HEIGHT};font-family:${FONT_FAMILY}">${escapeHtml(subtitle).replace(/\n/g, '<br>')}</p>` : ''}
 </td></tr>`
 }
 
