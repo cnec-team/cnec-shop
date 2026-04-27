@@ -70,7 +70,11 @@ export function CreatorDetailPageClient({ creatorId }: { creatorId: string }) {
         </Button>
 
         {/* 상단 헤더 */}
-        <DetailHeader creator={creator} matchScore={matchScore.totalScore} />
+        <DetailHeader
+          creator={creator}
+          matchScore={matchScore.totalScore}
+          onOpenProposal={() => setProposalModal({ open: true, type: 'GONGGU' })}
+        />
 
         {/* KPI 4개 */}
         <DetailKpiRow creator={creator} expectedReach={matchScore.expectedReach} />
