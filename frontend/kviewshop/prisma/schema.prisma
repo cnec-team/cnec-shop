@@ -887,6 +887,11 @@ model Product {
   matchScores                MatchScore[]
   restockNotificationEnabled Boolean   @default(false) @map("restock_notification_enabled")
   lastLowStockAlertAt        DateTime? @map("last_low_stock_alert_at") @db.Timestamptz
+  // AI Review Summary
+  reviewSummary              String?   @map("review_summary") @db.Text
+  reviewSummaryUpdatedAt     DateTime? @map("review_summary_updated_at") @db.Timestamptz
+  averageRating              Decimal?  @map("average_rating") @db.Decimal(2, 1)
+  reviewCount                Int       @default(0) @map("review_count")
 
   @@index([isActive])
   @@index([status])
@@ -1652,6 +1657,7 @@ model ProductReview {
   title              String?
   content            String
   images             String[]  @default([])
+  videos             String[]  @default([])
   instagramPostUrl   String?   @map("instagram_post_url")
   instagramVerified  Boolean   @default(false) @map("instagram_verified")
   pointsAwarded      Int       @default(0) @map("points_awarded")

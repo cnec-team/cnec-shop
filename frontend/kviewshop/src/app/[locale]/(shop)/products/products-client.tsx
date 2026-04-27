@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import { Search } from 'lucide-react';
 import { ProductCard } from '@/components/shop/ProductCard';
 import { CategoryFilter } from '@/components/shop/CategoryFilter';
 import type { Product } from '@/types/database';
@@ -71,6 +72,7 @@ export function ProductsPageClient({ products, brands, locale }: ProductsPageCli
   const [selectedSort, setSelectedSort] = useState<SortKey>(
     (searchParams.get('sort') as SortKey) || 'popular'
   );
+  const [searchQuery, setSearchQuery] = useState('');
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   function updateParams(key: string, value: string) {
@@ -85,6 +87,15 @@ export function ProductsPageClient({ products, brands, locale }: ProductsPageCli
 
   const filteredProducts = useMemo(() => {
     let result = [...products];
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
+        (p) =>
+          p.name?.toLowerCase().includes(q) ||
+          p.brand?.brand_name?.toLowerCase().includes(q)
+      );
+    }
 
     if (selectedCategory) {
       result = result.filter((p) => p.category === selectedCategory);
@@ -131,7 +142,7 @@ export function ProductsPageClient({ products, brands, locale }: ProductsPageCli
     }
 
     return result;
-  }, [products, selectedCategory, selectedPriceRange, selectedBrand, selectedSort]);
+  }, [products, searchQuery, selectedCategory, selectedPriceRange, selectedBrand, selectedSort]);
 
   const visibleProducts = filteredProducts.slice(0, visibleCount);
   const hasMore = visibleCount < filteredProducts.length;
@@ -150,6 +161,18 @@ export function ProductsPageClient({ products, brands, locale }: ProductsPageCli
         <div className="mb-8">
           <h1 className="text-2xl font-bold">{t.title}</h1>
           <p className="text-muted-foreground mt-1">{t.desc}</p>
+        </div>
+
+        {/* Search */}
+        <div className="relative mb-6">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={isKo ? '상품명, 브랜드로 검색...' : 'Search products, brands...'}
+            className="w-full rounded-2xl border border-border bg-card pl-11 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+          />
         </div>
 
         {/* Filters */}

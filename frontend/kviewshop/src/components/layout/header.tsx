@@ -16,6 +16,7 @@ import { useUser } from '@/lib/hooks/use-user';
 import { Globe, LogOut, Settings, User } from 'lucide-react';
 import { locales, localeNames, type Locale } from '@/lib/i18n/config';
 import { NotificationBell } from '@/components/layout/notification-bell';
+import { SearchBar } from '@/components/shop/SearchBar';
 
 interface HeaderProps {
   locale: Locale;
@@ -45,6 +46,9 @@ export function Header({ locale }: HeaderProps) {
         </Link>
 
         <div className="flex items-center gap-2">
+          {/* Search */}
+          <SearchBar locale={locale} />
+
           {/* Language Switcher */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

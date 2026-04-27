@@ -6,6 +6,8 @@ const ALLOWED_HOSTS = [
   'instagram.com',
   'r2.dev',
   'cloudflarestorage.com',
+  'fbcdn.net',
+  'fna.fbcdn.net',
 ]
 
 function isAllowed(url: string): boolean {
