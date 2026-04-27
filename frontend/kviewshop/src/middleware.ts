@@ -79,7 +79,7 @@ const PLATFORM_PREFIXES = [
   'no-shop-context', 'auth-error', 'error', '404', '500', 'not-found',
   'order-complete', 'payment',
   'me', 'my', 'cart', 'checkout', 'orders', 'order',
-  'products', 'creators', 'content',
+  'products', 'creators', 'content', 'search', 'brands',
   'sitemap', 'manifest.json', 'og',
 ];
 

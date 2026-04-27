@@ -36,6 +36,7 @@ import {
 } from '@/components/ui/accordion';
 import { ShareSheet } from '@/components/shop/ShareSheet';
 import { BrandBadge } from '@/components/common/BrandBadge';
+import { ReviewSection } from '@/components/shop/ReviewSection';
 import { calculateDDay, getTimeRemaining, hasCampaignStarted } from '@/lib/utils/date';
 import type {
   Product,
@@ -796,6 +797,11 @@ export function ProductDetailPage({
           <p className="text-xs text-center text-gray-400">
             배송/CS는 브랜드가 직접 처리합니다 | 크넥이 안전하게 관리해요
           </p>
+        </div>
+
+        {/* H. Review Section */}
+        <div className="px-4">
+          <ReviewSection productId={product.id} locale={locale} />
         </div>
       </div>
 

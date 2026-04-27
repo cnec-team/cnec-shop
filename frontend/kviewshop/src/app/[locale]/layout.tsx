@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { locales, isRTL, type Locale } from '@/lib/i18n/config';
 import { Providers } from '@/components/providers';
 import { Toaster } from '@/components/ui/sonner';
+import { ChatbotWidget } from '@/components/shop/ChatbotWidget';
 
 interface LocaleLayoutProps {
   children: React.ReactNode;
@@ -45,6 +46,7 @@ export default async function LocaleLayout({ children, params }: LocaleLayoutPro
           <Providers>{children}</Providers>
         </NextIntlClientProvider>
         <Toaster />
+        <ChatbotWidget locale={locale} />
       </body>
     </html>
   );
