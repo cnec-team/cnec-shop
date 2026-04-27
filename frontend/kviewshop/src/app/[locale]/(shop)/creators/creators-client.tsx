@@ -5,10 +5,21 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { CreatorCard } from '@/components/shop/CreatorCard';
 import { CategoryFilter } from '@/components/shop/CategoryFilter';
 import { SkinTypeFilter } from '@/components/shop/SkinTypeFilter';
-import type { Creator } from '@/types/database';
+
+interface SerializedCreator {
+  id: string;
+  shopId?: string | null;
+  displayName?: string | null;
+  bio?: string | null;
+  skinType?: string | null;
+  totalSales: number;
+  createdAt: Date | string;
+  resolvedProfileImage?: string | null;
+  product_count: number;
+}
 
 interface CreatorsPageClientProps {
-  creators: (Creator & { product_count: number })[];
+  creators: SerializedCreator[];
   locale: string;
 }
 
@@ -82,13 +93,13 @@ export function CreatorsPageClient({ creators, locale }: CreatorsPageClientProps
     let result = [...creators];
 
     if (selectedSkinType) {
-      result = result.filter((c) => c.skin_type === selectedSkinType);
+      result = result.filter((c) => c.skinType === selectedSkinType);
     }
 
     if (selectedSort === 'recent') {
-      result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     } else {
-      result.sort((a, b) => b.total_sales - a.total_sales);
+      result.sort((a, b) => b.totalSales - a.totalSales);
     }
 
     return result;

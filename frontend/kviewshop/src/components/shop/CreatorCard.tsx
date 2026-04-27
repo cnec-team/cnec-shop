@@ -1,21 +1,29 @@
 import Link from 'next/link';
-import type { Creator, SkinType } from '@/types/database';
+import type { SkinType } from '@/types/database';
 import { SKIN_TYPE_LABELS } from '@/types/database';
 
 interface CreatorCardProps {
-  creator: Creator & { product_count?: number; resolvedProfileImage?: string | null };
+  creator: {
+    id: string;
+    shopId?: string | null;
+    displayName?: string | null;
+    bio?: string | null;
+    skinType?: string | null;
+    resolvedProfileImage?: string | null;
+    product_count?: number;
+  };
   locale: string;
   productsLabel: string;
 }
 
 export function CreatorCard({ creator, locale, productsLabel }: CreatorCardProps) {
-  const displayName = creator.display_name || creator.shop_id;
+  const displayName = creator.displayName || creator.shopId || '';
   const initials = displayName.slice(0, 1);
-  const profileImage = creator.resolvedProfileImage || creator.profile_image_url;
+  const profileImage = creator.resolvedProfileImage;
 
   return (
     <Link
-      href={`/${locale}/${creator.shop_id}`}
+      href={creator.shopId ? `/${locale}/${creator.shopId}` : '#'}
       className="group flex flex-col items-center gap-3 rounded-2xl bg-white p-5 transition-colors hover:bg-gray-50"
     >
       <div className="w-20 h-20 rounded-full overflow-hidden bg-gray-100 ring-2 ring-gray-100 group-hover:ring-gray-200 transition-all">
@@ -40,9 +48,9 @@ export function CreatorCard({ creator, locale, productsLabel }: CreatorCardProps
       </div>
 
       <div className="flex flex-wrap items-center justify-center gap-1.5">
-        {creator.skin_type && (
+        {creator.skinType && (
           <span className="bg-gray-100 rounded-full px-2.5 py-0.5 text-[10px] text-gray-500">
-            {SKIN_TYPE_LABELS[creator.skin_type as SkinType] || creator.skin_type}
+            {SKIN_TYPE_LABELS[creator.skinType as SkinType] || creator.skinType}
           </span>
         )}
         <span className="text-xs text-gray-400">
