@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
-import { getSafeProfileImageUrl } from '@/lib/utils/profile-image'
+
 
 interface CreatorMatchCardData {
   id: string
@@ -102,7 +102,7 @@ function getAudienceLabel(genderRatio: Record<string, number> | null | undefined
 export function CreatorMatchCard({ creator, selected, onToggleSelect, onPropose, onSaveToGroup }: Props) {
   const daysSince = daysAgo(creator.igDataImportedAt)
   const dateStr = formatDate(creator.igDataImportedAt)
-  const profileImg = getSafeProfileImageUrl(creator.igProfileImageR2Url, creator.igProfilePicUrl)
+  const profileImg = creator.igProfileImageR2Url || creator.igProfilePicUrl
   const name = creator.displayName || creator.instagramHandle || creator.igUsername || ''
   const handle = creator.instagramHandle || creator.igUsername || ''
   const erPercent = creator.igEngagementRate !== null ? creator.igEngagementRate.toFixed(1) : null
@@ -159,7 +159,7 @@ export function CreatorMatchCard({ creator, selected, onToggleSelect, onPropose,
           <div className="relative shrink-0">
             <div className="w-14 h-14 rounded-full overflow-hidden border border-stone-200 bg-stone-100">
               {profileImg ? (
-                <Image src={profileImg} alt={name} width={56} height={56} className="w-full h-full object-cover" unoptimized={profileImg.startsWith('/api/')} />
+                <Image src={profileImg} alt={name} width={56} height={56} className="w-full h-full object-cover" unoptimized />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-stone-400">
                   <Users className="w-6 h-6" />
