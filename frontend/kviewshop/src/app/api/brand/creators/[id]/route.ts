@@ -219,6 +219,8 @@ export async function GET(
       totalSales: Number(creator.totalSales),
       totalEarnings: Number(creator.totalEarnings),
       totalRevenue: Number(creator.totalRevenue),
+      // 연락처 데이터
+      contactEmail: creator.brandContactEmail || creator.cnecEmail1 || creator.cnecEmail2 || creator.cnecEmail3 || null,
       // 파생 필드
       canSendDM: canSendDM(creator.igUsername),
       canSendAlimtalk: canSendAlimtalk(creator.cnecPhone, creator.cnecVerificationStatus),
