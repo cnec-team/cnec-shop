@@ -197,13 +197,21 @@ export default function CreatorProposalsPage() {
                   </Badge>
                 </div>
 
-                {/* 커미션 */}
+                {/* 커미션 — 예상 수익 구체적 표시 */}
                 {p.commissionRate != null && (
-                  <div className="flex items-center gap-2 mb-3 p-2 bg-muted rounded">
-                    <Percent className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">
-                      커미션 {p.commissionRate}%
-                    </span>
+                  <div className="flex items-center justify-between mb-3 p-3 bg-muted rounded-xl">
+                    <div className="flex items-center gap-2">
+                      <Percent className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">수수료율</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-sm font-bold text-earnings">{p.commissionRate}%</span>
+                      {p.campaign?.products?.[0] && (
+                        <p className="text-xs text-earnings mt-0.5">
+                          예상 수익 ₩{Math.round(p.campaign.products[0].campaignPrice * p.commissionRate / 100).toLocaleString()}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 )}
 
@@ -248,11 +256,23 @@ export default function CreatorProposalsPage() {
                   </p>
                 )}
 
-                {/* 액션 버튼 */}
+                {/* 액션 버튼 — 구체적 동사형 CTA */}
                 {p.status === 'PENDING' && (
                   <div className="flex gap-3 mt-4">
                     <Button
-                      className="flex-1"
+                      variant="outline"
+                      className="flex-1 rounded-xl"
+                      onClick={() => {
+                        setRejectDialog({ open: true, proposalId: p.id })
+                        setRejectionReason('')
+                        setCustomReason('')
+                      }}
+                      disabled={processing === p.id}
+                    >
+                      거절
+                    </Button>
+                    <Button
+                      className="flex-1 rounded-xl bg-foreground text-white hover:bg-foreground/90"
                       onClick={() => handleAccept(p.id)}
                       disabled={processing === p.id}
                     >
@@ -263,18 +283,6 @@ export default function CreatorProposalsPage() {
                       )}
                       수락
                     </Button>
-                    <Button
-                      variant="outline"
-                      className="flex-1"
-                      onClick={() => {
-                        setRejectDialog({ open: true, proposalId: p.id })
-                        setRejectionReason('')
-                        setCustomReason('')
-                      }}
-                      disabled={processing === p.id}
-                    >
-                      거절
-                    </Button>
                   </div>
                 )}
               </CardContent>
@@ -282,14 +290,21 @@ export default function CreatorProposalsPage() {
           ))
         ) : (
           <div className="text-center py-16">
-            <Mail className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-            <p className="text-muted-foreground">
+            <div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
+              <Mail className="h-7 w-7 text-muted-foreground/40" />
+            </div>
+            <p className="font-bold">
               {activeTab === 'PENDING'
-                ? '대기 중인 제안이 없습니다'
+                ? '새 제안이 도착하면 여기로 보내드릴게요'
                 : activeTab === 'ACCEPTED'
-                  ? '수락한 제안이 없습니다'
-                  : '거절한 제안이 없습니다'}
+                  ? '수락한 제안이 여기에 표시돼요'
+                  : '거절한 제안이 여기에 표시돼요'}
             </p>
+            {activeTab === 'PENDING' && (
+              <p className="text-sm text-muted-foreground mt-1.5">
+                샵을 꾸미고 상품을 담으면 브랜드 제안이 더 많이 와요
+              </p>
+            )}
           </div>
         )}
       </div>

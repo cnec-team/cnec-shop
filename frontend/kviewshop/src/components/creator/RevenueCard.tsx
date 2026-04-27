@@ -14,12 +14,12 @@ interface RevenueData {
 }
 
 function formatAmount(value: number): string {
-  return value.toLocaleString('ko-KR') + '원';
+  return '₩' + value.toLocaleString('ko-KR');
 }
 
 function AnimatedAmount({ value, duration }: { value: number; duration: number }) {
   const animated = useCountUp(value, duration);
-  return <>{formatAmount(animated)}</>;
+  return <span className="font-price">{formatAmount(animated)}</span>;
 }
 
 export function RevenueCard() {
@@ -58,10 +58,10 @@ export function RevenueCard() {
       <Card className="rounded-2xl border-gray-100 shadow-sm">
         <CardContent className="p-4">
           <div className="flex items-center gap-2 mb-1.5">
-            <TrendingUp className="h-4 w-4 text-blue-500" />
-            <span className="text-xs text-gray-400">오늘 수익</span>
+            <TrendingUp className="h-4 w-4 text-trust" />
+            <span className="text-xs text-muted-foreground">오늘 수익</span>
           </div>
-          <p className="text-lg font-bold text-gray-900">
+          <p className="text-lg font-bold">
             <AnimatedAmount value={today} duration={600} />
           </p>
         </CardContent>
@@ -71,9 +71,9 @@ export function RevenueCard() {
         <CardContent className="p-4">
           <div className="flex items-center gap-2 mb-1.5">
             <Wallet className="h-4 w-4 text-earnings" />
-            <span className="text-xs text-gray-400">이번 달 수익</span>
+            <span className="text-xs text-muted-foreground">이번 달 수익</span>
           </div>
-          <p className="text-lg font-bold text-gray-900">
+          <p className="text-lg font-bold">
             <AnimatedAmount value={month} duration={800} />
           </p>
         </CardContent>
@@ -82,14 +82,14 @@ export function RevenueCard() {
       <Card className="rounded-2xl border-gray-100 shadow-sm">
         <CardContent className="p-4">
           <div className="flex items-center gap-2 mb-1.5">
-            <Calendar className="h-4 w-4 text-green-500" />
-            <span className="text-xs text-gray-400">정산 예정</span>
+            <Calendar className="h-4 w-4 text-trust" />
+            <span className="text-xs text-muted-foreground">정산 예정</span>
           </div>
-          <p className="text-lg font-bold text-gray-900">
+          <p className="text-lg font-bold">
             <AnimatedAmount value={pending} duration={800} />
           </p>
           {settlementDate && (
-            <p className="text-[11px] text-gray-400 mt-0.5">
+            <p className="text-[11px] text-muted-foreground mt-0.5">
               {settlementDate} 입금 예정
             </p>
           )}

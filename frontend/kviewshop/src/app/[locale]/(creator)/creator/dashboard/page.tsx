@@ -20,6 +20,9 @@ import {
   Store,
   ShieldCheck,
   Gift,
+  Sparkles,
+  TrendingUp,
+  ArrowUpRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/i18n/config';
@@ -88,7 +91,6 @@ export default function CreatorDashboardPage() {
   const shopUrl = creator?.shopId ? getShopUrl(creator.shopId) : '';
 
   useEffect(() => {
-    // Check CS banner dismiss state
     const dismissed = localStorage.getItem('cnec_cs_banner_dismissed');
     if (!dismissed) setShowCsBanner(true);
 
@@ -130,12 +132,12 @@ export default function CreatorDashboardPage() {
     setAddingId(product.id);
     try {
       await addProductToShop(product.id);
-      toast.success('내 샵에 추가되었습니다');
+      toast.success('내 팔로워에게 추천할 상품을 담았어요');
       setRecommendedProducts((prev) => prev.filter((p) => p.id !== product.id));
       try { await triggerMissionCheck('FIRST_PRODUCT'); } catch {}
     } catch (error: any) {
       if (error?.message?.includes('Unique')) {
-        toast.error('이미 추가된 상품입니다');
+        toast.error('이미 담긴 상품이에요');
         setRecommendedProducts((prev) => prev.filter((p) => p.id !== product.id));
       } else {
         toast.error('추가하지 못했어요');
@@ -154,7 +156,7 @@ export default function CreatorDashboardPage() {
     if (!shopUrl) return;
     navigator.clipboard.writeText(shopUrl);
     setCopied(true);
-    toast.success('링크가 복사되었습니다');
+    toast.success('내 샵 링크가 복사됐어요');
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -174,10 +176,10 @@ export default function CreatorDashboardPage() {
     return (
       <div className="space-y-6 max-w-2xl">
         <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-24 w-full rounded-2xl" />
+        <Skeleton className="h-32 w-full rounded-2xl" />
         <div className="grid grid-cols-3 gap-3">
           {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-16 rounded-2xl" />
+            <Skeleton key={i} className="h-20 rounded-2xl" />
           ))}
         </div>
         <Skeleton className="h-48 w-full rounded-2xl" />
@@ -185,12 +187,14 @@ export default function CreatorDashboardPage() {
     );
   }
 
+  const hasNoEarnings = monthlyEarnings === 0 && todayEarnings === 0;
+
   return (
     <div className="space-y-6 max-w-2xl">
       {/* Greeting */}
       <div>
-        <p className="text-gray-400 text-sm">{dateStr}</p>
-        <h1 className="text-xl font-bold text-gray-900 mt-0.5">
+        <p className="text-muted-foreground text-sm">{dateStr}</p>
+        <h1 className="text-xl font-bold mt-0.5">
           안녕하세요, {(creator as any)?.displayName || '크리에이터'}님
         </h1>
       </div>
@@ -200,28 +204,37 @@ export default function CreatorDashboardPage() {
 
       {/* Hero: This month's earnings — one big number */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-        <p className="text-sm text-gray-500">이번 달 수익</p>
-        <p className="text-4xl font-bold text-gray-900 mt-1">
-          {formatCurrency(animatedMonthly, 'KRW')}
-        </p>
+        <p className="text-sm text-muted-foreground">이번 달 수익</p>
+        {hasNoEarnings ? (
+          <div className="mt-2">
+            <p className="text-2xl font-bold">오늘 첫 공구를 열어보세요</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              평균 첫 공구 수익 <span className="font-price text-earnings font-bold">₩12,400</span>
+            </p>
+          </div>
+        ) : (
+          <p className="text-4xl font-price mt-1">
+            {formatCurrency(animatedMonthly, 'KRW')}
+          </p>
+        )}
 
         {/* Shop URL inline */}
         {creator?.shopId && (
           <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-50">
-            <Store className="h-4 w-4 text-gray-400 shrink-0" />
-            <span className="text-xs text-gray-400 truncate flex-1">{shopUrl}</span>
+            <Store className="h-4 w-4 text-muted-foreground shrink-0" />
+            <span className="text-xs text-muted-foreground truncate flex-1">{shopUrl}</span>
             <button
               onClick={copyShopUrl}
-              className="text-xs text-gray-500 hover:text-gray-900 transition-colors flex items-center gap-1"
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
             >
-              {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+              {copied ? <Check className="h-3 w-3 text-earnings" /> : <Copy className="h-3 w-3" />}
               {copied ? '복사됨' : '복사'}
             </button>
             <a
               href={shopUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs text-gray-500 hover:text-gray-900 transition-colors"
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
               <ExternalLink className="h-3 w-3" />
             </a>
@@ -229,31 +242,31 @@ export default function CreatorDashboardPage() {
         )}
       </div>
 
-      {/* 3 Small Metrics — earnings focused */}
+      {/* 3 Small Metrics — tabular-nums */}
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 text-center">
           <Wallet className="h-4 w-4 text-earnings mx-auto mb-1" />
-          <p className="text-lg font-bold text-earnings">{formatCurrency(animatedToday, 'KRW')}</p>
-          <p className="text-[11px] text-gray-400">오늘 수익</p>
+          <p className="text-lg font-price text-earnings">{formatCurrency(animatedToday, 'KRW')}</p>
+          <p className="text-[11px] text-muted-foreground">오늘 수익</p>
         </div>
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 text-center">
-          <ShoppingCart className="h-4 w-4 text-gray-400 mx-auto mb-1" />
-          <p className="text-lg font-bold text-gray-900">{monthlyOrders.toLocaleString()}</p>
-          <p className="text-[11px] text-gray-400">이번 달 주문</p>
+          <ShoppingCart className="h-4 w-4 text-muted-foreground mx-auto mb-1" />
+          <p className="text-lg font-price">{monthlyOrders.toLocaleString()}<span className="text-xs font-normal text-muted-foreground">건</span></p>
+          <p className="text-[11px] text-muted-foreground">이번 달 주문</p>
         </div>
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 text-center">
-          <Banknote className="h-4 w-4 text-green-500 mx-auto mb-1" />
-          <p className="text-lg font-bold text-gray-900">{formatCurrency(pendingSettlement, 'KRW')}</p>
-          <p className="text-[11px] text-gray-400">
+          <Banknote className="h-4 w-4 text-trust mx-auto mb-1" />
+          <p className="text-lg font-price">{formatCurrency(pendingSettlement, 'KRW')}</p>
+          <p className="text-[11px] text-muted-foreground">
             {nextSettlementDate ? `${nextSettlementDate} 입금` : '정산 예정'}
           </p>
         </div>
       </div>
 
-      {/* Creator earnings assurance */}
-      <div className="text-center mt-1">
-        <p className="text-sm font-semibold text-gray-900">내 수익, 그대로 받아요</p>
-        <p className="text-xs text-gray-500">크넥은 크리에이터 수익에서 수수료를 떼지 않습니다. 100% 전액 지급.</p>
+      {/* Zero fee assurance — Soft Commerce trust layer */}
+      <div className="bg-foreground rounded-2xl p-5 text-white">
+        <p className="text-sm font-bold">내 수익, 그대로 받아요</p>
+        <p className="text-xs text-white/60 mt-1">수수료 0원 · 100% 전액 지급</p>
       </div>
 
       {/* PPM 매칭 상품 피드 */}
@@ -263,10 +276,10 @@ export default function CreatorDashboardPage() {
       {recommendedProducts.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-bold text-gray-900">추천 상품</h2>
+            <h2 className="text-base font-bold">추천 상품</h2>
             <Link
               href={`/${locale}/creator/products`}
-              className="text-xs text-gray-400 font-medium flex items-center gap-0.5 hover:text-gray-600 transition-colors"
+              className="text-xs text-muted-foreground font-medium flex items-center gap-0.5 hover:text-foreground transition-colors"
             >
               전체보기 <ChevronRight className="h-3.5 w-3.5" />
             </Link>
@@ -292,16 +305,16 @@ export default function CreatorDashboardPage() {
                         {product.brand && (
                           <BrandBadge brandName={product.brand.brandName} size="sm" />
                         )}
-                        <p className="text-xs font-medium text-gray-900 line-clamp-2 mt-0.5 leading-tight min-h-[32px]">{product.name}</p>
-                        <p className="text-sm font-bold text-gray-900 mt-1">{formatCurrency(Number(product.salePrice), 'KRW')}</p>
-                        <p className="text-xs text-earnings font-semibold mt-0.5">
-                          팔면 ₩{earnings.toLocaleString()}
+                        <p className="text-xs font-medium line-clamp-2 mt-0.5 leading-tight min-h-[32px]">{product.name}</p>
+                        <p className="text-sm font-price mt-1">{formatCurrency(Number(product.salePrice), 'KRW')}</p>
+                        <p className="text-xs text-earnings font-bold mt-0.5">
+                          내 수익 ₩{earnings.toLocaleString()}
                         </p>
                       </div>
                     </Link>
                     <div className="p-3 pt-2">
                       <Button
-                        className="w-full h-9 text-xs bg-gray-900 text-white hover:bg-gray-800 rounded-xl"
+                        className="w-full h-9 text-xs bg-foreground text-white hover:bg-foreground/90 rounded-xl"
                         onClick={() => handleQuickAdd(product)}
                         disabled={addingId === product.id}
                       >
@@ -310,7 +323,7 @@ export default function CreatorDashboardPage() {
                         ) : (
                           <>
                             <Plus className="h-3.5 w-3.5 mr-1" />
-                            내 샵에 추가
+                            내 샵에 담기
                           </>
                         )}
                       </Button>
@@ -328,12 +341,12 @@ export default function CreatorDashboardPage() {
         <div>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <Gift className="h-4 w-4 text-purple-500" />
-              <h2 className="text-base font-bold text-gray-900">체험 신청 상품</h2>
+              <Gift className="h-4 w-4 text-trust" />
+              <h2 className="text-base font-bold">무료 체험 상품</h2>
             </div>
             <Link
               href={`/${locale}/creator/trial`}
-              className="text-xs text-gray-400 font-medium flex items-center gap-0.5 hover:text-gray-600 transition-colors"
+              className="text-xs text-muted-foreground font-medium flex items-center gap-0.5 hover:text-foreground transition-colors"
             >
               전체보기 <ChevronRight className="h-3.5 w-3.5" />
             </Link>
@@ -359,22 +372,22 @@ export default function CreatorDashboardPage() {
                       sizes="(max-width: 768px) 50vw, 200px"
                     />
                     {product.existingTrial && (
-                      <span className="absolute top-2 left-2 bg-yellow-50 text-yellow-700 text-[10px] font-medium px-2 py-0.5 rounded-full">
+                      <span className="absolute top-2 left-2 chip chip-trust text-[10px]">
                         {product.existingTrial.status === 'pending' ? '신청중' : '진행중'}
                       </span>
                     )}
                   </div>
                   <div className="p-2.5">
-                    <p className="text-[10px] text-gray-400">{product.brand.companyName}</p>
-                    <p className="text-xs font-medium text-gray-900 line-clamp-1 mt-0.5">{product.nameKo || product.name}</p>
+                    <p className="text-[10px] text-muted-foreground">{product.brand.companyName}</p>
+                    <p className="text-xs font-medium line-clamp-1 mt-0.5">{product.nameKo || product.name}</p>
                     <div className="flex items-center gap-1.5 mt-1">
                       {priceNum > 0 && (
-                        <span className="text-xs font-bold text-gray-900">
+                        <span className="text-xs font-price">
                           {formatCurrency(priceNum, 'KRW')}
                         </span>
                       )}
                       {product.volume && (
-                        <span className="text-[10px] text-gray-400">{product.volume}</span>
+                        <span className="text-[10px] text-muted-foreground">{product.volume}</span>
                       )}
                     </div>
                   </div>
@@ -385,23 +398,23 @@ export default function CreatorDashboardPage() {
         </div>
       )}
 
-      {/* CS Zero Banner */}
+      {/* CS Zero Banner — trust layer */}
       {showCsBanner && (
-        <div className="bg-blue-50 rounded-2xl border border-blue-100 p-5 relative">
+        <div className="bg-muted rounded-2xl border border-gray-100 p-5 relative">
           <button
             onClick={dismissCsBanner}
-            className="absolute top-3 right-3 text-gray-300 hover:text-gray-500 transition-colors"
+            className="absolute top-3 right-3 text-muted-foreground hover:text-foreground transition-colors"
           >
             <X className="h-4 w-4" />
           </button>
           <div className="flex items-start gap-3">
-            <div className="bg-blue-100 rounded-xl p-2 shrink-0">
-              <ShieldCheck className="h-5 w-5 text-blue-600" />
+            <div className="bg-trust/10 rounded-xl p-2 shrink-0">
+              <ShieldCheck className="h-5 w-5 text-trust" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-gray-900">추천만 하세요. CS는 크넥이 관리합니다</p>
-              <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                배송·교환·환불 모두 브랜드가 직접 처리해요. 크리에이터님은 추천에만 집중하세요.
+              <p className="text-sm font-bold">추천만 하세요. CS는 크넥이 관리해요</p>
+              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                배송·교환·환불 모두 브랜드가 직접 처리. 크리에이터님은 추천에만 집중하세요.
               </p>
             </div>
           </div>

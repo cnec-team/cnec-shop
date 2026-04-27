@@ -130,7 +130,7 @@ function getGongguBadge(campaign: ShopCampaign): { label: string; variant: Badge
   const soldCount = Number(campaign.soldCount ?? 0);
 
   if (totalStock > 0 && soldCount >= totalStock) {
-    return { label: 'SOLD OUT', variant: 'gray' };
+    return { label: '마감', variant: 'gray' };
   }
 
   if (!hasCampaignStarted(campaign.startAt)) {
