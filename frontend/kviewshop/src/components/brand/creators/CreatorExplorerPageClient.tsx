@@ -206,6 +206,9 @@ function CreatorExplorerContent() {
               onPropose={(id: string, type: 'GONGGU' | 'PRODUCT_PICK') =>
                 setProposalModal({ open: true, mode: 'single', creatorIds: [id], defaultType: type })
               }
+              onSaveToGroup={(id: string) =>
+                setGroupDialog({ open: true, creatorIds: [id] })
+              }
             />
           ) : (
             <div className="overflow-x-auto rounded-xl border border-stone-200">

@@ -75,7 +75,7 @@ export default async function SupportPage({ params }: SupportPageProps) {
               <p className="text-sm font-semibold text-gray-900">상담 운영 안내</p>
               <p className="text-sm text-gray-500 mt-1 leading-relaxed">
                 주말과 공휴일에는 상담이 어려워요. 긴급한 문의는 이메일로 남겨주시면
-                다음 영업일에 빠��게 확인해드릴게요.
+                다음 영업일에 빠르게 확인해드릴게요.
               </p>
             </div>
           </div>

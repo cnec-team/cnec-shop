@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (type === 'GONGGU' && !campaignId) {
-      return NextResponse.json({ error: '공구 초대 시 캠페인을 선택��주세요' }, { status: 400 })
+      return NextResponse.json({ error: '공구 초대 시 캠페인을 선택해주세요' }, { status: 400 })
     }
 
     if (campaignId) {
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
         select: { id: true, status: true },
       })
       if (!campaign) {
-        return NextResponse.json({ error: '캠페���을 찾을 수 없습니다' }, { status: 404 })
+        return NextResponse.json({ error: '캠페인을 찾을 수 없습니다' }, { status: 404 })
       }
       if (!['RECRUITING', 'ACTIVE'].includes(campaign.status)) {
         return NextResponse.json(
@@ -381,7 +381,7 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('제안 발송 오류:', error)
-    return NextResponse.json({ error: '제안 발송 중 오류가 발생���습니다' }, { status: 500 })
+    return NextResponse.json({ error: '제안 발송 중 오류가 발생했습니다' }, { status: 500 })
   }
 }
 

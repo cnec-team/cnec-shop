@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
       },
     })
     if (!brand) {
-      return NextResponse.json({ error: '브랜드�� 찾을 수 없습니다' }, { status: 404 })
+      return NextResponse.json({ error: '브랜드를 찾을 수 없습니다' }, { status: 404 })
     }
 
     const body = await request.json()
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (type === 'GONGGU' && !campaignId) {
-      return NextResponse.json({ error: '공구 초대 시 캠페인을 선택해주세���' }, { status: 400 })
+      return NextResponse.json({ error: '공구 초대 시 캠페인을 선택해주세요' }, { status: 400 })
     }
 
     if (campaignId) {
@@ -321,7 +321,7 @@ export async function POST(request: NextRequest) {
               acceptUrl,
             })
           : proposalProductPickMessage({
-              creatorName: c.displayName ?? '��리에이터',
+              creatorName: c.displayName ?? '크리에이터',
               brandName: brand.brandName ?? '브랜드',
               productName: campaignName,
               commissionRate: commissionRate ?? undefined,
@@ -455,7 +455,7 @@ export async function POST(request: NextRequest) {
                 instagramUsername: c.igUsername,
                 messageBody:
                   message ||
-                  `${brand.brandName ?? '브��드'}에서 ${type === 'GONGGU' ? '공구' : '상품 추천'} ���대를 보냈습니다.`,
+                  `${brand.brandName ?? '브랜드'}에서 ${type === 'GONGGU' ? '공구' : '상품 추천'} 초대를 보냈습니다.`,
                 status: 'PENDING',
                 brandInstagramAccount: brand.brandInstagramHandle,
               },

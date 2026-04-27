@@ -45,7 +45,7 @@ export function DetailKpiRow({ creator, expectedReach }: { creator: any; expecte
         />
         <KpiTile
           icon={<Activity className="w-4 h-4" />}
-          label="���균 도달"
+          label="평균 도달"
           value={formatFollowers(expectedReach)}
           sub={creator.igFollowers ? `팔로워 대비 ${((expectedReach / creator.igFollowers) * 100).toFixed(0)}%` : ''}
           tooltip="게시물 1개당 평균적으로 도달하는 사용자 수. 광고 캠페인 효과 예측에 사용돼요."

@@ -35,7 +35,7 @@ export default async function RefundPolicyPage({ params }: RefundPolicyPageProps
         <div className="bg-blue-50 border border-blue-100 rounded-2xl p-6 mb-10">
           <p className="text-sm text-blue-900 leading-relaxed">
             주식회사 하우파파는 「전자상거래 등에서의 소비자보호에 관한 법률」에 따라
-            구매자의 권리를 보장하고 있어요. 편하게 쇼핑하실 수 있���록 아래 정책을 안내해드려요.
+            구매자의 권리를 보장하고 있어요. 편하게 쇼핑하실 수 있도록 아래 정책을 안내해드려요.
           </p>
         </div>
 
@@ -73,7 +73,7 @@ export default async function RefundPolicyPage({ params }: RefundPolicyPageProps
               <li>환불 승인 및 대금 환불 (승인일로부터 3영업일 이내)</li>
             </ol>
             <div className="mt-4 bg-gray-50 rounded-2xl p-4">
-              <p className="text-sm font-semibold mb-2">결제수단별 ��불 소요 시간</p>
+              <p className="text-sm font-semibold mb-2">결제수단별 환불 소요 시간</p>
               <ul className="text-sm space-y-1 text-gray-600">
                 <li>신용카드: 3~5영업일</li>
                 <li>계좌이체/가상계좌: 2~3영업일</li>
@@ -129,10 +129,10 @@ export default async function RefundPolicyPage({ params }: RefundPolicyPageProps
             </p>
           </Section>
 
-          <Section title="8. 미성년자 ���매 특칙">
+          <Section title="8. 미성년자 구매 특칙">
             <p>
               만 19세 미만 구매자가 법정대리인 동의 없이 구매한 경우,
-              법���대리인은 이를 취소할 수 있어요.
+              법정대리인은 이를 취소할 수 있어요.
             </p>
           </Section>
         </div>
