@@ -1,11 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -26,9 +23,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import {
   Check,
   Mail,
-  Percent,
-  Calendar,
-  Package,
+  Bell,
+  Clock,
   Loader2,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -150,144 +146,238 @@ export default function CreatorProposalsPage() {
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString('ko-KR')
 
+  const getDDay = (dateStr: string) => {
+    const now = new Date()
+    const created = new Date(dateStr)
+    const diffMs = now.getTime() - created.getTime()
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+    return diffDays
+  }
+
+  const getEstimatedTotal = () => {
+    return proposals.reduce((sum, p) => {
+      if (p.commissionRate != null && p.campaign?.products?.[0]) {
+        return sum + Math.round(p.campaign.products[0].campaignPrice * p.commissionRate / 100)
+      }
+      return sum
+    }, 0)
+  }
+
+  const tabs = [
+    { key: 'PENDING', label: '대기중', count: pendingCount },
+    { key: 'ACCEPTED', label: '수락', count: null },
+    { key: 'REJECTED', label: '거절', count: null },
+  ]
+
   return (
     <div className="max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">받은 제안</h1>
+      {/* Header */}
+      <div className="flex items-center gap-2 mb-6">
+        <h1 className="text-2xl font-bold">받은 제안</h1>
+        {pendingCount > 0 && (
+          <div className="relative">
+            <Bell className="h-5 w-5 text-foreground" />
+            <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500" />
+          </div>
+        )}
+      </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="PENDING" className="gap-1.5">
-            대기중
-            {pendingCount > 0 && (
-              <Badge variant="destructive" className="h-5 min-w-[20px] px-1.5 text-[10px] rounded-full">
+      {/* Pill Tabs */}
+      <div className="flex gap-2 mb-6">
+        {tabs.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 ${
+              activeTab === tab.key
+                ? 'bg-foreground text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            {tab.label}
+            {tab.key === 'PENDING' && pendingCount > 0 && (
+              <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${
+                activeTab === tab.key
+                  ? 'bg-white/20 text-white'
+                  : 'bg-red-500 text-white'
+              }`}>
                 {pendingCount}
-              </Badge>
+              </span>
             )}
-          </TabsTrigger>
-          <TabsTrigger value="ACCEPTED">수락</TabsTrigger>
-          <TabsTrigger value="REJECTED">거절</TabsTrigger>
-        </TabsList>
-      </Tabs>
+            {tab.key === 'ACCEPTED' && !loading && proposals.length > 0 && activeTab === 'ACCEPTED' && (
+              <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${
+                activeTab === tab.key
+                  ? 'bg-white/20 text-white'
+                  : 'bg-gray-300 text-gray-600'
+              }`}>
+                {proposals.length}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
 
-      <div className="mt-4 space-y-4">
+      <div className="space-y-4">
         {loading ? (
           Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-48 rounded-lg" />
+            <Skeleton key={i} className="h-48 rounded-2xl" />
           ))
         ) : proposals.length > 0 ? (
-          proposals.map(p => (
-            <Card key={p.id}>
-              <CardContent className="p-5">
-                {/* 브랜드 정보 */}
-                <div className="flex items-center gap-3 mb-3">
-                  <Avatar className="h-10 w-10">
-                    <AvatarImage src={p.brand.logoUrl || undefined} />
-                    <AvatarFallback>
-                      {(p.brand.brandName ?? 'B')[0]}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold truncate">{p.brand.brandName}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatDate(p.createdAt)}
-                    </p>
+          <>
+            {/* Summary Card — only in PENDING tab */}
+            {activeTab === 'PENDING' && pendingCount > 0 && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-2">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
+                    <Mail className="h-5 w-5 text-blue-600" />
                   </div>
-                  <Badge variant={p.type === 'GONGGU' ? 'default' : 'secondary'}>
-                    {p.type === 'GONGGU' ? '공구' : '상품 추천'}
-                  </Badge>
+                  <div className="flex-1">
+                    <p className="font-bold text-sm">새 제안 {pendingCount}개</p>
+                    <div className="flex items-center gap-3 mt-1">
+                      <span className="text-sm text-muted-foreground">
+                        예상 수익 <span className="font-semibold text-emerald-600">₩{getEstimatedTotal().toLocaleString()}</span>
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 mt-1.5 text-xs text-muted-foreground">
+                      <Clock className="h-3 w-3" />
+                      <span>24시간 내 응답</span>
+                    </div>
+                  </div>
                 </div>
+              </div>
+            )}
 
-                {/* 커미션 — 예상 수익 구체적 표시 */}
-                {p.commissionRate != null && (
-                  <div className="flex items-center justify-between mb-3 p-3 bg-muted rounded-xl">
-                    <div className="flex items-center gap-2">
-                      <Percent className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">수수료율</span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-sm font-bold text-earnings">{p.commissionRate}%</span>
-                      {p.campaign?.products?.[0] && (
-                        <p className="text-xs text-earnings mt-0.5">
-                          예상 수익 ₩{Math.round(p.campaign.products[0].campaignPrice * p.commissionRate / 100).toLocaleString()}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                )}
+            {/* Section Label */}
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide pt-1">
+              브랜드 제안
+            </p>
 
-                {/* 캠페인 상세 */}
-                {p.type === 'GONGGU' && p.campaign && (
-                  <div className="mb-3 p-3 border rounded-lg space-y-1.5">
-                    <p className="font-medium">{p.campaign.title}</p>
-                    {p.campaign.startAt && p.campaign.endAt && (
-                      <p className="text-sm text-muted-foreground flex items-center gap-1">
-                        <Calendar className="h-3.5 w-3.5" />
-                        {formatDate(p.campaign.startAt)} ~ {formatDate(p.campaign.endAt)}
-                      </p>
-                    )}
-                    {p.campaign.totalStock != null && (
-                      <p className="text-sm text-muted-foreground flex items-center gap-1">
-                        <Package className="h-3.5 w-3.5" />
-                        한정 {p.campaign.totalStock.toLocaleString()}개
-                      </p>
-                    )}
-                    {p.campaign.products?.map(cp => (
-                      <div key={cp.id} className="flex justify-between text-sm">
-                        <span>{cp.product.nameKo || cp.product.name}</span>
-                        <span className="font-medium">
-                          ₩{cp.campaignPrice.toLocaleString()}
-                        </span>
+            {/* Proposal Cards */}
+            {proposals.map((p) => {
+              const estimatedEarnings = p.commissionRate != null && p.campaign?.products?.[0]
+                ? Math.round(p.campaign.products[0].campaignPrice * p.commissionRate / 100)
+                : null
+              const dDays = getDDay(p.createdAt)
+
+              return (
+                <div key={p.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                  {/* Brand row */}
+                  <div className="flex items-center gap-3 mb-3">
+                    <Avatar className="h-12 w-12">
+                      <AvatarImage src={p.brand.logoUrl || undefined} />
+                      <AvatarFallback className="text-sm font-semibold">
+                        {(p.brand.brandName ?? 'B')[0]}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold truncate">{p.brand.brandName}</p>
+                        {activeTab === 'PENDING' && dDays <= 3 && (
+                          <span className="shrink-0 text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
+                            D-{Math.max(1, 3 - dDays + 1)}
+                          </span>
+                        )}
                       </div>
-                    ))}
+                      <p className="text-xs text-muted-foreground">
+                        {formatDate(p.createdAt)}
+                      </p>
+                    </div>
                   </div>
-                )}
 
-                {/* 메시지 */}
-                {p.message && (
-                  <p className="text-sm whitespace-pre-wrap line-clamp-4 mb-3">
-                    {p.message}
-                  </p>
-                )}
-
-                {/* 거절 사유 */}
-                {p.status === 'REJECTED' && p.rejectionReason && (
-                  <p className="text-sm text-muted-foreground italic mb-3">
-                    사유: {p.rejectionReason}
-                  </p>
-                )}
-
-                {/* 액션 버튼 — 구체적 동사형 CTA */}
-                {p.status === 'PENDING' && (
-                  <div className="flex gap-3 mt-4">
-                    <Button
-                      variant="outline"
-                      className="flex-1 rounded-xl"
-                      onClick={() => {
-                        setRejectDialog({ open: true, proposalId: p.id })
-                        setRejectionReason('')
-                        setCustomReason('')
-                      }}
-                      disabled={processing === p.id}
-                    >
-                      거절
-                    </Button>
-                    <Button
-                      className="flex-1 rounded-xl bg-foreground text-white hover:bg-foreground/90"
-                      onClick={() => handleAccept(p.id)}
-                      disabled={processing === p.id}
-                    >
-                      {processing === p.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                      ) : (
-                        <Check className="h-4 w-4 mr-1" />
+                  {/* Campaign / Product description */}
+                  {p.type === 'GONGGU' && p.campaign && (
+                    <p className="text-sm text-gray-700 line-clamp-2 mb-3">
+                      {p.campaign.title}
+                      {p.campaign.products?.[0] && (
+                        <span className="text-muted-foreground">
+                          {' '} — {p.campaign.products[0].product.nameKo || p.campaign.products[0].product.name}
+                        </span>
                       )}
-                      수락
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))
+                    </p>
+                  )}
+
+                  {p.message && (
+                    <p className="text-sm text-gray-600 whitespace-pre-wrap line-clamp-2 mb-3">
+                      {p.message}
+                    </p>
+                  )}
+
+                  {/* Rejection reason for REJECTED tab */}
+                  {p.status === 'REJECTED' && p.rejectionReason && (
+                    <div className="bg-gray-50 rounded-xl p-3 mb-3">
+                      <p className="text-sm text-muted-foreground">
+                        <span className="font-medium text-gray-700">거절 사유:</span> {p.rejectionReason}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Bottom row: earnings + buttons */}
+                  {activeTab === 'PENDING' && (
+                    <div className="flex items-center justify-between mt-1 pt-3 border-t border-gray-100">
+                      <div>
+                        {estimatedEarnings != null && (
+                          <>
+                            <p className="text-xs text-muted-foreground">예상 수익</p>
+                            <p className="text-base font-bold text-emerald-600">
+                              ₩{estimatedEarnings.toLocaleString()}
+                            </p>
+                          </>
+                        )}
+                        {p.commissionRate != null && (
+                          <p className="text-xs text-muted-foreground">수수료율 {p.commissionRate}%</p>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="rounded-xl px-4"
+                          onClick={() => {
+                            setRejectDialog({ open: true, proposalId: p.id })
+                            setRejectionReason('')
+                            setCustomReason('')
+                          }}
+                          disabled={processing === p.id}
+                        >
+                          거절
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="rounded-xl px-4 bg-foreground text-white hover:bg-foreground/90"
+                          onClick={() => handleAccept(p.id)}
+                          disabled={processing === p.id}
+                        >
+                          {processing === p.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                          ) : (
+                            <Check className="h-4 w-4 mr-1" />
+                          )}
+                          수락하기
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Accepted tab: show earnings info without buttons */}
+                  {activeTab === 'ACCEPTED' && estimatedEarnings != null && (
+                    <div className="mt-1 pt-3 border-t border-gray-100">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-muted-foreground">예상 수익</p>
+                          <p className="text-base font-bold text-emerald-600">
+                            ₩{estimatedEarnings.toLocaleString()}
+                          </p>
+                        </div>
+                        {p.commissionRate != null && (
+                          <span className="text-xs text-muted-foreground">수수료율 {p.commissionRate}%</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </>
         ) : (
           <div className="text-center py-16">
             <div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
