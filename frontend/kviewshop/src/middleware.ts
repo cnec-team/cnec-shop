@@ -228,7 +228,7 @@ export default auth(async function middleware(request) {
   // Protected routes - require authentication (exclude auth pages)
   const protectedPaths = ['/admin', '/brand', '/creator', '/buyer'];
   const isProtectedRoute = !isAuthPage && protectedPaths.some((path) => {
-    const pattern = new RegExp(`^/(${LP})${path}`);
+    const pattern = new RegExp(`^/(${LP})${path}(/|$)`);
     return pattern.test(pathname);
   });
 
