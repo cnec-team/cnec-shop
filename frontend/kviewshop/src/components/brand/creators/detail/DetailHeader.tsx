@@ -31,7 +31,7 @@ export function DetailHeader({ creator, matchScore }: Props) {
 
   const handleEmailClick = () => {
     // cnecEmail1/2/3에서 첫 번째 유효 이메일 찾기
-    const email = creator.cnecEmail1 || creator.cnecEmail2 || creator.cnecEmail3
+    const email = creator.contactEmail || creator.cnecEmail1 || creator.cnecEmail2 || creator.cnecEmail3
     if (email) {
       window.open(`mailto:${email}?subject=[크넥] ${name} 님께 협업 제안`, '_blank')
     } else {
