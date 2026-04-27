@@ -128,14 +128,17 @@ export async function GET(
 
   // 콘텐츠 성과 (실제 DB 필드 우선, 없으면 추정)
   const followers = creator.igFollowers ?? 0
-  const er = creator.igEngagementRate ? Number(creator.igEngagementRate) : 0.02
+  // DB에 ER은 퍼센트로 저장 (2.3 = 2.3%), 계산용으로 비율 변환
+  const erRatio = creator.igEngagementRate ? Number(creator.igEngagementRate) / 100 : 0.02
+  const hasRealData = !!(creator.igAvgFeedLikes || creator.igAvgLikes || creator.igAvgReelViews || creator.igAvgVideoViews)
   const contentPerformance = {
-    avgFeedLikes: creator.igAvgFeedLikes ?? creator.igAvgLikes ?? Math.round(followers * er * 0.7),
-    avgFeedComments: creator.igAvgFeedComments ?? creator.igAvgComments ?? Math.round(followers * er * 0.02),
+    avgFeedLikes: creator.igAvgFeedLikes ?? creator.igAvgLikes ?? Math.round(followers * erRatio * 0.7),
+    avgFeedComments: creator.igAvgFeedComments ?? creator.igAvgComments ?? Math.round(followers * erRatio * 0.02),
     avgReelsViews: creator.igAvgReelViews ?? creator.igAvgVideoViews ?? Math.round(followers * 0.43),
-    avgReelsLikes: creator.igAvgReelLikes ?? creator.igAvgVideoLikes ?? Math.round(followers * er * 1.2),
+    avgReelsLikes: creator.igAvgReelLikes ?? creator.igAvgVideoLikes ?? Math.round(followers * erRatio * 1.2),
     lastSyncedAt: creator.igLastSyncedAt ?? creator.igDataImportedAt,
-    dataSource: creator.igDataSource ?? 'Phase 1 추정',
+    dataSource: creator.igDataSource ?? (hasRealData ? 'Phase 1' : '추정치'),
+    isEstimated: !hasRealData,
   }
 
   // 팔로워 인사이트 (실제 데이터 우선)
@@ -224,10 +227,11 @@ export async function GET(
       isVerifiedPartner: Boolean(creator.cnecIsPartner) && (creator.cnecCompletedPayments ?? 0) > 0,
       starRating: scoreToStarValue(reliabilityScore),
       showStarRating: shouldShowStarRating(creator.cnecIsPartner, creator.cnecTotalTrials, creator.cnecCompletedPayments),
+      // igValidFollowers가 있으면 실제 비율, 없으면 ER 기반 추정 (ER은 퍼센트 저장)
       effectiveFollowerRate: creator.igValidFollowers && creator.igFollowers
         ? Math.round((creator.igValidFollowers / creator.igFollowers) * 100)
         : erNum
-          ? Math.min(95, Math.round(erNum * 1000 * 0.9))
+          ? Math.min(95, Math.round(erNum * 9))
           : null,
     },
     matchScore: {

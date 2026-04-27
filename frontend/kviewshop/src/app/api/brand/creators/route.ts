@@ -73,6 +73,7 @@ export async function GET(request: NextRequest) {
   const canSendDMFilter = sp.get('canSendDM') === 'true'
   const canSendEmailFilter = sp.get('canSendEmail') === 'true'
   const canSendAlimtalkFilter = sp.get('canSendAlimtalk') === 'true'
+  const hasValidFollowersFilter = sp.get('hasValidFollowers') === 'true'
   const sort = sp.get('sort') || 'followers'
   const page = Math.max(1, parseInt(sp.get('page') || '1', 10))
   const limit = Math.min(50, Math.max(1, parseInt(sp.get('limit') || '24', 10)))
@@ -126,6 +127,9 @@ export async function GET(request: NextRequest) {
       cnecPhone: { not: null },
       cnecVerificationStatus: { in: ['VERIFIED', 'COMPLETED'] },
     })
+  }
+  if (hasValidFollowersFilter) {
+    andConditions.push({ igValidFollowers: { not: null, gt: 0 } })
   }
 
   if (updatedWithinDays) {
@@ -280,10 +284,11 @@ export async function GET(request: NextRequest) {
       estimatedAdCost: s?.estimatedAdCost?.toString() ?? '0',
       estimatedCpm: s?.estimatedCpm ?? 0,
       expectedReach: s?.expectedReach ?? 0,
+      // igValidFollowers가 있으면 실제 비율, 없으면 ER 기반 추정 (ER은 퍼센트 저장)
       effectiveFollowerRate: c.igValidFollowers && c.igFollowers
         ? Math.round((c.igValidFollowers / c.igFollowers) * 100)
         : erNum
-          ? Math.min(95, Math.round(erNum * 1000 * 0.9))
+          ? Math.min(95, Math.round(erNum * 9))
           : null,
     }
   })

@@ -2,9 +2,10 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { Mail, MessageSquare, Instagram, Bookmark, Sparkles, Star, Users, ShieldCheck, TrendingUp, Calendar, CheckCircle2, Phone } from 'lucide-react'
+import { Mail, MessageSquare, Instagram, Bookmark, Sparkles, Star, Users, ShieldCheck, TrendingUp, Calendar, CheckCircle2, Phone, HelpCircle, Info } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
 interface CreatorMatchCardData {
@@ -102,7 +103,7 @@ export function CreatorMatchCard({ creator, selected, onToggleSelect, onPropose 
   const profileImg = creator.igProfileImageR2Url || creator.igProfilePicUrl
   const name = creator.displayName || creator.instagramHandle || creator.igUsername || ''
   const handle = creator.instagramHandle || creator.igUsername || ''
-  const erPercent = creator.igEngagementRate !== null ? (creator.igEngagementRate * 100).toFixed(1) : null
+  const erPercent = creator.igEngagementRate !== null ? creator.igEngagementRate.toFixed(1) : null
   const audience = getAudienceLabel(creator.audienceGenderRatio, creator.audienceAgeRatio)
 
   return (
@@ -113,23 +114,42 @@ export function CreatorMatchCard({ creator, selected, onToggleSelect, onPropose 
       </div>
 
       {/* 우상단: AI 점수 + 액션 */}
-      <div className="flex items-start justify-end gap-1.5 mb-3">
-        <div className={cn(
-          'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-bold tabular-nums',
-          scoreColor(creator.matchScore)
-        )}>
-          <Sparkles className="w-3 h-3" strokeWidth={2.5} />
-          {creator.matchScore}
+      <TooltipProvider delayDuration={200}>
+        <div className="flex items-start justify-end gap-1.5 mb-3">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className={cn(
+                'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-bold tabular-nums cursor-help',
+                scoreColor(creator.matchScore)
+              )}>
+                <Sparkles className="w-3 h-3" strokeWidth={2.5} />
+                {creator.matchScore}
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-[220px] text-xs">
+              AI 매칭 점수 (0~100). 시청자 정합, 콘텐츠 품질, 브랜드 톤, 가성비를 종합 평가.
+            </TooltipContent>
+          </Tooltip>
+          {creator.canSendEmail && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button className="rounded-md p-1.5 text-stone-400 hover:text-blue-600 hover:bg-blue-50 transition-all" title="이메일 보내기" onClick={(e) => { e.stopPropagation(); e.preventDefault() }}>
+                  <Mail className="w-4 h-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">이메일 발송 가능</TooltipContent>
+            </Tooltip>
+          )}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button className="rounded-md p-1.5 text-stone-400 hover:text-amber-600 hover:bg-amber-50 transition-all" title="그룹에 저장" onClick={(e) => { e.stopPropagation(); e.preventDefault() }}>
+                <Bookmark className="w-4 h-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">그룹에 저장</TooltipContent>
+          </Tooltip>
         </div>
-        {creator.canSendEmail && (
-          <button className="rounded-md p-1.5 text-stone-400 hover:text-stone-900 hover:bg-stone-100 transition-all" title="이메일">
-            <Mail className="w-4 h-4" />
-          </button>
-        )}
-        <button className="rounded-md p-1.5 text-stone-400 hover:text-stone-900 hover:bg-stone-100 transition-all" title="저장">
-          <Bookmark className="w-4 h-4" />
-        </button>
-      </div>
+      </TooltipProvider>
 
       {/* 프로필 */}
       <Link href={`/brand/creators/${creator.id}`} className="block">
@@ -222,33 +242,56 @@ export function CreatorMatchCard({ creator, selected, onToggleSelect, onPropose 
       )}
 
       {/* 3분할 메트릭 */}
-      <div className="grid grid-cols-3 gap-2 mb-3">
-        <div className="rounded-lg bg-stone-50 p-2.5">
-          <div className="flex items-center gap-1 text-stone-500 mb-1">
-            <Users className="w-3 h-3" />
-            <span className="text-[10px]">팔로워</span>
-          </div>
-          <p className="text-sm font-bold tabular-nums text-stone-900">{formatFollowers(creator.igFollowers)}</p>
+      <TooltipProvider delayDuration={200}>
+        <div className="grid grid-cols-3 gap-2 mb-3">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="rounded-lg bg-stone-50 p-2.5 cursor-help">
+                <div className="flex items-center gap-1 text-stone-500 mb-1">
+                  <Users className="w-3 h-3" />
+                  <span className="text-[10px]">팔로워</span>
+                </div>
+                <p className="text-sm font-bold tabular-nums text-stone-900">{formatFollowers(creator.igFollowers)}</p>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-[200px] text-xs">
+              인스타그램 총 팔로워 수. 봇·휴면 계정 포함.
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="rounded-lg bg-stone-50 p-2.5 cursor-help">
+                <div className="flex items-center gap-1 text-stone-500 mb-1">
+                  <ShieldCheck className="w-3 h-3" />
+                  <span className="text-[10px]">유효율</span>
+                </div>
+                <p className="text-sm font-bold tabular-nums text-green-600">
+                  {creator.effectiveFollowerRate !== null ? `${creator.effectiveFollowerRate}%` : '—'}
+                </p>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-[220px] text-xs">
+              봇·휴면 계정을 제외한 실제 활동 팔로워 비율. 높을수록 광고 효과가 좋아요.
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="rounded-lg bg-stone-50 p-2.5 cursor-help">
+                <div className="flex items-center gap-1 text-stone-500 mb-1">
+                  <TrendingUp className="w-3 h-3" />
+                  <span className="text-[10px]">참여율</span>
+                </div>
+                <p className="text-sm font-bold tabular-nums text-green-600">
+                  {erPercent !== null ? `${erPercent}%` : '—'}
+                </p>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-[220px] text-xs">
+              팔로워 대비 좋아요+댓글 비율(ER). K-뷰티 평균 2.4%. 높을수록 팬 충성도가 높아요.
+            </TooltipContent>
+          </Tooltip>
         </div>
-        <div className="rounded-lg bg-stone-50 p-2.5">
-          <div className="flex items-center gap-1 text-stone-500 mb-1">
-            <ShieldCheck className="w-3 h-3" />
-            <span className="text-[10px]">유효율</span>
-          </div>
-          <p className="text-sm font-bold tabular-nums text-green-600">
-            {creator.effectiveFollowerRate !== null ? `${creator.effectiveFollowerRate}%` : '—'}
-          </p>
-        </div>
-        <div className="rounded-lg bg-stone-50 p-2.5">
-          <div className="flex items-center gap-1 text-stone-500 mb-1">
-            <TrendingUp className="w-3 h-3" />
-            <span className="text-[10px]">ER</span>
-          </div>
-          <p className="text-sm font-bold tabular-nums text-green-600">
-            {erPercent !== null ? `${erPercent}%` : '—'}
-          </p>
-        </div>
-      </div>
+      </TooltipProvider>
 
       {/* 업로드 시점 + 주 시청자 */}
       <div className="flex items-center justify-between text-xs text-stone-500 mb-3">
@@ -262,20 +305,36 @@ export function CreatorMatchCard({ creator, selected, onToggleSelect, onPropose 
       </div>
 
       {/* 예상 광고비 + CPM */}
-      <div className="flex items-end justify-between mb-4 pt-3 border-t border-stone-100">
-        <div>
-          <p className="text-xs text-stone-500 mb-0.5">예상 광고비</p>
-          <p className="text-base font-bold text-stone-900 tabular-nums">
-            {formatKrwCompact(Number(creator.estimatedAdCost))}
-          </p>
+      <TooltipProvider delayDuration={200}>
+        <div className="flex items-end justify-between mb-4 pt-3 border-t border-stone-100">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="cursor-help">
+                <p className="text-xs text-stone-500 mb-0.5">예상 광고비</p>
+                <p className="text-base font-bold text-stone-900 tabular-nums">
+                  {formatKrwCompact(Number(creator.estimatedAdCost))}
+                </p>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-[200px] text-xs">
+              단일 캠페인 기준 예상 광고 비용. 팔로워·참여율·도달률 기반 산출.
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="text-right cursor-help">
+                <p className="text-xs text-stone-500 mb-0.5">CPM</p>
+                <p className="text-sm font-semibold text-stone-900 tabular-nums">
+                  {creator.estimatedCpm.toLocaleString()}원
+                </p>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-[200px] text-xs">
+              1,000회 노출당 비용. 낮을수록 가성비가 좋아요.
+            </TooltipContent>
+          </Tooltip>
         </div>
-        <div className="text-right">
-          <p className="text-xs text-stone-500 mb-0.5">CPM</p>
-          <p className="text-sm font-semibold text-stone-900 tabular-nums">
-            {creator.estimatedCpm.toLocaleString()}원
-          </p>
-        </div>
-      </div>
+      </TooltipProvider>
 
       {/* CTA */}
       <div className="flex items-center gap-2">
