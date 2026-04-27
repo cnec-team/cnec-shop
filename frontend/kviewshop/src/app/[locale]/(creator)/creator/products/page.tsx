@@ -34,13 +34,13 @@ import {
   Gift,
   Play,
   Trash2,
+  ChevronRight,
 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { BrandBadge } from '@/components/common/BrandBadge';
 import { SafeImage } from '@/components/common/SafeImage';
 import { formatCurrency } from '@/lib/i18n/config';
-import { CreatorProductGrid } from '@/components/creator/CreatorProductGrid';
 import { PRODUCT_CATEGORY_LABELS } from '@/types/database';
 import { formatEarnings } from '@/lib/utils/beauty-labels';
 import { PriceBadgeTag, PriceScoutSheet } from '@/components/creator/PriceScout';
@@ -136,7 +136,7 @@ export default function CreatorProductsPage() {
           const shopIds = new Set(data.myShopItemProductIds as unknown as string[]);
           setMyShopItemIds(shopIds);
 
-          // Build category → brandName map from existing shop items
+          // Build category -> brandName map from existing shop items
           const catMap = new Map<string, string>();
           for (const p of prods) {
             if (shopIds.has(p.id) && p.category && p.brand?.brandName) {
@@ -346,51 +346,40 @@ export default function CreatorProductsPage() {
     return (
       <div className="space-y-4 max-w-4xl">
         <Skeleton className="h-10 w-full rounded-xl" />
-        <CreatorProductGrid>
-          {Array.from({ length: 8 }).map((_, i) => (
+        <div className="flex gap-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-8 w-20 rounded-full shrink-0" />
+          ))}
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="h-72 rounded-2xl" />
           ))}
-        </CreatorProductGrid>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-4 max-w-4xl">
-      {/* Header */}
-      <div className="hidden md:block">
-        <h1 className="text-xl font-bold text-gray-900">상품 둘러보기</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">내 팔로워에게 추천할 상품을 찾아보세요</p>
+      {/* Search Bar as Header */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <Input
+          placeholder="어떤 상품을 찾고 있나요?"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-10 h-11 rounded-xl bg-gray-50 border-0 focus-visible:ring-1 focus-visible:ring-gray-200"
+        />
       </div>
 
-      {/* Search + Filter */}
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <Input
-            placeholder="어떤 상품을 찾고 있나요?"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 h-10 rounded-xl"
-          />
-        </div>
-        <Button
-          variant={showFilters ? 'default' : 'outline'}
-          size="icon"
-          className="h-10 w-10 shrink-0 md:hidden rounded-xl"
-          onClick={() => setShowFilters(!showFilters)}
-        >
-          <SlidersHorizontal className="h-4 w-4" />
-        </Button>
-      </div>
-
-      {/* Category Pills — horizontal scroll */}
+      {/* Category Filter Pills */}
       <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 md:mx-0 md:px-0 scrollbar-hide">
         <button
           onClick={() => setCategoryFilter('all')}
           className={`shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
             categoryFilter === 'all'
-              ? 'bg-gray-900 text-white'
+              ? 'bg-foreground text-white'
               : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
           }`}
         >
@@ -402,7 +391,7 @@ export default function CreatorProductsPage() {
             onClick={() => setCategoryFilter(value)}
             className={`shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
               categoryFilter === value
-                ? 'bg-gray-900 text-white'
+                ? 'bg-foreground text-white'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
@@ -411,24 +400,41 @@ export default function CreatorProductsPage() {
         ))}
       </div>
 
-      {/* Sort — desktop only or when filters shown */}
-      <div className={`${showFilters ? 'block' : 'hidden md:block'}`}>
-        <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
-          <SelectTrigger className="w-full sm:w-[180px] h-9 rounded-xl">
-            <ArrowUpDown className="h-3.5 w-3.5 mr-2" />
-            <SelectValue placeholder="정렬" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="commission_desc">내 수익 높은 순</SelectItem>
-            <SelectItem value="commission_asc">내 수익 낮은 순</SelectItem>
-            <SelectItem value="price_asc">가격 낮은 순</SelectItem>
-            <SelectItem value="price_desc">가격 높은 순</SelectItem>
-            <SelectItem value="name">이름 순</SelectItem>
-          </SelectContent>
-        </Select>
+      {/* Count + Sort Row */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-medium text-gray-900">
+          {filteredProducts.length}개 상품
+        </p>
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+        >
+          {sortBy === 'commission_desc' ? '내 수익 높은 순' :
+           sortBy === 'commission_asc' ? '내 수익 낮은 순' :
+           sortBy === 'price_asc' ? '가격 낮은 순' :
+           sortBy === 'price_desc' ? '가격 높은 순' : '이름 순'}
+          <ChevronRight className="h-3.5 w-3.5" />
+        </button>
       </div>
 
-      <p className="text-xs text-gray-400">총 {filteredProducts.length}개 상품</p>
+      {/* Sort dropdown (shown when toggled) */}
+      {showFilters && (
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-2">
+          <Select value={sortBy} onValueChange={(v) => { setSortBy(v as SortOption); setShowFilters(false); }}>
+            <SelectTrigger className="w-full h-9 rounded-xl border-0 bg-gray-50">
+              <ArrowUpDown className="h-3.5 w-3.5 mr-2" />
+              <SelectValue placeholder="정렬" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="commission_desc">내 수익 높은 순</SelectItem>
+              <SelectItem value="commission_asc">내 수익 낮은 순</SelectItem>
+              <SelectItem value="price_asc">가격 낮은 순</SelectItem>
+              <SelectItem value="price_desc">가격 높은 순</SelectItem>
+              <SelectItem value="name">이름 순</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {filteredProducts.length === 0 ? (
         <div className="text-center py-16">
@@ -439,7 +445,7 @@ export default function CreatorProductsPage() {
           </Button>
         </div>
       ) : (
-        <CreatorProductGrid>
+        <div className="grid grid-cols-2 gap-3">
           {filteredProducts.map((product) => {
             const discount = getDiscountRate(product);
             const earnings = getEarnings(product);
@@ -447,9 +453,10 @@ export default function CreatorProductsPage() {
             const isGonggu = product.activeCampaign?.type === 'GONGGU';
 
             return (
-              <div key={product.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
+              <div key={product.id} className="rounded-2xl overflow-hidden flex flex-col">
+                {/* Product Image */}
                 <Link href={`/${locale}/creator/products/${product.id}`} className="block">
-                  <div className="aspect-square bg-gray-50 relative overflow-hidden">
+                  <div className="aspect-square bg-gray-50 relative overflow-hidden rounded-xl">
                     <SafeImage
                       src={product.images?.[0] || product.imageUrl}
                       alt={product.name}
@@ -463,55 +470,62 @@ export default function CreatorProductsPage() {
                         공구
                       </span>
                     )}
+                    {product.allowTrial && (
+                      <span className="absolute top-2 right-2 bg-purple-100 text-purple-700 text-[10px] font-medium px-2 py-0.5 rounded-full">
+                        체험
+                      </span>
+                    )}
                   </div>
+                </Link>
 
-                  <div className="p-3">
+                {/* Product Info */}
+                <div className="pt-2.5 pb-1 flex flex-col flex-1">
+                  <Link href={`/${locale}/creator/products/${product.id}`} className="block">
                     {product.brand && (
                       <div className="flex items-center gap-1 mb-0.5">
                         {product.brand.logoUrl && (
                           <img
                             src={product.brand.logoUrl}
                             alt={product.brand.brandName}
-                            className="h-4 w-4 rounded-full object-cover"
+                            className="h-3.5 w-3.5 rounded-full object-cover"
                             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                           />
                         )}
                         <BrandBadge brandName={product.brand.brandName} />
                       </div>
                     )}
-                    <p className="text-xs font-medium text-gray-900 line-clamp-2 mt-0.5 leading-tight">{product.name}</p>
+                    <p className="text-xs text-gray-700 line-clamp-2 leading-tight mt-0.5">{product.name}</p>
+
+                    {/* Price Row */}
                     <div className="flex items-center gap-1.5 mt-1.5">
                       {discount > 0 && (
-                        <span className="text-xs font-bold text-red-500">{discount}%</span>
+                        <span className="text-sm font-bold text-red-500">{discount}%</span>
                       )}
                       <span className="text-sm font-bold text-gray-900">
                         {formatCurrency(Number(product.salePrice), 'KRW')}
                       </span>
                     </div>
-                    {discount > 0 && (
-                      <span className="text-[10px] text-gray-400 line-through">
-                        {formatCurrency(Number(product.originalPrice), 'KRW')}
-                      </span>
-                    )}
-                    <p className="text-xs text-earnings font-semibold mt-1">
-                      팔면 ₩{earnings.toLocaleString()}
+
+                    {/* Earnings */}
+                    <p className="text-xs font-semibold text-emerald-600 mt-1">
+                      내 수익 {formatCurrency(earnings, 'KRW')}
                     </p>
-                    <div className="flex flex-wrap items-center gap-1 mt-1.5">
-                      {priceBadges[product.id] && (
-                        <button
-                          onClick={(e) => { e.preventDefault(); setPriceSheetProductId(product.id); }}
-                        >
-                          <PriceBadgeTag badge={priceBadges[product.id]} />
-                        </button>
-                      )}
-                      <AiGonguTipButton productId={product.id} />
-                    </div>
+                  </Link>
+
+                  {/* Badges row */}
+                  <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                    {priceBadges[product.id] && (
+                      <button
+                        onClick={(e) => { e.preventDefault(); setPriceSheetProductId(product.id); }}
+                      >
+                        <PriceBadgeTag badge={priceBadges[product.id]} />
+                      </button>
+                    )}
+                    <AiGonguTipButton productId={product.id} />
                   </div>
-                </Link>
 
-                <div className="px-3 flex-1 flex flex-col justify-end">
-
-                  <div className="mt-2.5 space-y-1.5">
+                  {/* Action Button */}
+                  <div className="mt-2.5 space-y-1.5 flex-1 flex flex-col justify-end">
                     {isAdded ? (
                       <Button variant="outline" size="sm" className="w-full h-9 text-xs rounded-xl" disabled>
                         <Check className="h-3.5 w-3.5 mr-1" /> 추가됨
@@ -533,7 +547,7 @@ export default function CreatorProductsPage() {
                     ) : (
                       <Button
                         size="sm"
-                        className="w-full h-9 text-xs bg-gray-900 text-white hover:bg-gray-800 rounded-xl"
+                        className="w-full h-9 text-xs bg-foreground text-white hover:bg-foreground/90 rounded-xl"
                         onClick={() => handleAddToShop(product)}
                         disabled={addingId === product.id}
                       >
@@ -545,7 +559,7 @@ export default function CreatorProductsPage() {
                         내 샵에 담기
                       </Button>
                     )}
-                    {product.allowTrial && (
+                    {product.allowTrial && !isAdded && (
                       <Link href={`/${locale}/creator/products/${product.id}`}>
                         <Button
                           variant="outline"
@@ -573,7 +587,7 @@ export default function CreatorProductsPage() {
               </div>
             );
           })}
-        </CreatorProductGrid>
+        </div>
       )}
 
       {/* Category Overlap Warning Dialog */}
@@ -596,7 +610,7 @@ export default function CreatorProductsPage() {
             </Button>
             <Button
               onClick={() => overlapWarning && handleAddToShop(overlapWarning.product, true)}
-              className="flex-1 bg-gray-900 text-white hover:bg-gray-800 rounded-xl h-12"
+              className="flex-1 bg-foreground text-white hover:bg-foreground/90 rounded-xl h-12"
             >
               그래도 추가
             </Button>
@@ -647,7 +661,7 @@ export default function CreatorProductsPage() {
               <Button
                 onClick={handleContentSubmit}
                 disabled={contentSubmitting || !contentUrl.trim()}
-                className="w-full bg-gray-900 text-white rounded-xl h-10 font-medium text-sm"
+                className="w-full bg-foreground text-white rounded-xl h-10 font-medium text-sm"
               >
                 {contentSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : '추가'}
               </Button>
