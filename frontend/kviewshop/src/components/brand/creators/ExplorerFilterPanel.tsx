@@ -68,6 +68,7 @@ export function ExplorerFilterPanel() {
   const emailFilter = searchParams.get('canSendEmail') === 'true'
   const alimtalkFilter = searchParams.get('canSendAlimtalk') === 'true'
 
+  const hasValidFollowers = searchParams.get('hasValidFollowers') === 'true'
   const contactFilterCount = (dmFilter ? 1 : 0) + (emailFilter ? 1 : 0) + (alimtalkFilter ? 1 : 0)
   const activeCount =
     (selectedCategories.length > 0 ? 1 : 0) +
@@ -75,7 +76,8 @@ export function ExplorerFilterPanel() {
     (erMin || erMax ? 1 : 0) +
     (uploadDays ? 1 : 0) +
     (cnecPartner ? 1 : 0) +
-    (contactFilterCount > 0 ? 1 : 0)
+    (contactFilterCount > 0 ? 1 : 0) +
+    (hasValidFollowers ? 1 : 0)
 
   function updateParams(updates: Record<string, string | null>) {
     const params = new URLSearchParams(searchParams.toString())
@@ -206,11 +208,14 @@ export function ExplorerFilterPanel() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-stone-900">유효 팔로워</p>
-                <p className="text-xs text-stone-500 mt-0.5">60% 이상만 보기 (봇·휴면 제외)</p>
+                <p className="text-xs text-stone-500 mt-0.5">유효 팔로워 데이터가 있는 크리에이터만 보기</p>
               </div>
               <div className="flex items-center gap-2">
-                <Switch checked={false} disabled className="opacity-50" />
-                <span className="text-xs text-stone-400">OFF</span>
+                <Switch
+                  checked={searchParams.get('hasValidFollowers') === 'true'}
+                  onCheckedChange={(v) => updateParams({ hasValidFollowers: v ? 'true' : null })}
+                />
+                <span className="text-xs text-stone-400">{searchParams.get('hasValidFollowers') === 'true' ? 'ON' : 'OFF'}</span>
               </div>
             </div>
           </div>
