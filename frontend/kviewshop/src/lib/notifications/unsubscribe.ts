@@ -27,9 +27,9 @@ export function verifyUnsubscribeToken(token: string): { email: string; category
       return null
     }
 
-    // 30일 만료
+    // 90일 만료
     const ts = parseInt(timestamp, 10)
-    if (isNaN(ts) || Date.now() - ts > 30 * 24 * 60 * 60 * 1000) return null
+    if (isNaN(ts) || Date.now() - ts > 90 * 24 * 60 * 60 * 1000) return null
 
     return { email, category }
   } catch {

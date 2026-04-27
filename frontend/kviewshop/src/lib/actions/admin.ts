@@ -3,7 +3,7 @@
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { sendNotification, normalizePhone, isValidEmail } from '@/lib/notifications'
-import { settlementConfirmedMessage, creatorApprovedMessage, creatorRejectedMessage, brandApprovedTemplate, brandRejectedTemplate, brandStatusChangedTemplate } from '@/lib/notifications/templates'
+import { settlementConfirmedMessage, creatorApprovedMessage, creatorRejectedMessage, brandApprovedTemplate, brandRejectedTemplate, brandStatusChangedTemplate, creatorSuspendedMessage, creatorReactivatedMessage, creatorGradeChangedMessage } from '@/lib/notifications/templates'
 
 async function requireAdmin() {
   const session = await auth()
@@ -394,21 +394,46 @@ export async function getAdminCreatorDetail(creatorId: string) {
 export async function updateCreatorStatus(creatorId: string, status: 'ACTIVE' | 'SUSPENDED') {
   await requireAdmin()
 
-  const creator = await prisma.creator.findUnique({ where: { id: creatorId }, select: { id: true, userId: true, displayName: true } })
+  const creator = await prisma.creator.findUnique({
+    where: { id: creatorId },
+    select: { id: true, userId: true, displayName: true, user: { select: { email: true, phone: true } } },
+  })
   if (!creator) throw new Error('크리에이터를 찾을 수 없습니다')
 
   await prisma.creator.update({ where: { id: creatorId }, data: { status } })
 
   if (creator.userId) {
     try {
-      await sendNotification({
-        userId: creator.userId,
-        type: 'SYSTEM',
-        title: status === 'SUSPENDED' ? '계정 정지' : '계정 활성화',
-        message: status === 'SUSPENDED'
-          ? '계정이 정지되었습니다. 관리자에게 문의하세요.'
-          : '계정이 다시 활성화되었습니다.',
-      })
+      const creatorEmail = isValidEmail(creator.user?.email) ? creator.user!.email! : undefined
+      const creatorPhone = normalizePhone(creator.user?.phone)
+      const creatorName = creator.displayName || ''
+
+      if (status === 'SUSPENDED') {
+        const tmpl = creatorSuspendedMessage({ creatorName, reason: '관리자에 의한 정지', recipientEmail: creatorEmail })
+        await sendNotification({
+          userId: creator.userId,
+          type: tmpl.inApp.type,
+          title: tmpl.inApp.title,
+          message: tmpl.inApp.message,
+          linkUrl: tmpl.inApp.linkUrl,
+          phone: creatorPhone,
+          receiverName: creatorName,
+          kakaoTemplate: tmpl.kakao,
+          email: creatorEmail,
+          emailTemplate: tmpl.email,
+        })
+      } else {
+        const tmpl = creatorReactivatedMessage({ creatorName, recipientEmail: creatorEmail })
+        await sendNotification({
+          userId: creator.userId,
+          type: tmpl.inApp.type,
+          title: tmpl.inApp.title,
+          message: tmpl.inApp.message,
+          linkUrl: tmpl.inApp.linkUrl,
+          email: creatorEmail,
+          emailTemplate: tmpl.email,
+        })
+      }
     } catch { /* ignore */ }
   }
 
@@ -418,7 +443,10 @@ export async function updateCreatorStatus(creatorId: string, status: 'ACTIVE' | 
 export async function updateCreatorGrade(creatorId: string, grade: string) {
   await requireAdmin()
 
-  const creator = await prisma.creator.findUnique({ where: { id: creatorId }, select: { id: true, userId: true } })
+  const creator = await prisma.creator.findUnique({
+    where: { id: creatorId },
+    select: { id: true, userId: true, displayName: true, user: { select: { email: true } } },
+  })
   if (!creator) throw new Error('크리에이터를 찾을 수 없습니다')
 
   await prisma.creatorGrade.upsert({
@@ -429,11 +457,17 @@ export async function updateCreatorGrade(creatorId: string, grade: string) {
 
   if (creator.userId) {
     try {
+      const creatorEmail = isValidEmail(creator.user?.email) ? creator.user!.email! : undefined
+      const creatorName = creator.displayName || ''
+      const tmpl = creatorGradeChangedMessage({ creatorName, grade, recipientEmail: creatorEmail })
       await sendNotification({
         userId: creator.userId,
-        type: 'SYSTEM',
-        title: '등급 변경',
-        message: `등급이 ${grade}로 변경되었습니다.`,
+        type: tmpl.inApp.type,
+        title: tmpl.inApp.title,
+        message: tmpl.inApp.message,
+        linkUrl: tmpl.inApp.linkUrl,
+        email: creatorEmail,
+        emailTemplate: tmpl.email,
       })
     } catch { /* ignore */ }
   }

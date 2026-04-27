@@ -4,7 +4,7 @@ import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { logAuditAction } from '@/lib/audit'
 import { sendNotification, isValidEmail, normalizePhone } from '@/lib/notifications'
-import { brandSuspendedMessage, brandReactivatedMessage } from '@/lib/notifications/templates'
+import { brandSuspendedMessage, brandReactivatedMessage, brandCommissionChangedMessage } from '@/lib/notifications/templates'
 import { startOfMonthKst, nowKst } from '@/lib/utils/timezone'
 
 async function requireAdmin() {
@@ -358,12 +358,24 @@ export async function updateBrandCommissionRate(params: {
   })
 
   try {
+    const brandUser = await prisma.user.findUnique({ where: { id: brand.userId }, select: { email: true } })
+    const brandEmail = isValidEmail(brandUser?.email) ? brandUser!.email! : undefined
+    const brandName = brand.brandName || brand.companyName || ''
+    const tmpl = brandCommissionChangedMessage({
+      brandName,
+      beforeRate: currentRate,
+      afterRate: newRate,
+      reason,
+      recipientEmail: brandEmail,
+    })
     await sendNotification({
       userId: brand.userId,
-      type: 'SYSTEM',
-      title: '수수료율 변경 안내',
-      message: `${brand.brandName || brand.companyName} 수수료율이 ${currentRate}%에서 ${newRate}%로 변경되었어요. 사유: ${reason}`,
-      linkUrl: '/brand/settings',
+      type: tmpl.inApp.type,
+      title: tmpl.inApp.title,
+      message: tmpl.inApp.message,
+      linkUrl: tmpl.inApp.linkUrl,
+      email: brandEmail,
+      emailTemplate: tmpl.email,
     })
   } catch {}
 

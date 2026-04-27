@@ -3491,6 +3491,80 @@ export function campaignEndedMessage(data: {
 
 // ---------- 캠페인 참여 신청 → 브랜드 ----------
 
+// ---------- 크리에이터 등급 변경 → 크리에이터 ----------
+
+export function creatorGradeChangedMessage(data: {
+  creatorName: string
+  grade: string
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: `[크넥샵] 크리에이터 등급이 ${data.grade}로 변경됐어요`,
+      html: renderEmail({
+        recipientType: 'creator',
+        statusBadge: { text: '등급 변경', variant: 'info' },
+        preheader: `${data.creatorName}님의 등급이 변경됐어요`,
+        heroTitle: '크리에이터 등급이 변경됐어요',
+        heroSubtitle: `${data.creatorName}님의 등급이 ${data.grade}로 변경됐어요.`,
+        sections: [
+          emailInfoTable([
+            { label: '변경 등급', value: data.grade, emphasis: true },
+            { label: '변경일', value: formatKDate(new Date()) },
+          ]),
+        ],
+        primaryAction: { text: '대시보드 보기', url: `${SITE_URL}/ko/creator/dashboard` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SYSTEM',
+      title: '크리에이터 등급이 변경됐어요',
+      message: `등급이 ${data.grade}로 변경됐어요.`,
+      linkUrl: '/creator/dashboard',
+    },
+  }
+}
+
+// ---------- 브랜드 수수료율 변경 → 브랜드 ----------
+
+export function brandCommissionChangedMessage(data: {
+  brandName: string
+  beforeRate: number
+  afterRate: number
+  reason: string
+  recipientEmail?: string
+}) {
+  return {
+    email: {
+      subject: `[크넥샵] 수수료율이 ${data.afterRate}%로 변경됐어요`,
+      html: renderEmail({
+        recipientType: 'brand',
+        statusBadge: { text: '수수료 변경', variant: 'info' },
+        preheader: `${data.brandName} 수수료율 변경 안내`,
+        heroTitle: '수수료율이 변경됐어요',
+        heroSubtitle: `${data.brandName}의 수수료율이 변경됐어요.`,
+        sections: [
+          emailInfoTable([
+            { label: '변경 전', value: `${data.beforeRate}%` },
+            { label: '변경 후', value: `${data.afterRate}%`, emphasis: true },
+            { label: '변경 사유', value: data.reason },
+            { label: '변경일', value: formatKDate(new Date()) },
+          ]),
+        ],
+        primaryAction: { text: '설정 확인하기', url: `${SITE_URL}/ko/brand/settings` },
+        recipientEmail: data.recipientEmail,
+      }),
+    },
+    inApp: {
+      type: 'SYSTEM',
+      title: '수수료율이 변경됐어요',
+      message: `${data.beforeRate}% → ${data.afterRate}% (사유: ${data.reason})`,
+      linkUrl: '/brand/settings',
+    },
+  }
+}
+
 export function campaignParticipationRequestedMessage(data: {
   brandName: string
   creatorName: string

@@ -28,6 +28,8 @@ export {
   refundRequestedTemplate,
   campaignParticipationRejectedTemplate,
   campaignRecruitingStartedTemplate,
+  creatorGradeChangedMessage,
+  brandCommissionChangedMessage,
 } from './templates'
 export { normalizePhone, isValidEmail } from './utils'
 

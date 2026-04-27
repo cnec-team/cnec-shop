@@ -19,6 +19,6 @@ export function escapeVariables(variables: Record<string, unknown>): Record<stri
 }
 
 export function safeUrl(url: string): string {
-  if (/^javascript:/i.test(url)) return '#'
+  if (/^(javascript|data|vbscript):/i.test(url)) return '#'
   return escapeHtml(url)
 }
