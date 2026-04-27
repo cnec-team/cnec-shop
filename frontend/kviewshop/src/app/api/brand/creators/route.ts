@@ -80,12 +80,10 @@ export async function GET(request: NextRequest) {
   const limit = Math.min(50, Math.max(1, parseInt(sp.get('limit') || '24', 10)))
   const updatedWithinDays = sp.get('updatedWithinDays') ? parseInt(sp.get('updatedWithinDays')!) : undefined
 
-  // igFollowers가 있거나 크넥샵 가입(userId 존재) 크리에이터 모두 표시
+  // igFollowers가 있는 크리에이터만 표시 (IG 데이터 임포트 완료 = 프로필 이미지 보장)
+  // userId만 있고 IG 데이터가 없는 신규 가입자는 igFollowers가 채워진 뒤 자동 노출
   const where: Prisma.CreatorWhereInput = {
-    OR: [
-      { igFollowers: { not: null } },
-      { userId: { not: '' } },
-    ],
+    igFollowers: { not: null },
   }
 
   if (tierList.length === 1) {
@@ -207,7 +205,7 @@ export async function GET(request: NextRequest) {
   const [creators, total, totalAll, recentUpdatedCount] = await Promise.all([
     prisma.creator.findMany({ where, orderBy, skip: fetchSkip, take: fetchLimit }),
     prisma.creator.count({ where }),
-    prisma.creator.count({ where: { OR: [{ igFollowers: { not: null } }, { userId: { not: '' } }] } }),
+    prisma.creator.count({ where: { igFollowers: { not: null } } }),
     prisma.creator.count({
       where: {
         igFollowers: { not: null },
