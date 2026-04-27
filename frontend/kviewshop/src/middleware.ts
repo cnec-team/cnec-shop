@@ -66,10 +66,10 @@ const loginPageRegex = new RegExp(`^/(${LP})/(brand|creator|buyer)/login`);
 const signupPageRegex = new RegExp(`^/(${LP})/(buyer)/signup`);
 const generalLoginRegex = new RegExp(`^/(${LP})/login`);
 const generalSignupRegex = new RegExp(`^/(${LP})/signup`);
-const adminRouteRegex = new RegExp(`^/(${LP})/admin`);
-const brandRouteRegex = new RegExp(`^/(${LP})/brand`);
-const creatorRouteRegex = new RegExp(`^/(${LP})/creator`);
-const buyerRouteRegex = new RegExp(`^/(${LP})/buyer`);
+const adminRouteRegex = new RegExp(`^/(${LP})/admin(/|$)`);
+const brandRouteRegex = new RegExp(`^/(${LP})/brand(/|$)`);
+const creatorRouteRegex = new RegExp(`^/(${LP})/creator(/|$)`);
+const buyerRouteRegex = new RegExp(`^/(${LP})/buyer(/|$)`);
 
 // Known platform route prefixes (non-shop pages)
 const PLATFORM_PREFIXES = [
@@ -160,7 +160,7 @@ export default auth(async function middleware(request) {
 
       const protectedPaths = ['/admin', '/brand', '/creator', '/buyer'];
       const isProtectedRoute = !isAuthPage && protectedPaths.some((path) => {
-        const pattern = new RegExp(`^/(${LP})${path}`);
+        const pattern = new RegExp(`^/(${LP})${path}(/|$)`);
         return pattern.test(pathname);
       });
 
