@@ -256,7 +256,7 @@ export function ProductDetailPage({
           }`}
         >
           {isEnded ? (
-            <p className="text-[15px] font-bold text-[#8E8E93]">공구가 마감되었습니다</p>
+            <p className="text-[15px] font-bold text-[#8E8E93]">마감된 공구 · 다음 공구 알림 받기</p>
           ) : countdown ? (
             <p className="text-[15px] font-bold text-white" style={{ fontVariantNumeric: 'tabular-nums' }}>
               공구 마감까지 {countdown}
@@ -791,7 +791,7 @@ export function ProductDetailPage({
               disabled
               className="flex-1 h-14 rounded-xl font-semibold text-[15px] bg-[#F5F5F5] text-[#8E8E93]"
             >
-              마감된 공구입니다
+              마감된 공구 · 다음 공구 알림 받기
             </button>
           ) : isNotYetStarted ? (
             <button

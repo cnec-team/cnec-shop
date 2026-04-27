@@ -209,9 +209,11 @@ export default function CreatorGongguPage() {
       {activeTab === 'available' ? (
         recruitingCampaigns.length === 0 ? (
           <div className="text-center py-16">
-            <Megaphone className="mx-auto h-12 w-12 text-gray-200" />
-            <p className="mt-4 text-sm text-gray-400">지금은 모집 중인 캠페인이 없어요</p>
-            <p className="text-xs text-gray-300 mt-1">곧 새로운 공구가 열릴 거예요!</p>
+            <div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center mx-auto">
+              <Megaphone className="h-7 w-7 text-muted-foreground/40" />
+            </div>
+            <p className="mt-4 font-bold">새 공구가 열리면 알려드릴게요</p>
+            <p className="text-xs text-muted-foreground mt-1">평균 첫 공구 수익 ₩12,400</p>
           </div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
@@ -302,11 +304,10 @@ export default function CreatorGongguPage() {
                   {/* Action */}
                   <div className="mt-4" onClick={(e) => e.stopPropagation()}>
                     <Button
-                      variant="outline"
-                      className="w-full h-10 rounded-xl text-sm border-gray-200 hover:bg-gray-50 flex items-center justify-center gap-1"
+                      className="w-full h-10 rounded-xl text-sm bg-foreground text-white hover:bg-foreground/90 flex items-center justify-center gap-1"
                       onClick={() => router.push(`/${locale}/creator/campaigns/${campaign.id}`)}
                     >
-                      자세히 보기
+                      {earnings > 0 ? `공구 참여하고 ₩${earnings.toLocaleString()} 벌기` : '공구 참여하기'}
                       <ArrowRight className="h-3.5 w-3.5" />
                     </Button>
                   </div>
@@ -318,9 +319,11 @@ export default function CreatorGongguPage() {
       ) : activeTab === 'active' ? (
         activeCampaigns.length === 0 ? (
           <div className="text-center py-16">
-            <Megaphone className="mx-auto h-12 w-12 text-gray-200" />
-            <p className="mt-4 text-sm text-gray-400">참여 중인 캠페인이 없어요</p>
-            <p className="text-xs text-gray-300 mt-1">새로운 공구에 참여해보세요!</p>
+            <div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center mx-auto">
+              <Megaphone className="h-7 w-7 text-muted-foreground/40" />
+            </div>
+            <p className="mt-4 font-bold">참여 중인 공구가 없어요</p>
+            <p className="text-xs text-muted-foreground mt-1">공구에 참여하면 내 샵에서 바로 판매할 수 있어요</p>
             <Button variant="outline" className="mt-3 rounded-xl" onClick={() => setActiveTab('available')}>
               참여 가능 캠페인 보기
             </Button>
@@ -374,8 +377,10 @@ export default function CreatorGongguPage() {
       ) : (
         endedCampaigns.length === 0 ? (
           <div className="text-center py-16">
-            <Megaphone className="mx-auto h-12 w-12 text-gray-200" />
-            <p className="mt-4 text-sm text-gray-400">종료된 캠페인이 없어요</p>
+            <div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center mx-auto">
+              <Megaphone className="h-7 w-7 text-muted-foreground/40" />
+            </div>
+            <p className="mt-4 font-bold">종료된 공구가 없어요</p>
           </div>
         ) : (
           <div className="space-y-3">

@@ -435,7 +435,7 @@ export default function CreatorShopPage() {
       {/* Sticky Save */}
       <div className="sticky bottom-16 md:bottom-0 bg-white/95 backdrop-blur-sm py-3 border-t border-gray-100 z-10 -mx-4 px-4 md:mx-0 md:px-0">
         <Button className="w-full h-12 text-base bg-gray-900 text-white hover:bg-gray-800 rounded-xl" onClick={handleSave} disabled={isSaving}>
-          {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />저장 중...</> : <><Save className="mr-2 h-4 w-4" />변경사항 저장</>}
+          {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />저장 중...</> : <><Save className="mr-2 h-4 w-4" />변경사항 저장하기</>}
         </Button>
       </div>
     </div>

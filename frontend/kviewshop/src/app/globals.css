@@ -49,6 +49,9 @@
   --color-warning: var(--warning);
   --color-earnings: var(--earnings);
   --color-earnings-foreground: var(--earnings-foreground);
+  --color-trust: var(--trust);
+  --color-reward: var(--reward);
+  --color-alert: var(--alert);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -67,26 +70,32 @@
   --card-foreground: #191F28;
   --popover: #FFFFFF;
   --popover-foreground: #191F28;
-  /* Primary: Toss Blue */
-  --primary: #3182F6;
+  /* Soft Commerce — Ink */
+  --foreground: #0F1419;
+  --primary: #2D6BFF;
   --primary-foreground: #FFFFFF;
-  --secondary: #F2F4F6;
-  --secondary-foreground: #191F28;
-  --muted: #F2F4F6;
+  --secondary: #F7F8FA;
+  --secondary-foreground: #0F1419;
+  --muted: #F7F8FA;
   --muted-foreground: #8B95A1;
   --accent: #4E5968;
   --accent-foreground: #FFFFFF;
-  --destructive: #F04452;
+  --destructive: #FF5A5F;
   --border: #E5E8EB;
   --input: #E5E8EB;
-  --ring: #3182F6;
-  --gold: #3182F6;
+  --ring: #2D6BFF;
+  --gold: #2D6BFF;
   --gold-foreground: #FFFFFF;
   --bronze: #6366F1;
   --success: #03B26C;
   --warning: #F59E0B;
-  --earnings: #7C3AED;
+  /* Soft Commerce — Reward (수익/할인 = 민트/코랄) */
+  --earnings: #00C9A7;
   --earnings-foreground: #FFFFFF;
+  /* Soft Commerce — Trust (신뢰 = 블루) */
+  --trust: #2D6BFF;
+  --reward: #00C9A7;
+  --alert: #FF5A5F;
   --chart-1: #3182F6;
   --chart-2: #6366F1;
   --chart-3: #03B26C;
@@ -127,8 +136,11 @@
   --bronze: #818CF8;
   --success: #03B26C;
   --warning: #F59E0B;
-  --earnings: #A78BFA;
+  --earnings: #00C9A7;
   --earnings-foreground: #FFFFFF;
+  --trust: #4C9AFF;
+  --reward: #00C9A7;
+  --alert: #FF5A5F;
   --chart-1: #4C9AFF;
   --chart-2: #818CF8;
   --chart-3: #03B26C;
@@ -166,18 +178,54 @@
 
 /* ─── Typography ─── */
 .font-headline {
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-family: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   font-weight: 800;
   letter-spacing: -0.04em;
 }
 
 .font-body {
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-family: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+}
+
+/* ─── Soft Commerce: Tabular Numbers ─── */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.font-price {
+  font-family: 'Pretendard Variable', 'Pretendard', -apple-system, sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* ─── Soft Commerce: Chip System ─── */
+.chip {
+  @apply inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium transition-colors;
+}
+
+.chip-trust {
+  background: rgba(45, 107, 255, 0.08);
+  color: #2D6BFF;
+}
+
+.chip-reward {
+  background: rgba(0, 201, 167, 0.08);
+  color: #00C9A7;
+}
+
+.chip-alert {
+  background: rgba(255, 90, 95, 0.08);
+  color: #FF5A5F;
+}
+
+.chip-neutral {
+  @apply bg-gray-100 text-gray-600;
 }
 
 /* ─── Logo ─── */
 .text-gold-gradient {
-  background: linear-gradient(135deg, #3182F6 0%, #6366F1 100%);
+  background: linear-gradient(135deg, #2D6BFF 0%, #6366F1 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -240,12 +288,12 @@
 /* ─── Primary CTA Button ─── */
 .btn-gold {
   @apply bg-primary text-primary-foreground font-semibold transition-all duration-300;
-  box-shadow: 0 2px 8px 0 rgba(49, 130, 246, 0.2);
+  box-shadow: 0 2px 8px 0 rgba(45, 107, 255, 0.2);
 }
 
 .btn-gold:hover {
   @apply bg-primary/90;
-  box-shadow: 0 8px 24px 0 rgba(49, 130, 246, 0.35);
+  box-shadow: 0 8px 24px 0 rgba(45, 107, 255, 0.35);
   transform: translateY(-1px);
 }
 
@@ -286,7 +334,7 @@
 
 /* ─── Gradient Text ─── */
 .gradient-text {
-  background: linear-gradient(135deg, #3182F6 0%, #6366F1 50%, #3182F6 100%);
+  background: linear-gradient(135deg, #2D6BFF 0%, #6366F1 50%, #2D6BFF 100%);
   background-size: 200% auto;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -396,6 +444,6 @@ html {
 
 /* ─── Selection Color ─── */
 ::selection {
-  background: rgba(49, 130, 246, 0.15);
+  background: rgba(45, 107, 255, 0.15);
   color: inherit;
 }

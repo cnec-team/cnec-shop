@@ -216,7 +216,7 @@ export default function CreatorProductsPage() {
     setAddingId(product.id);
     try {
       await addProductToShop(product.id);
-      toast.success('내 샵에 추가되었습니다');
+      toast.success('내 팔로워에게 추천할 상품을 담았어요');
       setMyShopItemIds((prev) => new Set([...prev, product.id]));
       if (product.category && product.brand?.brandName) {
         setMyShopCategories((prev) => new Map(prev).set(product.category!, product.brand!.brandName));
@@ -360,7 +360,7 @@ export default function CreatorProductsPage() {
       {/* Header */}
       <div className="hidden md:block">
         <h1 className="text-xl font-bold text-gray-900">상품 둘러보기</h1>
-        <p className="text-sm text-gray-400 mt-0.5">내 샵에 추가할 상품을 찾아보세요</p>
+        <p className="text-sm text-muted-foreground mt-0.5">내 팔로워에게 추천할 상품을 찾아보세요</p>
       </div>
 
       {/* Search + Filter */}
@@ -542,7 +542,7 @@ export default function CreatorProductsPage() {
                         ) : (
                           <Plus className="h-3.5 w-3.5 mr-1" />
                         )}
-                        내 샵에 추가
+                        내 샵에 담기
                       </Button>
                     )}
                     {product.allowTrial && (

@@ -15,12 +15,14 @@ interface EmptyStateProps {
 export function EmptyState({ icon: Icon, title, description, actionLabel, actionHref }: EmptyStateProps) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 p-10 text-center">
-      <Icon className="h-12 w-12 mx-auto mb-4 text-gray-200" />
-      <p className="font-semibold text-gray-700 mb-1">{title}</p>
-      <p className="text-sm text-gray-400 mb-5">{description}</p>
+      <div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
+        <Icon className="h-7 w-7 text-muted-foreground/40" />
+      </div>
+      <p className="font-bold mb-1">{title}</p>
+      <p className="text-sm text-muted-foreground mb-5 max-w-xs mx-auto leading-relaxed">{description}</p>
       {actionLabel && actionHref && (
         <Link href={actionHref}>
-          <Button size="sm" variant="outline" className="rounded-full">
+          <Button size="sm" className="rounded-xl px-5 h-10 font-bold">
             {actionLabel}
           </Button>
         </Link>

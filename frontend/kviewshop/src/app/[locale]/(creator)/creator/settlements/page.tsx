@@ -308,8 +308,11 @@ export default function CreatorSettlementsPage() {
         <CardContent>
           {filteredSettlements.length === 0 ? (
             <div className="text-center py-12">
-              <Receipt className="mx-auto h-12 w-12 text-muted-foreground/50" />
-              <p className="mt-4 text-muted-foreground">아직 정산 내역이 없어요</p>
+              <div className="h-14 w-14 rounded-2xl bg-muted flex items-center justify-center mx-auto">
+                <Receipt className="h-7 w-7 text-muted-foreground/40" />
+              </div>
+              <p className="mt-4 font-bold">첫 판매가 발생하면 정산이 시작돼요</p>
+              <p className="text-sm text-muted-foreground mt-1">평균 첫 정산까지 7일 소요</p>
             </div>
           ) : (
             <Table>
