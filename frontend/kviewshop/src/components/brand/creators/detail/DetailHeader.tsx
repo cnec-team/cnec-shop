@@ -17,7 +17,6 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
-import { getSafeProfileImageUrl } from '@/lib/utils/profile-image'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 
@@ -41,7 +40,7 @@ export function DetailHeader({ creator, matchScore, onOpenProposal }: Props) {
   const grade = matchGrade(matchScore)
   const circumference = 2 * Math.PI * 38
   const offset = circumference * (1 - matchScore / 100)
-  const profileImg = getSafeProfileImageUrl(creator.igProfileImageR2Url, creator.igProfilePicUrl, creator.profileImage, creator.profileImageUrl)
+  const profileImg = creator.igProfileImageR2Url || creator.igProfilePicUrl || creator.profileImageUrl || creator.profileImage
   const name = creator.displayName || creator.instagramHandle || creator.igUsername || ''
   const handle = creator.instagramHandle || creator.igUsername || ''
   const contactEmail = creator.contactEmail || creator.cnecEmail1 || creator.cnecEmail2 || creator.cnecEmail3
@@ -126,7 +125,7 @@ export function DetailHeader({ creator, matchScore, onOpenProposal }: Props) {
             <div className="relative shrink-0">
               <div className="w-[88px] h-[88px] rounded-full overflow-hidden border-2 border-stone-200 bg-stone-100">
                 {profileImg ? (
-                  <Image src={profileImg} alt={name} width={88} height={88} className="w-full h-full object-cover" unoptimized={profileImg.startsWith('/api/')} />
+                  <Image src={profileImg} alt={name} width={88} height={88} className="w-full h-full object-cover" unoptimized />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-stone-400">
                     <Users className="w-8 h-8" />
