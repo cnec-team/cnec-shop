@@ -180,7 +180,7 @@ export function InviteModal({
     setCampaignId(cid)
     const campaign = campaigns.find(c => c.id === cid)
     if (campaign?.commissionRate && !commissionRate) {
-      setCommissionRate(String(Number(campaign.commissionRate)))
+      setCommissionRate(String(Math.round(Number(campaign.commissionRate))))
     }
   }
 

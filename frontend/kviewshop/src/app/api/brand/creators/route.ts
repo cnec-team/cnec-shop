@@ -74,13 +74,18 @@ export async function GET(request: NextRequest) {
   const canSendEmailFilter = sp.get('canSendEmail') === 'true'
   const canSendAlimtalkFilter = sp.get('canSendAlimtalk') === 'true'
   const hasValidFollowersFilter = sp.get('hasValidFollowers') === 'true'
+  const searchQuery = sp.get('search')?.trim() || ''
   const sort = sp.get('sort') || 'followers'
   const page = Math.max(1, parseInt(sp.get('page') || '1', 10))
   const limit = Math.min(50, Math.max(1, parseInt(sp.get('limit') || '24', 10)))
   const updatedWithinDays = sp.get('updatedWithinDays') ? parseInt(sp.get('updatedWithinDays')!) : undefined
 
+  // igFollowers가 있거나 크넥샵 가입(userId 존재) 크리에이터 모두 표시
   const where: Prisma.CreatorWhereInput = {
-    igFollowers: { not: null },
+    OR: [
+      { igFollowers: { not: null } },
+      { userId: { not: '' } },
+    ],
   }
 
   if (tierList.length === 1) {
@@ -130,6 +135,17 @@ export async function GET(request: NextRequest) {
   }
   if (hasValidFollowersFilter) {
     andConditions.push({ igValidFollowers: { not: null, gt: 0 } })
+  }
+  if (searchQuery) {
+    andConditions.push({
+      OR: [
+        { displayName: { contains: searchQuery, mode: 'insensitive' as const } },
+        { instagramHandle: { contains: searchQuery, mode: 'insensitive' as const } },
+        { igUsername: { contains: searchQuery, mode: 'insensitive' as const } },
+        { igFullName: { contains: searchQuery, mode: 'insensitive' as const } },
+        { igBio: { contains: searchQuery, mode: 'insensitive' as const } },
+      ],
+    })
   }
 
   if (updatedWithinDays) {
@@ -191,7 +207,7 @@ export async function GET(request: NextRequest) {
   const [creators, total, totalAll, recentUpdatedCount] = await Promise.all([
     prisma.creator.findMany({ where, orderBy, skip: fetchSkip, take: fetchLimit }),
     prisma.creator.count({ where }),
-    prisma.creator.count({ where: { igFollowers: { not: null } } }),
+    prisma.creator.count({ where: { OR: [{ igFollowers: { not: null } }, { userId: { not: '' } }] } }),
     prisma.creator.count({
       where: {
         igFollowers: { not: null },
