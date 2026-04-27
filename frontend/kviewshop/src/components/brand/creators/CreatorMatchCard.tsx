@@ -47,6 +47,7 @@ interface Props {
   selected: boolean
   onToggleSelect: () => void
   onPropose?: (type: 'GONGGU' | 'PRODUCT_PICK') => void
+  onSaveToGroup?: () => void
 }
 
 function scoreColor(score: number) {
@@ -97,7 +98,7 @@ function getAudienceLabel(genderRatio: Record<string, number> | null | undefined
   return { gender, topAge, topPercent: Math.round(female >= male ? female : male) }
 }
 
-export function CreatorMatchCard({ creator, selected, onToggleSelect, onPropose }: Props) {
+export function CreatorMatchCard({ creator, selected, onToggleSelect, onPropose, onSaveToGroup }: Props) {
   const daysSince = daysAgo(creator.igDataImportedAt)
   const dateStr = formatDate(creator.igDataImportedAt)
   const profileImg = creator.igProfileImageR2Url || creator.igProfilePicUrl
@@ -142,7 +143,7 @@ export function CreatorMatchCard({ creator, selected, onToggleSelect, onPropose 
           )}
           <Tooltip>
             <TooltipTrigger asChild>
-              <button className="rounded-md p-1.5 text-stone-400 hover:text-amber-600 hover:bg-amber-50 transition-all" title="그룹에 저장" onClick={(e) => { e.stopPropagation(); e.preventDefault() }}>
+              <button className="rounded-md p-1.5 text-stone-400 hover:text-amber-600 hover:bg-amber-50 transition-all" title="그룹에 저장" onClick={(e) => { e.stopPropagation(); e.preventDefault(); onSaveToGroup?.() }}>
                 <Bookmark className="w-4 h-4" />
               </button>
             </TooltipTrigger>

@@ -80,7 +80,7 @@ export function CreatorCard({ creator, isSelected, onSelect, onPropose, onSaveTo
                     <MessageSquare className="h-4 w-4 text-emerald-600" />
                   </span>
                 </TooltipTrigger>
-                <TooltipContent>알림톡 발�� 가능</TooltipContent>
+                <TooltipContent>알림톡 발송 가능</TooltipContent>
               </Tooltip>
             )}
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onSaveToGroup(creator.id)}>

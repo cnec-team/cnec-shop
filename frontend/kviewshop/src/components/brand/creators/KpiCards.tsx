@@ -67,7 +67,7 @@ export function KpiCards({ avgMatchScore, recentUpdatedCount, avgEr }: Props) {
                   <p className="text-[32px] leading-none font-bold text-stone-900 tabular-nums">
                     {avgEr.toFixed(2)}<span className="text-lg font-bold ml-0.5">%</span>
                   </p>
-                  <p className="text-xs text-stone-500 mt-2">K-뷰��� 평균 2.4% 대비</p>
+                  <p className="text-xs text-stone-500 mt-2">K-뷰티 평균 2.4% 대비</p>
                 </div>
                 <div className="rounded-full bg-green-50 p-2.5">
                   <TrendingUp className="w-5 h-5 text-green-500" strokeWidth={2} />

@@ -12,6 +12,7 @@ interface Props {
   onToggleSelect: (id: string) => void
   onResetFilters: () => void
   onPropose?: (creatorId: string, type: 'GONGGU' | 'PRODUCT_PICK') => void
+  onSaveToGroup?: (creatorId: string) => void
 }
 
 export function CreatorMatchGrid({
@@ -22,6 +23,7 @@ export function CreatorMatchGrid({
   onToggleSelect,
   onResetFilters,
   onPropose,
+  onSaveToGroup,
 }: Props) {
   if (totalAllCount === 0) {
     return (
@@ -57,6 +59,7 @@ export function CreatorMatchGrid({
           selected={selectedIds.includes(c.id)}
           onToggleSelect={() => onToggleSelect(c.id)}
           onPropose={onPropose ? (type: 'GONGGU' | 'PRODUCT_PICK') => onPropose(c.id, type) : undefined}
+          onSaveToGroup={onSaveToGroup ? () => onSaveToGroup(c.id) : undefined}
         />
       ))}
     </div>

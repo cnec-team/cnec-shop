@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 
 /**
  * 크리에이터의 CreatorPainPoint 레코드를 8차원 벡터로 변환하고 DB에 저장
- * 공���: vector[i] = primary면 severity/5, secondary면 severity/5 * 0.6
+ * 공식: vector[i] = primary면 severity/5, secondary면 severity/5 * 0.6
  */
 export async function calculateAndSaveCreatorVector(
   creatorId: string

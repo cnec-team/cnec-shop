@@ -110,7 +110,13 @@ export function CreatorDetailPageClient({ creatorId }: { creatorId: string }) {
                 <EstimatedCostCard matchScore={matchScore} tier={creator.igTier} />
               </div>
               <div className="space-y-6">
-                <PartnershipAssistant creatorName={creatorName} creatorId={creatorId} />
+                <PartnershipAssistant
+                  creatorName={creatorName}
+                  creatorId={creatorId}
+                  canSendDM={creator.canSendDM}
+                  canSendEmail={creator.canSendEmail}
+                  canSendAlimtalk={creator.canSendAlimtalk}
+                />
               </div>
             </div>
             <CampaignHistory history={campaigns} creatorName={creatorName} creatorId={creatorId} />
@@ -132,16 +138,31 @@ export function CreatorDetailPageClient({ creatorId }: { creatorId: string }) {
         </Tabs>
       </div>
 
+      {/* 하단 여백 (고정 바가 콘텐츠를 가리지 않도록) */}
+      <div className="h-20" />
+
       {/* 하단 고정 액션 */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-stone-200 p-4 flex gap-3 justify-end z-30">
-        <Button onClick={() => setProposalModal({ open: true, type: 'GONGGU' })}>
-          공구 초대
+      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-stone-200 p-4 flex gap-3 justify-end z-30">
+        <Button
+          size="lg"
+          className="gap-1.5"
+          onClick={() => setProposalModal({ open: true, type: 'GONGGU' })}
+        >
+          공동구매 제안
         </Button>
-        <Button variant="outline" onClick={() => setProposalModal({ open: true, type: 'PRODUCT_PICK' })}>
+        <Button
+          size="lg"
+          variant="outline"
+          onClick={() => setProposalModal({ open: true, type: 'PRODUCT_PICK' })}
+        >
           상품 추천
         </Button>
-        <Button variant="outline" onClick={() => setGroupDialog(true)}>
-          <BookmarkPlus className="h-4 w-4 mr-1" /> 그룹에 ��장
+        <Button
+          size="lg"
+          variant="outline"
+          onClick={() => setGroupDialog(true)}
+        >
+          <BookmarkPlus className="h-4 w-4 mr-1" /> 그룹에 저장
         </Button>
       </div>
 
