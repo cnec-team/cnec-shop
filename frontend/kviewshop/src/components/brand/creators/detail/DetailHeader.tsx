@@ -43,7 +43,7 @@ export function DetailHeader({ creator, matchScore, onOpenProposal }: Props) {
   const profileImg = creator.igProfileImageR2Url || creator.igProfilePicUrl || creator.profileImageUrl || creator.profileImage
   const name = creator.displayName || creator.instagramHandle || creator.igUsername || ''
   const handle = creator.instagramHandle || creator.igUsername || ''
-  const contactEmail = creator.contactEmail || creator.cnecEmail1 || creator.cnecEmail2 || creator.cnecEmail3
+  // 이메일은 서버에서 직접 조회하여 발송 (브랜드에 노출 안 함)
 
   const [modalType, setModalType] = useState<ModalType>(null)
   const [emailSubject, setEmailSubject] = useState(`[크넥] ${name} 님께 협업 제안`)
@@ -64,7 +64,6 @@ export function DetailHeader({ creator, matchScore, onOpenProposal }: Props) {
         body: JSON.stringify({
           creatorId: creator.id,
           channel: 'email',
-          to: contactEmail,
           subject: emailSubject,
           body: emailBody,
         }),
@@ -164,7 +163,7 @@ export function DetailHeader({ creator, matchScore, onOpenProposal }: Props) {
               </a>
 
               {creator.igBio && (
-                <p className="text-sm text-stone-700 mt-2 line-clamp-3 whitespace-pre-line leading-relaxed">{creator.igBio}</p>
+                <p className="text-sm text-stone-700 mt-2 line-clamp-3 whitespace-pre-line leading-relaxed">{creator.igBio.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '****@****')}</p>
               )}
 
               <div className="flex items-center flex-wrap gap-2 mt-3 text-sm text-stone-600">
@@ -273,7 +272,7 @@ export function DetailHeader({ creator, matchScore, onOpenProposal }: Props) {
           <DialogHeader>
             <DialogTitle>{name} 님에게 이메일 보내기</DialogTitle>
             <p className="text-sm text-muted-foreground mt-1">
-              {contactEmail}로 발송됩니다
+              크넥을 통해 발송됩니다
             </p>
           </DialogHeader>
           <div className="space-y-4">

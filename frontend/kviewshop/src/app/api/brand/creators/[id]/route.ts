@@ -220,7 +220,9 @@ export async function GET(
       totalEarnings: Number(creator.totalEarnings),
       totalRevenue: Number(creator.totalRevenue),
       // 연락처 데이터
-      contactEmail: creator.brandContactEmail || creator.cnecEmail1 || creator.cnecEmail2 || creator.cnecEmail3 || null,
+      // 이메일 주소는 브랜드에 직접 노출하지 않음 (서버에서 발송 처리)
+      contactEmail: null,
+      hasContactEmail: !!(creator.brandContactEmail || creator.cnecEmail1 || creator.cnecEmail2 || creator.cnecEmail3),
       // 파생 필드
       canSendDM: canSendDM(creator.igUsername),
       canSendAlimtalk: canSendAlimtalk(creator.cnecPhone, creator.cnecVerificationStatus),
