@@ -564,6 +564,7 @@ model Brand {
   targetCategories       String[]              @default([]) @map("target_categories")
   brandToneKeywords      String[]              @default([]) @map("brand_tone_keywords")
   creatorMatchScores     CreatorMatchScore[]
+  conversations          Conversation[]
 
   @@index([approved])
   @@index([mocraStatus])
@@ -789,6 +790,8 @@ model Creator {
   creatorPainPoints      CreatorPainPoint[]
   matchScores            MatchScore[]
   creatorMatchScores     CreatorMatchScore[]
+
+  conversations          Conversation[]
 
   @@index([status])
   @@index([submittedAt])
@@ -3018,4 +3021,47 @@ model BroadcastRecipient {
   @@index([broadcastId, status])
   @@index([userId])
   @@map("broadcast_recipients")
+}
+
+// ============================================================
+// IN-APP MESSAGING
+// ============================================================
+
+model Conversation {
+  id                 String    @id @default(uuid())
+  brandId            String    @map("brand_id")
+  brand              Brand     @relation(fields: [brandId], references: [id])
+  creatorId          String    @map("creator_id")
+  creator            Creator   @relation(fields: [creatorId], references: [id])
+  status             String    @default("ACTIVE") @db.VarChar(10)
+  lastMessageAt      DateTime? @map("last_message_at") @db.Timestamptz
+  lastMessageText    String?   @map("last_message_text") @db.VarChar(200)
+  brandUnreadCount   Int       @default(0) @map("brand_unread_count")
+  creatorUnreadCount Int       @default(0) @map("creator_unread_count")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  messages Message[]
+
+  @@unique([brandId, creatorId])
+  @@index([brandId, lastMessageAt])
+  @@index([creatorId, lastMessageAt])
+  @@map("conversations")
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String       @map("conversation_id")
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderRole     String       @map("sender_role") @db.VarChar(10)
+  senderUserId   String?      @map("sender_user_id")
+  type           String       @default("TEXT") @db.VarChar(15)
+  content        String
+  proposalId     String?      @map("proposal_id")
+  readAt         DateTime?    @map("read_at") @db.Timestamptz
+  attachments    Json?        @db.JsonB
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
 }
