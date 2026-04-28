@@ -24,6 +24,7 @@ import {
   Zap,
   Gift,
   MessageSquare,
+  MessagesSquare,
   Search,
   FolderHeart,
   FileText,
@@ -100,6 +101,7 @@ export function BrandSidebar({ locale, brandName, brandStatus, pricingVersion }:
       label: '크리에이터',
       items: [
         { title: '크리에이터 탐색', href: `${base}/brand/creators`, icon: Search },
+        { title: '메시지', href: `${base}/brand/messages`, icon: MessagesSquare },
         { title: '그룹 관리', href: `${base}/brand/creators/groups`, icon: FolderHeart },
         { title: '메시지 템플릿', href: `${base}/brand/creators/templates`, icon: FileText },
         { title: '보낸 초대', href: `${base}/brand/creators/proposals`, icon: Send },
