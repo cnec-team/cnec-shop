@@ -2,8 +2,11 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { jwtVerify } from 'jose'
 import { sendNotification, normalizePhone, isValidEmail } from '@/lib/notifications'
 import { creatorApplicationSubmittedMessage } from '@/lib/notifications/templates'
+
+const JWT_SECRET = new TextEncoder().encode(process.env.NEXTAUTH_SECRET || 'fallback-secret')
 
 const schema = z.object({
   displayName: z.string().min(1, '활동명을 입력해주세요'),
@@ -18,6 +21,9 @@ const schema = z.object({
   privacyAgreedAt: z.string(),
   marketingAgreedAt: z.string().optional(),
   refCode: z.string().optional(),
+  // 본인확인 관련 (새 플로우)
+  verificationToken: z.string().optional(),
+  name: z.string().min(1).optional(),
 })
 
 export async function POST(req: NextRequest) {
@@ -43,6 +49,49 @@ export async function POST(req: NextRequest) {
     }
 
     const data = parsed.data
+
+    // 본인인증 토큰 검증 및 phone/CI 업데이트
+    if (data.verificationToken) {
+      try {
+        const { payload } = await jwtVerify(data.verificationToken, JWT_SECRET)
+        const phone = payload.phone as string
+        const ci = (payload.ci as string) || null
+        const isIdentity = payload.type === 'identity_verification'
+
+        if (!phone) {
+          return NextResponse.json({ error: '인증 정보가 유효하지 않습니다' }, { status: 400 })
+        }
+
+        // CI 중복 체크
+        if (ci) {
+          const existingCI = await prisma.user.findUnique({ where: { ci } })
+          if (existingCI && existingCI.id !== user.id) {
+            return NextResponse.json({ error: '이미 가입된 사용자입니다' }, { status: 409 })
+          }
+        }
+
+        const now = new Date()
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            phone,
+            ci,
+            phoneVerifiedAt: isIdentity ? now : null,
+            phoneReachable: true,
+            phoneReachableAt: now,
+            ...(data.name ? { name: data.name } : {}),
+          },
+        })
+      } catch {
+        return NextResponse.json({ error: '인증 토큰이 만료되었습니다. 다시 인증해주세요.' }, { status: 400 })
+      }
+    } else if (data.name) {
+      // 토큰 없이 이름만 업데이트
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { name: data.name },
+      })
+    }
 
     // shopId 중복 체크
     const existingShop = await prisma.creator.findUnique({ where: { shopId: data.shopId } })

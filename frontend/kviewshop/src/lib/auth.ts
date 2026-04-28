@@ -161,39 +161,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         } catch {}
 
         if (signupRole === 'creator') {
-          if (!signupVerificationToken) {
-            return '/signup?role=creator&error=verification_required'
-          }
-
-          const { jwtVerify } = await import('jose')
-          const jwtSecret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET || 'fallback-secret')
-          let verifiedCI: string | null = null
-          let verifiedPhone: string | null = null
-          let verifiedName: string | null = null
-
-          try {
-            const { payload } = await jwtVerify(signupVerificationToken, jwtSecret)
-            if (payload.type === 'identity_verification' || payload.type === 'phone_verification') {
-              verifiedCI = (payload.ci as string) || null
-              verifiedPhone = payload.phone as string
-              verifiedName = (payload.name as string) || null
-            }
-          } catch {
-            return '/signup?role=creator&error=verification_expired'
-          }
-
-          if (!verifiedPhone) {
-            return '/signup?role=creator&error=verification_required'
-          }
-
-          // CI 중복 체크
-          if (verifiedCI) {
-            const existingCI = await prisma.user.findUnique({ where: { ci: verifiedCI } })
-            if (existingCI) {
-              return '/signup?role=creator&error=already_registered'
-            }
-          }
-
           const creatorEmail = user.email ?? `${account.provider}_${account.providerAccountId}@cnecshop.local`
 
           // 이메일 중복 체크
@@ -208,33 +175,88 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             return '/signup?role=creator&error=email_exists'
           }
 
-          const now = new Date()
-          const displayName = verifiedName || user.name || creatorEmail.split('@')[0]
-          const isIdentityVerified = !!verifiedCI
+          if (signupVerificationToken) {
+            // 기존 플로우: 본인인증 토큰이 있는 경우 (phone/CI 포함)
+            const { jwtVerify } = await import('jose')
+            const jwtSecret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET || 'fallback-secret')
+            let verifiedCI: string | null = null
+            let verifiedPhone: string | null = null
+            let verifiedName: string | null = null
 
-          const newUser = await prisma.user.create({
-            data: {
-              email: creatorEmail,
-              name: displayName,
-              role: 'creator',
-              passwordHash: null,
-              phone: verifiedPhone,
-              ci: verifiedCI,
-              phoneVerifiedAt: isIdentityVerified ? now : null,
-              phoneReachable: true,
-              phoneReachableAt: now,
+            try {
+              const { payload } = await jwtVerify(signupVerificationToken, jwtSecret)
+              if (payload.type === 'identity_verification' || payload.type === 'phone_verification') {
+                verifiedCI = (payload.ci as string) || null
+                verifiedPhone = payload.phone as string
+                verifiedName = (payload.name as string) || null
+              }
+            } catch {
+              return '/signup?role=creator&error=verification_expired'
             }
-          })
 
-          await prisma.creator.create({
-            data: {
-              userId: newUser.id,
-              displayName,
-              status: 'PENDING',
-              submittedAt: now,
-              themeColor: '#1a1a1a',
+            if (!verifiedPhone) {
+              return '/signup?role=creator&error=verification_required'
             }
-          })
+
+            // CI 중복 체크
+            if (verifiedCI) {
+              const existingCI = await prisma.user.findUnique({ where: { ci: verifiedCI } })
+              if (existingCI) {
+                return '/signup?role=creator&error=already_registered'
+              }
+            }
+
+            const now = new Date()
+            const displayName = verifiedName || user.name || creatorEmail.split('@')[0]
+            const isIdentityVerified = !!verifiedCI
+
+            const newUser = await prisma.user.create({
+              data: {
+                email: creatorEmail,
+                name: displayName,
+                role: 'creator',
+                passwordHash: null,
+                phone: verifiedPhone,
+                ci: verifiedCI,
+                phoneVerifiedAt: isIdentityVerified ? now : null,
+                phoneReachable: true,
+                phoneReachableAt: now,
+              }
+            })
+
+            await prisma.creator.create({
+              data: {
+                userId: newUser.id,
+                displayName,
+                status: 'PENDING',
+                submittedAt: now,
+                themeColor: '#1a1a1a',
+              }
+            })
+          } else {
+            // 새 플로우: 본인인증 없이 소셜 가입 (프로필 완성 후 본인인증)
+            const now = new Date()
+            const displayName = user.name || creatorEmail.split('@')[0]
+
+            const newUser = await prisma.user.create({
+              data: {
+                email: creatorEmail,
+                name: displayName,
+                role: 'creator',
+                passwordHash: null,
+              }
+            })
+
+            await prisma.creator.create({
+              data: {
+                userId: newUser.id,
+                displayName,
+                status: 'PENDING',
+                submittedAt: now,
+                themeColor: '#1a1a1a',
+              }
+            })
+          }
 
           // 가입 쿠키 정리
           try {
