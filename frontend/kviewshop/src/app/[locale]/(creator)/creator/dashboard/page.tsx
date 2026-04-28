@@ -362,10 +362,8 @@ export default function CreatorDashboardPage() {
       {/* PPM 매칭 상품 피드 */}
       <MatchedProductsSection locale={locale} />
 
-      {/* === Commented out sections (available for re-enabling) ===
-
-      {/* Recommended Products -- horizontal scroll */}
-      {/* recommendedProducts.length > 0 && (
+      {/* 추천 상품 -- 가로 스크롤 */}
+      {recommendedProducts.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-base font-bold">추천 상품</h2>
@@ -426,10 +424,10 @@ export default function CreatorDashboardPage() {
             })}
           </div>
         </div>
-      ) */}
+      )}
 
-      {/* Trial Products */}
-      {/* trialProducts.length > 0 && (
+      {/* 무료 체험 상품 */}
+      {trialProducts.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -488,10 +486,10 @@ export default function CreatorDashboardPage() {
             })}
           </div>
         </div>
-      ) */}
+      )}
 
-      {/* CS Zero Banner -- trust layer */}
-      {/* showCsBanner && (
+      {/* CS Zero 배너 */}
+      {showCsBanner && (
         <div className="bg-muted rounded-2xl border border-gray-100 p-5 relative">
           <button
             onClick={dismissCsBanner}
@@ -511,13 +509,7 @@ export default function CreatorDashboardPage() {
             </div>
           </div>
         </div>
-      ) */}
-
-      {/* Zero fee assurance -- Soft Commerce trust layer */}
-      {/* <div className="bg-foreground rounded-2xl p-5 text-white">
-        <p className="text-sm font-bold">내 수익, 그대로 받아요</p>
-        <p className="text-xs text-white/60 mt-1">수수료 0원 · 100% 전액 지급</p>
-      </div> */}
+      )}
     </div>
   );
 }
