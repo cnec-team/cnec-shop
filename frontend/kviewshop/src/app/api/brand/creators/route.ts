@@ -266,9 +266,10 @@ export async function GET(request: NextRequest) {
       cnecCompletedPayments: c.cnecCompletedPayments,
       cnecPhone: c.cnecPhone,
       cnecVerificationStatus: c.cnecVerificationStatus,
-      cnecEmail1: c.cnecEmail1,
-      cnecEmail2: c.cnecEmail2,
-      cnecEmail3: c.cnecEmail3,
+      // 이메일 주소는 브랜드에 직접 노출하지 않음 (canSendEmail 플래그만 제공)
+      cnecEmail1: null,
+      cnecEmail2: null,
+      cnecEmail3: null,
       hasPhone: c.hasPhone,
       phoneForAlimtalk: c.phoneForAlimtalk,
       // Decimal → Number 변환

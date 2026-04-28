@@ -39,14 +39,16 @@ export async function POST(request: NextRequest) {
 
     const creator = await prisma.creator.findUnique({
       where: { id: creatorId },
-      select: { id: true, displayName: true, igUsername: true },
+      select: { id: true, displayName: true, igUsername: true, brandContactEmail: true, cnecEmail1: true, cnecEmail2: true, cnecEmail3: true },
     })
     if (!creator) {
       return NextResponse.json({ error: '크리에이터를 찾을 수 없습니다' }, { status: 404 })
     }
 
     if (channel === 'email') {
-      if (!to) {
+      // 서버에서 직접 이메일 조회 (클라이언트에 이메일 노출하지 않음)
+      const recipientEmail = creator.brandContactEmail || creator.cnecEmail1 || creator.cnecEmail2 || creator.cnecEmail3
+      if (!recipientEmail) {
         return NextResponse.json({ error: '이메일 주소가 없습니다' }, { status: 400 })
       }
 
@@ -68,7 +70,7 @@ export async function POST(request: NextRequest) {
 
       try {
         const result = await sendEmail({
-          to,
+          to: recipientEmail,
           subject: subject || `[크넥] ${brandNameStr} 협업 제안`,
           html,
         })
@@ -80,7 +82,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: '이메일 발송 중 오류가 발생했습니다' }, { status: 500 })
       }
 
-      return NextResponse.json({ success: true, channel: 'email', to })
+      return NextResponse.json({ success: true, channel: 'email' })
     }
 
     if (channel === 'dm') {

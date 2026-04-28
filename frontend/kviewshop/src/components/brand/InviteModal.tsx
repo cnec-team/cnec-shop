@@ -539,7 +539,7 @@ export function InviteModal({
                   />
                   <ChannelItem
                     icon={<Mail className="h-4 w-4" />}
-                    label={singleChannels.email ? `이메일 (${singleCreator.brandContactEmail})` : '이메일'}
+                    label={singleChannels.email ? '이메일 (등록됨)' : '이메일'}
                     sublabel={singleChannels.email ? '등록된 이메일로 자동 발송' : '이메일 미등록'}
                     active={singleChannels.email}
                   />
