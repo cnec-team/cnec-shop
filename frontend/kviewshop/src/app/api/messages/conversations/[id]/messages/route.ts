@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getAuthUser } from '@/lib/auth-helpers'
+import { sendEmail } from '@/lib/notifications'
 
 export async function POST(
   request: NextRequest,
@@ -86,14 +87,14 @@ export async function POST(
   // 알림 생성 (비동기 — 메시지 저장 후)
   try {
     if (isBrand) {
-      // 브랜드 → 크리에이터: 인앱 알림
+      // 브랜드 → 크리에이터: 인앱 알림 + 이메일 알림 (단방향)
       const brand = await prisma.brand.findFirst({
         where: { userId: user.id },
         select: { brandName: true },
       })
       const creator = await prisma.creator.findUnique({
         where: { id: conversation.creatorId },
-        select: { userId: true },
+        select: { userId: true, brandContactEmail: true, cnecEmail1: true, cnecEmail2: true, cnecEmail3: true },
       })
       if (creator?.userId) {
         await prisma.notification.create({
@@ -105,6 +106,32 @@ export async function POST(
             linkUrl: `/creator/messages?c=${id}`,
           },
         })
+
+        // 이메일 단방향 알림 (답장 불가, CTA 버튼만)
+        const recipientEmail = creator.brandContactEmail || creator.cnecEmail1 || creator.cnecEmail2 || creator.cnecEmail3
+        if (recipientEmail) {
+          const brandName = brand?.brandName || '브랜드'
+          const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.cnecshop.com'
+          const replyLink = `${siteUrl}/creator/messages?c=${id}`
+          sendEmail({
+            to: recipientEmail,
+            subject: `[크넥] ${brandName}님의 새 메시지`,
+            html: `
+              <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+                <div style="background:#1c1917;color:white;padding:20px;border-radius:12px 12px 0 0;">
+                  <h2 style="margin:0;font-size:16px;">${brandName}님의 새 메시지</h2>
+                </div>
+                <div style="padding:24px;border:1px solid #e7e5e4;border-top:none;border-radius:0 0 12px 12px;">
+                  <div style="white-space:pre-line;font-size:14px;color:#292524;line-height:1.7;">${preview}</div>
+                  <hr style="border:none;border-top:1px solid #e7e5e4;margin:24px 0;" />
+                  <div style="text-align:center;margin:24px 0;">
+                    <a href="${replyLink}" style="display:inline-block;background:#1c1917;color:white;padding:12px 32px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;">크넥샵에서 답장하기</a>
+                  </div>
+                  <p style="font-size:11px;color:#a8a29e;text-align:center;">이 메일에는 답장할 수 없습니다. 위 버튼을 눌러 크넥샵에서 답장해주세요.</p>
+                </div>
+              </div>`,
+          }).catch(err => console.error('[messages] email notification error:', err))
+        }
       }
     } else {
       // 크리에이터 → 브랜드: 인앱 알림

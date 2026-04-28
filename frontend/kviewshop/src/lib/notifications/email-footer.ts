@@ -9,7 +9,8 @@ export function getEmailFooter(recipientEmail: string): string {
   return `
 <div style="margin-top:${SPACING.XL};padding:${SPACING.LG} 0;border-top:1px solid ${COLORS.BORDER};font-family:${FONT_FAMILY};">
   <p style="margin:0 0 12px;font-size:${FONT_SIZE.SMALL};color:${COLORS.TEXT_TERTIARY};line-height:1.6">
-    본 메일은 크넥샵 서비스 이용자에게 발송되는 안내 메일이에요.
+    본 메일은 크넥샵 서비스 이용자에게 발송되는 안내 메일이에요.<br>
+    이 메일에는 답장할 수 없습니다. <a href="${SITE_URL}/ko/creator/messages" style="color:${COLORS.BRAND_PRIMARY};text-decoration:underline">크넥샵에서 답장하기</a>
   </p>
   <p style="margin:0 0 12px;font-size:${FONT_SIZE.SMALL};color:${COLORS.TEXT_TERTIARY};line-height:1.6">
     주식회사 하우파파 (HOWPAPA Inc.) &middot; 대표 박현용<br>
