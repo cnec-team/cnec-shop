@@ -27,6 +27,8 @@ import {
   Bell,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ShieldCheck, Globe } from 'lucide-react';
+import { getLandingStats } from '@/lib/actions/landing';
 
 /* ─── useInView hook ─── */
 function useInView(options?: IntersectionObserverInit) {
@@ -101,11 +103,18 @@ const anim = (isInView: boolean, cls: string) =>
 
 export function LandingContent() {
   const [scrolled, setScrolled] = useState(false);
+  const [liveStats, setLiveStats] = useState<{
+    creatorCount: number; brandCount: number; followerCount: number; totalOrders: number;
+  } | null>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  useEffect(() => {
+    getLandingStats().then(setLiveStats).catch(() => {});
   }, []);
 
   const hero = useInView();
@@ -288,7 +297,12 @@ export function LandingContent() {
       <section ref={stats.ref} className="py-16 md:py-20 bg-gray-50/80 border-y border-gray-100/50">
         <div className="max-w-[1200px] mx-auto px-5">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 text-center">
-            {[{ target: 150, label: '등록 상품' },{ target: 80, label: '활동 크리에이터' },{ target: 2500, label: '총 주문' },{ target: 30, label: '입점 브랜드' }].map((s) => (
+            {[
+              { target: liveStats?.creatorCount ?? 80, label: '활동 크리에이터' },
+              { target: liveStats?.brandCount ?? 30, label: '입점 브랜드' },
+              { target: liveStats?.followerCount ?? 0, label: '팔로워' },
+              { target: liveStats?.totalOrders ?? 2500, label: '총 주문' },
+            ].map((s) => (
               <div key={s.label} className={anim(stats.isInView, 'animate-fade-in-up')}>
                 <div className="text-4xl md:text-5xl font-black tracking-tight text-gray-900"><CountUp target={s.target} /></div>
                 <p className="mt-2 text-sm md:text-base text-gray-400 font-medium">{s.label}</p>
@@ -475,6 +489,68 @@ export function LandingContent() {
               <div className="bg-blue-50 rounded-2xl p-5 mt-4"><p className="text-sm text-blue-600 font-medium">이번 달 매출</p><div className="flex items-end gap-3 mt-1"><span className="text-3xl font-black text-gray-900">₩12,450,000</span><span className="flex items-center gap-1 text-sm text-emerald-500 font-semibold mb-1"><TrendingUp className="h-4 w-4" />+23.5%</span></div></div>
               <div className="flex items-end gap-2 h-[80px] mt-4 px-1">{[30,45,35,55,40,65,70].map((h,i)=>(<div key={i} className={`flex-1 rounded-t-md ${i===6?'bg-blue-600':'bg-blue-200'}`} style={{height:`${h}px`}} />))}</div>
               <div className="grid grid-cols-3 gap-3 mt-4">{[{label:'활성 크리에이터',value:'24명'},{label:'진행 중 캠페인',value:'3개'},{label:'총 주문',value:'847건'}].map((s)=>(<div key={s.label} className="bg-gray-50 rounded-xl p-3 text-center"><p className="text-xs text-gray-400">{s.label}</p><p className="text-base font-bold text-gray-900 mt-1">{s.value}</p></div>))}</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ──── Trust Signals: 크리에이터 + 브랜드 Why ──── */}
+      <section className="py-24 md:py-32">
+        <div className="max-w-[1200px] mx-auto px-5">
+          <div className="text-center mb-16">
+            <p className="text-sm font-semibold uppercase tracking-[0.15em] text-blue-600">WHY CNEC SHOP</p>
+            <h2 className="text-3xl md:text-5xl font-black tracking-tight leading-[1.08] text-gray-900 mt-4">
+              신뢰로 만드는 커머스
+            </h2>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+            {/* 크리에이터 Why */}
+            <div className="bg-gradient-to-br from-violet-50 to-white rounded-2xl border border-violet-100 p-8">
+              <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                <Store className="h-5 w-5 text-violet-600" />
+                크리에이터에게
+              </h3>
+              <ul className="space-y-4">
+                {[
+                  { title: '직접 써본 제품만', desc: '시딩으로 제품 체험 후 공구 여부를 결정해요' },
+                  { title: '팔로워가 자산이 됨', desc: '단골 팔로우 시스템으로 반복 매출이 생겨요' },
+                  { title: '콘텐츠가 수익이 됨', desc: '1년 전 콘텐츠도 내 샵 링크로 계속 수익 발생' },
+                  { title: '투명한 정산', desc: '실시간 매출 확인 + 자동 정산 시스템' },
+                ].map((item) => (
+                  <li key={item.title} className="flex items-start gap-3">
+                    <ShieldCheck className="h-4 w-4 text-violet-500 mt-1 shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">{item.title}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{item.desc}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* 브랜드 Why */}
+            <div className="bg-gradient-to-br from-blue-50 to-white rounded-2xl border border-blue-100 p-8">
+              <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                <Building2 className="h-5 w-5 text-blue-600" />
+                브랜드에게
+              </h3>
+              <ul className="space-y-4">
+                {[
+                  { title: '검증된 크리에이터', desc: '팔로워 수 + 전환율 + 운영 원칙 투명 공개' },
+                  { title: 'ROI가 보임', desc: '캠페인별 성과 분석, 시딩→공구 전환율 실시간 확인' },
+                  { title: '글로벌 K-뷰티', desc: '한국 + 미국 + 일본 크리에이터 네트워크' },
+                  { title: '원스톱 운영', desc: '시딩→공구→정산 전 과정을 플랫폼 안에서' },
+                ].map((item) => (
+                  <li key={item.title} className="flex items-start gap-3">
+                    <ShieldCheck className="h-4 w-4 text-blue-500 mt-1 shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">{item.title}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{item.desc}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
         </div>
