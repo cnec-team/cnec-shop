@@ -30,6 +30,7 @@ export {
   campaignRecruitingStartedTemplate,
   creatorGradeChangedMessage,
   brandCommissionChangedMessage,
+  followCampaignStartedMessage,
 } from './templates'
 export { normalizePhone, isValidEmail } from './utils'
 

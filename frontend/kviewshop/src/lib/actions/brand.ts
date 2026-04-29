@@ -18,6 +18,7 @@ import {
   campaignEndedMessage,
   campaignParticipationRequestedMessage,
 } from '@/lib/notifications/templates'
+import { notifyFollowersOnCampaignStart } from '@/lib/notifications/follow-notify'
 
 async function requireBrand() {
   const session = await auth()
@@ -1761,6 +1762,17 @@ export async function updateCampaignStatus(
       }
     } catch {
       // Don't fail the action if notification fails
+    }
+  }
+
+  // 공구 시작 시 각 참여 크리에이터의 팔로워에게 알림 발송
+  if (newStatus === 'ACTIVE' && campaign.participations.length > 0) {
+    try {
+      for (const p of campaign.participations) {
+        notifyFollowersOnCampaignStart(p.creatorId, campaignId).catch(() => {})
+      }
+    } catch {
+      // 팔로워 알림 실패가 캠페인 활성화에 영향 주면 안 됨
     }
   }
 

@@ -29,6 +29,7 @@ import {
   Clock,
   Star,
   Mail,
+  Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/i18n/config';
@@ -45,6 +46,7 @@ import {
   triggerMissionCheck,
 } from '@/lib/actions/creator';
 import { getTrialableProducts } from '@/lib/actions/trial';
+import { getFollowerStats } from '@/lib/actions/follow';
 import { RevenueCard } from '@/components/creator/RevenueCard';
 
 interface DashboardStats {
@@ -93,6 +95,7 @@ export default function CreatorDashboardPage() {
   const [addingId, setAddingId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [showCsBanner, setShowCsBanner] = useState(false);
+  const [followerStats, setFollowerStats] = useState<{ total: number; recentNew: number }>({ total: 0, recentNew: 0 });
 
   const shopUrl = creator?.shopId ? getShopUrl(creator.shopId) : '';
 
@@ -110,14 +113,16 @@ export default function CreatorDashboardPage() {
       setCreator(creatorData as any);
 
       try {
-        const [dashboardStats, productsData, trialData] = await Promise.all([
+        const [dashboardStats, productsData, trialData, fStats] = await Promise.all([
           getCreatorDashboardStats(creatorData.id),
           getPickableProducts(creatorData.id),
           getTrialableProducts({ limit: 4 }),
+          getFollowerStats(creatorData.id),
         ]);
 
         if (cancelled) return;
         setStats(dashboardStats);
+        setFollowerStats(fStats);
         setRecommendedProducts(
           (productsData.products as unknown as RecommendedProduct[]).slice(0, 6)
         );
@@ -262,6 +267,26 @@ export default function CreatorDashboardPage() {
           <p className="text-[11px] text-muted-foreground mt-0.5">견적 매칭</p>
         </div>
       </div>
+
+      {/* Section 3.5: Follower Card */}
+      <Link href={`/${locale}/creator/followers`}>
+        <div className="flex items-center gap-4 bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3.5 hover:border-gray-200 transition-colors">
+          <div className="bg-violet-50 rounded-xl w-10 h-10 flex items-center justify-center shrink-0">
+            <Users className="h-5 w-5 text-violet-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-gray-900">
+              팔로워 {followerStats.total.toLocaleString()}명
+            </p>
+            {followerStats.recentNew > 0 && (
+              <p className="text-xs text-emerald-600">
+                이번 주 +{followerStats.recentNew}명
+              </p>
+            )}
+          </div>
+          <ChevronRight className="h-4 w-4 text-gray-300 shrink-0" />
+        </div>
+      </Link>
 
       {/* Section 4: MY SHOP LINK */}
       {creator?.shopId && (

@@ -148,7 +148,8 @@ export default function GlobalMyPage() {
   ];
 
   const quickAccess = [
-    { label: '찜', icon: Heart, href: `/${locale}/my/wishlist` },
+    { label: '팔로우', icon: Heart, href: `/${locale}/my/following` },
+    { label: '찜', icon: ShoppingBag, href: `/${locale}/my/wishlist` },
     { label: '최근 본', icon: Clock, href: `/${locale}/my/recent` },
     { label: '문의', icon: HelpCircle, href: `/${locale}/my/inquiries` },
   ];

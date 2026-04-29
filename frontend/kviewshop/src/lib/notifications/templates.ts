@@ -65,6 +65,8 @@ export const KAKAO_TEMPLATES = {
   REFUND_RESPONDED: 'CNECSHOP_064',
   BRAND_APPROVED: 'CNECSHOP_065',
   BRAND_REJECTED: 'CNECSHOP_066',
+  // 팔로우 공구 알림
+  FOLLOW_CAMPAIGN_STARTED: 'CNECSHOP_067',
 } as const
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.cnecshop.com'
@@ -3597,6 +3599,27 @@ export function campaignParticipationRequestedMessage(data: {
       title: '캠페인 참여 신청이 접수됐어요',
       message: `${data.creatorName}님 - ${data.campaignTitle}`,
       linkUrl: '/brand/creators/pending',
+    },
+  }
+}
+
+// ---------- 팔로우 크리에이터 공구 시작 알림 → 팔로워 ----------
+
+export function followCampaignStartedMessage(data: {
+  creatorName: string
+  campaignTitle: string
+  productSummary: string
+  shopUrl: string
+}) {
+  const kakaoMsg = `[크넥샵] ${data.creatorName}님의 새로운 공구가 시작됐어요!\n\n${data.campaignTitle}\n${data.productSummary}\n\n지금 바로 확인하기\n${data.shopUrl}`
+
+  return {
+    kakao: { templateCode: KAKAO_TEMPLATES.FOLLOW_CAMPAIGN_STARTED, message: kakaoMsg },
+    inApp: {
+      type: 'CAMPAIGN',
+      title: `${data.creatorName}님의 새 공구가 시작됐어요!`,
+      message: `${data.campaignTitle} — ${data.productSummary}`,
+      linkUrl: data.shopUrl.replace(SITE_URL, ''),
     },
   }
 }
