@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import {
@@ -17,13 +17,18 @@ import {
   Sparkles,
   ChevronDown,
   Heart,
+  Bell,
+  BellOff,
   Home,
   LayoutGrid,
+  Loader2,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { ShareSheet } from '@/components/shop/ShareSheet';
 import { VisitTracker } from '@/components/shop/VisitTracker';
 import { ProductCardActions } from '@/components/shop/ProductCardActions';
 import { useAuthStore } from '@/lib/store/auth';
+import { toggleFollow, getFollowInfo } from '@/lib/actions/follow';
 import {
   calculateDDay,
   calculateDDayUntilStart,
@@ -184,7 +189,17 @@ export function CreatorShopPage({
   const buyer = useAuthStore((s) => s.buyer);
 
   const [isFollowing, setIsFollowing] = useState(false);
+  const [followerCount, setFollowerCount] = useState(0);
+  const [isFollowLoading, setIsFollowLoading] = useState(false);
   const [bioExpanded, setBioExpanded] = useState(false);
+
+  // 팔로우 상태 + 팔로워 수 서버에서 조회
+  useEffect(() => {
+    getFollowInfo(creator.id).then((info) => {
+      setIsFollowing(info.isFollowing);
+      setFollowerCount(info.followerCount);
+    });
+  }, [creator.id]);
 
   // Separate items by type
   const gongguItems = useMemo(
@@ -208,8 +223,27 @@ export function CreatorShopPage({
   // First gonggu item for calendar widget
   const firstGonggu = gongguItems[0] ?? null;
 
-  const handleFollow = () => {
-    setIsFollowing((prev) => !prev);
+  const handleFollow = async () => {
+    if (!isLoggedIn) {
+      toast.error('로그인 후 팔로우할 수 있어요');
+      router.push(`/${locale}/buyer/login?returnUrl=${encodeURIComponent(`/${locale}/${username}`)}`);
+      return;
+    }
+    setIsFollowLoading(true);
+    try {
+      const result = await toggleFollow(creator.id);
+      if (result.success) {
+        setIsFollowing(result.isFollowing);
+        setFollowerCount((prev) => result.isFollowing ? prev + 1 : prev - 1);
+        toast.success(result.isFollowing ? '팔로우했어요! 새 공구 알림을 받아볼 수 있어���.' : '팔로우를 취소했어요.');
+      } else {
+        toast.error(result.error || '오류가 발생했습니다');
+      }
+    } catch {
+      toast.error('팔로우 처리 중 ���류가 발생했습니다');
+    } finally {
+      setIsFollowLoading(false);
+    }
   };
 
   return (
@@ -390,15 +424,27 @@ export function CreatorShopPage({
         <div className="px-4 pt-4">
           <button
             onClick={handleFollow}
+            disabled={isFollowLoading}
             className={`w-full h-12 rounded-full text-[15px] font-semibold flex items-center justify-center gap-2 transition-all ${
               isFollowing
                 ? 'bg-gray-100 text-gray-700 border border-gray-200'
                 : 'bg-gray-900 text-white hover:bg-gray-800'
-            }`}
+            } disabled:opacity-60`}
           >
-            <Heart className={`h-4 w-4 ${isFollowing ? 'fill-red-500 text-red-500' : ''}`} />
+            {isFollowLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : isFollowing ? (
+              <Bell className="h-4 w-4 text-gray-600" />
+            ) : (
+              <Heart className="h-4 w-4" />
+            )}
             {isFollowing ? '팔로우 중' : '팔로우하고 공구 알림 받기'}
           </button>
+          {followerCount > 0 && (
+            <p className="text-center text-xs text-gray-400 mt-2">
+              {followerCount.toLocaleString()}명이 팔로우하고 있어요
+            </p>
+          )}
         </div>
 
         {/* E. Beauty Profile Card */}

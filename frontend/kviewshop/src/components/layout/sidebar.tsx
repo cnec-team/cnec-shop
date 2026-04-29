@@ -191,7 +191,10 @@ export function Sidebar({ role, locale }: SidebarProps) {
         ];
       case 'creator':
         return [
-          { items: [{ title: '홈', href: `${base}/creator/dashboard`, icon: LayoutDashboard }] },
+          { items: [
+            { title: '홈', href: `${base}/creator/dashboard`, icon: LayoutDashboard },
+            { title: '팔로워', href: `${base}/creator/followers`, icon: Users },
+          ] },
           {
             label: '캠페인',
             items: [
