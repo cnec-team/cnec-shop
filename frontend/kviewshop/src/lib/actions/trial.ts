@@ -17,9 +17,21 @@ async function requireCreator() {
   const session = await auth()
   if (!session?.user) throw new Error('Unauthorized')
 
-  const creator = await prisma.creator.findFirst({
+  let creator = await prisma.creator.findFirst({
     where: { userId: session.user.id },
   })
+
+  // Fallback: userId가 JWT에서 누락된 경우 email로 조회
+  if (!creator && session.user.email) {
+    const dbUser = await prisma.user.findUnique({
+      where: { email: session.user.email },
+    })
+    if (dbUser) {
+      creator = await prisma.creator.findFirst({
+        where: { userId: dbUser.id },
+      })
+    }
+  }
 
   if (!creator) throw new Error('Creator not found')
   return { user: session.user, creator }
