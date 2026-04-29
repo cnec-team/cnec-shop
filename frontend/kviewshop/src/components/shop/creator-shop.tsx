@@ -22,6 +22,7 @@ import {
   Home,
   LayoutGrid,
   Loader2,
+  ShieldCheck,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ShareSheet } from '@/components/shop/ShareSheet';
@@ -58,6 +59,7 @@ export interface ShopCreator {
   personalColor?: string | null;
   skinConcerns?: string[];
   scalpConcerns?: string[];
+  principles?: string[];
 }
 
 export interface ShopProduct {
@@ -472,6 +474,26 @@ export function CreatorShopPage({
                   </span>
                 ))}
               </div>
+            </div>
+          </section>
+        )}
+
+        {/* E-2. Operating Principles */}
+        {creator.principles && creator.principles.length > 0 && (
+          <section className="mx-4 mt-4">
+            <div className="rounded-xl bg-gray-50 p-4">
+              <div className="flex items-center gap-1.5 mb-3">
+                <ShieldCheck className="h-4 w-4 text-gray-900" />
+                <h3 className="text-[15px] font-bold text-gray-900">운영 원칙</h3>
+              </div>
+              <ul className="space-y-1.5">
+                {creator.principles.map((principle, idx) => (
+                  <li key={idx} className="text-[13px] text-gray-600 flex items-start gap-2">
+                    <span className="text-gray-400 mt-0.5">·</span>
+                    <span>{principle}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           </section>
         )}

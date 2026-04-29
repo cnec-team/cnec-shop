@@ -32,6 +32,9 @@ import {
   Sparkles,
   RefreshCw,
   CheckCircle,
+  ShieldCheck,
+  Plus,
+  X as XIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ImageUpload from '@/components/common/ImageUpload';
@@ -79,6 +82,7 @@ interface ShopForm {
   scalpConcerns: string[];
   bannerImageUrl: string;
   bannerLink: string;
+  principles: string[];
 }
 
 export default function CreatorShopPage() {
@@ -103,6 +107,7 @@ export default function CreatorShopPage() {
     scalpConcerns: [],
     bannerImageUrl: '',
     bannerLink: '',
+    principles: [],
   });
 
   useEffect(() => {
@@ -125,6 +130,7 @@ export default function CreatorShopPage() {
           scalpConcerns: c.scalpConcerns || [],
           bannerImageUrl: c.bannerImageUrl || '',
           bannerLink: c.bannerLink || '',
+          principles: c.principles || [],
         });
       }
       setIsLoading(false);
@@ -151,6 +157,7 @@ export default function CreatorShopPage() {
         scalpConcerns: form.scalpConcerns,
         bannerImageUrl: form.bannerImageUrl || undefined,
         bannerLink: form.bannerLink || undefined,
+        principles: form.principles,
       });
       toast.success('저장했어요!');
       if (updated) setCreator(updated as Record<string, any>);
@@ -591,6 +598,54 @@ export default function CreatorShopPage() {
           />
         </div>
       )}
+
+      {/* Operating Principles */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="h-4 w-4 text-gray-900" />
+          <p className="text-sm font-semibold text-gray-900">내 운영 원칙</p>
+        </div>
+        <p className="text-xs text-gray-400">
+          내 샵에 표시돼요. 팔로워에게 신뢰를 줄 수 있어요. (최대 5개)
+        </p>
+        <div className="space-y-2">
+          {form.principles.map((principle, idx) => (
+            <div key={idx} className="flex items-center gap-2">
+              <Input
+                value={principle}
+                onChange={(e) => {
+                  const updated = [...form.principles];
+                  updated[idx] = e.target.value;
+                  setForm({ ...form, principles: updated });
+                }}
+                placeholder="예: 직접 써본 제품만 추천해요"
+                maxLength={50}
+                className="rounded-xl text-sm"
+              />
+              <button
+                onClick={() => {
+                  setForm({
+                    ...form,
+                    principles: form.principles.filter((_, i) => i !== idx),
+                  });
+                }}
+                className="shrink-0 p-1.5 rounded-lg hover:bg-gray-100"
+              >
+                <XIcon className="h-4 w-4 text-gray-400" />
+              </button>
+            </div>
+          ))}
+          {form.principles.length < 5 && (
+            <button
+              onClick={() => setForm({ ...form, principles: [...form.principles, ''] })}
+              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 py-2"
+            >
+              <Plus className="h-4 w-4" />
+              원칙 추가
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* Sticky Save Button */}
       <div className="fixed bottom-16 md:bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm py-3 px-4 border-t border-gray-100 z-10">

@@ -749,6 +749,8 @@ model Creator {
   rejectionReason            String?               @map("rejection_reason") @db.Text
   approvalNote               String?               @map("approval_note") @db.Text
   primaryCategory            String?               @map("primary_category") @db.VarChar(50)
+  // 운영 원칙 (크리에이터 샵에 표시)
+  principles                 String[]              @default([])
   // Timestamps
   createdAt                  DateTime              @default(now()) @map("created_at") @db.Timestamptz
   updatedAt                  DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz

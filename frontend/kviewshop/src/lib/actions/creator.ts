@@ -1024,6 +1024,7 @@ export async function updateCreatorShopProfile(data: {
   scalpConcerns?: string[]
   bannerImageUrl?: string
   bannerLink?: string
+  principles?: string[]
 }) {
   const { creator } = await requireCreator()
   if (creator.id !== data.creatorId) throw new Error('Forbidden')
@@ -1044,8 +1045,37 @@ export async function updateCreatorShopProfile(data: {
       scalpConcerns: data.scalpConcerns ?? [],
       bannerImageUrl: data.bannerImageUrl ?? null,
       bannerLink: data.bannerLink ?? null,
+      ...(data.principles !== undefined && { principles: data.principles }),
     },
   })
+}
+
+/**
+ * 크리에이터 운영 원칙 업데이트 (최대 5개)
+ */
+export async function updateCreatorPrinciples(principles: string[]) {
+  const { creator } = await requireCreator()
+  const cleaned = principles
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0)
+    .slice(0, 5)
+
+  await prisma.creator.update({
+    where: { id: creator.id },
+    data: { principles: cleaned },
+  })
+  return { success: true, principles: cleaned }
+}
+
+/**
+ * 크리에이터 운영 원칙 조회 (공개)
+ */
+export async function getCreatorPrinciples(creatorId: string) {
+  const creator = await prisma.creator.findUnique({
+    where: { id: creatorId },
+    select: { principles: true },
+  })
+  return creator?.principles ?? []
 }
 
 // ==================== Grade (full) ====================
