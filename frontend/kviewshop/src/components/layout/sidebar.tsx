@@ -185,6 +185,7 @@ export function Sidebar({ role, locale }: SidebarProps) {
           {
             items: [
               { title: '정산', href: `${base}/brand/settlements`, icon: DollarSign },
+              { title: 'ROI 분석', href: `${base}/brand/analytics/roi`, icon: TrendingUp },
               { title: '도움말', href: `${base}/brand/guides`, icon: HelpCircle },
               { title: '설정', href: `${base}/brand/settings`, icon: Settings },
             ],
