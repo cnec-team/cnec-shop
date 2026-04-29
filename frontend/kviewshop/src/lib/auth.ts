@@ -424,6 +424,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
       }
 
+      // 후속 요청에서 userId가 누락된 경우 email로 복구
+      if (!token.userId && token.email) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { email: token.email as string },
+          })
+          if (dbUser) {
+            token.role = dbUser.role
+            token.userId = dbUser.id
+          }
+        } catch (error) {
+          console.error('JWT userId recovery error:', error)
+        }
+      }
+
       return token
     },
     async session({ session, token }) {
