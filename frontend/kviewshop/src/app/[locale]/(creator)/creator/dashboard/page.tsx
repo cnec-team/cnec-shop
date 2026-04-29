@@ -49,6 +49,7 @@ import {
 import { getTrialableProducts } from '@/lib/actions/trial';
 import { getFollowerStats } from '@/lib/actions/follow';
 import { RevenueCard } from '@/components/creator/RevenueCard';
+import { FirstGongguGuide } from '@/components/creator/FirstGongguGuide';
 
 interface DashboardStats {
   totalVisits: number;
@@ -217,6 +218,11 @@ export default function CreatorDashboardPage() {
           {dateStr} · 안녕하세요, {(creator as any)?.displayName || '크리에이터'}님
         </p>
       </div>
+
+      {/* Section 1.5: First Gonggu Guide (첫 매출 전까지만 표시) */}
+      {creator && (
+        <FirstGongguGuide creatorId={creator.id} locale={locale} />
+      )}
 
       {/* Section 2: Big Revenue Number */}
       <div>

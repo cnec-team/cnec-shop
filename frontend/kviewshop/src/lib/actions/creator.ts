@@ -1078,6 +1078,32 @@ export async function getCreatorPrinciples(creatorId: string) {
   return creator?.principles ?? []
 }
 
+// ==================== First Gonggu Progress ====================
+
+export async function getFirstGongguProgress(creatorId: string) {
+  const [participationCount, approvalCount, shopItemCount, saleCount] = await Promise.all([
+    prisma.campaignParticipation.count({
+      where: { creatorId },
+    }),
+    prisma.campaignParticipation.count({
+      where: { creatorId, status: 'APPROVED' },
+    }),
+    prisma.creatorShopItem.count({
+      where: { creatorId, type: 'GONGGU' },
+    }),
+    prisma.conversion.count({
+      where: { creatorId, status: { in: ['PENDING', 'CONFIRMED'] } },
+    }),
+  ])
+
+  return {
+    hasParticipation: participationCount > 0,
+    hasApproval: approvalCount > 0,
+    hasShopItem: shopItemCount > 0,
+    hasFirstSale: saleCount > 0,
+  }
+}
+
 // ==================== Grade (full) ====================
 
 export async function getCreatorGradeAndRankings(period: 'weekly' | 'monthly') {
