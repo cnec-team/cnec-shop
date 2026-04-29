@@ -35,6 +35,7 @@ import {
   Activity,
   Send,
   MessagesSquare,
+  Share2,
 } from 'lucide-react';
 import type { UserRole } from '@/types/database';
 import type { Locale } from '@/lib/i18n/config';
@@ -224,6 +225,7 @@ export function Sidebar({ role, locale }: SidebarProps) {
               { title: '판매 현황', href: `${base}/creator/sales`, icon: TrendingUp },
               { title: '주문 현황', href: `${base}/creator/orders`, icon: ShoppingCart },
               { title: '내 정산', href: `${base}/creator/settlements`, icon: DollarSign },
+              { title: '성과 공유', href: `${base}/creator/certificate`, icon: Share2 },
             ],
           },
           {

@@ -40,7 +40,7 @@ export default async function PricingAnalyticsPage() {
       <h1 className="text-2xl font-bold mb-8">가격 시스템 분석</h1>
 
       <section className="grid grid-cols-3 gap-6 mb-12">
-        {v3Counts.map((c) => (
+        {v3Counts.map((c: any) => (
           <div key={c.planV3} className="border rounded-lg p-6">
             <div className="text-sm text-muted-foreground">{c.planV3}</div>
             <div className="text-3xl font-bold">{c._count}</div>

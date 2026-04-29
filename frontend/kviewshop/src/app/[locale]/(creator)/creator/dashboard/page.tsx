@@ -30,6 +30,7 @@ import {
   Star,
   Mail,
   Users,
+  Share2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/i18n/config';
@@ -304,6 +305,22 @@ export default function CreatorDashboardPage() {
             )}
           </button>
         </div>
+      )}
+
+      {/* Section 4.5: Revenue Certificate CTA */}
+      {monthlyEarnings > 0 && (
+        <Link href={`/${locale}/creator/certificate`}>
+          <div className="bg-gradient-to-r from-violet-500 to-purple-600 rounded-2xl px-4 py-3.5 flex items-center gap-3 text-white hover:from-violet-600 hover:to-purple-700 transition-colors">
+            <Share2 className="h-5 w-5 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold">
+                이번 달 {formatCurrency(monthlyEarnings, 'KRW')} 벌었어요!
+              </p>
+              <p className="text-xs text-white/70">인스타에 자랑하기</p>
+            </div>
+            <ChevronRight className="h-4 w-4 text-white/50 shrink-0" />
+          </div>
+        </Link>
       )}
 
       {/* Section 5: 오늘 할 일 */}
